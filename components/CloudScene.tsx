@@ -5,13 +5,14 @@ import { Suspense, useState, useEffect } from 'react'
 import Experience from './Experience'
 import { Loader } from '@react-three/drei'
 import { CloudConfig } from './CloudManager'
-import { agentProtocol } from '../services/AgentProtocol'
+import { agentProtocol, AgentSession } from '../services/AgentProtocol'
 import { AgentTerminal } from './AgentTerminal'
 import { VehicleType } from '../services/AgentProtocol'
 
 export default function CloudScene() {
   const [spawnRate, setSpawnRate] = useState(2)
   const [playerVehicle, setPlayerVehicle] = useState<VehicleType>('speedster')
+  const [playerSession, setPlayerSession] = useState<AgentSession | null>(null)
   const [config, setConfig] = useState<CloudConfig>({
     seed: 1,
     segments: 40,
@@ -26,6 +27,10 @@ export default function CloudScene() {
   })
 
   useEffect(() => {
+    const interval = setInterval(() => {
+      setPlayerSession(agentProtocol.getSession('Player') || null)
+    }, 500)
+
     const unsubscribe = agentProtocol.subscribeToWeather((newConfig) => {
       if (newConfig.spawnRate !== undefined) {
         setSpawnRate(newConfig.spawnRate)
@@ -37,7 +42,10 @@ export default function CloudScene() {
         preset: 'custom'
       }))
     })
-    return unsubscribe
+    return () => {
+      clearInterval(interval)
+      unsubscribe()
+    }
   }, [])
 
   const updateConfig = (key: keyof CloudConfig, value: any) => {
@@ -54,15 +62,47 @@ export default function CloudScene() {
       <Loader />
 
       <AgentTerminal />
+
+      {/* Player HUD */}
+      {playerSession && (
+        <div className="absolute bottom-8 right-8 w-64 bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20 text-white z-10 pointer-events-none">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-xs font-black uppercase tracking-widest opacity-70">Pilot Status</h3>
+            <span className="text-[10px] bg-sky-500 px-2 py-0.5 rounded-full font-bold">Ξ{playerSession.balance.toFixed(2)}</span>
+          </div>
+          
+          <div className="space-y-3">
+            <div>
+              <div className="flex justify-between text-[10px] mb-1 font-bold">
+                <span>VITALITY</span>
+                <span className="text-green-400">{playerSession.vitality}%</span>
+              </div>
+              <div className="w-full bg-black/30 h-2 rounded-full overflow-hidden">
+                <div className="bg-green-500 h-full transition-all duration-500" style={{ width: `${playerSession.vitality}%` }} />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between text-[10px] mb-1 font-bold">
+                <span>BURDEN</span>
+                <span className="text-orange-400">{playerSession.burden}%</span>
+              </div>
+              <div className="w-full bg-black/30 h-2 rounded-full overflow-hidden">
+                <div className="bg-orange-500 h-full transition-all duration-500" style={{ width: `${playerSession.burden}%` }} />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
-      {/* UI Overlay */}
+      {/* UI Overlay (Brand) */}
       <div className="absolute top-8 left-8 text-white pointer-events-none z-10">
         <h1 className="text-6xl font-black tracking-tighter drop-shadow-md">CLAWDY</h1>
         <p className="text-xl font-medium opacity-90 drop-shadow-sm">It's raining food!</p>
       </div>
 
       {/* Evolution Controls */}
-      <div className="absolute top-8 right-8 w-80 max-h-[90vh] overflow-y-auto bg-white/20 backdrop-blur-md p-6 rounded-2xl shadow-xl border border-white/30 text-white z-10 scrollbar-hide">
+      <div className="absolute top-8 right-8 w-80 max-h-[60vh] overflow-y-auto bg-white/20 backdrop-blur-md p-6 rounded-2xl shadow-xl border border-white/30 text-white z-10 scrollbar-hide">
         <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
           <span>☁️</span> Cloud Evolution
         </h2>
@@ -102,9 +142,10 @@ export default function CloudScene() {
           ))}
         </div>
         
-        {/* Global Controls */}
-        <div className="mb-4">
-           <label className="flex justify-between mb-1 text-sm font-medium">
+        <div className={`space-y-4 text-sm font-medium transition-opacity ${config.preset !== 'custom' ? 'opacity-50 pointer-events-none' : ''}`}>
+          
+          <div>
+            <label className="flex justify-between mb-1">
               Food Rain Intensity
               <span>{spawnRate} items/s</span>
             </label>
@@ -115,13 +156,10 @@ export default function CloudScene() {
               onChange={(e) => setSpawnRate(Number(e.target.value))}
               className="w-full accent-sky-600 cursor-pointer"
             />
-        </div>
+          </div>
 
-        <div className="pt-2 border-t border-white/10 mb-4"></div>
+          <div className="pt-2 border-t border-white/10"></div>
 
-        {/* Cloud Specific Controls */}
-        <div className={`space-y-4 text-sm font-medium transition-opacity ${config.preset !== 'custom' ? 'opacity-50 pointer-events-none' : ''}`}>
-          
           <div>
             <label className="flex justify-between mb-1">
               Cloud Count
@@ -138,7 +176,7 @@ export default function CloudScene() {
 
           <div>
             <label className="flex justify-between mb-1">
-              Density (Volume)
+              Density
               <span>{config.volume}</span>
             </label>
             <input 
@@ -152,7 +190,7 @@ export default function CloudScene() {
 
           <div>
             <label className="flex justify-between mb-1">
-              Puffiness (Growth)
+              Puffiness
               <span>{config.growth}</span>
             </label>
             <input 
@@ -160,20 +198,6 @@ export default function CloudScene() {
               min="1" max="10" step="1" 
               value={config.growth}
               onChange={(e) => updateConfig('growth', Number(e.target.value))}
-              className="w-full accent-sky-600 cursor-pointer"
-            />
-          </div>
-
-          <div>
-            <label className="flex justify-between mb-1">
-              Complexity (Segments)
-              <span>{config.segments}</span>
-            </label>
-            <input 
-              type="range" 
-              min="10" max="100" step="10" 
-              value={config.segments}
-              onChange={(e) => updateConfig('segments', Number(e.target.value))}
               className="w-full accent-sky-600 cursor-pointer"
             />
           </div>
@@ -188,20 +212,6 @@ export default function CloudScene() {
               min="0" max="2" step="0.1" 
               value={config.speed}
               onChange={(e) => updateConfig('speed', Number(e.target.value))}
-              className="w-full accent-sky-600 cursor-pointer"
-            />
-          </div>
-          
-           <div>
-            <label className="flex justify-between mb-1">
-              Opacity
-              <span>{config.opacity}</span>
-            </label>
-            <input 
-              type="range" 
-              min="0.1" max="1" step="0.1" 
-              value={config.opacity}
-              onChange={(e) => updateConfig('opacity', Number(e.target.value))}
               className="w-full accent-sky-600 cursor-pointer"
             />
           </div>
@@ -246,9 +256,8 @@ export default function CloudScene() {
         </div>
       </div>
 
-      <div className="absolute bottom-8 right-8 text-white text-right pointer-events-none opacity-50 text-sm z-10">
-        <p>Built with Next.js, R3F & Rapier</p>
-        <p>Clouds by @pmndrs</p>
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 text-white text-center pointer-events-none opacity-30 text-sm z-10">
+        <p>Built with Next.js, R3F & Rapier | Base Mainnet Simulation</p>
       </div>
     </div>
   )

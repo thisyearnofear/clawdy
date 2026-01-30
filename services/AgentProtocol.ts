@@ -36,7 +36,7 @@ export interface VehicleCommand {
 export interface AgentCommand {
   agentId: string
   timestamp: number
-  bid: number // X402: Amount paid to "win" the weather
+  bid: number
   config: Partial<CloudConfig> & { spawnRate?: number }
   duration: number
 }
@@ -49,7 +49,7 @@ export interface AgentSession {
   totalEarned: number
   vitality: number
   burden: number
-  balance: number // Current "Smart Account" balance on Base
+  balance: number
 }
 
 class AgentProtocol {
@@ -57,6 +57,11 @@ class AgentProtocol {
   private weatherListeners: ((config: any) => void)[] = []
   private vehicleListeners: ((command: VehicleCommand) => void)[] = []
   
+  constructor() {
+    // Initialize Player Session
+    this.authorizeAgent('Player', 3600000 * 24, 10.0)
+  }
+
   private rentRates: Record<VehicleType, number> = {
     speedster: 0.005,
     truck: 0.002,
@@ -71,7 +76,6 @@ class AgentProtocol {
     bounds: [0, 0, 0]
   }
 
-  // Weather Bidding System
   private currentWeatherBid = { agentId: '', amount: 0, expires: 0 }
 
   async authorizeAgent(agentId: string, duration: number, initialBalance: number = 1.0): Promise<boolean> {
@@ -85,7 +89,6 @@ class AgentProtocol {
       burden: 0,
       balance: initialBalance
     })
-    console.log(`[Base] Agent ${agentId} authorized with ${initialBalance} ETH`)
     return true
   }
 
@@ -129,19 +132,15 @@ class AgentProtocol {
     return false
   }
 
-  // Adversarial Weather Control: Highest bidder wins
   async processCommand(command: AgentCommand): Promise<boolean> {
     const session = this.sessions.get(command.agentId)
     if (!session || session.balance < command.bid) return false
 
-    // Bidding Logic
     const now = Date.now()
     if (now < this.currentWeatherBid.expires && command.bid <= this.currentWeatherBid.amount) {
-      console.log(`[WeatherConflict] ${command.agentId} bid too low (${command.bid} <= ${this.currentWeatherBid.amount})`)
       return false
     }
 
-    // Deduct bid from session
     session.balance -= command.bid
     session.totalPaid += command.bid
     

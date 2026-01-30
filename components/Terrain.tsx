@@ -55,11 +55,10 @@ export function Terrain() {
   }, [colors])
 
   return (
-    <RigidBody type="fixed" colliders="trimesh">
+    <RigidBody type="fixed" colliders="trimesh" rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]}>
       <mesh 
         ref={mesh} 
         geometry={geometry} 
-        rotation={[-Math.PI / 2, 0, 0]} 
         receiveShadow
       >
         <meshStandardMaterial 

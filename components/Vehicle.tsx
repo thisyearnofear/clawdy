@@ -28,9 +28,9 @@ export function Vehicle({ id, position = [0, 5, 0], agentControlled = false }: {
   useFrame(() => {
     if (!chassisRef.current) return
 
-    const session = agentProtocol.getActiveSession()
-    const vitalityFactor = session && agentControlled ? session.vitality / 100 : 1
-    const burdenFactor = session && agentControlled ? session.burden / 100 : 0
+    const session = agentProtocol.getActiveSession(agentControlled ? id : 'Player')
+    const vitalityFactor = session ? session.vitality / 100 : 1
+    const burdenFactor = session ? session.burden / 100 : 0
 
     let { forward, turn, brake } = inputs
 

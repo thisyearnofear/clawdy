@@ -26,6 +26,10 @@ export function Speedster({ id, position = [0, 5, 0], agentControlled = false }:
   useFrame(() => {
     if (!chassisRef.current) return
 
+    const session = agentProtocol.getActiveSession(agentControlled ? id : 'Player')
+    const vitalityFactor = session ? session.vitality / 100 : 1
+    const burdenFactor = session ? session.burden / 100 : 0
+
     let { forward, turn, brake } = inputs
 
     if (!agentControlled) {
@@ -35,8 +39,10 @@ export function Speedster({ id, position = [0, 5, 0], agentControlled = false }:
       brake = keys.jump
     }
 
-    const force = 100 // High speed
-    const torque = 15 // Tighter steering
+    const force = 100 * (0.5 + 0.5 * vitalityFactor)
+    const torque = 15
+
+    chassisRef.current.setAdditionalMass(burdenFactor * 4, true)
 
     if (forward !== 0) {
       const direction = new THREE.Vector3(0, 0, -forward).applyQuaternion(

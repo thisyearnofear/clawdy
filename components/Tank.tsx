@@ -26,9 +26,9 @@ export function Tank({ id, position = [0, 5, 0], agentControlled = false }: { id
   useFrame((state) => {
     if (!chassisRef.current) return
 
-    const session = agentProtocol.getActiveSession()
-    const vitalityFactor = session && agentControlled ? session.vitality / 100 : 1
-    const burdenFactor = session && agentControlled ? session.burden / 100 : 0
+    const session = agentProtocol.getActiveSession(agentControlled ? id : 'Player')
+    const vitalityFactor = session ? session.vitality / 100 : 1
+    const burdenFactor = session ? session.burden / 100 : 0
 
     let { forward, turn, brake, aim } = inputs
 
@@ -43,7 +43,7 @@ export function Tank({ id, position = [0, 5, 0], agentControlled = false }: { id
     const force = 60 * (0.5 + 0.5 * vitalityFactor)
     const torque = 40
 
-    chassisRef.current.setAdditionalMass(burdenFactor * 10, true) // Tanks get even heavier
+    chassisRef.current.setAdditionalMass(burdenFactor * 10, true)
 
     if (forward !== 0) {
       const direction = new THREE.Vector3(0, 0, -forward).applyQuaternion(
@@ -52,7 +52,6 @@ export function Tank({ id, position = [0, 5, 0], agentControlled = false }: { id
       chassisRef.current.applyImpulse(direction.multiplyScalar(force), true)
     }
 
-    // Tanks can rotate in place (Skid Steering)
     if (turn !== 0) {
       chassisRef.current.applyTorqueImpulse({ x: 0, y: turn * torque, z: 0 }, true)
     }
@@ -62,12 +61,10 @@ export function Tank({ id, position = [0, 5, 0], agentControlled = false }: { id
        chassisRef.current.setLinvel({ x: vel.x * 0.9, y: vel.y, z: vel.z * 0.9 }, true)
     }
 
-    // Visual Turret Rotation
     if (turretRef.current) {
       if (agentControlled) {
         turretRef.current.rotation.y = THREE.MathUtils.lerp(turretRef.current.rotation.y, aim, 0.1)
       } else {
-        // In manual mode, turret follows mouse or just stays forward
         const time = state.clock.getElapsedTime()
         turretRef.current.rotation.y = Math.sin(time * 0.5) * 0.5
       }

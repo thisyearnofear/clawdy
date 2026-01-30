@@ -250,7 +250,7 @@ export function ProceduralFood({ id, itemType, onDespawn, onCollect, ...props }:
         {stats.type === 'broccoli' && <Broccoli />}
       </group>
       <CuboidCollider args={[0.8, 0.8, 0.8]} sensor />
-      <CuboidCollider args={[0.5, 0.5, 0.5]} />
+      <CuboidCollider args={[0.75, 0.75, 0.75]} />
     </RigidBody>
   )
 }

@@ -64,8 +64,11 @@ export default function Experience({
   }
 
   const handleCollect = (id: number, stats: FoodStats, collectorId?: string) => {
-    // Map internal vehicle ID to Agent Name
-    const agentId = collectorId === 'agent-2' ? 'Agent-One' : 'Agent-Zero'
+    // Map internal vehicle ID to Session Name
+    let agentId = 'Player'
+    if (collectorId === 'agent-1') agentId = 'Agent-Zero'
+    if (collectorId === 'agent-2') agentId = 'Agent-One'
+    
     agentProtocol.collectFood(agentId, stats)
     handleDespawn(id)
   }
@@ -141,16 +144,6 @@ export default function Experience({
       </Physics>
 
       <ContactShadows opacity={0.4} scale={50} blur={1} far={20} resolution={256} color="#000000" />
-
-      <Text
-        position={[0, 1, -10]}
-        fontSize={2}
-        color="white"
-        anchorX="center"
-        anchorY="middle"
-      >
-        CLAW-DY
-      </Text>
     </KeyboardControls>
   )
 }
