@@ -5,9 +5,12 @@ import { Suspense, useState, useEffect } from 'react'
 import Experience from './Experience'
 import { Loader } from '@react-three/drei'
 import { CloudConfig } from './CloudManager'
-import { agentProtocol, AgentSession } from '../services/AgentProtocol'
+import { agentProtocol, AgentSession, WEATHER_AUCTION_ADDRESS } from '../services/AgentProtocol'
 import { AgentTerminal } from './AgentTerminal'
 import { VehicleType } from '../services/AgentProtocol'
+import { ConnectWallet } from './ConnectWallet'
+import { useWatchContractEvent } from 'wagmi'
+import { WEATHER_AUCTION_ABI } from '../services/abis/WeatherAuction'
 
 export default function CloudScene() {
   const [spawnRate, setSpawnRate] = useState(2)
@@ -24,6 +27,26 @@ export default function CloudScene() {
     secondaryColor: '#e0e0e0',
     bounds: [10, 2, 10],
     count: 5
+  })
+
+  // Listen for real On-Chain events from Base
+  useWatchContractEvent({
+    address: WEATHER_AUCTION_ADDRESS as `0x${string}`,
+    abi: WEATHER_AUCTION_ABI,
+    eventName: 'WeatherChanged',
+    onLogs(logs: any) {
+      const event = logs[0].args
+      if (event && event.preset) {
+        console.log('[OnChain] Weather Sync:', event.preset)
+        agentProtocol.processCommand({
+          agentId: 'On-Chain',
+          timestamp: Date.now(),
+          bid: 0,
+          config: { preset: event.preset as any },
+          duration: 60000
+        })
+      }
+    },
   })
 
   useEffect(() => {
@@ -61,9 +84,12 @@ export default function CloudScene() {
       </Canvas>
       <Loader />
 
+      <div className="absolute top-8 right-8 z-30 flex gap-4 items-start">
+        <ConnectWallet />
+      </div>
+
       <AgentTerminal />
 
-      {/* Player HUD */}
       {playerSession && (
         <div className="absolute bottom-8 right-8 w-64 bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20 text-white z-10 pointer-events-none">
           <div className="flex justify-between items-center mb-3">
@@ -95,19 +121,16 @@ export default function CloudScene() {
         </div>
       )}
       
-      {/* UI Overlay (Brand) */}
       <div className="absolute top-8 left-8 text-white pointer-events-none z-10">
         <h1 className="text-6xl font-black tracking-tighter drop-shadow-md">CLAWDY</h1>
         <p className="text-xl font-medium opacity-90 drop-shadow-sm">It's raining food!</p>
       </div>
 
-      {/* Evolution Controls */}
-      <div className="absolute top-8 right-8 w-80 max-h-[60vh] overflow-y-auto bg-white/20 backdrop-blur-md p-6 rounded-2xl shadow-xl border border-white/30 text-white z-10 scrollbar-hide">
+      <div className="absolute top-8 left-8 mt-32 w-80 max-h-[60vh] overflow-y-auto bg-white/20 backdrop-blur-md p-6 rounded-2xl shadow-xl border border-white/30 text-white z-10 scrollbar-hide">
         <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
           <span>☁️</span> Cloud Evolution
         </h2>
 
-        {/* Vehicle Selection */}
         <div className="mb-6">
           <p className="text-xs font-bold uppercase mb-2 opacity-60">Your Vehicle</p>
           <div className="grid grid-cols-2 gap-2">
@@ -125,7 +148,6 @@ export default function CloudScene() {
           </div>
         </div>
 
-        {/* Presets */}
         <div className="mb-6 grid grid-cols-2 gap-2">
           {['custom', 'stormy', 'sunset', 'candy'].map((preset) => (
             <button

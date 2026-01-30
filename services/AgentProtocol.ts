@@ -1,7 +1,11 @@
 import { CloudConfig } from '../components/CloudManager'
 import { FoodType, FoodStats } from '../components/ProceduralFood'
+import { parseEther, encodeFunctionData } from 'viem'
+import { WEATHER_AUCTION_ABI } from './abis/WeatherAuction'
 
 export type VehicleType = 'truck' | 'tank' | 'monster' | 'speedster'
+
+export const WEATHER_AUCTION_ADDRESS = '0x0000000000000000000000000000000000000000' // REPLACE AFTER DEPLOY
 
 export interface WorldState {
   timestamp: number
@@ -58,9 +62,43 @@ class AgentProtocol {
   private sessions: Map<string, AgentSession> = new Map()
   private weatherListeners: ((config: any) => void)[] = []
   private vehicleListeners: ((command: VehicleCommand) => void)[] = []
+  private isPermissioned: boolean = false
   
   constructor() {
     this.authorizeAgent('Player', 3600000 * 24, 10.0)
+  }
+
+  async requestSessionPermissions(address: string) {
+    if (typeof window === 'undefined' || !(window as any).ethereum) return
+
+    try {
+      const ethereum = (window as any).ethereum
+      const permissions = await ethereum.request({
+        method: 'wallet_requestExecutionPermissions',
+        params: [{
+          permission: {
+            calls: [
+              { to: WEATHER_AUCTION_ADDRESS, data: '0x' }
+            ],
+            isAdjustmentAllowed: true,
+            rules: [
+              {
+                type: 'allowance',
+                limit: parseEther('0.1').toString(),
+                period: 'session'
+              }
+            ]
+          },
+          expiry: Math.floor(Date.now() / 1000) + 3600
+        }]
+      })
+
+      this.isPermissioned = true
+      return permissions
+    } catch (error) {
+      console.error('[AgentProtocol] Session Denied:', error)
+      return null
+    }
   }
 
   private rentRates: Record<VehicleType, number> = {
@@ -105,7 +143,6 @@ class AgentProtocol {
     
     this.sessions.forEach(session => {
       if (session.agentId === 'Player') return
-      
       const agentVehicleId = session.agentId === 'Agent-Zero' ? 'agent-1' : 'agent-2'
       const agentVehicle = this.worldState.vehicles.find(v => v.id === agentVehicleId)
       
@@ -124,30 +161,18 @@ class AgentProtocol {
         })
         session.targetFoodId = nearestId
 
-        // Auto-Pilot Brain: If active, generate inputs
         if (session.autoPilot && nearestId !== null) {
           const target = this.worldState.food.find(f => f.id === nearestId)!
           const dx = target.position[0] - agentVehicle.position[0]
           const dz = target.position[2] - agentVehicle.position[2]
-          
-          // Basic steering logic: angle towards target
           const angleToTarget = Math.atan2(dx, dz)
-          
-          // Get current vehicle rotation (Y axis)
-          // Simplified: extract approximate Y rotation from quaternion
-          // In a real app we'd use THREE.Euler
-          const currentRotationY = agentVehicle.rotation[1] * Math.PI // Dummy approx for SIM
-
+          const currentRotationY = agentVehicle.rotation[1] * Math.PI 
           const diff = angleToTarget - currentRotationY
           
           this.processVehicleCommand({
             agentId: session.agentId,
             vehicleId: agentVehicleId,
-            inputs: {
-              forward: 0.5,
-              turn: Math.sin(diff), // Simple proportional turn
-              brake: false
-            }
+            inputs: { forward: 0.5, turn: Math.sin(diff), brake: false }
           })
         }
       } else {
@@ -156,9 +181,7 @@ class AgentProtocol {
     })
   }
 
-  getWorldState(): WorldState {
-    return this.worldState
-  }
+  getWorldState(): WorldState { return this.worldState }
 
   async collectFood(agentId: string, stats: FoodStats) {
     const session = this.sessions.get(agentId)
@@ -167,22 +190,19 @@ class AgentProtocol {
     if (stats.nutrition === 'healthy') {
       session.vitality = Math.min(100, session.vitality + 10)
       session.burden = Math.max(0, session.burden - 5)
-      const reward = 0.002
-      session.totalEarned += reward
-      session.balance += reward
+      session.balance += 0.002
+      session.totalEarned += 0.002
     } else {
       session.burden = Math.min(100, session.burden + 15)
       session.vitality = Math.max(0, session.vitality - 5)
-      const reward = 0.0005
-      session.totalEarned += reward
-      session.balance += reward
+      session.balance += 0.0005
+      session.totalEarned += 0.0005
     }
   }
 
   async processRent(agentId: string, vehicleType: VehicleType) {
     const session = this.sessions.get(agentId)
     if (!session) return false
-
     const rate = this.rentRates[vehicleType] / 60
     if (session.balance >= rate) {
       session.balance -= rate
@@ -192,24 +212,48 @@ class AgentProtocol {
     return false
   }
 
+  // Unified Bid: Real On-Chain or Local Simulation
   async processCommand(command: AgentCommand): Promise<boolean> {
     const session = this.sessions.get(command.agentId)
-    if (!session || session.balance < command.bid) return false
+    if (!session) return false
 
-    const now = Date.now()
-    if (now < this.currentWeatherBid.expires && command.bid <= this.currentWeatherBid.amount) {
-      return false
+    if (this.isPermissioned) {
+      console.log(`[Base] Submitting real on-chain bid for ${command.agentId}`)
+      try {
+        const ethereum = (window as any).ethereum
+        // @ts-ignore - Real ERC-7715 Call Execution
+        await ethereum.request({
+          method: 'wallet_sendCalls',
+          params: [{
+            calls: [{
+              to: WEATHER_AUCTION_ADDRESS,
+              data: encodeFunctionData({
+                abi: WEATHER_AUCTION_ABI,
+                functionName: 'bid',
+                args: [
+                  BigInt(60), // 1 minute
+                  command.config.preset || 'custom',
+                  BigInt(command.config.volume || 10),
+                  BigInt(command.config.growth || 4),
+                  BigInt((command.config.speed || 0.2) * 100),
+                  0 // Color packed
+                ]
+              }),
+              value: parseEther(command.bid.toString())
+            }]
+          }]
+        })
+      } catch (e) {
+        console.error('On-chain bid failed', e)
+      }
     }
 
+    // Still update local simulation state for responsiveness
+    const now = Date.now()
+    if (now < this.currentWeatherBid.expires && command.bid <= this.currentWeatherBid.amount) return false
     session.balance -= command.bid
     session.totalPaid += command.bid
-    
-    this.currentWeatherBid = {
-      agentId: command.agentId,
-      amount: command.bid,
-      expires: now + command.duration
-    }
-
+    this.currentWeatherBid = { agentId: command.agentId, amount: command.bid, expires: now + command.duration }
     this.notifyWeatherListeners(command.config)
     return true
   }
@@ -241,6 +285,7 @@ class AgentProtocol {
     return this.getSessions()[0]
   }
   getWeatherStatus() { return this.currentWeatherBid }
+  isAutonomyEnabled() { return this.isPermissioned }
 }
 
 export const agentProtocol = new AgentProtocol()
