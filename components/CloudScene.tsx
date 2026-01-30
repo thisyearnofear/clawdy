@@ -1,13 +1,17 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { Suspense, useState } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import Experience from './Experience'
 import { Loader } from '@react-three/drei'
 import { CloudConfig } from './CloudManager'
+import { agentProtocol } from '../services/AgentProtocol'
+import { AgentTerminal } from './AgentTerminal'
+import { VehicleType } from '../services/AgentProtocol'
 
 export default function CloudScene() {
   const [spawnRate, setSpawnRate] = useState(2)
+  const [playerVehicle, setPlayerVehicle] = useState<VehicleType>('speedster')
   const [config, setConfig] = useState<CloudConfig>({
     seed: 1,
     segments: 40,
@@ -21,6 +25,21 @@ export default function CloudScene() {
     count: 5
   })
 
+  useEffect(() => {
+    const unsubscribe = agentProtocol.subscribeToWeather((newConfig) => {
+      if (newConfig.spawnRate !== undefined) {
+        setSpawnRate(newConfig.spawnRate)
+      }
+      
+      setConfig(prev => ({
+        ...prev,
+        ...newConfig,
+        preset: 'custom'
+      }))
+    })
+    return unsubscribe
+  }, [])
+
   const updateConfig = (key: keyof CloudConfig, value: any) => {
     setConfig(prev => ({ ...prev, [key]: value }))
   }
@@ -29,10 +48,12 @@ export default function CloudScene() {
     <div className="w-full h-screen bg-gradient-to-b from-sky-400 to-sky-200 relative">
       <Canvas shadows>
         <Suspense fallback={null}>
-          <Experience cloudConfig={config} spawnRate={spawnRate} />
+          <Experience cloudConfig={config} spawnRate={spawnRate} playerVehicleType={playerVehicle} />
         </Suspense>
       </Canvas>
       <Loader />
+
+      <AgentTerminal />
       
       {/* UI Overlay */}
       <div className="absolute top-8 left-8 text-white pointer-events-none z-10">
@@ -45,6 +66,24 @@ export default function CloudScene() {
         <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
           <span>☁️</span> Cloud Evolution
         </h2>
+
+        {/* Vehicle Selection */}
+        <div className="mb-6">
+          <p className="text-xs font-bold uppercase mb-2 opacity-60">Your Vehicle</p>
+          <div className="grid grid-cols-2 gap-2">
+            {(['truck', 'tank', 'monster', 'speedster'] as VehicleType[]).map((type) => (
+              <button
+                key={type}
+                onClick={() => setPlayerVehicle(type)}
+                className={`px-2 py-2 rounded-lg text-[10px] uppercase font-bold transition-all ${
+                  playerVehicle === type ? 'bg-white text-sky-900 shadow-md scale-105' : 'bg-black/20 hover:bg-black/30'
+                }`}
+              >
+                {type}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* Presets */}
         <div className="mb-6 grid grid-cols-2 gap-2">
