@@ -41,10 +41,33 @@ export function Vehicle({ id, position = [0, 5, 0], agentControlled = false }: {
       brake = keys.jump
     }
 
-    // Apply burden to mass
-    chassisRef.current.setAdditionalMass(burdenFactor * 5, true)
+        // Apply burden to mass
 
-    const force = 40 * (0.5 + 0.5 * vitalityFactor) // Slower if low vitality
+        chassisRef.current.setAdditionalMass(burdenFactor * 5, true)
+
+    
+
+        // Update Digital Twin rotation
+
+        if (agentControlled) {
+
+          agentProtocol.updateWorldState({
+
+            vehicles: agentProtocol.getWorldState().vehicles.map(v => 
+
+              v.id === id ? { ...v, rotation: chassisRef.current!.rotation() as any, position: chassisRef.current!.translation() as any } : v
+
+            )
+
+          })
+
+        }
+
+    
+
+        const force = 40 * (0.5 + 0.5 * vitalityFactor)
+
+     // Slower if low vitality
     const torque = 20
 
     // Apply forces to chassis (Simplified vehicle physics for R3F/Rapier without complex raycast vehicle boilerplate)

@@ -44,6 +44,14 @@ export function MonsterTruck({ id, position = [0, 5, 0], agentControlled = false
 
     chassisRef.current.setAdditionalMass(burdenFactor * 8, true)
 
+    if (agentControlled) {
+      agentProtocol.updateWorldState({
+        vehicles: agentProtocol.getWorldState().vehicles.map(v => 
+          v.id === id ? { ...v, rotation: chassisRef.current!.rotation() as any, position: chassisRef.current!.translation() as any } : v
+        )
+      })
+    }
+
     if (forward !== 0) {
       const direction = new THREE.Vector3(0, 0, -forward).applyQuaternion(
         new THREE.Quaternion(...chassisRef.current.rotation() as any)

@@ -51,6 +51,7 @@ export interface AgentSession {
   burden: number
   balance: number
   targetFoodId: number | null
+  autoPilot: boolean
 }
 
 class AgentProtocol {
@@ -88,22 +89,29 @@ class AgentProtocol {
       vitality: 100,
       burden: 0,
       balance: initialBalance,
-      targetFoodId: null
+      targetFoodId: null,
+      autoPilot: false
     })
     return true
+  }
+
+  toggleAutoPilot(agentId: string) {
+    const session = this.sessions.get(agentId)
+    if (session) session.autoPilot = !session.autoPilot
   }
 
   updateWorldState(update: Partial<WorldState>) {
     this.worldState = { ...this.worldState, ...update, timestamp: Date.now() }
     
-    // Auto-Targeting logic for simulation: Each agent targets the nearest food item
     this.sessions.forEach(session => {
-      if (session.agentId === 'Player') return // Don't auto-target for human
+      if (session.agentId === 'Player') return
       
-      const agentVehicle = this.worldState.vehicles.find(v => v.id === (session.agentId === 'Agent-Zero' ? 'agent-1' : 'agent-2'))
+      const agentVehicleId = session.agentId === 'Agent-Zero' ? 'agent-1' : 'agent-2'
+      const agentVehicle = this.worldState.vehicles.find(v => v.id === agentVehicleId)
+      
       if (agentVehicle && this.worldState.food.length > 0) {
         let minDist = Infinity
-        let nearestId = null
+        let nearestId: number | null = null
         
         this.worldState.food.forEach(f => {
           const dx = f.position[0] - agentVehicle.position[0]
@@ -115,6 +123,33 @@ class AgentProtocol {
           }
         })
         session.targetFoodId = nearestId
+
+        // Auto-Pilot Brain: If active, generate inputs
+        if (session.autoPilot && nearestId !== null) {
+          const target = this.worldState.food.find(f => f.id === nearestId)!
+          const dx = target.position[0] - agentVehicle.position[0]
+          const dz = target.position[2] - agentVehicle.position[2]
+          
+          // Basic steering logic: angle towards target
+          const angleToTarget = Math.atan2(dx, dz)
+          
+          // Get current vehicle rotation (Y axis)
+          // Simplified: extract approximate Y rotation from quaternion
+          // In a real app we'd use THREE.Euler
+          const currentRotationY = agentVehicle.rotation[1] * Math.PI // Dummy approx for SIM
+
+          const diff = angleToTarget - currentRotationY
+          
+          this.processVehicleCommand({
+            agentId: session.agentId,
+            vehicleId: agentVehicleId,
+            inputs: {
+              forward: 0.5,
+              turn: Math.sin(diff), // Simple proportional turn
+              brake: false
+            }
+          })
+        }
       } else {
         session.targetFoodId = null
       }
@@ -142,8 +177,6 @@ class AgentProtocol {
       session.totalEarned += reward
       session.balance += reward
     }
-    
-    if (session.targetFoodId === null) { /* noop */ }
   }
 
   async processRent(agentId: string, vehicleType: VehicleType) {

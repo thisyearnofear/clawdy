@@ -31,6 +31,14 @@ export function AgentTerminal() {
     addLog(`${name} joined Base Network`)
   }
 
+  const toggleAutoPilot = () => {
+    if (activeAgentId) {
+      agentProtocol.toggleAutoPilot(activeAgentId)
+      const session = agentProtocol.getSession(activeAgentId)
+      addLog(`${activeAgentId} Auto-Pilot: ${session?.autoPilot ? 'ENABLED' : 'DISABLED'}`)
+    }
+  }
+
   const triggerAgentAction = (type: 'storm' | 'candy' | 'chaos', bid: number) => {
     if (!activeAgentId) return
     let config = {}
@@ -74,10 +82,12 @@ export function AgentTerminal() {
     })
   }
 
+  const activeSession = sessions.find(s => s.agentId === activeAgentId)
+
   return (
     <div className="absolute bottom-8 left-8 w-96 bg-black/60 backdrop-blur-xl p-6 rounded-2xl border border-white/10 text-white font-mono text-xs z-30">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="font-bold uppercase tracking-widest text-sky-400">Agentic Sandbox (Multi-Agent)</h3>
+        <h3 className="font-bold uppercase tracking-widest text-sky-400">Agentic Sandbox</h3>
         <span className="text-[10px] opacity-50 px-2 py-0.5 bg-white/10 rounded">BASE MAINNET SIM</span>
       </div>
 
@@ -92,9 +102,8 @@ export function AgentTerminal() {
 
       {sessions.length > 0 && (
         <div className="space-y-4">
-          {/* Agent Switcher */}
           <div className="flex gap-2">
-            {sessions.map(s => (
+            {sessions.filter(s => s.agentId !== 'Player').map(s => (
               <button 
                 key={s.agentId}
                 onClick={() => setActiveAgentId(s.agentId)}
@@ -106,7 +115,7 @@ export function AgentTerminal() {
             ))}
           </div>
 
-          {activeAgentId && (
+          {activeAgentId && activeSession && (
             <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2">
               <div className="grid grid-cols-3 gap-2">
                 <button onClick={() => triggerAgentAction('storm', 0.05)} className="bg-red-900/40 p-2 rounded border border-red-500/20">BID STORM</button>
@@ -122,25 +131,34 @@ export function AgentTerminal() {
                 </div>
                 <button onClick={deployAgentVehicle} className="w-full py-1 bg-white/10 rounded text-[9px] font-bold mb-3">DEPLOY VEHICLE</button>
                 
-                <div className="grid grid-cols-4 gap-1">
+                <div className="grid grid-cols-4 gap-1 mb-2">
                   <button onClick={() => drive('left')} className="bg-white/5 p-1 rounded">L</button>
                   <button onClick={() => drive('forward')} className="bg-white/5 p-1 rounded">F</button>
                   <button onClick={() => drive('right')} className="bg-white/5 p-1 rounded">R</button>
                   <button onClick={() => drive('stop')} className="bg-red-900/20 p-1 rounded">X</button>
                 </div>
+
+                <button 
+                  onClick={toggleAutoPilot} 
+                  className={`w-full py-1.5 rounded text-[9px] font-black border transition-all ${
+                    activeSession.autoPilot 
+                      ? 'bg-green-500/20 border-green-500 text-green-400' 
+                      : 'bg-white/5 border-white/10 opacity-50'
+                  }`}
+                >
+                  {activeSession.autoPilot ? 'AUTO-PILOT ACTIVE' : 'ENABLE AUTO-PILOT'}
+                </button>
               </div>
 
-              {sessions.find(s => s.agentId === activeAgentId) && (
-                <div className="space-y-2 bg-black/20 p-2 rounded">
-                  <div className="flex justify-between text-[9px]">
-                    <span>VITALITY</span>
-                    <span className="text-green-400">{sessions.find(s => s.agentId === activeAgentId)?.vitality}%</span>
-                  </div>
-                  <div className="w-full bg-white/10 h-1 rounded-full overflow-hidden">
-                    <div className="bg-green-500 h-full transition-all" style={{ width: `${sessions.find(s => s.agentId === activeAgentId)?.vitality}%` }} />
-                  </div>
+              <div className="space-y-2 bg-black/20 p-2 rounded">
+                <div className="flex justify-between text-[9px]">
+                  <span>VITALITY</span>
+                  <span className="text-green-400">{activeSession.vitality}%</span>
                 </div>
-              )}
+                <div className="w-full bg-white/10 h-1 rounded-full overflow-hidden">
+                  <div className="bg-green-500 h-full transition-all" style={{ width: `${activeSession.vitality}%` }} />
+                </div>
+              </div>
             </div>
           )}
         </div>
