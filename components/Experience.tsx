@@ -19,7 +19,9 @@ import { MonsterTruck } from './MonsterTruck'
 import { Speedster } from './Speedster'
 import { Vehicle } from './Vehicle'
 import { AgentVision } from './AgentVision'
-import { VehicleType, agentProtocol } from '../services/AgentProtocol'
+import { VehicleType, agentProtocol, VEHICLE_RENT_ADDRESS } from '../services/AgentProtocol'
+import { useWatchContractEvent } from 'wagmi'
+import { VEHICLE_RENT_ABI } from '../services/abis/VehicleRent'
 
 interface VehicleData {
   id: string
@@ -58,6 +60,20 @@ export default function Experience({
     })
     return unsubscribe
   }, [])
+
+  // Sync On-Chain Rent events
+  useWatchContractEvent({
+    address: VEHICLE_RENT_ADDRESS as `0x${string}`,
+    abi: VEHICLE_RENT_ABI,
+    eventName: 'VehicleRented',
+    onLogs(logs: any) {
+      const event = logs[0].args
+      if (event && event.vehicleId && event.vehicleType) {
+        console.log('[OnChain] Rent Event:', event.vehicleId, event.vehicleType)
+        setVehicles(prev => prev.map(v => v.id === event.vehicleId ? { ...v, type: event.vehicleType as any } : v))
+      }
+    },
+  })
 
   const handleDespawn = (id: number) => {
     setFoodItems((prev) => prev.filter((item) => item.id !== id))
@@ -100,7 +116,9 @@ export default function Experience({
          id: v.id,
          type: v.type,
          position: v.position,
-         rotation: [0, 0, 0, 1]
+         rotation: [0, 0, 0, 1],
+         isRented: true,
+         rentExpiresAt: 0
        })),
        bounds: cloudConfig.bounds
     })

@@ -2,10 +2,12 @@ import { CloudConfig } from '../components/CloudManager'
 import { FoodType, FoodStats } from '../components/ProceduralFood'
 import { parseEther, encodeFunctionData } from 'viem'
 import { WEATHER_AUCTION_ABI } from './abis/WeatherAuction'
+import { VEHICLE_RENT_ABI } from './abis/VehicleRent'
 
 export type VehicleType = 'truck' | 'tank' | 'monster' | 'speedster'
 
-export const WEATHER_AUCTION_ADDRESS = '0x0000000000000000000000000000000000000000' // REPLACE AFTER DEPLOY
+export const WEATHER_AUCTION_ADDRESS = '0x0000000000000000000000000000000000000000'
+export const VEHICLE_RENT_ADDRESS = '0x0000000000000000000000000000000000000000' // REPLACE AFTER DEPLOY
 
 export interface WorldState {
   timestamp: number
@@ -14,6 +16,8 @@ export interface WorldState {
     type: string
     position: [number, number, number]
     rotation: [number, number, number, number]
+    isRented: boolean
+    rentExpiresAt: number
   }[]
   food: {
     id: number
@@ -78,13 +82,14 @@ class AgentProtocol {
         params: [{
           permission: {
             calls: [
-              { to: WEATHER_AUCTION_ADDRESS, data: '0x' }
+              { to: WEATHER_AUCTION_ADDRESS, data: '0x' },
+              { to: VEHICLE_RENT_ADDRESS, data: '0x' }
             ],
             isAdjustmentAllowed: true,
             rules: [
               {
                 type: 'allowance',
-                limit: parseEther('0.1').toString(),
+                limit: parseEther('0.5').toString(),
                 period: 'session'
               }
             ]
@@ -200,28 +205,47 @@ class AgentProtocol {
     }
   }
 
-  async processRent(agentId: string, vehicleType: VehicleType) {
+  // Real On-Chain Rent
+  async rentVehicleOnChain(agentId: string, vehicleId: string, type: VehicleType, minutes: number) {
     const session = this.sessions.get(agentId)
     if (!session) return false
-    const rate = this.rentRates[vehicleType] / 60
-    if (session.balance >= rate) {
-      session.balance -= rate
-      session.totalPaid += rate
-      return true
+
+    if (this.isPermissioned) {
+      console.log(`[Base] Submitting real on-chain rent for ${vehicleId}`)
+      try {
+        const ethereum = (window as any).ethereum
+        // @ts-ignore
+        await ethereum.request({
+          method: 'wallet_sendCalls',
+          params: [{
+            calls: [{
+              to: VEHICLE_RENT_ADDRESS,
+              data: encodeFunctionData({
+                abi: VEHICLE_RENT_ABI,
+                functionName: 'rent',
+                args: [vehicleId, type, BigInt(minutes)]
+              }),
+              value: parseEther((0.001 * minutes).toString()) // Per minute rate from contract
+            }]
+          }]
+        })
+        return true
+      } catch (e) {
+        console.error('On-chain rent failed', e)
+        return false
+      }
     }
-    return false
+    return true
   }
 
-  // Unified Bid: Real On-Chain or Local Simulation
   async processCommand(command: AgentCommand): Promise<boolean> {
     const session = this.sessions.get(command.agentId)
     if (!session) return false
 
     if (this.isPermissioned) {
-      console.log(`[Base] Submitting real on-chain bid for ${command.agentId}`)
       try {
         const ethereum = (window as any).ethereum
-        // @ts-ignore - Real ERC-7715 Call Execution
+        // @ts-ignore
         await ethereum.request({
           method: 'wallet_sendCalls',
           params: [{
@@ -230,25 +254,15 @@ class AgentProtocol {
               data: encodeFunctionData({
                 abi: WEATHER_AUCTION_ABI,
                 functionName: 'bid',
-                args: [
-                  BigInt(60), // 1 minute
-                  command.config.preset || 'custom',
-                  BigInt(command.config.volume || 10),
-                  BigInt(command.config.growth || 4),
-                  BigInt((command.config.speed || 0.2) * 100),
-                  0 // Color packed
-                ]
+                args: [BigInt(60), command.config.preset || 'custom', BigInt(command.config.volume || 10), BigInt(command.config.growth || 4), BigInt((command.config.speed || 0.2) * 100), 0]
               }),
               value: parseEther(command.bid.toString())
             }]
           }]
         })
-      } catch (e) {
-        console.error('On-chain bid failed', e)
-      }
+      } catch (e) { console.error('On-chain bid failed', e) }
     }
 
-    // Still update local simulation state for responsiveness
     const now = Date.now()
     if (now < this.currentWeatherBid.expires && command.bid <= this.currentWeatherBid.amount) return false
     session.balance -= command.bid

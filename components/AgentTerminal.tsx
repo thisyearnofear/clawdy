@@ -58,14 +58,18 @@ export function AgentTerminal() {
     })
   }
 
-  const deployAgentVehicle = () => {
-     agentProtocol.processVehicleCommand({
-      agentId: activeAgentId,
-      vehicleId: activeAgentId === 'Agent-Zero' ? 'agent-1' : 'agent-2',
-      type: selectedVehicle,
-      inputs: { forward: 0, turn: 0, brake: true }
-    })
-    addLog(`${activeAgentId} deployed ${selectedVehicle}`)
+  const deployAgentVehicle = async () => {
+     const vehicleId = activeAgentId === 'Agent-Zero' ? 'agent-1' : 'agent-2'
+     const success = await agentProtocol.rentVehicleOnChain(activeAgentId, vehicleId, selectedVehicle, 5)
+     if (success) {
+       agentProtocol.processVehicleCommand({
+        agentId: activeAgentId,
+        vehicleId,
+        type: selectedVehicle,
+        inputs: { forward: 0, turn: 0, brake: true }
+      })
+      addLog(`${activeAgentId} rented ${selectedVehicle} (Base)`)
+     }
   }
 
   const drive = (direction: 'forward' | 'left' | 'right' | 'stop') => {
@@ -129,7 +133,7 @@ export function AgentTerminal() {
                     <button key={t} onClick={() => setSelectedVehicle(t)} className={`flex-1 py-1 rounded text-[8px] uppercase font-bold border ${selectedVehicle === t ? 'bg-sky-500 border-white' : 'bg-white/5'}`}>{t}</button>
                   ))}
                 </div>
-                <button onClick={deployAgentVehicle} className="w-full py-1 bg-white/10 rounded text-[9px] font-bold mb-3">DEPLOY VEHICLE</button>
+                <button onClick={deployAgentVehicle} className="w-full py-1 bg-white/10 rounded text-[9px] font-bold mb-3">RENT & DEPLOY (BASE)</button>
                 
                 <div className="grid grid-cols-4 gap-1 mb-2">
                   <button onClick={() => drive('left')} className="bg-white/5 p-1 rounded">L</button>
