@@ -1,0 +1,216 @@
+'use client'
+
+import { Canvas } from '@react-three/fiber'
+import { Suspense, useState } from 'react'
+import Experience from './Experience'
+import { Loader } from '@react-three/drei'
+import { CloudConfig } from './CloudManager'
+
+export default function CloudScene() {
+  const [spawnRate, setSpawnRate] = useState(2)
+  const [config, setConfig] = useState<CloudConfig>({
+    seed: 1,
+    segments: 40,
+    volume: 10,
+    growth: 4,
+    opacity: 0.8,
+    speed: 0.2,
+    color: '#ffffff',
+    secondaryColor: '#e0e0e0',
+    bounds: [10, 2, 10],
+    count: 5
+  })
+
+  const updateConfig = (key: keyof CloudConfig, value: any) => {
+    setConfig(prev => ({ ...prev, [key]: value }))
+  }
+
+  return (
+    <div className="w-full h-screen bg-gradient-to-b from-sky-400 to-sky-200 relative">
+      <Canvas shadows>
+        <Suspense fallback={null}>
+          <Experience cloudConfig={config} spawnRate={spawnRate} />
+        </Suspense>
+      </Canvas>
+      <Loader />
+      
+      {/* UI Overlay */}
+      <div className="absolute top-8 left-8 text-white pointer-events-none z-10">
+        <h1 className="text-6xl font-black tracking-tighter drop-shadow-md">CLAWDY</h1>
+        <p className="text-xl font-medium opacity-90 drop-shadow-sm">It's raining food!</p>
+      </div>
+
+      {/* Evolution Controls */}
+      <div className="absolute top-8 right-8 w-80 max-h-[90vh] overflow-y-auto bg-white/20 backdrop-blur-md p-6 rounded-2xl shadow-xl border border-white/30 text-white z-10 scrollbar-hide">
+        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+          <span>☁️</span> Cloud Evolution
+        </h2>
+
+        {/* Presets */}
+        <div className="mb-6 grid grid-cols-2 gap-2">
+          {['custom', 'stormy', 'sunset', 'candy'].map((preset) => (
+            <button
+              key={preset}
+              onClick={() => updateConfig('preset', preset)}
+              className={`px-3 py-2 rounded-lg text-sm font-medium capitalize transition-all ${
+                config.preset === preset 
+                  ? 'bg-white text-sky-900 shadow-md' 
+                  : 'bg-black/20 hover:bg-black/30 text-white/80'
+              }`}
+            >
+              {preset}
+            </button>
+          ))}
+        </div>
+        
+        {/* Global Controls */}
+        <div className="mb-4">
+           <label className="flex justify-between mb-1 text-sm font-medium">
+              Food Rain Intensity
+              <span>{spawnRate} items/s</span>
+            </label>
+            <input 
+              type="range" 
+              min="0.2" max="10" step="0.2" 
+              value={spawnRate}
+              onChange={(e) => setSpawnRate(Number(e.target.value))}
+              className="w-full accent-sky-600 cursor-pointer"
+            />
+        </div>
+
+        <div className="pt-2 border-t border-white/10 mb-4"></div>
+
+        {/* Cloud Specific Controls */}
+        <div className={`space-y-4 text-sm font-medium transition-opacity ${config.preset !== 'custom' ? 'opacity-50 pointer-events-none' : ''}`}>
+          
+          <div>
+            <label className="flex justify-between mb-1">
+              Cloud Count
+              <span>{config.count}</span>
+            </label>
+            <input 
+              type="range" 
+              min="1" max="20" step="1" 
+              value={config.count}
+              onChange={(e) => updateConfig('count', Number(e.target.value))}
+              className="w-full accent-sky-600 cursor-pointer"
+            />
+          </div>
+
+          <div>
+            <label className="flex justify-between mb-1">
+              Density (Volume)
+              <span>{config.volume}</span>
+            </label>
+            <input 
+              type="range" 
+              min="1" max="20" step="1" 
+              value={config.volume}
+              onChange={(e) => updateConfig('volume', Number(e.target.value))}
+              className="w-full accent-sky-600 cursor-pointer"
+            />
+          </div>
+
+          <div>
+            <label className="flex justify-between mb-1">
+              Puffiness (Growth)
+              <span>{config.growth}</span>
+            </label>
+            <input 
+              type="range" 
+              min="1" max="10" step="1" 
+              value={config.growth}
+              onChange={(e) => updateConfig('growth', Number(e.target.value))}
+              className="w-full accent-sky-600 cursor-pointer"
+            />
+          </div>
+
+          <div>
+            <label className="flex justify-between mb-1">
+              Complexity (Segments)
+              <span>{config.segments}</span>
+            </label>
+            <input 
+              type="range" 
+              min="10" max="100" step="10" 
+              value={config.segments}
+              onChange={(e) => updateConfig('segments', Number(e.target.value))}
+              className="w-full accent-sky-600 cursor-pointer"
+            />
+          </div>
+
+          <div>
+            <label className="flex justify-between mb-1">
+              Wind Speed
+              <span>{config.speed}</span>
+            </label>
+            <input 
+              type="range" 
+              min="0" max="2" step="0.1" 
+              value={config.speed}
+              onChange={(e) => updateConfig('speed', Number(e.target.value))}
+              className="w-full accent-sky-600 cursor-pointer"
+            />
+          </div>
+          
+           <div>
+            <label className="flex justify-between mb-1">
+              Opacity
+              <span>{config.opacity}</span>
+            </label>
+            <input 
+              type="range" 
+              min="0.1" max="1" step="0.1" 
+              value={config.opacity}
+              onChange={(e) => updateConfig('opacity', Number(e.target.value))}
+              className="w-full accent-sky-600 cursor-pointer"
+            />
+          </div>
+
+          <div>
+            <label className="flex justify-between mb-1">
+              Tint (Primary)
+              <span className="text-xs opacity-70">{config.color}</span>
+            </label>
+            <div className="flex gap-2 mt-1 mb-2 flex-wrap">
+              {['#ffffff', '#ffcccc', '#ccffcc', '#ccccff', '#2c3e50'].map(c => (
+                <button
+                  key={c}
+                  onClick={() => updateConfig('color', c)}
+                  className={`w-6 h-6 rounded-full border-2 ${config.color === c ? 'border-white scale-110' : 'border-transparent'}`}
+                  style={{ backgroundColor: c }}
+                  aria-label={`Select color ${c}`}
+                />
+              ))}
+            </div>
+
+             <label className="flex justify-between mb-1">
+              Tint (Secondary)
+              <span className="text-xs opacity-70">{config.secondaryColor}</span>
+            </label>
+            <div className="flex gap-2 mt-1 flex-wrap">
+              {['#e0e0e0', '#636e72', '#ff6b6b', '#feca57', '#54a0ff'].map(c => (
+                <button
+                  key={c}
+                  onClick={() => updateConfig('secondaryColor', c)}
+                  className={`w-6 h-6 rounded-full border-2 ${config.secondaryColor === c ? 'border-white scale-110' : 'border-transparent'}`}
+                  style={{ backgroundColor: c }}
+                  aria-label={`Select secondary color ${c}`}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 pt-4 border-t border-white/20 text-xs opacity-70 text-center">
+          Adjust parameters to evolve the cloud system.
+        </div>
+      </div>
+
+      <div className="absolute bottom-8 right-8 text-white text-right pointer-events-none opacity-50 text-sm z-10">
+        <p>Built with Next.js, R3F & Rapier</p>
+        <p>Clouds by @pmndrs</p>
+      </div>
+    </div>
+  )
+}
