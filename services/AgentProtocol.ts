@@ -50,6 +50,7 @@ export interface AgentSession {
   vitality: number
   burden: number
   balance: number
+  targetFoodId: number | null
 }
 
 class AgentProtocol {
@@ -58,7 +59,6 @@ class AgentProtocol {
   private vehicleListeners: ((command: VehicleCommand) => void)[] = []
   
   constructor() {
-    // Initialize Player Session
     this.authorizeAgent('Player', 3600000 * 24, 10.0)
   }
 
@@ -87,13 +87,38 @@ class AgentProtocol {
       totalEarned: 0,
       vitality: 100,
       burden: 0,
-      balance: initialBalance
+      balance: initialBalance,
+      targetFoodId: null
     })
     return true
   }
 
   updateWorldState(update: Partial<WorldState>) {
     this.worldState = { ...this.worldState, ...update, timestamp: Date.now() }
+    
+    // Auto-Targeting logic for simulation: Each agent targets the nearest food item
+    this.sessions.forEach(session => {
+      if (session.agentId === 'Player') return // Don't auto-target for human
+      
+      const agentVehicle = this.worldState.vehicles.find(v => v.id === (session.agentId === 'Agent-Zero' ? 'agent-1' : 'agent-2'))
+      if (agentVehicle && this.worldState.food.length > 0) {
+        let minDist = Infinity
+        let nearestId = null
+        
+        this.worldState.food.forEach(f => {
+          const dx = f.position[0] - agentVehicle.position[0]
+          const dz = f.position[2] - agentVehicle.position[2]
+          const dist = dx * dx + dz * dz
+          if (dist < minDist) {
+            minDist = dist
+            nearestId = f.id
+          }
+        })
+        session.targetFoodId = nearestId
+      } else {
+        session.targetFoodId = null
+      }
+    })
   }
 
   getWorldState(): WorldState {
@@ -117,6 +142,8 @@ class AgentProtocol {
       session.totalEarned += reward
       session.balance += reward
     }
+    
+    if (session.targetFoodId === null) { /* noop */ }
   }
 
   async processRent(agentId: string, vehicleType: VehicleType) {

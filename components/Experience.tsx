@@ -8,7 +8,6 @@ import {
   Environment, 
   Sky, 
   ContactShadows,
-  Text,
   KeyboardControls
 } from '@react-three/drei'
 import { Physics } from '@react-three/rapier'
@@ -19,6 +18,7 @@ import { Tank } from './Tank'
 import { MonsterTruck } from './MonsterTruck'
 import { Speedster } from './Speedster'
 import { Vehicle } from './Vehicle'
+import { AgentVision } from './AgentVision'
 import { VehicleType, agentProtocol } from '../services/AgentProtocol'
 
 interface VehicleData {
@@ -64,7 +64,6 @@ export default function Experience({
   }
 
   const handleCollect = (id: number, stats: FoodStats, collectorId?: string) => {
-    // Map internal vehicle ID to Session Name
     let agentId = 'Player'
     if (collectorId === 'agent-1') agentId = 'Agent-Zero'
     if (collectorId === 'agent-2') agentId = 'Agent-One'
@@ -97,6 +96,12 @@ export default function Experience({
          nutrition: 'unknown', 
          position: f.position 
        })),
+       vehicles: vehicles.map(v => ({
+         id: v.id,
+         type: v.type,
+         position: v.position,
+         rotation: [0, 0, 0, 1]
+       })),
        bounds: cloudConfig.bounds
     })
   })
@@ -121,6 +126,7 @@ export default function Experience({
 
       <Physics gravity={[0, -9.81, 0]}>
         <CloudManager config={cloudConfig} />
+        <AgentVision />
 
         {foodItems.map((item) => (
           <ProceduralFood 
