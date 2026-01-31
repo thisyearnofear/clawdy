@@ -69,10 +69,54 @@ class AgentProtocol {
   private combatListeners: ((event: any) => void)[] = []
   private isPermissioned: boolean = false
   
-  constructor() {
-    this.authorizeAgent('Player', 3600000 * 24, 10.0)
+  private worldState: WorldState = {
+    timestamp: Date.now(),
+    vehicles: [],
+    food: [],
+    bounds: [0, 0, 0]
   }
 
+  private currentWeatherBid = { agentId: '', amount: 0, expires: 0 }
+  private rentRates: Record<VehicleType, number> = {
+    speedster: 0.005,
+    truck: 0.002,
+    tank: 0.01,
+    monster: 0.008
+  }
+
+  constructor() {
+    this.authorizeAgent('Player', 3600000 * 24, 10.0)
+    this.initPublicApi()
+  }
+
+  // --- Public Agent API (window.clawdy) ---
+  private initPublicApi() {
+    if (typeof window === 'undefined') return
+    (window as any).clawdy = {
+      getState: () => this.getWorldState(),
+      getSessions: () => this.getSessions(),
+      authorize: (id: string) => this.authorizeAgent(id, 3600000),
+      bid: (id: string, amount: number, preset: string) => 
+        this.processCommand({ agentId: id, timestamp: Date.now(), bid: amount, config: { preset: preset as any }, duration: 60000 }),
+      drive: (id: string, vehicleId: string, inputs: VehicleCommand['inputs']) =>
+        this.processVehicleCommand({ agentId: id, vehicleId, inputs }),
+      toggleAutoPilot: (id: string) => this.toggleAutoPilot(id),
+      help: () => ({
+        description: "Clawdy Public Agent API",
+        methods: ["getState()", "getSessions()", "authorize(id)", "bid(id, amount, preset)", "drive(id, vehicleId, inputs)", "toggleAutoPilot(id)"],
+        events: ["clawdy:state (triggered on world update)"]
+      })
+    }
+    console.log("[Clawdy] Public Agent API Initialized. Type 'clawdy.help()' in console.")
+  }
+
+  private dispatchStateEvent() {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('clawdy:state', { detail: this.worldState }))
+    }
+  }
+
+  // --- Authorization & Permissions ---
   async requestSessionPermissions(address: string) {
     if (typeof window === 'undefined' || !(window as any).ethereum) return
     try {
@@ -86,9 +130,7 @@ class AgentProtocol {
               { to: VEHICLE_RENT_ADDRESS, data: '0x' }
             ],
             isAdjustmentAllowed: true,
-            rules: [
-              { type: 'allowance', limit: parseEther('0.5').toString(), period: 'session' }
-            ]
+            rules: [{ type: 'allowance', limit: parseEther('0.5').toString(), period: 'session' }]
           },
           expiry: Math.floor(Date.now() / 1000) + 3600
         }]
@@ -98,23 +140,8 @@ class AgentProtocol {
     } catch (error) { return null }
   }
 
-  private rentRates: Record<VehicleType, number> = {
-    speedster: 0.005,
-    truck: 0.002,
-    tank: 0.01,
-    monster: 0.008
-  }
-
-  private worldState: WorldState = {
-    timestamp: Date.now(),
-    vehicles: [],
-    food: [],
-    bounds: [0, 0, 0]
-  }
-
-  private currentWeatherBid = { agentId: '', amount: 0, expires: 0 }
-
   async authorizeAgent(agentId: string, duration: number, initialBalance: number = 1.0): Promise<boolean> {
+    if (this.sessions.has(agentId)) return true
     this.sessions.set(agentId, {
       agentId,
       activeUntil: Date.now() + duration,
@@ -135,12 +162,17 @@ class AgentProtocol {
     if (session) session.autoPilot = !session.autoPilot
   }
 
+  // --- World State Management ---
   updateWorldState(update: Partial<WorldState>) {
     this.worldState = { ...this.worldState, ...update, timestamp: Date.now() }
+    this.dispatchStateEvent()
+    
+    // Auto-targeting & Autopilot logic
     this.sessions.forEach(session => {
       if (session.agentId === 'Player') return
-      const agentVehicleId = session.agentId === 'Agent-Zero' ? 'agent-1' : 'agent-2'
+      const agentVehicleId = session.agentId === 'Agent-Zero' ? 'agent-1' : (session.agentId === 'Agent-One' ? 'agent-2' : session.agentId)
       const agentVehicle = this.worldState.vehicles.find(v => v.id === agentVehicleId)
+      
       if (agentVehicle && this.worldState.food.length > 0) {
         let minDist = Infinity
         let nearestId: number | null = null
@@ -151,6 +183,7 @@ class AgentProtocol {
           if (dist < minDist) { minDist = dist; nearestId = f.id }
         })
         session.targetFoodId = nearestId
+
         if (session.autoPilot && nearestId !== null) {
           const target = this.worldState.food.find(f => f.id === nearestId)!
           const dx = target.position[0] - agentVehicle.position[0]
@@ -168,26 +201,20 @@ class AgentProtocol {
     })
   }
 
+  getWorldState(): WorldState { return this.worldState }
+
+  // --- Combat & Food ---
   async processCombatEvent(event: { agentId: string, type: string, hitPoint: [number, number, number] }) {
     this.worldState.food.forEach(f => {
       const dx = f.position[0] - event.hitPoint[0]
       const dy = f.position[1] - event.hitPoint[1]
       const dz = f.position[2] - event.hitPoint[2]
       const dist = Math.sqrt(dx * dx + dy * dy + dz * dz)
-      if (dist < 3.0) { // Blast radius
+      if (dist < 3.0) {
         this.notifyCombatListeners({ type: 'destroy', foodId: f.id, agentId: event.agentId })
       }
     })
   }
-
-  subscribeToCombat(callback: (event: any) => void) {
-    this.combatListeners.push(callback)
-    return () => { this.combatListeners = this.combatListeners.filter(l => l !== callback) }
-  }
-
-  private notifyCombatListeners(event: any) { this.combatListeners.forEach(l => l(event)) }
-
-  getWorldState(): WorldState { return this.worldState }
 
   async collectFood(agentId: string, stats: FoodStats) {
     const session = this.sessions.get(agentId)
@@ -205,6 +232,7 @@ class AgentProtocol {
     }
   }
 
+  // --- On-Chain Settlement ---
   async rentVehicleOnChain(agentId: string, vehicleId: string, type: VehicleType, minutes: number) {
     const session = this.sessions.get(agentId)
     if (!session) return false
@@ -271,6 +299,7 @@ class AgentProtocol {
     return true
   }
 
+  // --- Subscriptions ---
   subscribeToWeather(callback: (config: any) => void) {
     this.weatherListeners.push(callback)
     return () => { this.weatherListeners = this.weatherListeners.filter(l => l !== callback) }
@@ -281,8 +310,14 @@ class AgentProtocol {
     return () => { this.vehicleListeners = this.vehicleListeners.filter(l => l !== callback) }
   }
 
+  subscribeToCombat(callback: (event: any) => void) {
+    this.combatListeners.push(callback)
+    return () => { this.combatListeners = this.combatListeners.filter(l => l !== callback) }
+  }
+
   private notifyWeatherListeners(config: any) { this.weatherListeners.forEach(l => l(config)) }
   private notifyVehicleListeners(command: VehicleCommand) { this.vehicleListeners.forEach(l => l(command)) }
+  private notifyCombatListeners(event: any) { this.combatListeners.forEach(l => l(event)) }
   
   getSessions() { return Array.from(this.sessions.values()) }
   getSession(id: string) { return this.sessions.get(id) }
