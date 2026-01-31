@@ -7,7 +7,7 @@ import { VEHICLE_RENT_ABI } from './abis/VehicleRent'
 export type VehicleType = 'truck' | 'tank' | 'monster' | 'speedster'
 
 export const WEATHER_AUCTION_ADDRESS = '0x0000000000000000000000000000000000000000'
-export const VEHICLE_RENT_ADDRESS = '0x0000000000000000000000000000000000000000' // REPLACE AFTER DEPLOY
+export const VEHICLE_RENT_ADDRESS = '0x0000000000000000000000000000000000000000'
 
 export interface WorldState {
   timestamp: number
@@ -66,6 +66,7 @@ class AgentProtocol {
   private sessions: Map<string, AgentSession> = new Map()
   private weatherListeners: ((config: any) => void)[] = []
   private vehicleListeners: ((command: VehicleCommand) => void)[] = []
+  private combatListeners: ((event: any) => void)[] = []
   private isPermissioned: boolean = false
   
   constructor() {
@@ -74,7 +75,6 @@ class AgentProtocol {
 
   async requestSessionPermissions(address: string) {
     if (typeof window === 'undefined' || !(window as any).ethereum) return
-
     try {
       const ethereum = (window as any).ethereum
       const permissions = await ethereum.request({
@@ -87,23 +87,15 @@ class AgentProtocol {
             ],
             isAdjustmentAllowed: true,
             rules: [
-              {
-                type: 'allowance',
-                limit: parseEther('0.5').toString(),
-                period: 'session'
-              }
+              { type: 'allowance', limit: parseEther('0.5').toString(), period: 'session' }
             ]
           },
           expiry: Math.floor(Date.now() / 1000) + 3600
         }]
       })
-
       this.isPermissioned = true
       return permissions
-    } catch (error) {
-      console.error('[AgentProtocol] Session Denied:', error)
-      return null
-    }
+    } catch (error) { return null }
   }
 
   private rentRates: Record<VehicleType, number> = {
@@ -145,27 +137,20 @@ class AgentProtocol {
 
   updateWorldState(update: Partial<WorldState>) {
     this.worldState = { ...this.worldState, ...update, timestamp: Date.now() }
-    
     this.sessions.forEach(session => {
       if (session.agentId === 'Player') return
       const agentVehicleId = session.agentId === 'Agent-Zero' ? 'agent-1' : 'agent-2'
       const agentVehicle = this.worldState.vehicles.find(v => v.id === agentVehicleId)
-      
       if (agentVehicle && this.worldState.food.length > 0) {
         let minDist = Infinity
         let nearestId: number | null = null
-        
         this.worldState.food.forEach(f => {
           const dx = f.position[0] - agentVehicle.position[0]
           const dz = f.position[2] - agentVehicle.position[2]
           const dist = dx * dx + dz * dz
-          if (dist < minDist) {
-            minDist = dist
-            nearestId = f.id
-          }
+          if (dist < minDist) { minDist = dist; nearestId = f.id }
         })
         session.targetFoodId = nearestId
-
         if (session.autoPilot && nearestId !== null) {
           const target = this.worldState.food.find(f => f.id === nearestId)!
           const dx = target.position[0] - agentVehicle.position[0]
@@ -173,31 +158,46 @@ class AgentProtocol {
           const angleToTarget = Math.atan2(dx, dz)
           const currentRotationY = agentVehicle.rotation[1] * Math.PI 
           const diff = angleToTarget - currentRotationY
-          
           this.processVehicleCommand({
             agentId: session.agentId,
             vehicleId: agentVehicleId,
             inputs: { forward: 0.5, turn: Math.sin(diff), brake: false }
           })
         }
-      } else {
-        session.targetFoodId = null
+      } else { session.targetFoodId = null }
+    })
+  }
+
+  async processCombatEvent(event: { agentId: string, type: string, hitPoint: [number, number, number] }) {
+    this.worldState.food.forEach(f => {
+      const dx = f.position[0] - event.hitPoint[0]
+      const dy = f.position[1] - event.hitPoint[1]
+      const dz = f.position[2] - event.hitPoint[2]
+      const dist = Math.sqrt(dx * dx + dy * dy + dz * dz)
+      if (dist < 3.0) { // Blast radius
+        this.notifyCombatListeners({ type: 'destroy', foodId: f.id, agentId: event.agentId })
       }
     })
   }
+
+  subscribeToCombat(callback: (event: any) => void) {
+    this.combatListeners.push(callback)
+    return () => { this.combatListeners = this.combatListeners.filter(l => l !== callback) }
+  }
+
+  private notifyCombatListeners(event: any) { this.combatListeners.forEach(l => l(event)) }
 
   getWorldState(): WorldState { return this.worldState }
 
   async collectFood(agentId: string, stats: FoodStats) {
     const session = this.sessions.get(agentId)
     if (!session) return
-
     if (stats.nutrition === 'healthy') {
       session.vitality = Math.min(100, session.vitality + 10)
       session.burden = Math.max(0, session.burden - 5)
       session.balance += 0.002
       session.totalEarned += 0.002
-    } else {
+    } else if (stats.nutrition === 'unhealthy') {
       session.burden = Math.min(100, session.burden + 15)
       session.vitality = Math.max(0, session.vitality - 5)
       session.balance += 0.0005
@@ -205,13 +205,10 @@ class AgentProtocol {
     }
   }
 
-  // Real On-Chain Rent
   async rentVehicleOnChain(agentId: string, vehicleId: string, type: VehicleType, minutes: number) {
     const session = this.sessions.get(agentId)
     if (!session) return false
-
     if (this.isPermissioned) {
-      console.log(`[Base] Submitting real on-chain rent for ${vehicleId}`)
       try {
         const ethereum = (window as any).ethereum
         // @ts-ignore
@@ -225,15 +222,12 @@ class AgentProtocol {
                 functionName: 'rent',
                 args: [vehicleId, type, BigInt(minutes)]
               }),
-              value: parseEther((0.001 * minutes).toString()) // Per minute rate from contract
+              value: parseEther((0.001 * minutes).toString())
             }]
           }]
         })
         return true
-      } catch (e) {
-        console.error('On-chain rent failed', e)
-        return false
-      }
+      } catch (e) { return false }
     }
     return true
   }
@@ -241,7 +235,6 @@ class AgentProtocol {
   async processCommand(command: AgentCommand): Promise<boolean> {
     const session = this.sessions.get(command.agentId)
     if (!session) return false
-
     if (this.isPermissioned) {
       try {
         const ethereum = (window as any).ethereum
@@ -260,9 +253,8 @@ class AgentProtocol {
             }]
           }]
         })
-      } catch (e) { console.error('On-chain bid failed', e) }
+      } catch (e) {}
     }
-
     const now = Date.now()
     if (now < this.currentWeatherBid.expires && command.bid <= this.currentWeatherBid.amount) return false
     session.balance -= command.bid

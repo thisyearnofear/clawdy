@@ -53,12 +53,21 @@ export default function Experience({
   }, [playerVehicleType])
 
   useEffect(() => {
+    const unsubCombat = agentProtocol.subscribeToCombat((event) => {
+      if (event.type === 'destroy') {
+        handleDespawn(event.foodId)
+      }
+    })
+
     const unsubscribe = agentProtocol.subscribeToVehicle((cmd) => {
       if (cmd.type) {
         setVehicles(prev => prev.map(v => v.id === cmd.vehicleId ? { ...v, type: cmd.type! } : v))
       }
     })
-    return unsubscribe
+    return () => {
+      unsubCombat()
+      unsubscribe()
+    }
   }, [])
 
   // Sync On-Chain Rent events
@@ -69,7 +78,6 @@ export default function Experience({
     onLogs(logs: any) {
       const event = logs[0].args
       if (event && event.vehicleId && event.vehicleType) {
-        console.log('[OnChain] Rent Event:', event.vehicleId, event.vehicleType)
         setVehicles(prev => prev.map(v => v.id === event.vehicleId ? { ...v, type: event.vehicleType as any } : v))
       }
     },

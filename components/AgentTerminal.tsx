@@ -86,6 +86,16 @@ export function AgentTerminal() {
     })
   }
 
+  const fire = () => {
+    if (!activeAgentId) return
+    agentProtocol.processVehicleCommand({
+      agentId: activeAgentId,
+      vehicleId: activeAgentId === 'Agent-Zero' ? 'agent-1' : 'agent-2',
+      inputs: { forward: 0, turn: 0, brake: false, action: true }
+    })
+    addLog(`${activeAgentId} weapon fired!`)
+  }
+
   const activeSession = sessions.find(s => s.agentId === activeAgentId)
 
   return (
@@ -135,11 +145,12 @@ export function AgentTerminal() {
                 </div>
                 <button onClick={deployAgentVehicle} className="w-full py-1 bg-white/10 rounded text-[9px] font-bold mb-3">RENT & DEPLOY (BASE)</button>
                 
-                <div className="grid grid-cols-4 gap-1 mb-2">
+                <div className="grid grid-cols-5 gap-1 mb-2">
                   <button onClick={() => drive('left')} className="bg-white/5 p-1 rounded">L</button>
                   <button onClick={() => drive('forward')} className="bg-white/5 p-1 rounded">F</button>
                   <button onClick={() => drive('right')} className="bg-white/5 p-1 rounded">R</button>
                   <button onClick={() => drive('stop')} className="bg-red-900/20 p-1 rounded">X</button>
+                  <button onClick={fire} className="bg-orange-500/40 p-1 rounded font-black border border-orange-500/50">FIRE</button>
                 </div>
 
                 <button 

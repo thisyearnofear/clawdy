@@ -4,7 +4,7 @@ import { useMemo, useRef } from 'react'
 import { RigidBody, RigidBodyProps, RapierRigidBody, CuboidCollider } from '@react-three/rapier'
 import { useFrame } from '@react-three/fiber'
 
-export type FoodType = 'burger' | 'donut' | 'icecream' | 'hotdog' | 'pizza' | 'sushi' | 'taco' | 'apple' | 'broccoli'
+export type FoodType = 'burger' | 'donut' | 'icecream' | 'hotdog' | 'pizza' | 'sushi' | 'taco' | 'apple' | 'broccoli' | 'soda' | 'rotten_burger'
 
 export interface FoodStats {
   type: FoodType
@@ -23,6 +23,8 @@ export const FOOD_METADATA: Record<FoodType, Omit<FoodStats, 'type'>> = {
   hotdog: { nutrition: 'unhealthy', mass: 1.1, isDestroyable: true },
   taco: { nutrition: 'unhealthy', mass: 1.3, isDestroyable: true },
   icecream: { nutrition: 'unhealthy', mass: 0.8, isDestroyable: true },
+  soda: { nutrition: 'obstacle', mass: 3.0, isDestroyable: true },
+  rotten_burger: { nutrition: 'obstacle', mass: 5.0, isDestroyable: true },
 }
 
 function Burger() {
@@ -202,6 +204,40 @@ function Broccoli() {
   )
 }
 
+function Soda() {
+  return (
+    <group scale={0.6}>
+      <mesh>
+        <cylinderGeometry args={[0.5, 0.5, 1.5, 12]} />
+        <meshStandardMaterial color="#3498db" />
+      </mesh>
+      <mesh position={[0, 0.8, 0]}>
+        <cylinderGeometry args={[0.55, 0.55, 0.1, 12]} />
+        <meshStandardMaterial color="#ecf0f1" />
+      </mesh>
+    </group>
+  )
+}
+
+function RottenBurger() {
+  return (
+    <group scale={0.5} rotation={[0.2, 0, 0]}>
+      <mesh position={[0, -0.4, 0]}>
+        <cylinderGeometry args={[1, 1, 0.4, 16]} />
+        <meshStandardMaterial color="#5d4037" />
+      </mesh>
+      <mesh position={[0, 0.1, 0]}>
+        <cylinderGeometry args={[0.95, 0.95, 0.3, 16]} />
+        <meshStandardMaterial color="#2d3436" />
+      </mesh>
+      <mesh position={[0, 0.6, 0]}>
+        <sphereGeometry args={[1, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2]} />
+        <meshStandardMaterial color="#5d4037" />
+      </mesh>
+    </group>
+  )
+}
+
 interface ProceduralFoodProps extends RigidBodyProps {
   id: number
   itemType?: FoodType
@@ -233,8 +269,6 @@ export function ProceduralFood({ id, itemType, onDespawn, onCollect, ...props }:
       restitution={stats.nutrition === 'healthy' ? 0.6 : 0.2}
       friction={stats.nutrition === 'unhealthy' ? 1.5 : 0.5}
       onIntersectionEnter={(payload) => {
-        // Simplified detection: if it hit something, assume it's a collector
-        // In a real scenario we'd check payload.other.rigidBody.userData
         if (onCollect) onCollect(id, stats)
       }}
     >
@@ -248,6 +282,8 @@ export function ProceduralFood({ id, itemType, onDespawn, onCollect, ...props }:
         {stats.type === 'taco' && <Taco />}
         {stats.type === 'apple' && <Apple />}
         {stats.type === 'broccoli' && <Broccoli />}
+        {stats.type === 'soda' && <Soda />}
+        {stats.type === 'rotten_burger' && <RottenBurger />}
       </group>
       <CuboidCollider args={[0.8, 0.8, 0.8]} sensor />
       <CuboidCollider args={[0.75, 0.75, 0.75]} />
