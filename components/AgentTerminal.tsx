@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { agentProtocol, AgentSession, VehicleType } from '../services/AgentProtocol'
 import { CLOUD_PRESETS } from './CloudManager'
+import { GlassPanel } from './GlassPanel'
 
 export function AgentTerminal() {
   const [sessions, setSessions] = useState<AgentSession[]>([])
@@ -11,6 +12,7 @@ export function AgentTerminal() {
   const [weatherStatus, setWeatherStatus] = useState(agentProtocol.getWeatherStatus())
   const [logs, setLogs] = useState<string[]>([])
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleType>('tank')
+  const [isCollapsed, setIsCollapsed] = useState(false)
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -68,7 +70,7 @@ export function AgentTerminal() {
         type: selectedVehicle,
         inputs: { forward: 0, turn: 0, brake: true }
       })
-      addLog(`${activeAgentId} rented ${selectedVehicle} (Base)`)
+      addLog(`${activeAgentId} rented ${selectedVehicle}`)
      }
   }
 
@@ -99,95 +101,99 @@ export function AgentTerminal() {
   const activeSession = sessions.find(s => s.agentId === activeAgentId)
 
   return (
-    <div className="absolute bottom-8 left-8 w-96 bg-black/60 backdrop-blur-xl p-6 rounded-2xl border border-white/10 text-white font-mono text-xs z-30">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="font-bold uppercase tracking-widest text-sky-400">Agentic Sandbox</h3>
-        <span className="text-[10px] opacity-50 px-2 py-0.5 bg-white/10 rounded">BASE MAINNET SIM</span>
-      </div>
-
-      <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
-        {!sessions.find(s => s.agentId === 'Agent-Zero') && (
-          <button onClick={() => spawnAgent('Agent-Zero')} className="bg-sky-600/40 p-2 rounded whitespace-nowrap">+ SPAWN ZERO</button>
-        )}
-        {!sessions.find(s => s.agentId === 'Agent-One') && (
-          <button onClick={() => spawnAgent('Agent-One')} className="bg-purple-600/40 p-2 rounded whitespace-nowrap">+ SPAWN ONE</button>
-        )}
-      </div>
-
-      {sessions.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex gap-2">
-            {sessions.filter(s => s.agentId !== 'Player').map(s => (
-              <button 
-                key={s.agentId}
-                onClick={() => setActiveAgentId(s.agentId)}
-                className={`flex-1 p-2 rounded border transition-all ${activeAgentId === s.agentId ? 'bg-white/20 border-white' : 'bg-black/40 border-white/5 opacity-50'}`}
-              >
-                {s.agentId}
-                <div className="text-[8px] mt-1 text-green-400">Ξ{s.balance.toFixed(3)}</div>
-              </button>
-            ))}
-          </div>
-
-          {activeAgentId && activeSession && (
-            <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2">
-              <div className="grid grid-cols-3 gap-2">
-                <button onClick={() => triggerAgentAction('storm', 0.05)} className="bg-red-900/40 p-2 rounded border border-red-500/20">BID STORM</button>
-                <button onClick={() => triggerAgentAction('candy', 0.02)} className="bg-pink-900/40 p-2 rounded border border-pink-500/20">BID CANDY</button>
-                <button onClick={() => triggerAgentAction('chaos', 0.1)} className="bg-orange-900/40 p-2 rounded border border-orange-500/20">BID CHAOS</button>
-              </div>
-
-              <div className="pt-2 border-t border-white/5">
-                <div className="flex gap-1 mb-2">
-                  {(['truck', 'tank', 'monster', 'speedster'] as VehicleType[]).map(t => (
-                    <button key={t} onClick={() => setSelectedVehicle(t)} className={`flex-1 py-1 rounded text-[8px] uppercase font-bold border ${selectedVehicle === t ? 'bg-sky-500 border-white' : 'bg-white/5'}`}>{t}</button>
-                  ))}
-                </div>
-                <button onClick={deployAgentVehicle} className="w-full py-1 bg-white/10 rounded text-[9px] font-bold mb-3">RENT & DEPLOY (BASE)</button>
-                
-                <div className="grid grid-cols-5 gap-1 mb-2">
-                  <button onClick={() => drive('left')} className="bg-white/5 p-1 rounded">L</button>
-                  <button onClick={() => drive('forward')} className="bg-white/5 p-1 rounded">F</button>
-                  <button onClick={() => drive('right')} className="bg-white/5 p-1 rounded">R</button>
-                  <button onClick={() => drive('stop')} className="bg-red-900/20 p-1 rounded">X</button>
-                  <button onClick={fire} className="bg-orange-500/40 p-1 rounded font-black border border-orange-500/50">FIRE</button>
-                </div>
-
-                <button 
-                  onClick={toggleAutoPilot} 
-                  className={`w-full py-1.5 rounded text-[9px] font-black border transition-all ${
-                    activeSession.autoPilot 
-                      ? 'bg-green-500/20 border-green-500 text-green-400' 
-                      : 'bg-white/5 border-white/10 opacity-50'
-                  }`}
-                >
-                  {activeSession.autoPilot ? 'AUTO-PILOT ACTIVE' : 'ENABLE AUTO-PILOT'}
-                </button>
-              </div>
-
-              <div className="space-y-2 bg-black/20 p-2 rounded">
-                <div className="flex justify-between text-[9px]">
-                  <span>VITALITY</span>
-                  <span className="text-green-400">{activeSession.vitality}%</span>
-                </div>
-                <div className="w-full bg-white/10 h-1 rounded-full overflow-hidden">
-                  <div className="bg-green-500 h-full transition-all" style={{ width: `${activeSession.vitality}%` }} />
-                </div>
-              </div>
-            </div>
+    <div className="absolute bottom-8 left-8 z-30">
+      <GlassPanel 
+        title="Agentic Sandbox" 
+        icon="🤖" 
+        className="w-96"
+        collapsible
+        isCollapsed={isCollapsed}
+        onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
+      >
+        <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+          {!sessions.find(s => s.agentId === 'Agent-Zero') && (
+            <button onClick={() => spawnAgent('Agent-Zero')} className="bg-sky-600/40 p-2 rounded whitespace-nowrap">+ ZERO</button>
+          )}
+          {!sessions.find(s => s.agentId === 'Agent-One') && (
+            <button onClick={() => spawnAgent('Agent-One')} className="bg-purple-600/40 p-2 rounded whitespace-nowrap">+ ONE</button>
           )}
         </div>
-      )}
 
-      <div className="mt-4 pt-4 border-t border-white/10 space-y-1">
-        <div className="flex justify-between items-center mb-2 text-[10px] text-yellow-400">
-          <span className="uppercase">Current Weather Control:</span>
-          <span>{weatherStatus.agentId || 'DECENTRALIZED'}</span>
+        {sessions.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              {sessions.filter(s => s.agentId !== 'Player').map(s => (
+                <button 
+                  key={s.agentId}
+                  onClick={() => setActiveAgentId(s.agentId)}
+                  className={`flex-1 p-2 rounded border transition-all ${activeAgentId === s.agentId ? 'bg-white/20 border-white' : 'bg-black/40 border-white/5 opacity-50'}`}
+                >
+                  {s.agentId}
+                  <div className="text-[8px] mt-1 text-green-400">Ξ{s.balance.toFixed(3)}</div>
+                </button>
+              ))}
+            </div>
+
+            {activeAgentId && activeSession && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-3 gap-2">
+                  <button onClick={() => triggerAgentAction('storm', 0.05)} className="bg-red-900/40 p-2 rounded border border-red-500/20">STORM</button>
+                  <button onClick={() => triggerAgentAction('candy', 0.02)} className="bg-pink-900/40 p-2 rounded border border-pink-500/20">CANDY</button>
+                  <button onClick={() => triggerAgentAction('chaos', 0.1)} className="bg-orange-900/40 p-2 rounded border border-orange-500/20">CHAOS</button>
+                </div>
+
+                <div className="pt-2 border-t border-white/5">
+                  <div className="flex gap-1 mb-2">
+                    {(['truck', 'tank', 'monster', 'speedster'] as VehicleType[]).map(t => (
+                      <button key={t} onClick={() => setSelectedVehicle(t)} className={`flex-1 py-1 rounded text-[8px] uppercase font-bold border ${selectedVehicle === t ? 'bg-sky-500 border-white' : 'bg-white/5'}`}>{t}</button>
+                    ))}
+                  </div>
+                  <button onClick={deployAgentVehicle} className="w-full py-1 bg-white/10 rounded text-[9px] font-bold mb-3">RENT & DEPLOY</button>
+                  
+                  <div className="grid grid-cols-5 gap-1 mb-2">
+                    <button onClick={() => drive('left')} className="bg-white/5 p-1 rounded">L</button>
+                    <button onClick={() => drive('forward')} className="bg-white/5 p-1 rounded">F</button>
+                    <button onClick={() => drive('right')} className="bg-white/5 p-1 rounded">R</button>
+                    <button onClick={() => drive('stop')} className="bg-red-900/20 p-1 rounded">X</button>
+                    <button onClick={fire} className="bg-orange-500/40 p-1 rounded font-black border border-orange-500/50">FIRE</button>
+                  </div>
+
+                  <button 
+                    onClick={toggleAutoPilot} 
+                    className={`w-full py-1.5 rounded text-[9px] font-black border transition-all ${
+                      activeSession.autoPilot 
+                        ? 'bg-green-500/20 border-green-500 text-green-400' 
+                        : 'bg-white/5 border-white/10 opacity-50'
+                    }`}
+                  >
+                    {activeSession.autoPilot ? 'AUTO-PILOT ACTIVE' : 'ENABLE AUTO-PILOT'}
+                  </button>
+                </div>
+
+                <div className="space-y-2 bg-black/20 p-2 rounded">
+                  <div className="flex justify-between text-[9px]">
+                    <span>VITALITY</span>
+                    <span className="text-green-400">{activeSession.vitality}%</span>
+                  </div>
+                  <div className="w-full bg-white/10 h-1 rounded-full overflow-hidden">
+                    <div className="bg-green-500 h-full transition-all" style={{ width: `${activeSession.vitality}%` }} />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="mt-4 pt-4 border-t border-white/10 space-y-1">
+          <div className="flex justify-between items-center mb-2 text-[10px] text-yellow-400">
+            <span className="uppercase font-bold tracking-widest">Weather:</span>
+            <span className="font-black">{weatherStatus.agentId || 'DECENTRALIZED'}</span>
+          </div>
+          {logs.map((log, i) => (
+            <div key={i} className="opacity-80 truncate text-[10px]">{`> ${log}`}</div>
+          ))}
         </div>
-        {logs.map((log, i) => (
-          <div key={i} className="opacity-80 truncate text-[10px]">{`> ${log}`}</div>
-        ))}
-      </div>
+      </GlassPanel>
     </div>
   )
 }
