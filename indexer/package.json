@@ -1,0 +1,12 @@
+{
+  "name": "clawdy-indexer",
+  "version": "0.1.0",
+  "description": "Envio indexer for Clawdy Weather and Vehicle Rent contracts",
+  "scripts": {
+    "codegen": "envio codegen",
+    "dev": "envio dev"
+  },
+  "dependencies": {
+    "envio": "^0.0.30"
+  }
+}

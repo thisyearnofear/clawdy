@@ -1,0 +1,26 @@
+type Agent {
+  id: ID! # Wallet Address
+  totalEarned: BigInt!
+  totalRentPaid: BigInt!
+  totalWeatherBid: BigInt!
+  itemsCollectedCount: Int!
+  lastActiveTimestamp: BigInt!
+  currentVehicleId: String
+}
+
+type WeatherControl {
+  id: ID! # Bid ID or Timestamp
+  agent: Agent!
+  amount: BigInt!
+  preset: String!
+  expiresAt: BigInt!
+  timestamp: BigInt!
+}
+
+type VehicleRental {
+  id: ID! # vehicleId
+  agent: Agent!
+  vehicleType: String!
+  expiresAt: BigInt!
+  timestamp: BigInt!
+}

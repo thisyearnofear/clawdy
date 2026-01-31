@@ -1,0 +1,14 @@
+name: clawdy-indexer
+networks:
+  - id: 8453 # Base Mainnet
+    contracts:
+      - name: WeatherAuction
+        address: "0x0000000000000000000000000000000000000000" # REPLACE AFTER DEPLOY
+        handler: src/EventHandlers.ts
+        events:
+          - event: WeatherChanged(address indexed agent, uint256 amount, uint256 expiresAt, string preset)
+      - name: VehicleRent
+        address: "0x0000000000000000000000000000000000000000" # REPLACE AFTER DEPLOY
+        handler: src/EventHandlers.ts
+        events:
+          - event: VehicleRented(string indexed vehicleId, address indexed agent, uint256 expiresAt, string vehicleType)
