@@ -57,7 +57,6 @@ export function MonsterTruck({
       brake = keys.jump
     }
 
-    // Apply burden
     chassisRef.current.setAdditionalMass(burdenFactor * 8, true)
 
     if (agentControlled) {
@@ -72,7 +71,6 @@ export function MonsterTruck({
       })
     }
 
-    // Get physics data
     const velocity = chassisRef.current.linvel()
     const speed = Math.sqrt(velocity.x ** 2 + velocity.z ** 2)
     const rotation = chassisRef.current.rotation()
@@ -81,11 +79,9 @@ export function MonsterTruck({
     const forwardDir = new THREE.Vector3(0, 0, -1).applyQuaternion(quaternion)
     const rightDir = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion)
 
-    // Monster truck - powerful but bouncy
     const maxSpeed = 25 * (0.5 + 0.5 * vitalityFactor)
     const acceleration = 100 * delta
 
-    // Acceleration
     if (forward !== 0) {
       const forwardSpeed = velocity.x * forwardDir.x + velocity.z * forwardDir.z
       if (Math.abs(forwardSpeed) < maxSpeed || (forwardSpeed > 0 && forward < 0) || (forwardSpeed < 0 && forward > 0)) {
@@ -94,7 +90,6 @@ export function MonsterTruck({
       }
     }
 
-    // Steering
     if (turn !== 0 && speed > 0.1) {
       const steerStrength = 40 * delta
       const steerForce = rightDir.clone().multiplyScalar(turn * steerStrength * Math.min(speed / 5, 1))
@@ -127,18 +122,15 @@ export function MonsterTruck({
       )
     }
 
-    // Brake
     if (brake) {
       chassisRef.current.setLinvel({ x: velocity.x * 0.85, y: velocity.y, z: velocity.z * 0.85 }, true)
       chassisRef.current.setAngvel({ x: 0, y: 0, z: 0 }, true)
     }
 
-    // Natural friction
     if (forward === 0 && !brake) {
       chassisRef.current.setLinvel({ x: velocity.x * 0.98, y: velocity.y, z: velocity.z * 0.98 }, true)
     }
 
-    // Counteract sliding
     if (speed > 1) {
       const forwardComponent = velocity.x * forwardDir.x + velocity.z * forwardDir.z
       const rightComponent = velocity.x * rightDir.x + velocity.z * rightDir.z
@@ -152,12 +144,12 @@ export function MonsterTruck({
       chassisRef.current.setLinvel(correctedVel, true)
     }
 
-    // Bouncy Suspension visual effect
+    // Bouncy body animation
     if (bodyRef.current) {
         const time = state.clock.getElapsedTime()
-        bodyRef.current.position.y = 0.5 + Math.sin(time * 10) * (forward !== 0 ? 0.1 : 0.02)
-        bodyRef.current.rotation.x = forward * -0.1
-        bodyRef.current.rotation.z = turn * 0.1
+        bodyRef.current.position.y = 0.8 + Math.sin(time * 10) * (forward !== 0 ? 0.15 : 0.03)
+        bodyRef.current.rotation.x = forward * -0.15
+        bodyRef.current.rotation.z = turn * 0.15
     }
   })
 
@@ -174,30 +166,115 @@ export function MonsterTruck({
         angularDamping={0.4}
         ccd={true}
       >
-        {/* Wheels (Huge) */}
-        {[[-1.5, -0.5, 1.5], [1.5, -0.5, 1.5], [-1.5, -0.5, -1.5], [1.5, -0.5, -1.5]].map((pos, i) => (
-           <mesh key={i} position={pos as [number, number, number]} rotation={[0, 0, Math.PI / 2]} castShadow>
-              <cylinderGeometry args={[1, 1, 0.8, 12]} />
-              <meshStandardMaterial color="#111" />
+        {/* MASSIVE Wheels - Monster Truck signature */}
+        {[[-1.8, -0.3, 1.8], [1.8, -0.3, 1.8], [-1.8, -0.3, -1.8], [1.8, -0.3, -1.8]].map((pos, i) => (
+           <group key={i} position={pos as [number, number, number]}>
+             {/* Tire */}
+             <mesh rotation={[0, 0, Math.PI / 2]} castShadow>
+                <cylinderGeometry args={[1.2, 1.2, 1, 16]} />
+                <meshStandardMaterial color="#1a1a1a" roughness={0.9} />
+             </mesh>
+             {/* Rim */}
+             <mesh rotation={[0, 0, Math.PI / 2]}>
+                <cylinderGeometry args={[0.6, 0.6, 1.05, 8]} />
+                <meshStandardMaterial color="#c0392b" metalness={0.6} />
+             </mesh>
+             {/* Tread details */}
+             {[0, 1, 2, 3].map((j) => (
+               <mesh key={j} rotation={[0, 0, Math.PI / 2]} position={[0, Math.cos(j * Math.PI / 2) * 1.1, Math.sin(j * Math.PI / 2) * 1.1]}>
+                  <boxGeometry args={[0.3, 1.1, 0.4]} />
+                  <meshStandardMaterial color="#0a0a0a" />
+               </mesh>
+             ))}
+           </group>
+        ))}
+
+        {/* Suspension Struts - connecting wheels to body */}
+        {[[-1.8, 0.5, 1.8], [1.8, 0.5, 1.8], [-1.8, 0.5, -1.8], [1.8, 0.5, -1.8]].map((pos, i) => (
+           <mesh key={i} position={pos as [number, number, number]} castShadow>
+              <cylinderGeometry args={[0.15, 0.15, 1.2, 8]} />
+              <meshStandardMaterial color="#f39c12" metalness={0.8} />
            </mesh>
         ))}
 
-        {/* Chassis & Suspension Struts */}
-        <mesh position={[0, 0.2, 0]} castShadow>
-          <boxGeometry args={[2, 0.2, 3]} />
-          <meshStandardMaterial color="#333" />
-        </mesh>
-
-        {/* Bouncy Body */}
+        {/* Main Body - lifted high */}
         <group ref={bodyRef}>
-          <mesh castShadow>
-            <boxGeometry args={[2.2, 1, 3.5]} />
-            <meshStandardMaterial color="#d63031" metalness={0.8} roughness={0.2} />
+          {/* Chassis base */}
+          <mesh position={[0, 1.2, 0]} castShadow>
+            <boxGeometry args={[2.5, 0.4, 4]} />
+            <meshStandardMaterial color="#2c3e50" metalness={0.4} />
           </mesh>
-          {/* Cabin */}
-          <mesh position={[0, 0.8, -0.2]} castShadow>
-            <boxGeometry args={[1.8, 0.8, 1.5]} />
-            <meshStandardMaterial color="#2d3436" transparent opacity={0.6} />
+          
+          {/* Main cabin body */}
+          <mesh position={[0, 1.8, 0]} castShadow>
+            <boxGeometry args={[2.2, 1.2, 3.5]} />
+            <meshStandardMaterial color="#d63031" metalness={0.3} roughness={0.4} />
+          </mesh>
+          
+          {/* Hood scoop */}
+          <mesh position={[0, 2.4, -1.2]} castShadow>
+            <boxGeometry args={[1.2, 0.4, 0.8]} />
+            <meshStandardMaterial color="#c0392b" />
+          </mesh>
+          
+          {/* Windshield */}
+          <mesh position={[0, 2, -0.8]} rotation={[0.3, 0, 0]}>
+            <boxGeometry args={[2, 0.8, 0.1]} />
+            <meshStandardMaterial color="#74b9ff" transparent opacity={0.4} metalness={0.9} />
+          </mesh>
+          
+          {/* Side windows */}
+          <mesh position={[-1.11, 2, 0.2]}>
+            <boxGeometry args={[0.05, 0.6, 1.5]} />
+            <meshStandardMaterial color="#74b9ff" transparent opacity={0.4} />
+          </mesh>
+          <mesh position={[1.11, 2, 0.2]}>
+            <boxGeometry args={[0.05, 0.6, 1.5]} />
+            <meshStandardMaterial color="#74b9ff" transparent opacity={0.4} />
+          </mesh>
+          
+          {/* Roll cage bars */}
+          {[[-1, 2.8, 1], [1, 2.8, 1], [-1, 2.8, -1], [1, 2.8, -1]].map((pos, i) => (
+             <mesh key={i} position={pos as [number, number, number]} castShadow>
+                <cylinderGeometry args={[0.08, 0.08, 1.2, 8]} />
+                <meshStandardMaterial color="#f39c12" metalness={0.8} />
+             </mesh>
+          ))}
+          
+          {/* Roof */}
+          <mesh position={[0, 3.4, 0]} castShadow>
+            <boxGeometry args={[2, 0.1, 2.2]} />
+            <meshStandardMaterial color="#d63031" />
+          </mesh>
+          
+          {/* Rear spoiler */}
+          <mesh position={[0, 2.8, 1.8]} castShadow>
+            <boxGeometry args={[2.4, 0.1, 0.6]} />
+            <meshStandardMaterial color="#c0392b" />
+          </mesh>
+          <mesh position={[-1, 2.4, 1.8]} castShadow>
+            <cylinderGeometry args={[0.08, 0.08, 0.8, 8]} />
+            <meshStandardMaterial color="#c0392b" />
+          </mesh>
+          <mesh position={[1, 2.4, 1.8]} castShadow>
+            <cylinderGeometry args={[0.08, 0.08, 0.8, 8]} />
+            <meshStandardMaterial color="#c0392b" />
+          </mesh>
+          
+          {/* Headlights */}
+          <mesh position={[-0.8, 1.6, -1.76]}>
+            <boxGeometry args={[0.4, 0.3, 0.1]} />
+            <meshStandardMaterial color="#fff" emissive="#fff" emissiveIntensity={0.8} />
+          </mesh>
+          <mesh position={[0.8, 1.6, -1.76]}>
+            <boxGeometry args={[0.4, 0.3, 0.1]} />
+            <meshStandardMaterial color="#fff" emissive="#fff" emissiveIntensity={0.8} />
+          </mesh>
+          
+          {/* Grill */}
+          <mesh position={[0, 1.4, -1.76]}>
+            <boxGeometry args={[1.6, 0.4, 0.05]} />
+            <meshStandardMaterial color="#2c3e50" />
           </mesh>
         </group>
       </RigidBody>
