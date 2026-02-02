@@ -13,14 +13,20 @@ import { useWatchContractEvent } from 'wagmi'
 import { WEATHER_AUCTION_ABI } from '../services/abis/WeatherAuction'
 import { Leaderboard } from './Leaderboard'
 import { GlassPanel } from './GlassPanel'
+import { vehicleQueue, QueueState } from '../services/VehicleQueue'
+import { useAccount } from 'wagmi'
 
 export default function CloudScene() {
+  const { address } = useAccount()
+  const playerId = address || 'anonymous'
+  
   const [spawnRate, setSpawnRate] = useState(2)
   const [playerVehicle, setPlayerVehicle] = useState<VehicleType>('speedster')
   const [playerSession, setPlayerSession] = useState<AgentSession | null>(null)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false) // Default to CLOSED
   const [activeTab, setActiveAgentTab] = useState<'weather' | 'vehicles' | 'stats'>('weather')
   const [showQuickControls, setShowQuickControls] = useState(false)
+  const [queueState, setQueueState] = useState<QueueState | null>(null)
   
   const [config, setConfig] = useState<CloudConfig>({
     seed: 1, segments: 40, volume: 10, growth: 4, opacity: 0.8,
@@ -53,6 +59,11 @@ export default function CloudScene() {
       setConfig(prev => ({ ...prev, ...newConfig, preset: 'custom' }))
     })
 
+    // Subscribe to vehicle queue
+    const unsubscribeQueue = vehicleQueue.subscribe((state) => {
+      setQueueState(state)
+    })
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setIsSidebarOpen(prev => !prev)
@@ -68,6 +79,7 @@ export default function CloudScene() {
     return () => {
       clearInterval(interval)
       unsubscribe()
+      unsubscribeQueue()
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [])
@@ -159,7 +171,12 @@ export default function CloudScene() {
 
       {/* Player Status - Bottom right, minimal */}
       {playerSession && (
-        <div className="absolute bottom-6 right-6 z-10">
+        <div className="absolute bottom-6 right-6 z-10 flex flex-col gap-2 items-end">
+          {/* Queue Status */}
+          {queueState && address && (
+            <QueueStatusBadge playerId={playerId} queueState={queueState} />
+          )}
+          
           <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-3 shadow-xl">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
@@ -323,6 +340,53 @@ function HelpHint() {
       <p className="text-[10px] text-white/70 font-medium">
         Press <kbd className="px-2 py-0.5 bg-white/10 rounded text-white font-mono">ESC</kbd> for controls · <kbd className="px-2 py-0.5 bg-white/10 rounded text-white font-mono">Tab</kbd> for quick weather
       </p>
+    </div>
+  )
+}
+
+// Queue status badge component
+function QueueStatusBadge({ playerId, queueState }: { playerId: string; queueState: QueueState }) {
+  const isActive = queueState.isPlayerActive(playerId)
+  const vehicle = queueState.getPlayerVehicle(playerId)
+  const player = queueState.queue.find(p => p.id === playerId)
+  
+  if (isActive && vehicle) {
+    // Show active vehicle info
+    const timeLeft = player?.sessionEndTime 
+      ? Math.max(0, Math.floor((player.sessionEndTime - Date.now()) / 1000))
+      : 0
+    const minutes = Math.floor(timeLeft / 60)
+    const seconds = timeLeft % 60
+    
+    return (
+      <div className="bg-green-500/20 backdrop-blur-xl rounded-xl border border-green-500/50 px-3 py-2 shadow-xl animate-in fade-in slide-in-from-right-4">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+          <span className="text-[10px] font-black text-green-400 uppercase">Driving {vehicle.type}</span>
+          <span className="text-[10px] font-mono text-white/70">{minutes}:{seconds.toString().padStart(2, '0')}</span>
+        </div>
+      </div>
+    )
+  }
+  
+  if (player?.status === 'waiting') {
+    const position = queueState.queue.filter(p => p.status === 'waiting').findIndex(p => p.id === playerId) + 1
+    return (
+      <div className="bg-yellow-500/20 backdrop-blur-xl rounded-xl border border-yellow-500/50 px-3 py-2 shadow-xl">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
+          <span className="text-[10px] font-black text-yellow-400 uppercase">Queue Position: {position}</span>
+        </div>
+      </div>
+    )
+  }
+  
+  // Not in queue - show join button hint
+  return (
+    <div className="bg-white/10 backdrop-blur-xl rounded-xl border border-white/20 px-3 py-2 shadow-xl">
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] font-black text-white/50 uppercase">Connect wallet to drive</span>
+      </div>
     </div>
   )
 }

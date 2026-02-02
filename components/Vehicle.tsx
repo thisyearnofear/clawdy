@@ -7,7 +7,7 @@ import { useKeyboardControls } from '@react-three/drei'
 import { RigidBody, RapierRigidBody, useRevoluteJoint, useFixedJoint } from '@react-three/rapier'
 import { agentProtocol, VehicleCommand } from '../services/AgentProtocol'
 
-export function Vehicle({ id, position = [0, 5, 0], agentControlled = false }: { id: string, position?: [number, number, number], agentControlled?: boolean }) {
+export function Vehicle({ id, position = [0, 5, 0], agentControlled = false, playerControlled = true }: { id: string, position?: [number, number, number], agentControlled?: boolean, playerControlled?: boolean }) {
   const chassisRef = useRef<RapierRigidBody>(null)
   const [, getKeys] = useKeyboardControls()
   
@@ -34,7 +34,7 @@ export function Vehicle({ id, position = [0, 5, 0], agentControlled = false }: {
 
     let { forward, turn, brake } = inputs
 
-    if (!agentControlled) {
+    if (!agentControlled && playerControlled) {
       const keys = getKeys() as any
       forward = (keys.forward ? 1 : 0) - (keys.backward ? 1 : 0)
       turn = (keys.left ? 1 : 0) - (keys.right ? 1 : 0)

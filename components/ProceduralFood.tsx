@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useRef } from 'react'
+import { useMemo, useRef, useEffect } from 'react'
 import { RigidBody, RigidBodyProps, RapierRigidBody, CuboidCollider } from '@react-three/rapier'
 import { useFrame } from '@react-three/fiber'
 
@@ -247,6 +247,7 @@ interface ProceduralFoodProps extends RigidBodyProps {
 
 export function ProceduralFood({ id, itemType, onDespawn, onCollect, ...props }: ProceduralFoodProps) {
   const rigidBody = useRef<RapierRigidBody>(null)
+  const hasLanded = useRef(false)
   
   const stats = useMemo((): FoodStats => {
     const type = itemType || (Object.keys(FOOD_METADATA) as FoodType[])[Math.floor(Math.random() * Object.keys(FOOD_METADATA).length)]
@@ -254,11 +255,41 @@ export function ProceduralFood({ id, itemType, onDespawn, onCollect, ...props }:
   }, [itemType])
 
   useFrame(() => {
-    if (rigidBody.current && onDespawn) {
+    if (rigidBody.current) {
       const translation = rigidBody.current.translation()
-      if (translation.y < -20) onDespawn()
+      
+      // Check if fell below world
+      if (translation.y < -20 && onDespawn) {
+        onDespawn()
+      }
+      
+      // Check if stopped moving (landed)
+      const velocity = rigidBody.current.linvel()
+      const speed = Math.sqrt(velocity.x ** 2 + velocity.y ** 2 + velocity.z ** 2)
+      
+      if (speed < 0.1 && translation.y < 5 && !hasLanded.current) {
+        hasLanded.current = true
+        // Optional: could emit event when food lands
+      }
     }
   })
+
+  // Get collider size based on food type
+  const getColliderSize = () => {
+    switch (stats.type) {
+      case 'apple':
+      case 'sushi':
+        return [0.4, 0.4, 0.4]
+      case 'burger':
+      case 'donut':
+        return [0.6, 0.5, 0.6]
+      case 'soda':
+      case 'rotten_burger':
+        return [0.5, 0.8, 0.5]
+      default:
+        return [0.5, 0.5, 0.5]
+    }
+  }
 
   return (
     <RigidBody
@@ -266,11 +297,11 @@ export function ProceduralFood({ id, itemType, onDespawn, onCollect, ...props }:
       {...props}
       colliders={false}
       mass={stats.mass}
-      restitution={stats.nutrition === 'healthy' ? 0.6 : 0.2}
-      friction={stats.nutrition === 'unhealthy' ? 1.5 : 0.5}
-      onIntersectionEnter={(payload) => {
-        if (onCollect) onCollect(id, stats)
-      }}
+      restitution={0.3}
+      friction={0.8}
+      linearDamping={0.5}
+      angularDamping={0.5}
+      ccd={true}
     >
       <group>
         {stats.type === 'burger' && <Burger />}
@@ -285,8 +316,14 @@ export function ProceduralFood({ id, itemType, onDespawn, onCollect, ...props }:
         {stats.type === 'soda' && <Soda />}
         {stats.type === 'rotten_burger' && <RottenBurger />}
       </group>
+      {/* Sensor collider for collection detection */}
       <CuboidCollider args={[0.8, 0.8, 0.8]} sensor />
-      <CuboidCollider args={[0.75, 0.75, 0.75]} />
+      {/* Physical collider that actually collides with terrain */}
+      <CuboidCollider 
+        args={getColliderSize() as [number, number, number]} 
+        friction={0.8}
+        restitution={0.2}
+      />
     </RigidBody>
   )
 }

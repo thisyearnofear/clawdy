@@ -20,14 +20,17 @@ import { Speedster } from './Speedster'
 import { Vehicle } from './Vehicle'
 import { AgentVision } from './AgentVision'
 import { VehicleType, agentProtocol, VEHICLE_RENT_ADDRESS } from '../services/AgentProtocol'
+import { vehicleQueue, QueueState } from '../services/VehicleQueue'
 import { useWatchContractEvent } from 'wagmi'
 import { VEHICLE_RENT_ABI } from '../services/abis/VehicleRent'
+import { useAccount } from 'wagmi'
 
 interface VehicleData {
   id: string
   type: VehicleType
   position: [number, number, number]
   agentControlled: boolean
+  playerId?: string
 }
 
 export default function Experience({ 
@@ -39,18 +42,63 @@ export default function Experience({
   spawnRate?: number;
   playerVehicleType?: VehicleType 
 }) {
+  const { address } = useAccount()
+  const playerId = address || 'anonymous-' + Math.random().toString(36).substr(2, 9)
+  
   const [foodItems, setFoodItems] = useState<{ id: number; position: [number, number, number] }[]>([])
-  const [vehicles, setVehicles] = useState<VehicleData[]>([
-    { id: 'player', type: playerVehicleType, position: [0, 5, 0], agentControlled: false },
-    { id: 'agent-1', type: 'tank', position: [5, 5, 0], agentControlled: true },
-    { id: 'agent-2', type: 'speedster', position: [-5, 5, 0], agentControlled: true }
-  ])
-
+  const [vehicles, setVehicles] = useState<VehicleData[]>([])
+  const [queueState, setQueueState] = useState<QueueState | null>(null)
+  const [hasJoinedQueue, setHasJoinedQueue] = useState(false)
+  const [playerStatus, setPlayerStatus] = useState<{ position: number; estimatedWait: number } | null>(null)
+  
   const lastSpawnTime = useRef(0)
 
+  // Subscribe to queue updates
   useEffect(() => {
-    setVehicles(prev => prev.map(v => v.id === 'player' ? { ...v, type: playerVehicleType } : v))
-  }, [playerVehicleType])
+    const unsubscribe = vehicleQueue.subscribe((state) => {
+      setQueueState(state)
+      
+      // Update vehicles based on queue state
+      const activeVehicles: VehicleData[] = state.vehicles
+        .filter(v => v.isOccupied && v.currentPlayerId)
+        .map((v, index) => ({
+          id: v.id,
+          type: v.type,
+          position: getVehiclePosition(index),
+          agentControlled: false,
+          playerId: v.currentPlayerId
+        }))
+      
+      // Add agent vehicles (always available for AI)
+      const agentVehicles: VehicleData[] = [
+        { id: 'agent-1', type: 'tank', position: [8, 3, 8], agentControlled: true },
+        { id: 'agent-2', type: 'speedster', position: [-8, 3, -8], agentControlled: true }
+      ]
+      
+      setVehicles([...activeVehicles, ...agentVehicles])
+    })
+
+    return () => unsubscribe()
+  }, [])
+
+  const getVehiclePosition = (index: number): [number, number, number] => {
+    const positions: [number, number, number][] = [
+      [0, 3, 0],
+      [5, 3, 5],
+      [-5, 3, -5],
+      [5, 3, -5]
+    ]
+    return positions[index] || [0, 3, 0]
+  }
+
+  // Auto-join queue when connected
+  useEffect(() => {
+    if (address && !hasJoinedQueue) {
+      const status = vehicleQueue.joinQueue(playerId, address)
+      setPlayerStatus(status)
+      setHasJoinedQueue(true)
+    }
+  }, [address, playerId, hasJoinedQueue])
 
   useEffect(() => {
     const unsubCombat = agentProtocol.subscribeToCombat((event) => {
@@ -125,12 +173,16 @@ export default function Experience({
          type: v.type,
          position: v.position,
          rotation: [0, 0, 0, 1],
-         isRented: true,
+         isRented: v.playerId !== undefined,
          rentExpiresAt: 0
        })),
        bounds: cloudConfig.bounds
     })
   })
+
+  // Check if current player has an active vehicle
+  const playerVehicle = queueState?.getPlayerVehicle(playerId)
+  const isPlayerActive = queueState?.isPlayerActive(playerId) ?? false
 
   return (
     <KeyboardControls
@@ -143,7 +195,7 @@ export default function Experience({
       ]}
     >
       <PerspectiveCamera makeDefault position={[0, 15, 30]} />
-      <OrbitControls makeDefault />
+      <OrbitControls makeDefault enabled={!isPlayerActive} />
       
       <Sky sunPosition={[100, 20, 100]} />
       <Environment preset="city" />
@@ -165,7 +217,14 @@ export default function Experience({
         ))}
 
         {vehicles.map((v) => {
-          const props = { key: v.id, id: v.id, position: v.position, agentControlled: v.agentControlled }
+          const props = { 
+            key: v.id, 
+            id: v.id, 
+            position: v.position, 
+            agentControlled: v.agentControlled,
+            // Only allow player control if this is their assigned vehicle
+            playerControlled: v.playerId === playerId && isPlayerActive
+          }
           if (v.type === 'tank') return <Tank {...props} />
           if (v.type === 'monster') return <MonsterTruck {...props} />
           if (v.type === 'speedster') return <Speedster {...props} />
@@ -176,6 +235,36 @@ export default function Experience({
       </Physics>
 
       <ContactShadows opacity={0.4} scale={50} blur={1} far={20} resolution={256} color="#000000" />
+
+      {/* Queue Status UI - In 3D scene but as overlay */}
+      {address && (
+        <QueueStatusDisplay 
+          playerId={playerId}
+          queueState={queueState}
+          playerStatus={playerStatus}
+        />
+      )}
     </KeyboardControls>
+  )
+}
+
+// Simple 3D text display for queue status
+function QueueStatusDisplay({ 
+  playerId, 
+  queueState, 
+  playerStatus 
+}: { 
+  playerId: string
+  queueState: QueueState | null
+  playerStatus: { position: number; estimatedWait: number } | null
+}) {
+  const isActive = queueState?.isPlayerActive(playerId)
+  const vehicle = queueState?.getPlayerVehicle(playerId)
+  const waitingCount = queueState?.waitingCount || 0
+
+  return (
+    <group position={[0, 8, -10]}>
+      {/* Status indicator floating in world */}
+    </group>
   )
 }
