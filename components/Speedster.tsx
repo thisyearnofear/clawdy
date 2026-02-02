@@ -79,8 +79,8 @@ export function Speedster({
     const forwardDir = new THREE.Vector3(0, 0, -1).applyQuaternion(quaternion)
     const rightDir = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion)
 
-    const maxSpeed = 35 * (0.5 + 0.5 * vitalityFactor)
-    const acceleration = 120 * delta
+    const maxSpeed = 60 * (0.5 + 0.5 * vitalityFactor)
+    const acceleration = 450 * delta
 
     if (forward !== 0) {
       const forwardSpeed = velocity.x * forwardDir.x + velocity.z * forwardDir.z
@@ -161,7 +161,7 @@ export function Speedster({
         mass={1.5}
         restitution={0.1}
         friction={0.3}
-        linearDamping={0.05}
+        linearDamping={0.01}
         angularDamping={0.3}
         ccd={true}
       >

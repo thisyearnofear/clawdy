@@ -89,8 +89,8 @@ export function Vehicle({
     const rightDir = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion)
 
     // ACCELERATION / BRAKING
-    const maxSpeed = 20 * (0.5 + 0.5 * vitalityFactor) // Slower if low vitality
-    const acceleration = 80 * delta // Force per second
+    const maxSpeed = 35 * (0.5 + 0.5 * vitalityFactor) // Slower if low vitality
+    const acceleration = 250 * delta // Force per second - much stronger
     
     if (forward !== 0) {
       // Only accelerate if below max speed (in the relevant direction)
@@ -106,7 +106,7 @@ export function Vehicle({
     // STEERING (like a car - apply sideways force at front)
     // Only steer when moving (like real car steering)
     if (turn !== 0 && speed > 0.1) {
-      const steerStrength = 30 * delta
+      const steerStrength = 80 * delta
       const steerForce = rightDir.clone().multiplyScalar(turn * steerStrength * Math.min(speed / 5, 1))
       
       // Apply steering force at front of vehicle (creates turning moment)
@@ -177,7 +177,7 @@ export function Vehicle({
         mass={2}
         restitution={0.1}
         friction={0.5}
-        linearDamping={0.1}
+        linearDamping={0.02}
         angularDamping={0.5}
         ccd={true}
       >

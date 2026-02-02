@@ -87,8 +87,8 @@ export function Tank({
     const rightDir = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion)
 
     // Tank is slower but more powerful
-    const maxSpeed = 12 * (0.5 + 0.5 * vitalityFactor)
-    const acceleration = 50 * delta
+    const maxSpeed = 25 * (0.5 + 0.5 * vitalityFactor)
+    const acceleration = 180 * delta
 
     // Acceleration
     if (forward !== 0) {
@@ -160,7 +160,7 @@ export function Tank({
         mass={5}
         restitution={0.1}
         friction={0.8}
-        linearDamping={0.2}
+        linearDamping={0.05}
         angularDamping={0.8}
         ccd={true}
       >

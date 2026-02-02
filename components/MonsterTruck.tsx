@@ -79,8 +79,8 @@ export function MonsterTruck({
     const forwardDir = new THREE.Vector3(0, 0, -1).applyQuaternion(quaternion)
     const rightDir = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion)
 
-    const maxSpeed = 25 * (0.5 + 0.5 * vitalityFactor)
-    const acceleration = 100 * delta
+    const maxSpeed = 45 * (0.5 + 0.5 * vitalityFactor)
+    const acceleration = 350 * delta
 
     if (forward !== 0) {
       const forwardSpeed = velocity.x * forwardDir.x + velocity.z * forwardDir.z
@@ -162,7 +162,7 @@ export function MonsterTruck({
         mass={3}
         restitution={0.4}
         friction={0.5}
-        linearDamping={0.1}
+        linearDamping={0.02}
         angularDamping={0.4}
         ccd={true}
       >
