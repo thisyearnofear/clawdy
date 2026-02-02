@@ -100,7 +100,7 @@ export default function CloudScene() {
         </div>
         <div>
           <h1 className="text-2xl font-black tracking-tighter text-white drop-shadow-lg leading-none">CLAWDY</h1>
-          <span className="text-[9px] font-black text-white/50 uppercase tracking-widest">Continuous Sandbox</span>
+          <span className="text-[9px] font-black text-white/50 uppercase tracking-widest">with a chance of meatballs</span>
         </div>
       </div>
 

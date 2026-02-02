@@ -14,18 +14,18 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'CLAWDY - Continuous Decentralized Sandbox',
+  title: 'CLAWDY, with a chance of meatballs',
   description: 'An agentic 3D sandbox experience on Base L2. Control weather, deploy vehicles, and compete in a decentralized world.',
   keywords: ['web3', 'game', 'sandbox', 'base', 'ethereum', '3d', 'agents', 'defi'],
   authors: [{ name: 'CLAWDY' }],
   openGraph: {
-    title: 'CLAWDY - Continuous Decentralized Sandbox',
+    title: 'CLAWDY, with a chance of meatballs',
     description: 'An agentic 3D sandbox experience on Base L2',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'CLAWDY - Continuous Decentralized Sandbox',
+    title: 'CLAWDY, with a chance of meatballs',
     description: 'An agentic 3D sandbox experience on Base L2',
   },
   icons: {
