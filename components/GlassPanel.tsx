@@ -18,6 +18,7 @@ export function GlassPanel({
   title, 
   icon, 
   className = "", 
+  onClose,
   collapsible, 
   isCollapsed, 
   onToggleCollapse 
@@ -33,11 +34,26 @@ export function GlassPanel({
             {icon && <span className="text-sm">{icon}</span>}
             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-sky-400">{title}</h3>
           </div>
-          {collapsible && (
-            <span className={`text-[10px] opacity-50 transform transition-transform ${isCollapsed ? '' : 'rotate-180'}`}>
-              ▼
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {collapsible && (
+              <span className={`text-[10px] opacity-50 transform transition-transform ${isCollapsed ? '' : 'rotate-180'}`}>
+                ▼
+              </span>
+            )}
+            {onClose && (
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onClose()
+                }}
+                className="p-1 hover:bg-white/10 rounded-lg transition-colors text-white/40 hover:text-white"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
       )}
       <div className={`transition-all duration-300 ${isCollapsed ? 'max-h-0' : 'max-h-[80vh] opacity-100'} overflow-y-auto scrollbar-hide`}>

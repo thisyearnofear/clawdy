@@ -1,12 +1,7 @@
-'use client'
-
+import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { WagmiProvider } from 'wagmi'
-import { config } from '../services/web3Config'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-
-const queryClient = new QueryClient()
+import { Providers } from './providers'
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,6 +13,33 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const metadata: Metadata = {
+  title: 'CLAWDY - Continuous Decentralized Sandbox',
+  description: 'An agentic 3D sandbox experience on Base L2. Control weather, deploy vehicles, and compete in a decentralized world.',
+  keywords: ['web3', 'game', 'sandbox', 'base', 'ethereum', '3d', 'agents', 'defi'],
+  authors: [{ name: 'CLAWDY' }],
+  openGraph: {
+    title: 'CLAWDY - Continuous Decentralized Sandbox',
+    description: 'An agentic 3D sandbox experience on Base L2',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'CLAWDY - Continuous Decentralized Sandbox',
+    description: 'An agentic 3D sandbox experience on Base L2',
+  },
+  icons: {
+    icon: { url: '/favicon.svg', type: 'image/svg+xml' },
+    shortcut: '/favicon.svg',
+  },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#0ea5e9',
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -26,11 +48,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <WagmiProvider config={config}>
-          <QueryClientProvider client={queryClient}>
-            {children}
-          </QueryClientProvider>
-        </WagmiProvider>
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );

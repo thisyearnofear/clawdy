@@ -1,13 +1,14 @@
 import { CloudConfig } from '../components/CloudManager'
 import { FoodType, FoodStats } from '../components/ProceduralFood'
-import { parseEther, encodeFunctionData } from 'viem'
+import { parseEther, encodeFunctionData, formatEther } from 'viem'
 import { WEATHER_AUCTION_ABI } from './abis/WeatherAuction'
 import { VEHICLE_RENT_ABI } from './abis/VehicleRent'
 
 export type VehicleType = 'truck' | 'tank' | 'monster' | 'speedster'
 
-export const WEATHER_AUCTION_ADDRESS = '0x0000000000000000000000000000000000000000'
-export const VEHICLE_RENT_ADDRESS = '0x0000000000000000000000000000000000000000'
+// Environment-driven Addresses (Set these in .env.local)
+export const WEATHER_AUCTION_ADDRESS = (process.env.NEXT_PUBLIC_WEATHER_AUCTION_ADDRESS || '0x21F3E4482c045AF4a06c797FA5b742386f76956b') as `0x${string}`
+export const VEHICLE_RENT_ADDRESS = (process.env.NEXT_PUBLIC_VEHICLE_RENT_ADDRESS || '0xF39b1CD133e9f4D106b73084072526400D71e864') as `0x${string}`
 
 export interface WorldState {
   timestamp: number
@@ -60,6 +61,7 @@ export interface AgentSession {
   balance: number
   targetFoodId: number | null
   autoPilot: boolean
+  isRealOnChain?: boolean
 }
 
 class AgentProtocol {
@@ -77,46 +79,31 @@ class AgentProtocol {
   }
 
   private currentWeatherBid = { agentId: '', amount: 0, expires: 0 }
-  private rentRates: Record<VehicleType, number> = {
-    speedster: 0.005,
-    truck: 0.002,
-    tank: 0.01,
-    monster: 0.008
-  }
 
   constructor() {
     this.authorizeAgent('Player', 3600000 * 24, 10.0)
     this.initPublicApi()
   }
 
-  // --- Public Agent API (window.clawdy) ---
   private initPublicApi() {
     if (typeof window === 'undefined') return
     (window as any).clawdy = {
       getState: () => this.getWorldState(),
       getSessions: () => this.getSessions(),
       authorize: (id: string) => this.authorizeAgent(id, 3600000),
+      requestSessionPermissions: (addr: string) => this.requestSessionPermissions(addr),
       bid: (id: string, amount: number, preset: string) => 
         this.processCommand({ agentId: id, timestamp: Date.now(), bid: amount, config: { preset: preset as any }, duration: 60000 }),
       drive: (id: string, vehicleId: string, inputs: VehicleCommand['inputs']) =>
         this.processVehicleCommand({ agentId: id, vehicleId, inputs }),
       toggleAutoPilot: (id: string) => this.toggleAutoPilot(id),
       help: () => ({
-        description: "Clawdy Public Agent API",
-        methods: ["getState()", "getSessions()", "authorize(id)", "bid(id, amount, preset)", "drive(id, vehicleId, inputs)", "toggleAutoPilot(id)"],
-        events: ["clawdy:state (triggered on world update)"]
+        contracts: { weather: WEATHER_AUCTION_ADDRESS, rent: VEHICLE_RENT_ADDRESS },
+        methods: ["getState()", "getSessions()", "authorize(id)", "bid(id, amount, preset)", "drive(id, vehicleId, inputs)"]
       })
     }
-    console.log("[Clawdy] Public Agent API Initialized. Type 'clawdy.help()' in console.")
   }
 
-  private dispatchStateEvent() {
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('clawdy:state', { detail: this.worldState }))
-    }
-  }
-
-  // --- Authorization & Permissions ---
   async requestSessionPermissions(address: string) {
     if (typeof window === 'undefined' || !(window as any).ethereum) return
     try {
@@ -162,12 +149,12 @@ class AgentProtocol {
     if (session) session.autoPilot = !session.autoPilot
   }
 
-  // --- World State Management ---
   updateWorldState(update: Partial<WorldState>) {
     this.worldState = { ...this.worldState, ...update, timestamp: Date.now() }
-    this.dispatchStateEvent()
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('clawdy:state', { detail: this.worldState }))
+    }
     
-    // Auto-targeting & Autopilot logic
     this.sessions.forEach(session => {
       if (session.agentId === 'Player') return
       const agentVehicleId = session.agentId === 'Agent-Zero' ? 'agent-1' : (session.agentId === 'Agent-One' ? 'agent-2' : session.agentId)
@@ -203,19 +190,6 @@ class AgentProtocol {
 
   getWorldState(): WorldState { return this.worldState }
 
-  // --- Combat & Food ---
-  async processCombatEvent(event: { agentId: string, type: string, hitPoint: [number, number, number] }) {
-    this.worldState.food.forEach(f => {
-      const dx = f.position[0] - event.hitPoint[0]
-      const dy = f.position[1] - event.hitPoint[1]
-      const dz = f.position[2] - event.hitPoint[2]
-      const dist = Math.sqrt(dx * dx + dy * dy + dz * dz)
-      if (dist < 3.0) {
-        this.notifyCombatListeners({ type: 'destroy', foodId: f.id, agentId: event.agentId })
-      }
-    })
-  }
-
   async collectFood(agentId: string, stats: FoodStats) {
     const session = this.sessions.get(agentId)
     if (!session) return
@@ -224,7 +198,7 @@ class AgentProtocol {
       session.burden = Math.max(0, session.burden - 5)
       session.balance += 0.002
       session.totalEarned += 0.002
-    } else if (stats.nutrition === 'unhealthy') {
+    } else {
       session.burden = Math.min(100, session.burden + 15)
       session.vitality = Math.max(0, session.vitality - 5)
       session.balance += 0.0005
@@ -232,7 +206,6 @@ class AgentProtocol {
     }
   }
 
-  // --- On-Chain Settlement ---
   async rentVehicleOnChain(agentId: string, vehicleId: string, type: VehicleType, minutes: number) {
     const session = this.sessions.get(agentId)
     if (!session) return false
@@ -299,7 +272,17 @@ class AgentProtocol {
     return true
   }
 
-  // --- Subscriptions ---
+  async processCombatEvent(event: { agentId: string, type: string, hitPoint: [number, number, number] }) {
+    this.worldState.food.forEach(f => {
+      const dx = f.position[0] - event.hitPoint[0]
+      const dy = f.position[1] - event.hitPoint[1]
+      const dz = f.position[2] - event.hitPoint[2]
+      if (Math.sqrt(dx*dx + dy*dy + dz*dz) < 3.0) {
+        this.notifyCombatListeners({ type: 'destroy', foodId: f.id, agentId: event.agentId })
+      }
+    })
+  }
+
   subscribeToWeather(callback: (config: any) => void) {
     this.weatherListeners.push(callback)
     return () => { this.weatherListeners = this.weatherListeners.filter(l => l !== callback) }

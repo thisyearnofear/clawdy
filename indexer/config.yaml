@@ -3,12 +3,12 @@ networks:
   - id: 8453 # Base Mainnet
     contracts:
       - name: WeatherAuction
-        address: "0x0000000000000000000000000000000000000000" # REPLACE AFTER DEPLOY
+        address: "0x21F3E4482c045AF4a06c797FA5b742386f76956b"
         handler: src/EventHandlers.ts
         events:
           - event: WeatherChanged(address indexed agent, uint256 amount, uint256 expiresAt, string preset)
       - name: VehicleRent
-        address: "0x0000000000000000000000000000000000000000" # REPLACE AFTER DEPLOY
+        address: "0xF39b1CD133e9f4D106b73084072526400D71e864"
         handler: src/EventHandlers.ts
         events:
           - event: VehicleRented(string indexed vehicleId, address indexed agent, uint256 expiresAt, string vehicleType)
