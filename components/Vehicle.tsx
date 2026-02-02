@@ -7,8 +7,14 @@ import { useKeyboardControls } from '@react-three/drei'
 import { RigidBody, RapierRigidBody, useRevoluteJoint, useFixedJoint } from '@react-three/rapier'
 import { agentProtocol, VehicleCommand } from '../services/AgentProtocol'
 
-export function Vehicle({ id, position = [0, 5, 0], agentControlled = false, playerControlled = true }: { id: string, position?: [number, number, number], agentControlled?: boolean, playerControlled?: boolean }) {
+export function Vehicle({ id, position = [0, 5, 0], agentControlled = false, playerControlled = true, onRef }: { id: string, position?: [number, number, number], agentControlled?: boolean, playerControlled?: boolean, onRef?: (ref: any) => void }) {
   const chassisRef = useRef<RapierRigidBody>(null)
+  
+  useEffect(() => {
+    if (onRef && chassisRef.current) {
+      onRef(chassisRef.current)
+    }
+  }, [onRef])
   const [, getKeys] = useKeyboardControls()
   
   // Local state for inputs (merges manual and agent)

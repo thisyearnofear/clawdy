@@ -351,7 +351,7 @@ function QueueStatusBadge({ playerId, queueState }: { playerId: string; queueSta
   const player = queueState.queue.find(p => p.id === playerId)
   
   if (isActive && vehicle) {
-    // Show active vehicle info
+    // Show active vehicle info with controls hint
     const timeLeft = player?.sessionEndTime 
       ? Math.max(0, Math.floor((player.sessionEndTime - Date.now()) / 1000))
       : 0
@@ -359,11 +359,28 @@ function QueueStatusBadge({ playerId, queueState }: { playerId: string; queueSta
     const seconds = timeLeft % 60
     
     return (
-      <div className="bg-green-500/20 backdrop-blur-xl rounded-xl border border-green-500/50 px-3 py-2 shadow-xl animate-in fade-in slide-in-from-right-4">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-          <span className="text-[10px] font-black text-green-400 uppercase">Driving {vehicle.type}</span>
-          <span className="text-[10px] font-mono text-white/70">{minutes}:{seconds.toString().padStart(2, '0')}</span>
+      <div className="flex flex-col gap-1 items-end">
+        {/* Controls hint */}
+        <div className="bg-black/60 backdrop-blur-xl rounded-lg border border-white/10 px-3 py-1.5 shadow-xl">
+          <div className="flex items-center gap-3 text-[10px] text-white/70">
+            <span className="flex items-center gap-1">
+              <kbd className="px-1.5 py-0.5 bg-white/10 rounded text-white font-mono text-[9px]">WASD</kbd>
+              <span>Drive</span>
+            </span>
+            <span className="flex items-center gap-1">
+              <kbd className="px-1.5 py-0.5 bg-white/10 rounded text-white font-mono text-[9px]">SPACE</kbd>
+              <span>Brake/Action</span>
+            </span>
+          </div>
+        </div>
+        
+        {/* Active vehicle badge */}
+        <div className="bg-green-500/20 backdrop-blur-xl rounded-xl border border-green-500/50 px-3 py-2 shadow-xl animate-in fade-in slide-in-from-right-4">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+            <span className="text-[10px] font-black text-green-400 uppercase">Driving {vehicle.type}</span>
+            <span className="text-[10px] font-mono text-white/70">{minutes}:{seconds.toString().padStart(2, '0')}</span>
+          </div>
         </div>
       </div>
     )
@@ -371,11 +388,18 @@ function QueueStatusBadge({ playerId, queueState }: { playerId: string; queueSta
   
   if (player?.status === 'waiting') {
     const position = queueState.queue.filter(p => p.status === 'waiting').findIndex(p => p.id === playerId) + 1
+    const estimatedWait = position * 30 // 30 seconds per player estimate
+    
     return (
       <div className="bg-yellow-500/20 backdrop-blur-xl rounded-xl border border-yellow-500/50 px-3 py-2 shadow-xl">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
-          <span className="text-[10px] font-black text-yellow-400 uppercase">Queue Position: {position}</span>
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
+            <span className="text-[10px] font-black text-yellow-400 uppercase">Waiting in Queue</span>
+          </div>
+          <div className="text-[9px] text-white/50">
+            Position {position} of {queueState.waitingCount} • ~{estimatedWait}s wait
+          </div>
         </div>
       </div>
     )

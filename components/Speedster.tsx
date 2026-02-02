@@ -7,8 +7,14 @@ import { useKeyboardControls } from '@react-three/drei'
 import { RigidBody, RapierRigidBody } from '@react-three/rapier'
 import { agentProtocol } from '../services/AgentProtocol'
 
-export function Speedster({ id, position = [0, 5, 0], agentControlled = false, playerControlled = true }: { id: string, position?: [number, number, number], agentControlled?: boolean, playerControlled?: boolean }) {
+export function Speedster({ id, position = [0, 5, 0], agentControlled = false, playerControlled = true, onRef }: { id: string, position?: [number, number, number], agentControlled?: boolean, playerControlled?: boolean, onRef?: (ref: any) => void }) {
   const chassisRef = useRef<RapierRigidBody>(null)
+  
+  useEffect(() => {
+    if (onRef && chassisRef.current) {
+      onRef(chassisRef.current)
+    }
+  }, [onRef])
   const wheelsRef = useRef<THREE.Group[]>([])
   const [, getKeys] = useKeyboardControls()
   

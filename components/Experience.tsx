@@ -1,14 +1,16 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
+import * as THREE from 'three'
 import { 
   PerspectiveCamera, 
   OrbitControls, 
   Environment, 
   Sky, 
   ContactShadows,
-  KeyboardControls
+  KeyboardControls,
+  Text
 } from '@react-three/drei'
 import { Physics } from '@react-three/rapier'
 import { ProceduralFood, FoodStats } from './ProceduralFood'
@@ -31,6 +33,7 @@ interface VehicleData {
   position: [number, number, number]
   agentControlled: boolean
   playerId?: string
+  isPlayerVehicle?: boolean
 }
 
 export default function Experience({ 
@@ -43,7 +46,8 @@ export default function Experience({
   playerVehicleType?: VehicleType 
 }) {
   const { address } = useAccount()
-  const playerId = address || 'anonymous-' + Math.random().toString(36).substr(2, 9)
+  const playerId = address || 'anonymous'
+  const { camera } = useThree()
   
   const [foodItems, setFoodItems] = useState<{ id: number; position: [number, number, number] }[]>([])
   const [vehicles, setVehicles] = useState<VehicleData[]>([])
@@ -52,6 +56,7 @@ export default function Experience({
   const [playerStatus, setPlayerStatus] = useState<{ position: number; estimatedWait: number } | null>(null)
   
   const lastSpawnTime = useRef(0)
+  const playerVehicleRef = useRef<THREE.Object3D | null>(null)
 
   // Subscribe to queue updates
   useEffect(() => {
@@ -66,7 +71,8 @@ export default function Experience({
           type: v.type,
           position: getVehiclePosition(index),
           agentControlled: false,
-          playerId: v.currentPlayerId
+          playerId: v.currentPlayerId,
+          isPlayerVehicle: v.currentPlayerId === playerId
         }))
       
       // Add agent vehicles (always available for AI)
@@ -79,7 +85,7 @@ export default function Experience({
     })
 
     return () => unsubscribe()
-  }, [])
+  }, [playerId])
 
   const getVehiclePosition = (index: number): [number, number, number] => {
     const positions: [number, number, number][] = [
@@ -217,54 +223,155 @@ export default function Experience({
         ))}
 
         {vehicles.map((v) => {
+          const isPlayerVehicle = v.playerId === playerId && isPlayerActive
           const props = { 
             key: v.id, 
             id: v.id, 
             position: v.position, 
             agentControlled: v.agentControlled,
             // Only allow player control if this is their assigned vehicle
-            playerControlled: v.playerId === playerId && isPlayerActive
+            playerControlled: isPlayerVehicle,
+            // Pass ref for camera tracking
+            onRef: isPlayerVehicle ? (ref: any) => { playerVehicleRef.current = ref } : undefined
           }
-          if (v.type === 'tank') return <Tank {...props} />
-          if (v.type === 'monster') return <MonsterTruck {...props} />
-          if (v.type === 'speedster') return <Speedster {...props} />
-          return <Vehicle {...props} />
+          
+          return (
+            <group key={v.id}>
+              {/* Player vehicle indicator ring */}
+              {isPlayerVehicle && (
+                <PlayerVehicleIndicator position={v.position} />
+              )}
+              {v.type === 'tank' && <Tank {...props} />}
+              {v.type === 'monster' && <MonsterTruck {...props} />}
+              {v.type === 'speedster' && <Speedster {...props} />}
+              {v.type !== 'tank' && v.type !== 'monster' && v.type !== 'speedster' && <Vehicle {...props} />}
+            </group>
+          )
         })}
 
         <Terrain />
+        
+        {/* 3D UI Elements */}
+        {address && (
+          <InWorldQueueStatus 
+            playerId={playerId}
+            queueState={queueState}
+            isPlayerActive={isPlayerActive}
+            playerVehicle={playerVehicle}
+          />
+        )}
       </Physics>
 
       <ContactShadows opacity={0.4} scale={50} blur={1} far={20} resolution={256} color="#000000" />
-
-      {/* Queue Status UI - In 3D scene but as overlay */}
-      {address && (
-        <QueueStatusDisplay 
-          playerId={playerId}
-          queueState={queueState}
-          playerStatus={playerStatus}
-        />
-      )}
     </KeyboardControls>
   )
 }
 
-// Simple 3D text display for queue status
-function QueueStatusDisplay({ 
+// Visual indicator under player's vehicle
+function PlayerVehicleIndicator({ position }: { position: [number, number, number] }) {
+  const ringRef = useRef<THREE.Mesh>(null)
+  
+  useFrame((state) => {
+    if (ringRef.current) {
+      ringRef.current.rotation.y = state.clock.getElapsedTime() * 2
+      ringRef.current.position.y = 0.1 + Math.sin(state.clock.getElapsedTime() * 3) * 0.05
+    }
+  })
+  
+  return (
+    <mesh ref={ringRef} position={[position[0], 0.1, position[2]]} rotation={[-Math.PI / 2, 0, 0]}>
+      <ringGeometry args={[2.5, 3, 32]} />
+      <meshBasicMaterial color="#00ff00" transparent opacity={0.6} />
+    </mesh>
+  )
+}
+
+// 3D Queue status display in the world
+function InWorldQueueStatus({ 
   playerId, 
   queueState, 
-  playerStatus 
+  isPlayerActive,
+  playerVehicle 
 }: { 
   playerId: string
   queueState: QueueState | null
-  playerStatus: { position: number; estimatedWait: number } | null
+  isPlayerActive: boolean
+  playerVehicle: { id: string; type: VehicleType } | undefined
 }) {
-  const isActive = queueState?.isPlayerActive(playerId)
-  const vehicle = queueState?.getPlayerVehicle(playerId)
-  const waitingCount = queueState?.waitingCount || 0
-
+  if (!queueState) return null
+  
+  const player = queueState.queue.find(p => p.id === playerId)
+  
+  if (isPlayerActive && playerVehicle) {
+    // Show controls hint above the vehicle
+    return (
+      <group position={[0, 6, 0]}>
+        <Text
+          fontSize={0.8}
+          color="#00ff00"
+          anchorX="center"
+          anchorY="middle"
+          outlineWidth={0.05}
+          outlineColor="#000000"
+        >
+          YOU ARE DRIVING
+        </Text>
+        <Text
+          position={[0, -1, 0]}
+          fontSize={0.5}
+          color="#ffffff"
+          anchorX="center"
+          anchorY="middle"
+          outlineWidth={0.03}
+          outlineColor="#000000"
+        >
+          WASD / Arrows to drive • Space to brake/action
+        </Text>
+      </group>
+    )
+  }
+  
+  if (player?.status === 'waiting') {
+    const position = queueState.queue.filter(p => p.status === 'waiting').findIndex(p => p.id === playerId) + 1
+    return (
+      <group position={[0, 8, -15]}>
+        <Text
+          fontSize={1}
+          color="#fbbf24"
+          anchorX="center"
+          anchorY="middle"
+          outlineWidth={0.05}
+          outlineColor="#000000"
+        >
+          WAITING IN QUEUE
+        </Text>
+        <Text
+          position={[0, -1.2, 0]}
+          fontSize={0.6}
+          color="#ffffff"
+          anchorX="center"
+          anchorY="middle"
+          outlineWidth={0.03}
+          outlineColor="#000000"
+        >
+          Position: {position} / {queueState.waitingCount}
+        </Text>
+      </group>
+    )
+  }
+  
   return (
-    <group position={[0, 8, -10]}>
-      {/* Status indicator floating in world */}
+    <group position={[0, 8, -15]}>
+      <Text
+        fontSize={0.6}
+        color="#60a5fa"
+        anchorX="center"
+        anchorY="middle"
+        outlineWidth={0.03}
+        outlineColor="#000000"
+      >
+        Connect wallet to drive vehicles
+      </Text>
     </group>
   )
 }
