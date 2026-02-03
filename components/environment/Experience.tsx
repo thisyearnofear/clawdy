@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { 
@@ -15,16 +15,18 @@ import {
 import { Physics } from '@react-three/rapier'
 import { ProceduralFood, FoodStats } from './ProceduralFood'
 import { CloudManager, CloudConfig } from './CloudManager'
-import { Terrain } from './Terrain'
-import { Tank } from './Tank'
-import { MonsterTruck } from './MonsterTruck'
-import { Speedster } from './Speedster'
-import { Vehicle } from './Vehicle'
+import { Terrain } from '../terrain/Terrain'
+import { Vegetation } from '../vegetation/Vegetation'
+import { IntegratedSphericalTerrain, getSphericalTerrainHeight } from '../terrain/SphericalTerrain'
+import { Tank } from '../vehicles/Tank'
+import { MonsterTruck } from '../vehicles/MonsterTruck'
+import { Speedster } from '../vehicles/Speedster'
+import { Vehicle } from '../vehicles/Vehicle'
 import { AgentVision } from './AgentVision'
-import { VehicleType, agentProtocol, VEHICLE_RENT_ADDRESS } from '../services/AgentProtocol'
-import { vehicleQueue, QueueState } from '../services/VehicleQueue'
+import { VehicleType, agentProtocol, VEHICLE_RENT_ADDRESS } from '../../services/AgentProtocol'
+import { vehicleQueue, QueueState } from '../../services/VehicleQueue'
 import { useWatchContractEvent } from 'wagmi'
-import { VEHICLE_RENT_ABI } from '../services/abis/VehicleRent'
+import { VEHICLE_RENT_ABI } from '../../services/abis/VehicleRent'
 import { useAccount } from 'wagmi'
 
 interface VehicleData {
@@ -54,6 +56,7 @@ export default function Experience({
   const [queueState, setQueueState] = useState<QueueState | null>(null)
   const [hasJoinedQueue, setHasJoinedQueue] = useState(false)
   const [playerStatus, setPlayerStatus] = useState<{ position: number; estimatedWait: number } | null>(null)
+  const [terrainSampler, setTerrainSampler] = useState<((x: number, z: number) => number) | null>(null)
   
   const lastSpawnTime = useRef(0)
   const playerVehicleRef = useRef<THREE.Object3D | null>(null)
@@ -190,6 +193,31 @@ export default function Experience({
   const playerVehicle = queueState?.getPlayerVehicle(playerId)
   const isPlayerActive = queueState?.isPlayerActive(playerId) ?? false
 
+  // Get player vehicle position for spherical terrain
+  const playerVehiclePosition = useMemo(() => {
+    if (isPlayerActive && playerVehicle) {
+      const vehicle = vehicles.find(v => v.id === playerVehicle.id);
+      if (vehicle) {
+        return new THREE.Vector3(...vehicle.position);
+      }
+    }
+    return new THREE.Vector3(0, 0, 0);
+  }, [isPlayerActive, playerVehicle, vehicles]);
+
+  const [useSphericalTerrain, setUseSphericalTerrain] = useState(false);
+
+  // Keyboard handler for toggling spherical terrain
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 't' || e.key === 'T') {
+        setUseSphericalTerrain(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
     <KeyboardControls
       map={[
@@ -207,6 +235,7 @@ export default function Experience({
       <Environment preset="city" />
       <ambientLight intensity={0.5} />
       <directionalLight position={[10, 10, 5]} intensity={1} castShadow />
+      <fog attach="fog" args={['#c9d5ff', 18, 90]} />
 
       <Physics gravity={[0, -9.81, 0]}>
         <CloudManager config={cloudConfig} />
@@ -249,7 +278,45 @@ export default function Experience({
           )
         })}
 
-        <Terrain />
+        <Vegetation getHeightAt={useSphericalTerrain ? 
+          (() => (x, z) => getSphericalTerrainHeight(x, z)) : 
+          terrainSampler
+        } />
+        
+        {useSphericalTerrain ? (
+          <IntegratedSphericalTerrain 
+            playerPosition={playerVehiclePosition} 
+            onTerrainReady={setTerrainSampler}
+          />
+        ) : (
+          <Terrain onSamplerReady={setTerrainSampler} />
+        )}
+        
+        {/* Toggle button for spherical terrain */}
+        <group position={[0, 20, -10]}>
+          <Text
+            position={[0, 0, 0]}
+            fontSize={0.5}
+            color={useSphericalTerrain ? "#ff6b6b" : "#4ecdc4"}
+            anchorX="center"
+            anchorY="middle"
+            outlineWidth={0.03}
+            outlineColor="#000000"
+          >
+            SPHERICAL: {useSphericalTerrain ? "ON" : "OFF"}
+          </Text>
+          <Text
+            position={[0, -1, 0]}
+            fontSize={0.3}
+            color="#ffffff"
+            anchorX="center"
+            anchorY="middle"
+            outlineWidth={0.02}
+            outlineColor="#000000"
+          >
+            Press 'T' to toggle
+          </Text>
+        </group>
         
         {/* 3D UI Elements */}
         {address && (

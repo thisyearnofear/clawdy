@@ -1,4 +1,4 @@
-import CloudScene from '@/components/CloudScene'
+import CloudScene from '@/components/environment/CloudScene'
 
 export default function Home() {
   return (

@@ -5,15 +5,14 @@ import { Suspense, useState, useEffect } from 'react'
 import Experience from './Experience'
 import { Loader } from '@react-three/drei'
 import { CloudConfig } from './CloudManager'
-import { agentProtocol, AgentSession, WEATHER_AUCTION_ADDRESS } from '../services/AgentProtocol'
-import { AgentTerminal } from './AgentTerminal'
-import { VehicleType } from '../services/AgentProtocol'
-import { ConnectWallet } from './ConnectWallet'
+import { agentProtocol, AgentSession, WEATHER_AUCTION_ADDRESS } from '../../services/AgentProtocol'
+import { AgentTerminal } from '../ui/AgentTerminal'
+import { VehicleType } from '../../services/AgentProtocol'
+import { ConnectWallet } from '../ui/ConnectWallet'
 import { useWatchContractEvent } from 'wagmi'
-import { WEATHER_AUCTION_ABI } from '../services/abis/WeatherAuction'
-import { Leaderboard } from './Leaderboard'
-import { GlassPanel } from './GlassPanel'
-import { vehicleQueue, QueueState } from '../services/VehicleQueue'
+import { WEATHER_AUCTION_ABI } from '../../services/abis/WeatherAuction'
+import { Leaderboard } from '../ui/Leaderboard'
+import { vehicleQueue, QueueState } from '../../services/VehicleQueue'
 import { useAccount } from 'wagmi'
 
 export default function CloudScene() {
@@ -27,6 +26,7 @@ export default function CloudScene() {
   const [activeTab, setActiveAgentTab] = useState<'weather' | 'vehicles' | 'stats'>('weather')
   const [showQuickControls, setShowQuickControls] = useState(false)
   const [queueState, setQueueState] = useState<QueueState | null>(null)
+  const [now, setNow] = useState(() => Date.now())
   
   const [config, setConfig] = useState<CloudConfig>({
     seed: 1, segments: 40, volume: 10, growth: 4, opacity: 0.8,
@@ -39,11 +39,11 @@ export default function CloudScene() {
     abi: WEATHER_AUCTION_ABI,
     eventName: 'WeatherChanged',
     onLogs(logs: any) {
-      const event = logs[0].args
-      if (event && event.preset) {
+      const event = logs[0]?.args
+      if (event?.preset) {
         agentProtocol.processCommand({
           agentId: 'On-Chain', timestamp: Date.now(), bid: 0,
-          config: { preset: event.preset as any }, duration: 60000
+          config: { preset: event.preset as CloudConfig['preset'] }, duration: 60000
         })
       }
     },
@@ -52,6 +52,7 @@ export default function CloudScene() {
   useEffect(() => {
     const interval = setInterval(() => {
       setPlayerSession(agentProtocol.getSession('Player') || null)
+      setNow(Date.now())
     }, 500)
 
     const unsubscribe = agentProtocol.subscribeToWeather((newConfig) => {
@@ -84,12 +85,12 @@ export default function CloudScene() {
     }
   }, [])
 
-  const updateConfig = (key: keyof CloudConfig, value: any) => {
+  const updateConfig = <K extends keyof CloudConfig>(key: K, value: CloudConfig[K]) => {
     setConfig(prev => ({ ...prev, [key]: value }))
   }
 
   // Quick preset selector
-  const applyPreset = (preset: string) => {
+  const applyPreset = (preset: NonNullable<CloudConfig['preset']>) => {
     updateConfig('preset', preset)
     setShowQuickControls(false)
   }
@@ -139,7 +140,7 @@ export default function CloudScene() {
           {showQuickControls && (
             <div className="absolute right-14 top-0 bg-black/60 backdrop-blur-xl rounded-2xl border border-white/10 p-2 shadow-2xl animate-in fade-in slide-in-from-right-4">
               <div className="flex flex-col gap-1">
-                {['stormy', 'sunset', 'candy', 'custom'].map((p) => (
+                {(['stormy', 'sunset', 'candy', 'custom'] as const).map((p) => (
                   <button
                     key={p}
                     onClick={() => applyPreset(p)}
@@ -247,7 +248,7 @@ export default function CloudScene() {
           {activeTab === 'weather' && (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
               <div className="grid grid-cols-2 gap-2">
-                {['custom', 'stormy', 'sunset', 'candy'].map((p) => (
+                {(['custom', 'stormy', 'sunset', 'candy'] as const).map((p) => (
                   <button key={p} onClick={() => updateConfig('preset', p)} className={`px-2 py-3 rounded-xl text-[10px] uppercase font-bold border transition-all ${config.preset === p ? 'bg-white text-sky-900' : 'bg-white/5 border-white/10 text-white hover:bg-white/10'}`}>{p}</button>
                 ))}
               </div>

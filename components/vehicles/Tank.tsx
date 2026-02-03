@@ -5,7 +5,7 @@ import { useRef, useState, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useKeyboardControls } from '@react-three/drei'
 import { RigidBody, RapierRigidBody, useRapier } from '@react-three/rapier'
-import { agentProtocol } from '../services/AgentProtocol'
+import { agentProtocol } from '../../services/AgentProtocol'
 
 export function Tank({ 
   id, 

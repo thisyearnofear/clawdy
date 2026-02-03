@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { agentProtocol, AgentSession, VehicleType } from '../services/AgentProtocol'
-import { CLOUD_PRESETS } from './CloudManager'
+import { agentProtocol, AgentSession, VehicleType } from '../../services/AgentProtocol'
+import { CLOUD_PRESETS } from '../environment/CloudManager'
 import { GlassPanel } from './GlassPanel'
 
 export function AgentTerminal() {

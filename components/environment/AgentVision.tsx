@@ -3,7 +3,7 @@
 import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Line } from '@react-three/drei'
-import { agentProtocol } from '../services/AgentProtocol'
+import { agentProtocol } from '../../services/AgentProtocol'
 import * as THREE from 'three'
 
 export function AgentVision() {

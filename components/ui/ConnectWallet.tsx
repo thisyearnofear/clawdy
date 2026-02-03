@@ -1,7 +1,7 @@
 'use client'
 
 import { useAccount, useConnect, useDisconnect } from 'wagmi'
-import { agentProtocol } from '../services/AgentProtocol'
+import { agentProtocol } from '../../services/AgentProtocol'
 import { useState, useEffect } from 'react'
 
 // Wallet Icons as SVG components for better visuals

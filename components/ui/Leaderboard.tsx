@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { agentProtocol } from '../services/AgentProtocol'
+import { agentProtocol } from '../../services/AgentProtocol'
 
 interface LeaderboardEntry {
   id: string
