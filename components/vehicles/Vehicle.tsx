@@ -166,6 +166,34 @@ export function Vehicle({
       
       chassisRef.current.setLinvel(correctedVel, true)
     }
+
+    // STABILIZER: Keep the vehicle upright
+    const currentUp = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion)
+    const targetUp = new THREE.Vector3(0, 1, 0) // World up
+    
+    // Calculate the rotation needed to align currentUp with targetUp
+    // Cross product gives the axis of rotation
+    const stabilizeAxis = new THREE.Vector3().crossVectors(currentUp, targetUp)
+    // Dot product gives the angle (roughly, for small angles)
+    const stabilizeAngle = currentUp.angleTo(targetUp)
+    
+    if (stabilizeAngle > 0.05) { // If tilted more than a little
+      // Apply torque to restore upright position
+      // Strength depends on how tilted it is
+      const stabilizeStrength = 100 * delta * stabilizeAngle
+      chassisRef.current.applyTorqueImpulse({
+        x: stabilizeAxis.x * stabilizeStrength,
+        y: stabilizeAxis.y * stabilizeStrength, // Usually we don't need Y torque for uprighting
+        z: stabilizeAxis.z * stabilizeStrength
+      }, true)
+      
+      // Add extra angular damping when stabilizing to prevent oscillation
+      chassisRef.current.setAngvel({
+        x: chassisRef.current.angvel().x * 0.9,
+        y: chassisRef.current.angvel().y,
+        z: chassisRef.current.angvel().z * 0.9
+      }, true)
+    }
   })
 
   return (
@@ -176,9 +204,9 @@ export function Vehicle({
         colliders="cuboid" 
         mass={2}
         restitution={0.1}
-        friction={0.5}
-        linearDamping={0.02}
-        angularDamping={0.5}
+        friction={0.8}
+        linearDamping={0.1}
+        angularDamping={0.8}
         ccd={true}
       >
         {/* Chassis - blue for player, red for agent */}

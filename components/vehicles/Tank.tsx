@@ -141,6 +141,21 @@ export function Tank({
       chassisRef.current.setLinvel({ x: velocity.x * 0.97, y: velocity.y, z: velocity.z * 0.97 }, true)
     }
 
+    // STABILIZER: Keep the tank upright
+    const currentUp = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion)
+    const targetUp = new THREE.Vector3(0, 1, 0)
+    const stabilizeAxis = new THREE.Vector3().crossVectors(currentUp, targetUp)
+    const stabilizeAngle = currentUp.angleTo(targetUp)
+    
+    if (stabilizeAngle > 0.05) {
+      const stabilizeStrength = 150 * delta * stabilizeAngle // Tanks are heavier, need more force
+      chassisRef.current.applyTorqueImpulse({
+        x: stabilizeAxis.x * stabilizeStrength,
+        y: 0,
+        z: stabilizeAxis.z * stabilizeStrength
+      }, true)
+    }
+
     // Turret animation
     if (turretRef.current) {
       if (agentControlled) {
@@ -159,9 +174,9 @@ export function Tank({
         colliders="cuboid" 
         mass={5}
         restitution={0.1}
-        friction={0.8}
-        linearDamping={0.05}
-        angularDamping={0.8}
+        friction={1.0}
+        linearDamping={0.2}
+        angularDamping={0.9}
         ccd={true}
       >
         <mesh castShadow>

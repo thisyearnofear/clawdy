@@ -1189,9 +1189,9 @@ callsites@^3.0.0:
   integrity sha512-P8BjAsXvZS+VIDUI11hHCQEv74YT67YUi5JJFNWIqL235sBmjX4+qx9Muvls5ivyNENctx46xQLQ3aTuE7ssaQ==
 
 camera-controls@^3.1.0:
-  version "3.1.2"
-  resolved "https://registry.npmjs.org/camera-controls/-/camera-controls-3.1.2.tgz"
-  integrity sha512-xkxfpG2ECZ6Ww5/9+kf4mfg1VEYAoe9aDSY+IwF0UEs7qEzwy0aVRfs2grImIECs/PoBtWFrh7RXsQkwG922JA==
+  version "3.1.0"
+  resolved "https://registry.npmjs.org/camera-controls/-/camera-controls-3.1.0.tgz"
+  integrity sha512-w5oULNpijgTRH0ARFJJ0R5ct1nUM3R3WP7/b8A6j9uTGpRfnsypc/RBMPQV8JQDPayUe37p/TZZY1PcUr4czOQ==
 
 caniuse-lite@^1.0.30001579, caniuse-lite@^1.0.30001759:
   version "1.0.30001766"

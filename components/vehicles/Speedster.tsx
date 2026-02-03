@@ -144,6 +144,21 @@ export function Speedster({
       chassisRef.current.setLinvel(correctedVel, true)
     }
 
+    // STABILIZER: Keep the speedster upright
+    const currentUp = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion)
+    const targetUp = new THREE.Vector3(0, 1, 0)
+    const stabilizeAxis = new THREE.Vector3().crossVectors(currentUp, targetUp)
+    const stabilizeAngle = currentUp.angleTo(targetUp)
+    
+    if (stabilizeAngle > 0.05) {
+      const stabilizeStrength = 80 * delta * stabilizeAngle
+      chassisRef.current.applyTorqueImpulse({
+        x: stabilizeAxis.x * stabilizeStrength,
+        y: 0,
+        z: stabilizeAxis.z * stabilizeStrength
+      }, true)
+    }
+
     // Visual Steering for front wheels
     wheelsRef.current.forEach((wheel, i) => {
       if (wheel && i < 2) { // Front wheels
@@ -160,9 +175,9 @@ export function Speedster({
         colliders="cuboid" 
         mass={1.5}
         restitution={0.1}
-        friction={0.3}
-        linearDamping={0.01}
-        angularDamping={0.3}
+        friction={0.9}
+        linearDamping={0.1}
+        angularDamping={0.8}
         ccd={true}
       >
         {/* LOW PROFILE - Speedster hugs the ground */}

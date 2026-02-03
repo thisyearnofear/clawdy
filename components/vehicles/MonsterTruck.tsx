@@ -144,6 +144,27 @@ export function MonsterTruck({
       chassisRef.current.setLinvel(correctedVel, true)
     }
 
+    // STABILIZER: Keep the monster truck upright (crucial for high center of mass)
+    const currentUp = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion)
+    const targetUp = new THREE.Vector3(0, 1, 0)
+    const stabilizeAxis = new THREE.Vector3().crossVectors(currentUp, targetUp)
+    const stabilizeAngle = currentUp.angleTo(targetUp)
+    
+    if (stabilizeAngle > 0.1) {
+      const stabilizeStrength = 200 * delta * stabilizeAngle
+      chassisRef.current.applyTorqueImpulse({
+        x: stabilizeAxis.x * stabilizeStrength,
+        y: 0,
+        z: stabilizeAxis.z * stabilizeStrength
+      }, true)
+      
+      chassisRef.current.setAngvel({
+        x: chassisRef.current.angvel().x * 0.8,
+        y: chassisRef.current.angvel().y,
+        z: chassisRef.current.angvel().z * 0.8
+      }, true)
+    }
+
     // Bouncy body animation
     if (bodyRef.current) {
         const time = state.clock.getElapsedTime()
@@ -160,10 +181,10 @@ export function MonsterTruck({
         position={position} 
         colliders="cuboid" 
         mass={3}
-        restitution={0.4}
-        friction={0.5}
-        linearDamping={0.02}
-        angularDamping={0.4}
+        restitution={0.2}
+        friction={1.0}
+        linearDamping={0.1}
+        angularDamping={0.6}
         ccd={true}
       >
         {/* MASSIVE Wheels - Monster Truck signature */}

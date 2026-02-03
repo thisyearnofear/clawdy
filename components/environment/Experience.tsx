@@ -3,9 +3,9 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
+import { CameraManager } from './CameraManager'
 import {
   PerspectiveCamera,
-  OrbitControls,
   Environment,
   Sky,
   ContactShadows,
@@ -53,7 +53,6 @@ function Experience({
 }) {
   const { address } = useAccount()
   const playerId = address || 'anonymous'
-  const { camera } = useThree()
   
   const [foodItems, setFoodItems] = useState<{ id: number; position: [number, number, number] }[]>([])
   const [vehicles, setVehicles] = useState<VehicleData[]>([])
@@ -64,6 +63,30 @@ function Experience({
   
   const lastSpawnTime = useRef(0)
   const playerVehicleRef = useRef<THREE.Object3D | null>(null)
+  const [playerVehicleObj, setPlayerVehicleObj] = useState<THREE.Object3D | null>(null)
+
+  const getVehiclePosition = (index: number): [number, number, number] => {
+    const positions: [number, number, number][] = [
+      [0, 3, 0],
+      [5, 3, 5],
+      [-5, 3, -5],
+      [5, 3, -5]
+    ]
+    return positions[index] || [0, 3, 0]
+  }
+
+  const handleDespawn = (id: number) => {
+    setFoodItems((prev) => prev.filter((item) => item.id !== id))
+  }
+
+  const handleCollect = (id: number, stats: FoodStats, collectorId?: string) => {
+    let agentId = 'Player'
+    if (collectorId === 'agent-1') agentId = 'Agent-Zero'
+    if (collectorId === 'agent-2') agentId = 'Agent-One'
+    
+    agentProtocol.collectFood(agentId, stats)
+    handleDespawn(id)
+  }
 
   // Subscribe to queue updates
   useEffect(() => {
@@ -93,16 +116,6 @@ function Experience({
 
     return () => unsubscribe()
   }, [playerId])
-
-  const getVehiclePosition = (index: number): [number, number, number] => {
-    const positions: [number, number, number][] = [
-      [0, 3, 0],
-      [5, 3, 5],
-      [-5, 3, -5],
-      [5, 3, -5]
-    ]
-    return positions[index] || [0, 3, 0]
-  }
 
   // Auto-join queue when connected
   useEffect(() => {
@@ -143,19 +156,6 @@ function Experience({
       }
     },
   })
-
-  const handleDespawn = (id: number) => {
-    setFoodItems((prev) => prev.filter((item) => item.id !== id))
-  }
-
-  const handleCollect = (id: number, stats: FoodStats, collectorId?: string) => {
-    let agentId = 'Player'
-    if (collectorId === 'agent-1') agentId = 'Agent-Zero'
-    if (collectorId === 'agent-2') agentId = 'Agent-One'
-    
-    agentProtocol.collectFood(agentId, stats)
-    handleDespawn(id)
-  }
 
   useFrame((state) => {
     const time = state.clock.getElapsedTime()
@@ -233,12 +233,9 @@ function Experience({
       ]}
     >
       <PerspectiveCamera makeDefault position={[0, 15, 30]} />
-      <OrbitControls
-        makeDefault
-        enabled
-        enableZoom
-        enableRotate={!isPlayerActive}
-        enablePan={!isPlayerActive}
+      <CameraManager 
+        target={playerVehicleObj}
+        active={isPlayerActive}
       />
       
       <Sky sunPosition={[100, 20, 100]} />
@@ -270,7 +267,10 @@ function Experience({
             // Only allow player control if this is their assigned vehicle
             playerControlled: isPlayerVehicle,
             // Pass ref for camera tracking
-            onRef: isPlayerVehicle ? (ref: any) => { playerVehicleRef.current = ref } : undefined
+            onRef: isPlayerVehicle ? (ref: any) => { 
+              playerVehicleRef.current = ref
+              setPlayerVehicleObj(ref)
+            } : undefined
           }
           
           return (
@@ -325,7 +325,7 @@ function Experience({
             outlineWidth={0.02}
             outlineColor="#000000"
           >
-            Press 'T' to toggle
+            Press &apos;T&apos; to toggle
           </Text>
         </group>
         
