@@ -65,11 +65,11 @@ const createGrassMaterial = () => {
     shader.vertexShader = shader.vertexShader
       .replace(
         '#include <common>',
-        `#include <common>\n\nuniform float uTime;\nuniform float uWindStrength;\nuniform float uWindFrequency;\nvarying vec3 vWorldPos;`
+        `#include <common>\n\nuniform float uTime;\nuniform float uWindStrength;\nuniform float uWindFrequency;\nvarying vec3 vWorldPos;\nvarying vec2 vUv;`
       )
       .replace(
         '#include <begin_vertex>',
-        `#include <begin_vertex>\nfloat sway = sin((position.x + position.y) * uWindFrequency + uTime) * uWindStrength;\ntransformed.x += sway * uv.y;\ntransformed.z += sway * uv.y * 0.6;`
+        `#include <begin_vertex>\nfloat sway = sin((position.x + position.y) * uWindFrequency + uTime) * uWindStrength;\ntransformed.x += sway * uv.y;\ntransformed.z += sway * uv.y * 0.6;\nvUv = uv;`
       )
       .replace(
         '#include <project_vertex>',
@@ -79,7 +79,7 @@ const createGrassMaterial = () => {
     shader.fragmentShader = shader.fragmentShader
       .replace(
         '#include <common>',
-        `#include <common>\n\nuniform vec3 uTopColor;\nuniform vec3 uBottomColor;\nuniform float uLodNear;\nuniform float uLodFar;\nvarying vec3 vWorldPos;`
+        `#include <common>\n\nuniform vec3 uTopColor;\nuniform vec3 uBottomColor;\nuniform float uLodNear;\nuniform float uLodFar;\nvarying vec3 vWorldPos;\nvarying vec2 vUv;`
       )
       .replace(
         '#include <color_fragment>',

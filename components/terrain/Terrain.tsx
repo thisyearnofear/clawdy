@@ -1,8 +1,7 @@
 import { useMemo, useRef, useLayoutEffect, useCallback } from 'react'
 import * as THREE from 'three'
-import { RigidBody, HeightfieldCollider, useRapier } from '@react-three/rapier'
+import { RigidBody } from '@react-three/rapier'
 import { useFrame, useThree } from '@react-three/fiber'
-import type { Collider } from '@dimforge/rapier3d-compat'
 import { TERRAIN_CONFIG, getTerrainHeight } from './terrainUtils'
 
 const GRID_RADIUS = 1
@@ -10,9 +9,6 @@ const CHUNK_SIZE = TERRAIN_CONFIG.SIZE
 const SEGMENTS = TERRAIN_CONFIG.SEGMENTS
 const CHUNK_Y_OFFSET = -0.1
 const DEFORMATION_CACHE_LIMIT = 12
-const HEIGHTFIELD_ROWS = SEGMENTS + 1
-const HEIGHTFIELD_COLS = SEGMENTS + 1
-const COLLIDER_UPDATE_INTERVAL = 0.2
 const CURVATURE = {
   STRENGTH: 0.00018,
   RADIUS: 120
@@ -24,7 +20,6 @@ type ChunkState = {
   geometry: THREE.PlaneGeometry
   colors: Float32Array
   deformer: TerrainDeformer
-  heightfield: Float32Array
   dirty: boolean
 }
 
@@ -190,22 +185,6 @@ const applyColorsFromGeometry = (geometry: THREE.PlaneGeometry, colors: Float32A
   }
 }
 
-const buildHeightfieldHeights = (geometry: THREE.PlaneGeometry) => {
-  const positionAttr = geometry.attributes.position as THREE.BufferAttribute
-  const stride = SEGMENTS + 1
-  const heights = new Float32Array(stride * stride)
-
-  for (let row = 0; row < stride; row++) {
-    for (let col = 0; col < stride; col++) {
-      const idx = row * stride + col
-      const height = positionAttr.getY(idx)
-      heights[col * stride + row] = height
-    }
-  }
-
-  return heights
-}
-
 const sampleHeightFromGeometry = (
   geometry: THREE.PlaneGeometry,
   localX: number,
@@ -248,10 +227,8 @@ export function Terrain({
   onSamplerReady?: (sampler: (x: number, z: number) => number) => void
 }) {
   const { camera } = useThree()
-  const { rapier } = useRapier()
   const meshRefs = useRef<THREE.Mesh[]>([])
   const rigidBodyRefs = useRef<any[]>([])
-  const colliderRefs = useRef<Collider[]>([])
   const chunkStateRef = useRef<ChunkState[]>([])
   const deformationCacheRef = useRef<Map<string, DeformationCacheEntry>>(new Map())
   const chunkCoordMapRef = useRef<Map<string, number>>(new Map())
@@ -259,7 +236,6 @@ export function Terrain({
   const vehiclesRef = useRef<THREE.Object3D[]>([])
   const tempVehiclePos = useMemo(() => new THREE.Vector3(), [])
   const tempLocalPoint = useMemo(() => new THREE.Vector3(), [])
-  const lastColliderUpdateRef = useRef(0)
 
   const chunkSlots = useMemo(() => {
     const slots: ChunkState[] = []
@@ -269,9 +245,8 @@ export function Terrain({
         geometry.rotateX(-Math.PI / 2)
         const colors = new Float32Array(geometry.attributes.position.count * 3)
         applyBaseToGeometry(geometry, colors, gx, gz)
-        const heightfield = buildHeightfieldHeights(geometry)
         const deformer = new TerrainDeformer(geometry.attributes.position.array as Float32Array)
-        slots.push({ coordX: gx, coordZ: gz, geometry, colors, deformer, heightfield, dirty: false })
+        slots.push({ coordX: gx, coordZ: gz, geometry, colors, deformer, dirty: false })
       }
     }
     return slots
@@ -380,7 +355,6 @@ export function Terrain({
               applyBaseToGeometry(chunk.geometry, chunk.colors, targetX, targetZ)
             }
 
-            chunk.heightfield = buildHeightfieldHeights(chunk.geometry)
             chunk.dirty = true
             chunk.deformer.setBasePositions(chunk.geometry.attributes.position.array as Float32Array)
           }
@@ -431,22 +405,10 @@ export function Terrain({
       }
     }
 
-    const elapsed = state.clock.getElapsedTime()
-    if (elapsed - lastColliderUpdateRef.current > COLLIDER_UPDATE_INTERVAL) {
-      lastColliderUpdateRef.current = elapsed
-      for (let index = 0; index < chunkStateRef.current.length; index += 1) {
-        const chunk = chunkStateRef.current[index]
-        if (!chunk.dirty) continue
-        const collider = colliderRefs.current[index]
-        if (!collider) continue
-
-        const heights = buildHeightfieldHeights(chunk.geometry)
-        chunk.heightfield = heights
-        // Skip shape update due to version incompatibility between Rapier instances
-        // The original shape remains but terrain visuals will still update
-        // console.warn("Skipping shape update due to Rapier version incompatibility")
-        chunk.dirty = false
-      }
+    for (let index = 0; index < chunkStateRef.current.length; index += 1) {
+      const chunk = chunkStateRef.current[index]
+      if (!chunk.dirty) continue
+      chunk.dirty = false
     }
   })
 
@@ -456,22 +418,12 @@ export function Terrain({
         <RigidBody
           key={`terrain-${index}`}
           type="fixed"
+          colliders="trimesh"
           position={[chunk.coordX * CHUNK_SIZE, CHUNK_Y_OFFSET, chunk.coordZ * CHUNK_SIZE]}
           ref={(api) => {
             if (api) rigidBodyRefs.current[index] = api
           }}
         >
-          <HeightfieldCollider
-            ref={(collider) => {
-              if (collider) colliderRefs.current[index] = collider as any
-            }}
-            args={[
-              HEIGHTFIELD_ROWS,
-              HEIGHTFIELD_COLS,
-              Array.from(chunk.heightfield),
-              { x: CHUNK_SIZE, y: 1, z: CHUNK_SIZE }
-            ]}
-          />
           <mesh
             ref={(mesh) => {
               if (mesh) meshRefs.current[index] = mesh

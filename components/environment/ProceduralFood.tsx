@@ -27,6 +27,17 @@ export const FOOD_METADATA: Record<FoodType, Omit<FoodStats, 'type'>> = {
   rotten_burger: { nutrition: 'obstacle', mass: 5.0, isDestroyable: true },
 }
 
+const seededRandom = (seed: number) => {
+  let state = seed >>> 0
+  return () => {
+    state += 0x6D2B79F5
+    let t = state
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
 function Burger() {
   return (
     <group scale={0.5}>
@@ -55,6 +66,15 @@ function Burger() {
 }
 
 function Donut() {
+  const sprinkleRotations = useMemo(() => {
+    const rand = seededRandom(1337)
+    return Array.from({ length: 8 }, () => [
+      rand() * Math.PI * 2,
+      rand() * Math.PI * 2,
+      0
+    ] as [number, number, number])
+  }, [])
+
   return (
     <group scale={0.6}>
       <mesh>
@@ -66,7 +86,11 @@ function Donut() {
         <meshStandardMaterial color="#ff7675" />
       </mesh>
       {[...Array(8)].map((_, i) => (
-        <mesh key={i} position={[Math.cos(i) * 1, 0.5, Math.sin(i) * 1]} rotation={[Math.random(), Math.random(), 0]}>
+        <mesh
+          key={i}
+          position={[Math.cos(i) * 1, 0.5, Math.sin(i) * 1]}
+          rotation={sprinkleRotations[i]}
+        >
           <capsuleGeometry args={[0.05, 0.2, 4, 8]} />
           <meshStandardMaterial color={['#ffeaa7', '#55efc4', '#74b9ff'][i % 3]} />
         </mesh>

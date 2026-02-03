@@ -233,7 +233,13 @@ function Experience({
       ]}
     >
       <PerspectiveCamera makeDefault position={[0, 15, 30]} />
-      <OrbitControls makeDefault enabled={!isPlayerActive} />
+      <OrbitControls
+        makeDefault
+        enabled
+        enableZoom
+        enableRotate={!isPlayerActive}
+        enablePan={!isPlayerActive}
+      />
       
       <Sky sunPosition={[100, 20, 100]} />
       <Environment preset="city" />
@@ -258,7 +264,6 @@ function Experience({
         {vehicles.map((v) => {
           const isPlayerVehicle = v.playerId === playerId && isPlayerActive
           const props = { 
-            key: v.id, 
             id: v.id, 
             position: v.position, 
             agentControlled: v.agentControlled,
@@ -274,10 +279,12 @@ function Experience({
               {isPlayerVehicle && (
                 <PlayerVehicleIndicator position={v.position} />
               )}
-              {v.type === 'tank' && <Tank {...props} />}
-              {v.type === 'monster' && <MonsterTruck {...props} />}
-              {v.type === 'speedster' && <Speedster {...props} />}
-              {v.type !== 'tank' && v.type !== 'monster' && v.type !== 'speedster' && <Vehicle {...props} />}
+              {v.type === 'tank' && <Tank key={v.id} {...props} />}
+              {v.type === 'monster' && <MonsterTruck key={v.id} {...props} />}
+              {v.type === 'speedster' && <Speedster key={v.id} {...props} />}
+              {v.type !== 'tank' && v.type !== 'monster' && v.type !== 'speedster' && (
+                <Vehicle key={v.id} {...props} />
+              )}
             </group>
           )
         })}

@@ -26,7 +26,8 @@ export default function CloudScene() {
   const [activeTab, setActiveAgentTab] = useState<'weather' | 'vehicles' | 'stats'>('weather')
   const [showQuickControls, setShowQuickControls] = useState(false)
   const [queueState, setQueueState] = useState<QueueState | null>(null)
-  const [now, setNow] = useState(() => Date.now())
+  const [now, setNow] = useState(0)
+  const [isMounted, setIsMounted] = useState(false)
   
   const [config, setConfig] = useState<CloudConfig>({
     seed: 1, segments: 40, volume: 10, growth: 4, opacity: 0.8,
@@ -50,6 +51,7 @@ export default function CloudScene() {
   })
 
   useEffect(() => {
+    setIsMounted(true)
     const interval = setInterval(() => {
       setPlayerSession(agentProtocol.getSession('Player') || null)
       setNow(Date.now())
@@ -119,7 +121,7 @@ export default function CloudScene() {
 
       {/* Wallet - Top right */}
       <div className="absolute top-6 right-6 z-30">
-        <ConnectWallet />
+        {isMounted ? <ConnectWallet /> : null}
       </div>
 
       {/* Floating Action Buttons - Right side */}
