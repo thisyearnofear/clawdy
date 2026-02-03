@@ -448,7 +448,7 @@ export function Terrain({
           heights,
           new rapier.Vector3(CHUNK_SIZE, 1, CHUNK_SIZE)
         )
-        // @ts-ignore: Type compatibility issue with Rapier version
+        // @ts-expect-error: Known incompatibility between Rapier versions - shape is functionally compatible
         collider.setShape(shape)
         chunk.dirty = false
       }
