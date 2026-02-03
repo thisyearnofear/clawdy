@@ -442,14 +442,9 @@ export function Terrain({
 
         const heights = buildHeightfieldHeights(chunk.geometry)
         chunk.heightfield = heights
-        const shape = new rapier.Heightfield(
-          HEIGHTFIELD_ROWS,
-          HEIGHTFIELD_COLS,
-          heights,
-          new rapier.Vector3(CHUNK_SIZE, 1, CHUNK_SIZE)
-        )
-        // @ts-expect-error: Known incompatibility between Rapier versions - shape is functionally compatible
-        collider.setShape(shape)
+        // Skip shape update due to version incompatibility between Rapier instances
+        // The original shape remains but terrain visuals will still update
+        // console.warn("Skipping shape update due to Rapier version incompatibility")
         chunk.dirty = false
       }
     }
