@@ -3,15 +3,16 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { 
-  PerspectiveCamera, 
-  OrbitControls, 
-  Environment, 
-  Sky, 
+import {
+  PerspectiveCamera,
+  OrbitControls,
+  Environment,
+  Sky,
   ContactShadows,
   KeyboardControls,
   Text
 } from '@react-three/drei'
+import { isMobile } from 'react-device-detect'
 import { Physics } from '@react-three/rapier'
 import { ProceduralFood, FoodStats } from './ProceduralFood'
 import { CloudManager, CloudConfig } from './CloudManager'
@@ -28,6 +29,9 @@ import { vehicleQueue, QueueState } from '../../services/VehicleQueue'
 import { useWatchContractEvent } from 'wagmi'
 import { VEHICLE_RENT_ABI } from '../../services/abis/VehicleRent'
 import { useAccount } from 'wagmi'
+import { MobileControls } from '../ui/MobileControls'
+import FrameLimiter from '../utils/FrameLimiter'
+import { CustomFogEffect } from './CustomFogEffect'
 
 interface VehicleData {
   id: string
@@ -38,14 +42,14 @@ interface VehicleData {
   isPlayerVehicle?: boolean
 }
 
-export default function Experience({ 
-  cloudConfig, 
+function Experience({
+  cloudConfig,
   spawnRate = 2,
   playerVehicleType = 'speedster'
-}: { 
-  cloudConfig: CloudConfig; 
+}: {
+  cloudConfig: CloudConfig;
   spawnRate?: number;
-  playerVehicleType?: VehicleType 
+  playerVehicleType?: VehicleType
 }) {
   const { address } = useAccount()
   const playerId = address || 'anonymous'
@@ -278,8 +282,8 @@ export default function Experience({
           )
         })}
 
-        <Vegetation getHeightAt={useSphericalTerrain ? 
-          (() => (x, z) => getSphericalTerrainHeight(x, z)) : 
+        <Vegetation getHeightAt={useSphericalTerrain ?
+          getSphericalTerrainHeight :
           terrainSampler
         } />
         
@@ -330,7 +334,28 @@ export default function Experience({
       </Physics>
 
       <ContactShadows opacity={0.4} scale={50} blur={1} far={20} resolution={256} color="#000000" />
+
+      {/* Performance optimization for mobile devices */}
+      {isMobile && <FrameLimiter fps={30} />}
+
+      {/* Custom fog effect for enhanced atmosphere */}
+      <CustomFogEffect />
     </KeyboardControls>
+  )
+}
+
+// Wrapper component to handle mobile controls overlay
+function ExperienceWithMobileControls(props: {
+  cloudConfig: CloudConfig;
+  spawnRate?: number;
+  playerVehicleType?: VehicleType
+}) {
+  return (
+    <>
+      <Experience {...props} />
+      {/* Mobile controls overlay */}
+      {isMobile && <MobileControls />}
+    </>
   )
 }
 
@@ -442,3 +467,5 @@ function InWorldQueueStatus({
     </group>
   )
 }
+
+export default ExperienceWithMobileControls;

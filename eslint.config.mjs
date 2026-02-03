@@ -12,8 +12,6 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
-    "temp_grass_repo/**",
-    "temp_terrain_repo/**",
   ]),
 ]);
 

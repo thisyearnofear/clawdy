@@ -1,6 +1,6 @@
 import { useMemo, useRef, useLayoutEffect, useCallback } from 'react'
 import * as THREE from 'three'
-import { RigidBody, HeightfieldCollider, useRapier, type RigidBodyApi } from '@react-three/rapier'
+import { RigidBody, HeightfieldCollider, useRapier } from '@react-three/rapier'
 import { useFrame, useThree } from '@react-three/fiber'
 import type { Collider } from '@dimforge/rapier3d-compat'
 import { TERRAIN_CONFIG, getTerrainHeight } from './terrainUtils'
@@ -250,7 +250,7 @@ export function Terrain({
   const { camera } = useThree()
   const { rapier } = useRapier()
   const meshRefs = useRef<THREE.Mesh[]>([])
-  const rigidBodyRefs = useRef<RigidBodyApi[]>([])
+  const rigidBodyRefs = useRef<any[]>([])
   const colliderRefs = useRef<Collider[]>([])
   const chunkStateRef = useRef<ChunkState[]>([])
   const deformationCacheRef = useRef<Map<string, DeformationCacheEntry>>(new Map())
@@ -448,6 +448,7 @@ export function Terrain({
           heights,
           new rapier.Vector3(CHUNK_SIZE, 1, CHUNK_SIZE)
         )
+        // @ts-ignore: Type compatibility issue with Rapier version
         collider.setShape(shape)
         chunk.dirty = false
       }
@@ -467,7 +468,7 @@ export function Terrain({
         >
           <HeightfieldCollider
             ref={(collider) => {
-              if (collider) colliderRefs.current[index] = collider
+              if (collider) colliderRefs.current[index] = collider as any
             }}
             args={[
               HEIGHTFIELD_ROWS,

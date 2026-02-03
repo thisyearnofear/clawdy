@@ -1,5 +1,5 @@
-import { CloudConfig } from '../components/CloudManager'
-import { FoodType, FoodStats } from '../components/ProceduralFood'
+import { CloudConfig } from '../components/environment/CloudManager'
+import { FoodType, FoodStats } from '../components/environment/ProceduralFood'
 import { parseEther, encodeFunctionData, formatEther } from 'viem'
 import { WEATHER_AUCTION_ABI } from './abis/WeatherAuction'
 import { VEHICLE_RENT_ABI } from './abis/VehicleRent'

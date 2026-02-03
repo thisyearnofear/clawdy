@@ -154,7 +154,7 @@ export function SphericalTerrain({
   playerPosition?: THREE.Vector3;
 }) {
   const groupRef = useRef<THREE.Group>(null);
-  const chunkManagerRef = useRef<SphericalTerrainChunkManager>();
+  const chunkManagerRef = useRef<SphericalTerrainChunkManager>(null);
   const meshRefs = useRef<Map<string, THREE.Mesh>>(new Map());
   const tempVector = useRef(new THREE.Vector3());
 

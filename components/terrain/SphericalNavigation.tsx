@@ -134,7 +134,7 @@ export function useSphericalNavigation(vehicleRef: React.RefObject<THREE.Object3
     if (!vehicleRef.current) return;
 
     // Create the navigation controller
-    navigationController.current = new SphericalNavigationController({
+    navigationController.current = SphericalNavigationController({
       vehicleRef
     });
 
