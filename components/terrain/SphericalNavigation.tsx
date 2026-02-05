@@ -32,49 +32,49 @@ export function SphericalNavigationController({
     if (!vehicleRef.current) return;
 
     const vehicle = vehicleRef.current;
-    
+
     // Calculate the vehicle's distance from the center of the sphere
     const currentPos = vehicle.position;
     const distanceFromCenter = currentPos.length();
-    
+
     // Calculate the surface normal (points outward from sphere center)
     surfaceNormalRef.current.copy(currentPos).normalize();
-    
+
     // Project the vehicle position onto the sphere surface
     const surfacePosition = surfaceNormalRef.current.clone().multiplyScalar(terrainRadius);
-    
+
     // Apply gravity toward the center of the sphere
     const gravityForce = surfaceNormalRef.current.clone().multiplyScalar(-SPHERICAL_NAVIGATION_CONFIG.GRAVITY_NORMAL_FORCE * 0.1);
-    
+
     // Update velocity based on forces
     velocityRef.current.add(gravityForce);
-    
+
     // Limit maximum speed
     if (velocityRef.current.length() > SPHERICAL_NAVIGATION_CONFIG.MAX_SPEED) {
       velocityRef.current.normalize().multiplyScalar(SPHERICAL_NAVIGATION_CONFIG.MAX_SPEED);
     }
-    
+
     // Update position
     vehicle.position.copy(surfacePosition);
-    
+
     // Orient the vehicle to align with the surface normal
     // Point the vehicle's up direction to match the surface normal
     const targetUp = surfaceNormalRef.current.clone();
     const currentForward = new THREE.Vector3(0, 0, 1).applyQuaternion(vehicle.quaternion);
-    
+
     // Create a new orientation that keeps the vehicle aligned with the surface
     const newQuaternion = new THREE.Quaternion();
     newQuaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), targetUp);
-    
+
     // Apply the new orientation while preserving forward direction
     const rotatedForward = currentForward.clone().applyQuaternion(newQuaternion);
     vehicle.quaternion.copy(newQuaternion);
-    
+
     // Notify parent of position update
     if (onSurfacePositionUpdate) {
       onSurfacePositionUpdate(vehicle.position, targetUp);
     }
-    
+
     // Store last position for velocity calculations
     lastPositionRef.current.copy(vehicle.position);
   });

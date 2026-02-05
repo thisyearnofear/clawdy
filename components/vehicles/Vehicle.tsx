@@ -65,11 +65,11 @@ export function Vehicle({
     // Update Digital Twin rotation
     if (agentControlled) {
       agentProtocol.updateWorldState({
-        vehicles: agentProtocol.getWorldState().vehicles.map(v => 
-          v.id === id ? { 
-            ...v, 
-            rotation: chassisRef.current!.rotation() as any, 
-            position: chassisRef.current!.translation() as any 
+        vehicles: agentProtocol.getWorldState().vehicles.map(v =>
+          v.id === id ? {
+            ...v,
+            rotation: chassisRef.current!.rotation() as any,
+            position: chassisRef.current!.translation() as any
           } : v
         )
       })
@@ -78,11 +78,11 @@ export function Vehicle({
     // Get current velocity and speed
     const velocity = chassisRef.current.linvel()
     const speed = Math.sqrt(velocity.x ** 2 + velocity.z ** 2)
-    
+
     // Get vehicle rotation
     const rotation = chassisRef.current.rotation()
     const quaternion = new THREE.Quaternion(rotation.x, rotation.y, rotation.z, rotation.w)
-    
+
     // Forward direction (negative Z is forward in the model)
     const forwardDir = new THREE.Vector3(0, 0, -1).applyQuaternion(quaternion)
     // Right direction for steering
@@ -91,11 +91,11 @@ export function Vehicle({
     // ACCELERATION / BRAKING
     const maxSpeed = 35 * (0.5 + 0.5 * vitalityFactor) // Slower if low vitality
     const acceleration = 250 * delta // Force per second - much stronger
-    
+
     if (forward !== 0) {
       // Only accelerate if below max speed (in the relevant direction)
       const forwardSpeed = velocity.x * forwardDir.x + velocity.z * forwardDir.z
-      
+
       if (Math.abs(forwardSpeed) < maxSpeed || (forwardSpeed > 0 && forward < 0) || (forwardSpeed < 0 && forward > 0)) {
         // Apply force at center of mass for acceleration
         const force = forwardDir.clone().multiplyScalar(forward * acceleration)
@@ -108,7 +108,7 @@ export function Vehicle({
     if (turn !== 0 && speed > 0.1) {
       const steerStrength = 80 * delta
       const steerForce = rightDir.clone().multiplyScalar(turn * steerStrength * Math.min(speed / 5, 1))
-      
+
       // Apply steering force at front of vehicle (creates turning moment)
       const frontOffset = forwardDir.clone().multiplyScalar(1.5)
       const steerPoint = {
@@ -116,13 +116,13 @@ export function Vehicle({
         y: chassisRef.current.translation().y,
         z: chassisRef.current.translation().z + frontOffset.z
       }
-      
+
       chassisRef.current.applyImpulseAtPoint(
         { x: steerForce.x, y: 0, z: steerForce.z },
         steerPoint,
         true
       )
-      
+
       // Also apply slight counter-force at back to help rotation
       const backOffset = forwardDir.clone().multiplyScalar(-1.5)
       const counterForce = rightDir.clone().multiplyScalar(-turn * steerStrength * 0.5)
@@ -131,52 +131,52 @@ export function Vehicle({
         y: chassisRef.current.translation().y,
         z: chassisRef.current.translation().z + backOffset.z
       }
-      
+
       chassisRef.current.applyImpulseAtPoint(
         { x: counterForce.x, y: 0, z: counterForce.z },
         counterPoint,
         true
       )
     }
-    
+
     // BRAKING
     if (brake) {
       // Stronger braking
       chassisRef.current.setLinvel({ x: velocity.x * 0.85, y: velocity.y, z: velocity.z * 0.85 }, true)
       chassisRef.current.setAngvel({ x: 0, y: 0, z: 0 }, true)
     }
-    
+
     // NATURAL FRICTION / DRAG (when not accelerating)
     if (forward === 0 && !brake) {
       // Rolling resistance
       chassisRef.current.setLinvel({ x: velocity.x * 0.98, y: velocity.y, z: velocity.z * 0.98 }, true)
     }
-    
+
     // Counteract sliding/drifting (align velocity with forward direction)
     if (speed > 1) {
       const forwardComponent = velocity.x * forwardDir.x + velocity.z * forwardDir.z
       const rightComponent = velocity.x * rightDir.x + velocity.z * rightDir.z
-      
+
       // Reduce sideways velocity (simulate wheel friction preventing sliding)
       const correctedVel = {
         x: forwardDir.x * forwardComponent + rightDir.x * rightComponent * 0.3,
         y: velocity.y,
         z: forwardDir.z * forwardComponent + rightDir.z * rightComponent * 0.3
       }
-      
+
       chassisRef.current.setLinvel(correctedVel, true)
     }
 
     // STABILIZER: Keep the vehicle upright
     const currentUp = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion)
     const targetUp = new THREE.Vector3(0, 1, 0) // World up
-    
+
     // Calculate the rotation needed to align currentUp with targetUp
     // Cross product gives the axis of rotation
     const stabilizeAxis = new THREE.Vector3().crossVectors(currentUp, targetUp)
     // Dot product gives the angle (roughly, for small angles)
     const stabilizeAngle = currentUp.angleTo(targetUp)
-    
+
     if (stabilizeAngle > 0.05) { // If tilted more than a little
       // Apply torque to restore upright position
       // Strength depends on how tilted it is
@@ -186,7 +186,7 @@ export function Vehicle({
         y: stabilizeAxis.y * stabilizeStrength, // Usually we don't need Y torque for uprighting
         z: stabilizeAxis.z * stabilizeStrength
       }, true)
-      
+
       // Add extra angular damping when stabilizing to prevent oscillation
       chassisRef.current.setAngvel({
         x: chassisRef.current.angvel().x * 0.9,

@@ -313,6 +313,8 @@ export function Terrain({
   }, [chunkSlots, getHeightAt, onSamplerReady])
 
   useFrame((state) => {
+    if (!camera || !camera.position) return;
+
     const centerX = Math.floor(camera.position.x / CHUNK_SIZE)
     const centerZ = Math.floor(camera.position.z / CHUNK_SIZE)
 

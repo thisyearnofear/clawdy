@@ -47,7 +47,7 @@ export function CustomFogEffect() {
   const fogCenter = useRef(new THREE.Vector3());
 
   useFrame(({ clock }) => {
-    if (fogMaterialRef.current) {
+    if (fogMaterialRef.current && camera && camera.position) {
       // Update fog center to follow camera
       fogCenter.current.copy(camera.position);
       fogMaterialRef.current.uCenter = fogCenter.current;

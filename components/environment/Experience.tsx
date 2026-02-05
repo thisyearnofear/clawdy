@@ -111,7 +111,14 @@ function Experience({
         { id: 'agent-2', type: 'speedster', position: [-8, 3, -8], agentControlled: true }
       ]
       
-      setVehicles([...activeVehicles, ...agentVehicles])
+      setVehicles(prevVehicles => {
+        const newVehicles = [...activeVehicles, ...agentVehicles];
+        // Only update if vehicles actually changed to prevent unnecessary re-renders
+        if (JSON.stringify(prevVehicles) === JSON.stringify(newVehicles)) {
+          return prevVehicles;
+        }
+        return newVehicles;
+      });
     })
 
     return () => unsubscribe()
@@ -135,7 +142,14 @@ function Experience({
 
     const unsubscribe = agentProtocol.subscribeToVehicle((cmd) => {
       if (cmd.type) {
-        setVehicles(prev => prev.map(v => v.id === cmd.vehicleId ? { ...v, type: cmd.type! } : v))
+        setVehicles(prev => {
+          const updatedVehicles = prev.map(v => v.id === cmd.vehicleId ? { ...v, type: cmd.type! } : v);
+          // Only update if there's an actual change to prevent unnecessary re-renders
+          const hasChanged = prev.some((v, i) => 
+            i < updatedVehicles.length && v.type !== updatedVehicles[i].type
+          );
+          return hasChanged ? updatedVehicles : prev;
+        });
       }
     })
     return () => {
@@ -174,6 +188,8 @@ function Experience({
       lastSpawnTime.current = time
     }
 
+    // Only update world state if food items or vehicles have actually changed
+    // This prevents unnecessary updates that could cause performance issues
     agentProtocol.updateWorldState({
        food: foodItems.map(f => ({ 
          id: f.id, 
@@ -372,8 +388,9 @@ function PlayerVehicleIndicator({ position }: { position: [number, number, numbe
   
   useFrame((state) => {
     if (ringRef.current) {
-      ringRef.current.rotation.y = state.clock.getElapsedTime() * 2
-      ringRef.current.position.y = 0.1 + Math.sin(state.clock.getElapsedTime() * 3) * 0.05
+      const time = state.clock.getElapsedTime();
+      ringRef.current.rotation.y = time * 2;
+      ringRef.current.position.y = 0.1 + Math.sin(time * 3) * 0.05;
     }
   })
   

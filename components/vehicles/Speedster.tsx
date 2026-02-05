@@ -61,11 +61,11 @@ export function Speedster({
 
     if (agentControlled) {
       agentProtocol.updateWorldState({
-        vehicles: agentProtocol.getWorldState().vehicles.map(v => 
-          v.id === id ? { 
-            ...v, 
-            rotation: chassisRef.current!.rotation() as any, 
-            position: chassisRef.current!.translation() as any 
+        vehicles: agentProtocol.getWorldState().vehicles.map(v =>
+          v.id === id ? {
+            ...v,
+            rotation: chassisRef.current!.rotation() as any,
+            position: chassisRef.current!.translation() as any
           } : v
         )
       })
@@ -75,7 +75,7 @@ export function Speedster({
     const speed = Math.sqrt(velocity.x ** 2 + velocity.z ** 2)
     const rotation = chassisRef.current.rotation()
     const quaternion = new THREE.Quaternion(rotation.x, rotation.y, rotation.z, rotation.w)
-    
+
     const forwardDir = new THREE.Vector3(0, 0, -1).applyQuaternion(quaternion)
     const rightDir = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion)
 
@@ -93,20 +93,20 @@ export function Speedster({
     if (turn !== 0 && speed > 0.1) {
       const steerStrength = 50 * delta
       const steerForce = rightDir.clone().multiplyScalar(turn * steerStrength * Math.min(speed / 5, 1))
-      
+
       const frontOffset = forwardDir.clone().multiplyScalar(1.8)
       const steerPoint = {
         x: chassisRef.current.translation().x + frontOffset.x,
         y: chassisRef.current.translation().y,
         z: chassisRef.current.translation().z + frontOffset.z
       }
-      
+
       chassisRef.current.applyImpulseAtPoint(
         { x: steerForce.x, y: 0, z: steerForce.z },
         steerPoint,
         true
       )
-      
+
       const backOffset = forwardDir.clone().multiplyScalar(-1.8)
       const counterForce = rightDir.clone().multiplyScalar(-turn * steerStrength * 0.5)
       const counterPoint = {
@@ -114,7 +114,7 @@ export function Speedster({
         y: chassisRef.current.translation().y,
         z: chassisRef.current.translation().z + backOffset.z
       }
-      
+
       chassisRef.current.applyImpulseAtPoint(
         { x: counterForce.x, y: 0, z: counterForce.z },
         counterPoint,
@@ -134,13 +134,13 @@ export function Speedster({
     if (speed > 1) {
       const forwardComponent = velocity.x * forwardDir.x + velocity.z * forwardDir.z
       const rightComponent = velocity.x * rightDir.x + velocity.z * rightDir.z
-      
+
       const correctedVel = {
         x: forwardDir.x * forwardComponent + rightDir.x * rightComponent * 0.5,
         y: velocity.y,
         z: forwardDir.z * forwardComponent + rightDir.z * rightComponent * 0.5
       }
-      
+
       chassisRef.current.setLinvel(correctedVel, true)
     }
 
@@ -149,7 +149,7 @@ export function Speedster({
     const targetUp = new THREE.Vector3(0, 1, 0)
     const stabilizeAxis = new THREE.Vector3().crossVectors(currentUp, targetUp)
     const stabilizeAngle = currentUp.angleTo(targetUp)
-    
+
     if (stabilizeAngle > 0.05) {
       const stabilizeStrength = 80 * delta * stabilizeAngle
       chassisRef.current.applyTorqueImpulse({

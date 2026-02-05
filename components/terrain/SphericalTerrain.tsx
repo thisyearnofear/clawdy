@@ -461,11 +461,13 @@ export function IntegratedSphericalTerrain({
 
   // Handle camera following and terrain updates
   useFrame((state) => {
+    if (!playerPosition) return;
+
     const currentTime = state.clock.getElapsedTime();
     if (currentTime - lastUpdateRef.current < updateInterval) return;
-    
+
     lastUpdateRef.current = currentTime;
-    
+
     // In a spherical world, we may want to rotate the terrain based on player position
     // to keep the player at a "local up" position relative to the sphere
     if (groupRef.current) {
@@ -473,7 +475,7 @@ export function IntegratedSphericalTerrain({
       const playerSphereCoords = cartesianToSpherical(playerPosition);
       const rotationY = -playerSphereCoords.longitude;
       const rotationX = -playerSphereCoords.latitude;
-      
+
       groupRef.current.rotation.y = rotationY;
       groupRef.current.rotation.x = rotationX;
     }

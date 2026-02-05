@@ -59,7 +59,7 @@ export function Tank({
       forward = (keys.forward ? 1 : 0) - (keys.backward ? 1 : 0)
       turn = (keys.left ? 1 : 0) - (keys.right ? 1 : 0)
       brake = keys.jump
-      action = !!keys.jump 
+      action = !!keys.jump
     }
 
     // Apply burden
@@ -67,11 +67,11 @@ export function Tank({
 
     if (agentControlled) {
       agentProtocol.updateWorldState({
-        vehicles: agentProtocol.getWorldState().vehicles.map(v => 
-          v.id === id ? { 
-            ...v, 
-            rotation: chassisRef.current!.rotation() as any, 
-            position: chassisRef.current!.translation() as any 
+        vehicles: agentProtocol.getWorldState().vehicles.map(v =>
+          v.id === id ? {
+            ...v,
+            rotation: chassisRef.current!.rotation() as any,
+            position: chassisRef.current!.translation() as any
           } : v
         )
       })
@@ -82,7 +82,7 @@ export function Tank({
     const speed = Math.sqrt(velocity.x ** 2 + velocity.z ** 2)
     const rotation = chassisRef.current.rotation()
     const quaternion = new THREE.Quaternion(rotation.x, rotation.y, rotation.z, rotation.w)
-    
+
     const forwardDir = new THREE.Vector3(0, 0, -1).applyQuaternion(quaternion)
     const rightDir = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion)
 
@@ -114,14 +114,14 @@ export function Tank({
 
       const matrix = new THREE.Matrix4().makeRotationFromQuaternion(quaternion)
       const translation = new THREE.Vector3(...chassisRef.current.translation() as any)
-      
+
       const barrelOffset = new THREE.Vector3(0, 0.7, -2.2).applyMatrix4(matrix)
       const barrelPos = translation.clone().add(barrelOffset)
       const barrelDir = new THREE.Vector3(0, 0, -1).applyMatrix4(matrix)
-      
+
       const ray = new rapier.rapier.Ray(barrelPos, barrelDir)
       const hit = rapier.world.castRay(ray, 100, true)
-      
+
       if (hit) {
         agentProtocol.processCombatEvent({
           agentId: agentControlled ? id : 'Player',
@@ -146,7 +146,7 @@ export function Tank({
     const targetUp = new THREE.Vector3(0, 1, 0)
     const stabilizeAxis = new THREE.Vector3().crossVectors(currentUp, targetUp)
     const stabilizeAngle = currentUp.angleTo(targetUp)
-    
+
     if (stabilizeAngle > 0.05) {
       const stabilizeStrength = 150 * delta * stabilizeAngle // Tanks are heavier, need more force
       chassisRef.current.applyTorqueImpulse({
