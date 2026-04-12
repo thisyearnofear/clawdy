@@ -1,11 +1,39 @@
 'use client'
 
 import * as THREE from 'three'
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useKeyboardControls } from '@react-three/drei'
 import { RigidBody, RapierRigidBody, useRapier } from '@react-three/rapier'
 import { agentProtocol } from '../../services/AgentProtocol'
+import { MeshStandardNodeMaterial } from 'three/webgpu'
+import { 
+  sin, 
+  timerLocal, 
+  float, 
+  color,
+  mul,
+  add,
+  mix
+} from 'three/tsl'
+
+// TSL Laser Material
+const createLaserMaterial = () => {
+  const mat = new MeshStandardNodeMaterial({
+    transparent: true,
+    depthWrite: false,
+    emissive: new THREE.Color('#ff0000'),
+    emissiveIntensity: 5.0,
+  })
+
+  const time = timerLocal()
+  const pulse = add(mul(sin(mul(time, 20.0)), 0.5), 0.5)
+  
+  mat.opacityNode = mix(float(0.1), float(0.4), pulse)
+  mat.emissiveNode = mul(color('#ff0000'), add(pulse, 1.0))
+
+  return mat
+}
 
 export function Tank({ 
   id, 
@@ -22,12 +50,15 @@ export function Tank({
 }) {
   const chassisRef = useRef<RapierRigidBody>(null)
   const turretRef = useRef<THREE.Group>(null)
+  const laserRef = useRef<THREE.Mesh>(null)
   const rapier = useRapier()
   const [, getKeys] = useKeyboardControls()
   
   const [inputs, setInputs] = useState({ forward: 0, turn: 0, brake: false, aim: 0, action: false })
   const [muzzleFlash, setMuzzleFlash] = useState(false)
   const lastFireTime = useRef(0)
+
+  const laserMaterial = useMemo(() => createLaserMaterial(), [])
 
   useEffect(() => {
     if (onRef && chassisRef.current) {
@@ -62,65 +93,59 @@ export function Tank({
       action = !!keys.jump
     }
 
-    // Apply burden
-    chassisRef.current.setAdditionalMass(burdenFactor * 10, true)
+    // Always update world state for all vehicles if they move
+    const currentPos = chassisRef.current.translation()
+    const currentRot = chassisRef.current.rotation()
+    
+    agentProtocol.updateWorldState({
+      vehicles: agentProtocol.getWorldState().vehicles.map(v =>
+        v.id === id ? {
+          ...v,
+          rotation: [currentRot.x, currentRot.y, currentRot.z, currentRot.w],
+          position: [currentPos.x, currentPos.y, currentPos.z]
+        } : v
+      )
+    })
 
-    if (agentControlled) {
-      agentProtocol.updateWorldState({
-        vehicles: agentProtocol.getWorldState().vehicles.map(v =>
-          v.id === id ? {
-            ...v,
-            rotation: chassisRef.current!.rotation() as any,
-            position: chassisRef.current!.translation() as any
-          } : v
-        )
-      })
-    }
-
-    // Get physics data
+    // Physics
     const velocity = chassisRef.current.linvel()
-    const speed = Math.sqrt(velocity.x ** 2 + velocity.z ** 2)
     const rotation = chassisRef.current.rotation()
     const quaternion = new THREE.Quaternion(rotation.x, rotation.y, rotation.z, rotation.w)
-
     const forwardDir = new THREE.Vector3(0, 0, -1).applyQuaternion(quaternion)
-    const rightDir = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion)
 
-    // Tank is slower but more powerful
-    const maxSpeed = 25 * (0.5 + 0.5 * vitalityFactor)
-    const acceleration = 180 * delta
+    const maxSpeed = 15 * (0.5 + 0.5 * vitalityFactor)
+    const acceleration = 120 * delta
 
-    // Acceleration
     if (forward !== 0) {
-      const forwardSpeed = velocity.x * forwardDir.x + velocity.z * forwardDir.z
-      if (Math.abs(forwardSpeed) < maxSpeed || (forwardSpeed > 0 && forward < 0) || (forwardSpeed < 0 && forward > 0)) {
-        const force = forwardDir.clone().multiplyScalar(forward * acceleration)
-        chassisRef.current.applyImpulse({ x: force.x, y: 0, z: force.z }, true)
-      }
+      const force = forwardDir.clone().multiplyScalar(forward * acceleration)
+      chassisRef.current.applyImpulse({ x: force.x, y: 0, z: force.z }, true)
     }
 
-    // Tank steering (tracks - can turn in place)
     if (turn !== 0) {
-      // Tanks can rotate even when stationary
-      const turnRate = 1.5 * delta
+      const turnRate = 1.0 * delta
       chassisRef.current.applyTorqueImpulse({ x: 0, y: turn * turnRate, z: 0 }, true)
     }
 
-    // Firing Logic
+    // Firing & Laser
+    const matrix = new THREE.Matrix4().makeRotationFromQuaternion(quaternion)
+    const translation = new THREE.Vector3(...chassisRef.current.translation() as any)
+    const barrelOffset = new THREE.Vector3(0, 0.7, -2.2).applyMatrix4(matrix)
+    const barrelPos = translation.clone().add(barrelOffset)
+    const barrelDir = new THREE.Vector3(0, 0, -1).applyMatrix4(matrix)
+
+    const ray = new rapier.rapier.Ray(barrelPos, barrelDir)
+    const hit = rapier.world.castRay(ray, 100, true)
+
+    if (laserRef.current) {
+      const laserLen = hit ? hit.timeOfImpact : 100
+      laserRef.current.scale.y = laserLen
+      laserRef.current.position.set(0, 0, -1.2 - laserLen / 2)
+    }
+
     if (action && time - lastFireTime.current > 0.5) {
       setMuzzleFlash(true)
       setTimeout(() => setMuzzleFlash(false), 50)
       lastFireTime.current = time
-
-      const matrix = new THREE.Matrix4().makeRotationFromQuaternion(quaternion)
-      const translation = new THREE.Vector3(...chassisRef.current.translation() as any)
-
-      const barrelOffset = new THREE.Vector3(0, 0.7, -2.2).applyMatrix4(matrix)
-      const barrelPos = translation.clone().add(barrelOffset)
-      const barrelDir = new THREE.Vector3(0, 0, -1).applyMatrix4(matrix)
-
-      const ray = new rapier.rapier.Ray(barrelPos, barrelDir)
-      const hit = rapier.world.castRay(ray, 100, true)
 
       if (hit) {
         agentProtocol.processCombatEvent({
@@ -131,24 +156,14 @@ export function Tank({
       }
     }
 
-    // Brake
-    if (brake) {
-      chassisRef.current.setLinvel({ x: velocity.x * 0.9, y: velocity.y, z: velocity.z * 0.9 }, true)
-    }
-
-    // Natural friction
-    if (forward === 0 && !brake) {
-      chassisRef.current.setLinvel({ x: velocity.x * 0.97, y: velocity.y, z: velocity.z * 0.97 }, true)
-    }
-
-    // STABILIZER: Keep the tank upright
+    // Stabilizer
     const currentUp = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion)
     const targetUp = new THREE.Vector3(0, 1, 0)
     const stabilizeAxis = new THREE.Vector3().crossVectors(currentUp, targetUp)
     const stabilizeAngle = currentUp.angleTo(targetUp)
 
     if (stabilizeAngle > 0.05) {
-      const stabilizeStrength = 150 * delta * stabilizeAngle // Tanks are heavier, need more force
+      const stabilizeStrength = 100 * delta * stabilizeAngle
       chassisRef.current.applyTorqueImpulse({
         x: stabilizeAxis.x * stabilizeStrength,
         y: 0,
@@ -156,13 +171,8 @@ export function Tank({
       }, true)
     }
 
-    // Turret animation
-    if (turretRef.current) {
-      if (agentControlled) {
-        turretRef.current.rotation.y = THREE.MathUtils.lerp(turretRef.current.rotation.y, aim, 0.1)
-      } else {
-        turretRef.current.rotation.y = Math.sin(time * 0.5) * 0.5
-      }
+    if (turretRef.current && agentControlled) {
+      turretRef.current.rotation.y = THREE.MathUtils.lerp(turretRef.current.rotation.y, aim, 0.1)
     }
   })
 
@@ -175,9 +185,9 @@ export function Tank({
         mass={5}
         restitution={0.1}
         friction={1.0}
-        linearDamping={0.2}
+        linearDamping={0.5}
         angularDamping={0.9}
-        ccd={true}
+        userData={{ agentId: agentControlled ? id : undefined, isPlayer: !agentControlled }}
       >
         <mesh castShadow>
           <boxGeometry args={[2.5, 1, 4]} />
@@ -193,10 +203,17 @@ export function Tank({
             <cylinderGeometry args={[0.15, 0.15, 2, 8]} />
             <meshStandardMaterial color="#1e210b" />
           </mesh>
+          
+          {/* Laser Sight */}
+          <mesh ref={laserRef} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.02, 0.02, 1, 8]} />
+            <primitive object={laserMaterial} />
+          </mesh>
+
           {muzzleFlash && (
             <mesh position={[0, 0, -2.2]}>
-              <sphereGeometry args={[0.3, 8, 8]} />
-              <meshBasicMaterial color="#f1c40f" />
+              <sphereGeometry args={[0.4, 8, 8]} />
+              <meshBasicMaterial color="#f1c40f" transparent opacity={0.8} />
             </mesh>
           )}
         </group>

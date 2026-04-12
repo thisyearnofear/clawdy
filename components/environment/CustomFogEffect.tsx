@@ -1,64 +1,80 @@
-import { extend, useThree, useFrame } from "@react-three/fiber";
-import { shaderMaterial } from "@react-three/drei";
+'use client'
+
+import { useThree, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { useMemo, useRef } from "react";
-
-// Create a custom fog shader material
-const FogMaterial = shaderMaterial(
-  {
-    uCenter: new THREE.Vector3(0, 0, 0),
-    uRadius: 30.0,
-    uColor: new THREE.Color(0.878, 0.969, 1.0), // #e0f7fa in decimal
-    uTime: 0,
-  },
-  `
-    varying vec3 vWorldPos;
-    void main() {
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      vec4 worldPos = modelMatrix * vec4(position, 1.0);
-      vWorldPos = worldPos.xyz;
-    }
-  `,
-  `
-    uniform vec3 uCenter;
-    uniform float uRadius;
-    uniform vec3 uColor;
-    uniform float uTime;
-    varying vec3 vWorldPos;
-
-    void main() {
-      float dist = distance(vWorldPos, uCenter);
-      float alpha = smoothstep(uRadius - 5.0, uRadius + 5.0, dist);
-
-      // Add subtle animated fog effect
-      float noise = sin(vWorldPos.x * 0.05 + uTime * 0.5) * cos(vWorldPos.z * 0.05 + uTime * 0.5) * 0.05;
-      alpha += noise;
-
-      gl_FragColor = vec4(uColor, (1.0 - alpha) * 0.15);
-    }
-  `
-);
-
-extend({ FogMaterial });
+import { 
+  MeshStandardNodeMaterial, 
+  NodeMaterial 
+} from 'three/webgpu';
+import { 
+  vec3, 
+  distance, 
+  smoothstep, 
+  sin, 
+  cos, 
+  timerLocal, 
+  worldPosition, 
+  cameraPosition, 
+  float, 
+  color,
+  mul,
+  add,
+  sub
+} from 'three/tsl';
 
 export function CustomFogEffect() {
   const { camera } = useThree();
-  const fogMaterialRef = useRef<any>(null);
   const fogCenter = useRef(new THREE.Vector3());
 
-  useFrame(({ clock }) => {
-    if (fogMaterialRef.current && camera && camera.position) {
-      // Update fog center to follow camera
+  // Use useMemo to define the TSL material logic
+  const material = useMemo(() => {
+    const mat = new MeshStandardNodeMaterial({
+      transparent: true,
+      depthWrite: false,
+    });
+
+    // Fog Logic using TSL
+    const uRadius = float(30.0);
+    const uColor = color('#e0f7fa');
+    
+    // Calculate distance from world position to camera position
+    const dist = distance(worldPosition, cameraPosition);
+    
+    // Smoothstep for fog density
+    const alpha = smoothstep(sub(uRadius, 5.0), add(uRadius, 5.0), dist);
+
+    // Animated noise effect
+    const time = timerLocal();
+    const noiseX = mul(worldPosition.x, 0.05);
+    const noiseZ = mul(worldPosition.z, 0.05);
+    const animatedTime = mul(time, 0.5);
+    
+    const noise = mul(
+      mul(sin(add(noiseX, animatedTime)), cos(add(noiseZ, animatedTime))),
+      0.05
+    );
+    
+    // Final opacity calculation
+    const finalAlpha = mul(sub(1.0, add(alpha, noise)), 0.15);
+    
+    // Apply nodes to material
+    mat.colorNode = uColor;
+    mat.opacityNode = finalAlpha;
+
+    return mat;
+  }, []);
+
+  useFrame(() => {
+    if (camera && camera.position) {
       fogCenter.current.copy(camera.position);
-      fogMaterialRef.current.uCenter = fogCenter.current;
-      fogMaterialRef.current.uTime = clock.getElapsedTime();
     }
   });
 
   return (
     <mesh position={fogCenter.current}>
       <sphereGeometry args={[60, 32, 32]} />
-      <primitive object={new FogMaterial()} ref={fogMaterialRef} transparent depthWrite={false} />
+      <primitive object={material} />
     </mesh>
   );
 }

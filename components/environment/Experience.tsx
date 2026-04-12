@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
+import { PostProcessing } from 'three/webgpu'
+import { bloom } from 'three/tsl'
 import { CameraManager } from './CameraManager'
 import {
   PerspectiveCamera,
@@ -15,6 +17,7 @@ import {
 import { isMobile } from 'react-device-detect'
 import { Physics } from '@react-three/rapier'
 import { ProceduralFood, FoodStats } from './ProceduralFood'
+import { ComputeFoodManager } from './ComputeFoodManager'
 import { CloudManager, CloudConfig } from './CloudManager'
 import { Terrain } from '../terrain/Terrain'
 import { Vegetation } from '../vegetation/Vegetation'
@@ -51,9 +54,26 @@ function Experience({
   spawnRate?: number;
   playerVehicleType?: VehicleType
 }) {
+  const { gl } = useThree()
   const { address } = useAccount()
   const playerId = address || 'anonymous'
   
+  // WebGPU Post-Processing setup
+  const postProcessing = useMemo(() => {
+    // Only works if the renderer is WebGPURenderer
+    if ((gl as any).isWebGPURenderer) {
+      const pp = new PostProcessing(gl as any)
+      
+      // Add Bloom effect using TSL
+      // bloom(inputNode, threshold, strength, radius)
+      const sceneNode = pp.outputNode || pp.sceneNode
+      pp.outputNode = bloom(sceneNode, 0.5, 1.5, 0.5)
+      
+      return pp
+    }
+    return null
+  }, [gl])
+
   const [foodItems, setFoodItems] = useState<{ id: number; position: [number, number, number] }[]>([])
   const [vehicles, setVehicles] = useState<VehicleData[]>([])
   const [queueState, setQueueState] = useState<QueueState | null>(null)
@@ -172,24 +192,13 @@ function Experience({
   })
 
   useFrame((state) => {
-    const time = state.clock.getElapsedTime()
-    const interval = 1 / Math.max(0.1, spawnRate)
-    
-    if (time - lastSpawnTime.current > interval) {
-      const newFood = {
-        id: Date.now(),
-        position: [
-          (Math.random() - 0.5) * cloudConfig.bounds[0],
-          15,
-          (Math.random() - 0.5) * cloudConfig.bounds[2]
-        ] as [number, number, number]
-      }
-      setFoodItems((prev) => [...prev, newFood])
-      lastSpawnTime.current = time
+    // Render the post-processing pass
+    if (postProcessing) {
+      postProcessing.render()
     }
 
-    // Only update world state if food items or vehicles have actually changed
-    // This prevents unnecessary updates that could cause performance issues
+    // Only update world state if vehicles have actually changed
+    // CPU-side food spawning is now handled by ComputeFoodManager on the GPU
     agentProtocol.updateWorldState({
        food: foodItems.map(f => ({ 
          id: f.id, 
@@ -262,6 +271,7 @@ function Experience({
 
       <Physics gravity={[0, -9.81, 0]}>
         <CloudManager config={cloudConfig} />
+        <ComputeFoodManager spawnRate={spawnRate} bounds={cloudConfig.bounds} />
         <AgentVision />
 
         {foodItems.map((item) => (

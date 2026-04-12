@@ -14,11 +14,12 @@ import { WEATHER_AUCTION_ABI } from '../../services/abis/WeatherAuction'
 import { Leaderboard } from '../ui/Leaderboard'
 import { vehicleQueue, QueueState } from '../../services/VehicleQueue'
 import { useAccount } from 'wagmi'
+import WebGPURenderer from 'three/webgpu'
 
 export default function CloudScene() {
   const { address } = useAccount()
   const playerId = address || 'anonymous'
-  
+
   const [spawnRate, setSpawnRate] = useState(2)
   const [playerVehicle, setPlayerVehicle] = useState<VehicleType>('speedster')
   const [playerSession, setPlayerSession] = useState<AgentSession | null>(null)
@@ -28,12 +29,19 @@ export default function CloudScene() {
   const [queueState, setQueueState] = useState<QueueState | null>(null)
   const [now, setNow] = useState(0)
   const [isMounted, setIsMounted] = useState(false)
-  
+
   const [config, setConfig] = useState<CloudConfig>({
     seed: 1, segments: 40, volume: 10, growth: 4, opacity: 0.8,
     speed: 0.2, color: '#ffffff', secondaryColor: '#e0e0e0',
     bounds: [10, 2, 10], count: 5
   })
+
+  // Callback to initialize WebGPURenderer
+  const createRenderer = useCallback((canvas: HTMLCanvasElement) => {
+    return new WebGPURenderer({ canvas, antialias: true })
+  }, [])
+
+  useEffect(() => {
 
   useWatchContractEvent({
     address: WEATHER_AUCTION_ADDRESS as `0x${string}`,
@@ -99,7 +107,7 @@ export default function CloudScene() {
 
   return (
     <div className="w-full h-screen bg-gradient-to-b from-sky-400 to-sky-200 relative overflow-hidden">
-      <Canvas shadows>
+      <Canvas shadows gl={createRenderer}>
         <Suspense fallback={null}>
           <Experience cloudConfig={config} spawnRate={spawnRate} playerVehicleType={playerVehicle} />
         </Suspense>

@@ -1,22 +1,69 @@
 'use client'
 
-import { useRef, useMemo } from 'react'
+import { useRef, useMemo, forwardRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Line } from '@react-three/drei'
 import { agentProtocol } from '../../services/AgentProtocol'
 import * as THREE from 'three'
+import { MeshStandardNodeMaterial } from 'three/webgpu'
+import { 
+  sin, 
+  timerLocal, 
+  worldPosition, 
+  float, 
+  color,
+  mul,
+  add,
+  sub,
+  mix
+} from 'three/tsl'
+
+const VisionLine = forwardRef<THREE.Mesh, { agentColor: string }>(({ agentColor }, ref) => {
+  const material = useMemo(() => {
+    const mat = new MeshStandardNodeMaterial({
+      transparent: true,
+      depthWrite: false,
+      emissive: new THREE.Color(agentColor),
+      emissiveIntensity: 2.0,
+    })
+
+    // Pulsing Scanning Effect using TSL
+    const time = timerLocal()
+    const pulse = mul(add(sin(mul(time, 5.0)), 1.0), 0.5) // 0 to 1 pulse
+    
+    // Gradient along the line
+    const movingPulse = sin(sub(mul(worldPosition.y, 2.0), mul(time, 10.0)))
+    const pulseIntensity = add(mul(movingPulse, 0.5), 0.5)
+    
+    mat.emissiveNode = mix(color(agentColor), color('#ffffff'), mul(pulseIntensity, pulse))
+    mat.opacityNode = mix(float(0.2), float(0.8), pulseIntensity)
+
+    return mat
+  }, [agentColor])
+
+  return (
+    <mesh ref={ref} visible={false}>
+      <cylinderGeometry args={[0.05, 0.05, 1, 8]} />
+      <primitive object={material} />
+    </mesh>
+  )
+})
+
+VisionLine.displayName = 'VisionLine'
 
 export function AgentVision() {
-  const lineRefs = useRef<any[]>([])
-  
-  // We'll update the lines in useFrame to avoid React state overhead for per-frame physics tracking
+  const lineRefs = useRef<(THREE.Mesh | null)[]>([])
+  const agentSessions = useMemo(() => agentProtocol.getSessions().filter(s => s.agentId !== 'Player'), [])
+
   useFrame(() => {
     const sessions = agentProtocol.getSessions()
     const worldState = agentProtocol.getWorldState()
 
-    sessions.forEach((session, idx) => {
-      if (session.agentId === 'Player' || !session.targetFoodId) {
-        if (lineRefs.current[idx]) lineRefs.current[idx].visible = false
+    agentSessions.forEach((session, i) => {
+      const idx = sessions.findIndex(s => s.agentId === session.agentId)
+      const mesh = lineRefs.current[idx] // Match by actual session index if possible, or just use agent index
+      
+      if (!mesh || idx === -1 || !session.targetFoodId) {
+        if (mesh) mesh.visible = false
         return
       }
 
@@ -24,31 +71,35 @@ export function AgentVision() {
       const vehicle = worldState.vehicles.find(v => v.id === agentVehicleId)
       const food = worldState.food.find(f => f.id === session.targetFoodId)
 
-      if (vehicle && food && lineRefs.current[idx]) {
-        lineRefs.current[idx].visible = true
-        lineRefs.current[idx].setPoints([
-          new THREE.Vector3(...vehicle.position),
-          new THREE.Vector3(...food.position)
-        ])
-      } else if (lineRefs.current[idx]) {
-        lineRefs.current[idx].visible = false
+      if (vehicle && food) {
+        mesh.visible = true
+        
+        const start = new THREE.Vector3(...vehicle.position)
+        const end = new THREE.Vector3(...food.position)
+        const direction = new THREE.Vector3().subVectors(end, start)
+        const len = direction.length()
+        
+        // Position at midpoint
+        mesh.position.copy(start).add(direction.clone().multiplyScalar(0.5))
+        
+        // Scale to length
+        mesh.scale.set(1, len, 1)
+        
+        // Orient towards target
+        mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.clone().normalize())
+      } else {
+        mesh.visible = false
       }
     })
   })
 
-  const agentSessions = useMemo(() => agentProtocol.getSessions().filter(s => s.agentId !== 'Player'), [])
-
   return (
     <group>
       {agentSessions.map((session, i) => (
-        <Line
-          key={session.agentId}
-          ref={el => { lineRefs.current[i] = el }}
-          points={[[0, 0, 0], [0, 0, 0]]} // Placeholder
-          color={session.agentId === 'Agent-Zero' ? '#00d2ff' : '#a29bfe'}
-          lineWidth={2}
-          transparent
-          opacity={0.5}
+        <VisionLine 
+          key={session.agentId} 
+          agentColor={session.agentId === 'Agent-Zero' ? '#00d2ff' : '#a29bfe'}
+          ref={el => { lineRefs.current[i] = el }} 
         />
       ))}
     </group>
