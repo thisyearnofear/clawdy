@@ -1,7 +1,7 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { Suspense, useState, useEffect } from 'react'
+import { Suspense, useState, useEffect, useCallback } from 'react'
 import Experience from './Experience'
 import { Loader } from '@react-three/drei'
 import { CloudConfig } from './CloudManager'
@@ -40,8 +40,6 @@ export default function CloudScene() {
   const createRenderer = useCallback((canvas: HTMLCanvasElement) => {
     return new WebGPURenderer({ canvas, antialias: true })
   }, [])
-
-  useEffect(() => {
 
   useWatchContractEvent({
     address: WEATHER_AUCTION_ADDRESS as `0x${string}`,
