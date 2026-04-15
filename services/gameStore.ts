@@ -1,41 +1,46 @@
 import { create } from 'zustand'
-import type { AgentSession, WorldState, WeatherStatus } from './AgentProtocol'
+import type { AgentSession, WorldState, WeatherStatus, VehicleType } from './AgentProtocol'
+import type { CloudConfig } from '../components/environment/CloudManager'
 
-interface GameState {
-  // World State
-  worldState: WorldState
-  setWorldState: (state: Partial<WorldState>) => void
-  
-  // Agent Sessions
-  sessions: Map<string, AgentSession>
-  setSession: (agentId: string, session: Partial<AgentSession>) => void
-  removeSession: (agentId: string) => void
-  
-  // Weather
-  weatherStatus: WeatherStatus
-  setWeatherStatus: (status: WeatherStatus) => void
-  
-  // UI State
-  isLoading: boolean
-  setLoading: (loading: boolean) => void
-  error: string | null
-  setError: (error: string | null) => void
-  
-  // Transaction Queue
-  pendingTransactions: PendingTransaction[]
-  addTransaction: (tx: PendingTransaction) => void
-  updateTransaction: (id: string, update: Partial<PendingTransaction>) => void
-  removeTransaction: (id: string) => void
-  
-  // Player State
-  playerId: string
-  setPlayerId: (id: string) => void
-  
-  // Connection State
-  isConnected: boolean
-  setConnected: (connected: boolean) => void
+// ── Round Structure ──────────────────────────────────────────────────
+export interface RoundState {
+  roundNumber: number
+  startedAt: number
+  endsAt: number
+  durationMs: number
+  isActive: boolean
+  winner: string | null
+  goalOKB: number
 }
 
+const ROUND_DURATION_MS = 120_000 // 2 minutes per round
+const ROUND_GOAL_OKB = 0.05
+
+function createInitialRound(): RoundState {
+  const now = Date.now()
+  return {
+    roundNumber: 1,
+    startedAt: now,
+    endsAt: now + ROUND_DURATION_MS,
+    durationMs: ROUND_DURATION_MS,
+    isActive: true,
+    winner: null,
+    goalOKB: ROUND_GOAL_OKB,
+  }
+}
+
+// ── UI State ─────────────────────────────────────────────────────────
+export interface UIState {
+  isSidebarOpen: boolean
+  activeTab: 'weather' | 'vehicles' | 'stats'
+  showQuickControls: boolean
+  showOnboarding: boolean
+  bidWinPreset: string | null
+  isLoading: boolean
+  error: string | null
+}
+
+// ── Transactions ─────────────────────────────────────────────────────
 export interface PendingTransaction {
   id: string
   type: 'weather_bid' | 'vehicle_rent' | 'food_collect'
@@ -47,50 +52,159 @@ export interface PendingTransaction {
   error?: string
 }
 
-const initialWorldState: WorldState = {
-  timestamp: Date.now(),
-  vehicles: [],
-  food: [],
-  bounds: [0, 0, 0]
-}
+// ── Cloud / Weather Config ───────────────────────────────────────────
+type WeatherConfigUpdate = Partial<CloudConfig> & { spawnRate?: number }
 
-const initialWeatherStatus: WeatherStatus = {
-  agentId: '',
-  amount: 0,
-  expires: 0
-}
+// ── Unified Store ────────────────────────────────────────────────────
+export interface GameStore {
+  // World
+  worldState: WorldState
+  setWorldState: (state: Partial<WorldState>) => void
 
-export const useGameStore = create<GameState>((set) => ({
-  // World State
-  worldState: initialWorldState,
-  setWorldState: (state) => set((prev) => ({
-    worldState: { ...prev.worldState, ...state, timestamp: Date.now() }
-  })),
-  
   // Sessions
-  sessions: new Map(),
-  setSession: (agentId, updates) => set((prev) => {
-    const newSessions = new Map(prev.sessions)
-    const existing = newSessions.get(agentId)
-    newSessions.set(agentId, { ...existing, ...updates } as AgentSession)
-    return { sessions: newSessions }
-  }),
-  removeSession: (agentId) => set((prev) => {
-    const newSessions = new Map(prev.sessions)
-    newSessions.delete(agentId)
-    return { sessions: newSessions }
-  }),
-  
+  sessions: Record<string, AgentSession>
+  syncSessions: (sessions: AgentSession[]) => void
+  setSession: (agentId: string, session: Partial<AgentSession>) => void
+
   // Weather
-  weatherStatus: initialWeatherStatus,
-  setWeatherStatus: (status) => set({ weatherStatus: status }),
-  
+  weatherStatus: WeatherStatus
+  setWeatherStatus: (status: WeatherStatus) => void
+  cloudConfig: CloudConfig
+  setCloudConfig: (update: WeatherConfigUpdate) => void
+  spawnRate: number
+  setSpawnRate: (rate: number) => void
+
+  // Player
+  playerId: string
+  setPlayerId: (id: string) => void
+  playerVehicle: VehicleType
+  setPlayerVehicle: (v: VehicleType) => void
+
   // UI
-  isLoading: false,
-  setLoading: (isLoading) => set({ isLoading }),
-  error: null,
-  setError: (error) => set({ error }),
-  
+  ui: UIState
+  setUI: (update: Partial<UIState>) => void
+
+  // Round
+  round: RoundState
+  startNewRound: () => void
+  endRound: (winner: string | null) => void
+  tickRound: () => void
+
+  // Transactions
+  pendingTransactions: PendingTransaction[]
+  addTransaction: (tx: PendingTransaction) => void
+  updateTransaction: (id: string, update: Partial<PendingTransaction>) => void
+  removeTransaction: (id: string) => void
+
+  // Connection
+  isConnected: boolean
+  setConnected: (connected: boolean) => void
+}
+
+const defaultCloudConfig: CloudConfig = {
+  seed: 1, segments: 40, volume: 10, growth: 4, opacity: 0.8,
+  speed: 0.2, color: '#ffffff', secondaryColor: '#e0e0e0',
+  bounds: [10, 2, 10], count: 5,
+}
+
+export const useGameStore = create<GameStore>((set, get) => ({
+  // World
+  worldState: { timestamp: Date.now(), vehicles: [], food: [], bounds: [0, 0, 0] },
+  setWorldState: (state) => set((prev) => ({
+    worldState: { ...prev.worldState, ...state, timestamp: Date.now() },
+  })),
+
+  // Sessions
+  sessions: {},
+  syncSessions: (sessions) => {
+    const map: Record<string, AgentSession> = {}
+    sessions.forEach(s => { map[s.agentId] = s })
+    set({ sessions: map })
+  },
+  setSession: (agentId, updates) => set((prev) => {
+    const existing = prev.sessions[agentId]
+    if (!existing) return prev
+    return {
+      sessions: {
+        ...prev.sessions,
+        [agentId]: { ...existing, ...updates }
+      }
+    }
+  }),
+
+  // Weather
+  weatherStatus: { agentId: '', amount: 0, expires: 0 },
+  setWeatherStatus: (status) => set({ weatherStatus: status }),
+  cloudConfig: defaultCloudConfig,
+  setCloudConfig: (update) => set((prev) => ({
+    cloudConfig: { ...prev.cloudConfig, ...update, preset: update.preset ?? 'custom' },
+    spawnRate: update.spawnRate ?? prev.spawnRate,
+  })),
+  spawnRate: 2,
+  setSpawnRate: (spawnRate) => set({ spawnRate }),
+
+  // Player
+  playerId: 'anonymous',
+  setPlayerId: (playerId) => set({ playerId }),
+  playerVehicle: 'speedster',
+  setPlayerVehicle: (playerVehicle) => set({ playerVehicle }),
+
+  // UI
+  ui: {
+    isSidebarOpen: false,
+    activeTab: 'weather',
+    showQuickControls: false,
+    showOnboarding: false,
+    bidWinPreset: null,
+    isLoading: false,
+    error: null,
+  },
+  setUI: (update) => set((prev) => ({ ui: { ...prev.ui, ...update } })),
+
+  // Round
+  round: createInitialRound(),
+  startNewRound: () => set((prev) => {
+    const now = Date.now()
+    return {
+      round: {
+        roundNumber: prev.round.roundNumber + 1,
+        startedAt: now,
+        endsAt: now + ROUND_DURATION_MS,
+        durationMs: ROUND_DURATION_MS,
+        isActive: true,
+        winner: null,
+        goalOKB: ROUND_GOAL_OKB,
+      },
+    }
+  }),
+  endRound: (winner) => set((prev) => ({
+    round: { ...prev.round, isActive: false, winner },
+  })),
+  tickRound: () => {
+    const { round, sessions, endRound, startNewRound } = get()
+    if (!round.isActive) return
+    const now = Date.now()
+    // Check if someone hit the goal
+    for (const s of Object.values(sessions)) {
+      if (s.totalEarned >= round.goalOKB && round.winner === null) {
+        endRound(s.agentId)
+        setTimeout(() => startNewRound(), 5000) // 5s celebration then new round
+        return
+      }
+    }
+    // Check time expiry
+    if (now >= round.endsAt) {
+      // Find leader
+      let leader: string | null = null
+      let maxEarned = 0
+      for (const s of Object.values(sessions)) {
+        if (s.totalEarned > maxEarned) { maxEarned = s.totalEarned; leader = s.agentId }
+      }
+      endRound(leader)
+      setTimeout(() => startNewRound(), 5000)
+    }
+  },
+
   // Transactions
   pendingTransactions: [],
   addTransaction: (tx) => set((prev) => ({
@@ -104,11 +218,7 @@ export const useGameStore = create<GameState>((set) => ({
   removeTransaction: (id) => set((prev) => ({
     pendingTransactions: prev.pendingTransactions.filter((t) => t.id !== id)
   })),
-  
-  // Player
-  playerId: 'anonymous',
-  setPlayerId: (playerId) => set({ playerId }),
-  
+
   // Connection
   isConnected: false,
   setConnected: (isConnected) => set({ isConnected }),

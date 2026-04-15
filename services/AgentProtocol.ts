@@ -3,9 +3,10 @@ import { FoodStats } from '../components/environment/ProceduralFood'
 import { parseEther, encodeFunctionData } from 'viem'
 import { WEATHER_AUCTION_ABI } from './abis/WeatherAuction'
 import { VEHICLE_RENT_ABI } from './abis/VehicleRent'
-import { getAgentMission, getAgentRole, getAgentVehicleId } from './agents'
-import { evaluateAgentDecision, getSkillProviderInfo, SkillDecision } from './skillEngine'
-import type { ZgGameState } from './zgStorage'
+import { getSkillProviderInfo, SkillDecision } from './skillEngine'
+import { persistenceService } from './PersistenceService'
+import { economyEngine } from './EconomyEngine'
+import { useGameStore } from './gameStore'
 
 export type VehicleType = 'truck' | 'tank' | 'monster' | 'speedster'
 export type AgentRole = 'operator' | 'scout' | 'weather' | 'mobility' | 'treasury'
@@ -19,29 +20,13 @@ export const AGENT_ROLE_CONFIG: Record<
   AgentRole,
   { label: string; permissions: string[] }
 > = {
-  operator: {
-    label: 'Operator',
-    permissions: ['wallet_connect', 'autonomy_init', 'manual_override'],
-  },
-  scout: {
-    label: 'Scout Agent',
-    permissions: ['food_control', 'route_planning'],
-  },
-  weather: {
-    label: 'Weather Agent',
-    permissions: ['weather_control', 'bid_execution'],
-  },
-  mobility: {
-    label: 'Mobility Agent',
-    permissions: ['vehicle_control', 'session_extend'],
-  },
-  treasury: {
-    label: 'Treasury Agent',
-    permissions: ['spend_policy', 'budget_control'],
-  },
+  operator: { label: 'Operator', permissions: ['wallet_connect', 'autonomy_init', 'manual_override'] },
+  scout: { label: 'Scout Agent', permissions: ['food_control', 'route_planning'] },
+  weather: { label: 'Weather Agent', permissions: ['weather_control', 'bid_execution'] },
+  mobility: { label: 'Mobility Agent', permissions: ['vehicle_control', 'session_extend'] },
+  treasury: { label: 'Treasury Agent', permissions: ['spend_policy', 'budget_control'] },
 }
 
-// Environment-driven Addresses (Set these in .env.local)
 export const WEATHER_AUCTION_ADDRESS = (process.env.NEXT_PUBLIC_WEATHER_AUCTION_ADDRESS || '0x21F3E4482c045AF4a06c797FA5b742386f76956b') as `0x${string}`
 export const VEHICLE_RENT_ADDRESS = (process.env.NEXT_PUBLIC_VEHICLE_RENT_ADDRESS || '0xF39b1CD133e9f4D106b73084072526400D71e864') as `0x${string}`
 
@@ -150,8 +135,6 @@ export interface WeatherStatus {
 }
 
 class AgentProtocol {
-  private static readonly AUTO_BID_COOLDOWN_MS = 15000
-  private static readonly AUTO_RENT_COOLDOWN_MS = 20000
   private sessions: Map<string, AgentSession> = new Map()
   private weatherListeners: ((config: WeatherConfigUpdate) => void)[] = []
   private vehicleListeners: ((command: VehicleCommand) => void)[] = []
@@ -160,8 +143,6 @@ class AgentProtocol {
   private gameEventListeners: ((event: Record<string, unknown>) => void)[] = []
   private isPermissioned: boolean = false
   private decisionFeed: SkillDecision[] = []
-  private lastAutomatedBidAt: Map<string, number> = new Map()
-  private lastAutomatedRentAt: Map<string, number> = new Map()
   
   private worldState: WorldState = {
     timestamp: Date.now(),
@@ -174,118 +155,39 @@ class AgentProtocol {
 
   constructor() {
     this.authorizeAgent('Player', 3600000 * 24, 10.0)
-    // Auto-start AI agent sessions with autopilot enabled
     this.initAIAgents()
     this.initPublicApi()
-    // Restore persisted state if available
-    this.restorePersistedState()
-    // Periodically persist state
+    
+    // Sync with gameStore and restore persistence
     if (typeof window !== 'undefined') {
-      setInterval(() => this.persistState(), 5000)
+      persistenceService.restoreState((saved) => this.applyRestoredState(saved))
+      setInterval(() => {
+        persistenceService.persistState(this.sessions)
+        this.syncWithStore()
+      }, 5000)
     }
   }
 
   private async initAIAgents() {
-    const { getControllableAgents } = await import('./agents')
-    const agents = getControllableAgents()
-    for (const agent of agents) {
-      await this.authorizeAgent(agent.id, 3600000 * 24, 5.0)
-      const session = this.sessions.get(agent.id)
-      if (session) session.autoPilot = true
-    }
+    const { agentAI } = await import('./AgentAI')
+    await agentAI.initAIAgents()
   }
 
-  private zgSaveCounter = 0
-
-  private persistState() {
-    if (typeof window === 'undefined') return
-    try {
-      const sessions: Record<string, unknown> = {}
-      this.sessions.forEach((session, id) => {
-        sessions[id] = {
-          balance: session.balance,
-          totalEarned: session.totalEarned,
-          totalPaid: session.totalPaid,
-          collectedCount: session.collectedCount,
-          executedBidCount: session.executedBidCount,
-          executedRentCount: session.executedRentCount,
-          vitality: session.vitality,
-          burden: session.burden,
-          decisionCount: session.decisionCount,
-        }
-      })
-      localStorage.setItem('clawdy:sessions', JSON.stringify(sessions))
-      localStorage.setItem('clawdy:timestamp', Date.now().toString())
-
-      // Persist to 0G Storage every 6th cycle (~30s)
-      this.zgSaveCounter++
-      if (this.zgSaveCounter >= 6) {
-        this.zgSaveCounter = 0
-        this.persistTo0G(sessions)
-      }
-    } catch { /* localStorage may be unavailable */ }
-  }
-
-  private async persistTo0G(sessions: Record<string, unknown>) {
-    try {
-      const { zgSaveState } = await import('./zgStorage')
-      const state = {
-        version: 1,
-        timestamp: Date.now(),
-        sessions: sessions as ZgGameState['sessions'],
-      }
-      const result = await zgSaveState('global', state)
-      if (result.rootHash) {
-        console.log('[0G Storage] State persisted, rootHash:', result.rootHash)
-      } else if (result.error) {
-        console.warn('[0G Storage] Save failed:', result.error)
-      }
-    } catch { /* 0G unavailable, localStorage is primary */ }
-  }
-
-  private restorePersistedState() {
-    if (typeof window === 'undefined') return
-    // Try localStorage first (fast)
-    try {
-      const timestamp = localStorage.getItem('clawdy:timestamp')
-      if (timestamp && Date.now() - Number(timestamp) <= 3600000) {
-        const raw = localStorage.getItem('clawdy:sessions')
-        if (raw) {
-          this.applyRestoredState(JSON.parse(raw))
-          return
-        }
-      }
-    } catch { /* ignore */ }
-    // Fall back to 0G Storage (async)
-    this.restoreFrom0G()
+  private syncWithStore() {
+    const store = useGameStore.getState()
+    store.syncSessions(Array.from(this.sessions.values()))
+    store.setWorldState(this.worldState)
+    store.setWeatherStatus(this.currentWeatherBid)
   }
 
   private applyRestoredState(saved: Record<string, Record<string, number>>) {
     for (const [id, data] of Object.entries(saved)) {
       const session = this.sessions.get(id)
       if (session && data) {
-        session.balance = data.balance ?? session.balance
-        session.totalEarned = data.totalEarned ?? session.totalEarned
-        session.totalPaid = data.totalPaid ?? session.totalPaid
-        session.collectedCount = data.collectedCount ?? session.collectedCount
-        session.executedBidCount = data.executedBidCount ?? session.executedBidCount
-        session.executedRentCount = data.executedRentCount ?? session.executedRentCount
-        session.vitality = data.vitality ?? session.vitality
-        session.burden = data.burden ?? session.burden
-        session.decisionCount = data.decisionCount ?? session.decisionCount
+        Object.assign(session, data)
       }
     }
-  }
-
-  private async restoreFrom0G() {
-    try {
-      const { zgLoadState } = await import('./zgStorage')
-      const result = await zgLoadState('global')
-      if (result.state?.sessions) {
-        console.log('[0G Storage] Restored state from 0G, timestamp:', result.state.timestamp)
-        this.applyRestoredState(result.state.sessions as unknown as Record<string, Record<string, number>>)
-      }
-    } catch { /* 0G unavailable */ }
+    this.syncWithStore()
   }
 
   private initPublicApi() {
@@ -294,7 +196,7 @@ class AgentProtocol {
       getState: () => this.getWorldState(),
       getSessions: () => this.getSessions(),
       getDecisionFeed: () => this.getDecisionFeed(),
-      getSkillProvider: () => this.getSkillProvider(),
+      getSkillProvider: () => getSkillProviderInfo(),
       getChain: () => CHAIN_NAME,
       authorize: (id: string) => this.authorizeAgent(id, 3600000),
       logout: () => this.logout(),
@@ -313,7 +215,6 @@ class AgentProtocol {
   }
 
   async requestSessionPermissions(address: string) {
-    void address
     if (typeof window === 'undefined' || !window.ethereum) return
     try {
       const ethereum = window.ethereum
@@ -344,36 +245,21 @@ class AgentProtocol {
 
   async authorizeAgent(agentId: string, duration: number, initialBalance: number = 1.0): Promise<boolean> {
     if (this.sessions.has(agentId)) return true
-    const role = getAgentRole(agentId)
-    const config = AGENT_ROLE_CONFIG[role]
-    this.sessions.set(agentId, {
-      agentId,
-      role,
-      mission: getAgentMission(agentId),
-      vehicleId: getAgentVehicleId(agentId),
-      activeUntil: Date.now() + duration,
-      permissions: config.permissions,
-      totalPaid: 0,
-      totalEarned: 0,
-      vitality: 100,
-      burden: 0,
-      balance: initialBalance,
-      targetFoodId: null,
-      autoPilot: false,
-      decisionCount: 0,
-      executedBidCount: 0,
-      executedRentCount: 0,
-      collectedCount: 0,
-    })
+    const session = economyEngine.authorizeAgent(agentId, duration, initialBalance)
+    this.sessions.set(agentId, session)
+    this.syncWithStore()
     return true
   }
 
   toggleAutoPilot(agentId: string) {
     const session = this.sessions.get(agentId)
-    if (session) session.autoPilot = !session.autoPilot
+    if (session) {
+      session.autoPilot = !session.autoPilot
+      this.syncWithStore()
+    }
   }
 
-  private publishDecision(decision: SkillDecision) {
+  publishDecision(decision: SkillDecision) {
     const session = this.sessions.get(decision.agentId)
     if (session) {
       session.decisionCount += 1
@@ -381,200 +267,29 @@ class AgentProtocol {
     }
 
     const previous = this.decisionFeed[0]
-    if (
-      previous &&
-      previous.agentId === decision.agentId &&
-      previous.title === decision.title &&
-      previous.summary === decision.summary
-    ) {
-      return
-    }
+    if (previous && previous.agentId === decision.agentId && previous.title === decision.title && previous.summary === decision.summary) return
 
     this.decisionFeed = [decision, ...this.decisionFeed].slice(0, 12)
     this.decisionListeners.forEach((listener) => listener(decision))
+    this.syncWithStore()
   }
 
-  private async maybeExecuteAutomatedBid(session: AgentSession, decision: SkillDecision) {
-    if (!session.autoPilot || decision.action !== 'bid') return
-
-    const recommendedBid = decision.metadata?.recommendedBid
-    if (!recommendedBid || recommendedBid <= 0) return
-
-    const now = Date.now()
-    const lastAttemptAt = this.lastAutomatedBidAt.get(session.agentId) || 0
-    if (now - lastAttemptAt < AgentProtocol.AUTO_BID_COOLDOWN_MS) return
-
-    if (session.balance < recommendedBid) {
-      this.lastAutomatedBidAt.set(session.agentId, now)
-      this.publishDecision({
-        ...decision,
-        title: 'Treasury blocked the bid',
-        summary: `Recommended spend ${recommendedBid.toFixed(3)} ETH exceeds available balance.`,
-        createdAt: now,
-      })
-      return
-    }
-
-    this.lastAutomatedBidAt.set(session.agentId, now)
-    const success = await this.processCommand({
-      agentId: session.agentId,
-      timestamp: now,
-      bid: recommendedBid,
-      config: { preset: decision.metadata?.preset || 'sunset' },
-      duration: 60000,
-    })
-
-    this.publishDecision({
-      ...decision,
-      title: success ? 'Weather agent executed the bid' : 'Weather agent skipped execution',
-      summary: success
-        ? `Autopilot submitted a ${recommendedBid.toFixed(3)} ETH weather action via ${decision.provider}.`
-        : 'The bid no longer cleared policy or market conditions at execution time.',
-      createdAt: Date.now(),
-    })
-
-    if (success) {
-      session.executedBidCount += 1
-      session.lastSkillProvider = decision.provider
-    }
-  }
-
-  private async maybeExecuteAutomatedRent(session: AgentSession, decision: SkillDecision) {
-    if (!session.autoPilot || decision.action !== 'rent') return
-
-    const vehicle = this.worldState.vehicles.find((entry) => entry.id === session.vehicleId)
-    if (!vehicle || vehicle.isRented) return
-
-    const minutes = 5
-    const estimatedCost = 0.001 * minutes
-    const now = Date.now()
-    const lastAttemptAt = this.lastAutomatedRentAt.get(session.agentId) || 0
-    if (now - lastAttemptAt < AgentProtocol.AUTO_RENT_COOLDOWN_MS) return
-
-    if (session.balance < estimatedCost) {
-      this.lastAutomatedRentAt.set(session.agentId, now)
-      this.publishDecision({
-        ...decision,
-        title: 'Treasury blocked the lease',
-        summary: `Vehicle lease requires ${estimatedCost.toFixed(3)} ETH and available balance is lower.`,
-        createdAt: now,
-      })
-      return
-    }
-
-    this.lastAutomatedRentAt.set(session.agentId, now)
-    const recommendedType = decision.metadata?.recommendedVehicle as VehicleType | undefined
-    const vehicleType = vehicle.type as VehicleType
-    const requestedType = recommendedType || vehicleType
-    const success = await this.rentVehicleOnChain(session.agentId, session.vehicleId, requestedType, minutes)
-
-    if (success) {
-      session.executedRentCount += 1
-      session.lastSkillProvider = decision.provider
-      await this.processVehicleCommand({
-        agentId: session.agentId,
-        vehicleId: session.vehicleId,
-        type: requestedType,
-        inputs: { forward: 0, turn: 0, brake: true },
-      })
-    }
-
-    this.publishDecision({
-      ...decision,
-      title: success ? 'Mobility agent executed the lease' : 'Mobility agent skipped execution',
-      summary: success
-        ? `Autopilot leased ${session.vehicleId} as a ${requestedType} via ${decision.provider}.`
-        : 'The mobility lease could not be completed at execution time.',
-      createdAt: Date.now(),
-    })
-  }
-
-  private lastAgentTickAt = 0
-  private static readonly AGENT_TICK_INTERVAL = 250 // Run agent AI at ~4 Hz
+  private stateListeners: ((state: WorldState) => void)[] = []
 
   updateWorldState(update: Partial<WorldState>) {
     this.worldState = { ...this.worldState, ...update, timestamp: Date.now() }
+    
+    this.stateListeners.forEach(l => l(this.worldState))
+
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('clawdy:state', { detail: this.worldState }))
     }
-    
-    // Throttle heavy agent AI to avoid per-frame overhead
-    const now = Date.now()
-    if (now - this.lastAgentTickAt < AgentProtocol.AGENT_TICK_INTERVAL) return
-    this.lastAgentTickAt = now
+    this.syncWithStore()
+  }
 
-    this.sessions.forEach(session => {
-      if (session.agentId === 'Player') return
-      const agentVehicleId = session.vehicleId
-      const agentVehicle = this.worldState.vehicles.find(v => v.id === agentVehicleId)
-      
-      if (agentVehicle && this.worldState.food.length > 0) {
-        let minDist = Infinity
-        let nearestId: number | null = null
-        this.worldState.food.forEach(f => {
-          const dx = f.position[0] - agentVehicle.position[0]
-          const dz = f.position[2] - agentVehicle.position[2]
-          const dist = dx * dx + dz * dz
-          if (dist < minDist) { minDist = dist; nearestId = f.id }
-        })
-        session.targetFoodId = nearestId
-        const decision = evaluateAgentDecision({
-          session,
-          worldState: this.worldState,
-          currentWeatherBid: this.currentWeatherBid,
-        })
-        this.publishDecision(
-          decision
-        )
-        void this.maybeExecuteAutomatedBid(session, decision)
-        void this.maybeExecuteAutomatedRent(session, decision)
-
-        if (session.autoPilot && nearestId !== null) {
-          const target = this.worldState.food.find(f => f.id === nearestId)!
-          const dx = target.position[0] - agentVehicle.position[0]
-          const dz = target.position[2] - agentVehicle.position[2]
-          const dist = Math.sqrt(dx * dx + dz * dz)
-          const angleToTarget = Math.atan2(dx, -dz) // atan2(x, -z) for Three.js forward=-Z
-          const [, qy, , qw] = agentVehicle.rotation
-          const currentYaw = Math.atan2(2 * (qw * qy), 1 - 2 * (qy * qy))
-          let diff = angleToTarget - currentYaw
-          while (diff > Math.PI) diff -= 2 * Math.PI
-          while (diff < -Math.PI) diff += 2 * Math.PI
-          const turnStrength = Math.max(-1, Math.min(1, diff * 2))
-          const forwardStrength = dist > 2 ? 0.8 : 0.3
-          this.processVehicleCommand({
-            agentId: session.agentId,
-            vehicleId: agentVehicleId,
-            inputs: { forward: forwardStrength, turn: turnStrength, brake: false }
-          })
-        } else if (session.autoPilot) {
-          const wanderTurn = Math.sin(now * 0.001 + session.agentId.charCodeAt(6) * 10) * 0.5
-          this.processVehicleCommand({
-            agentId: session.agentId,
-            vehicleId: agentVehicleId,
-            inputs: { forward: 0.4, turn: wanderTurn, brake: false }
-          })
-        }
-      } else if (session.autoPilot) {
-        // No food visible — wander
-        const wanderTurn = Math.sin(now * 0.001 + session.agentId.charCodeAt(6) * 10) * 0.5
-        this.processVehicleCommand({
-          agentId: session.agentId,
-          vehicleId: session.vehicleId,
-          inputs: { forward: 0.4, turn: wanderTurn, brake: false }
-        })
-        session.targetFoodId = null
-      } else {
-        session.targetFoodId = null
-        this.publishDecision(
-          evaluateAgentDecision({
-            session,
-            worldState: this.worldState,
-            currentWeatherBid: this.currentWeatherBid,
-          })
-        )
-      }
-    })
+  subscribeToState(callback: (state: WorldState) => void) {
+    this.stateListeners.push(callback)
+    return () => { this.stateListeners = this.stateListeners.filter(l => l !== callback) }
   }
 
   getWorldState(): WorldState { return this.worldState }
@@ -582,18 +297,11 @@ class AgentProtocol {
   async collectFood(agentId: string, stats: FoodStats) {
     const session = this.sessions.get(agentId)
     if (!session) return
-    session.collectedCount += 1
-    const earned = stats.nutrition === 'healthy' ? 0.002 : 0.0005
-    if (stats.nutrition === 'healthy') {
-      session.vitality = Math.min(100, session.vitality + 10)
-      session.burden = Math.max(0, session.burden - 5)
-    } else {
-      session.burden = Math.min(100, session.burden + 15)
-      session.vitality = Math.max(0, session.vitality - 5)
-    }
-    session.balance += earned
-    session.totalEarned += earned
+    
+    const { earned } = economyEngine.collectFood(session, stats)
+    
     this.gameEventListeners.forEach(l => l({ type: 'food-collected', agentId, amount: earned }))
+    
     // Milestone check
     const milestones = [1, 5, 10]
     for (const m of milestones) {
@@ -601,16 +309,13 @@ class AgentProtocol {
         this.gameEventListeners.forEach(l => l({ type: 'milestone', message: `${agentId.slice(0,8)} reached ${m} OKB!` }))
       }
     }
+    this.syncWithStore()
   }
 
   async rentVehicleOnChain(agentId: string, vehicleId: string, type: VehicleType, minutes: number) {
-    const session = this.sessions.get(agentId)
-    if (!session) return false
-    if (this.isPermissioned) {
+    if (this.isPermissioned && typeof window !== 'undefined' && window.ethereum) {
       try {
-        const ethereum = window.ethereum
-        // @ts-expect-error wallet extension method is provider-specific
-        await ethereum.request({
+        await window.ethereum.request({
           method: 'wallet_sendCalls',
           params: [{
             calls: [{
@@ -633,11 +338,10 @@ class AgentProtocol {
   async processCommand(command: AgentCommand): Promise<boolean> {
     const session = this.sessions.get(command.agentId)
     if (!session) return false
-    if (this.isPermissioned) {
+    
+    if (this.isPermissioned && typeof window !== 'undefined' && window.ethereum) {
       try {
-        const ethereum = window.ethereum
-        // @ts-expect-error wallet extension method is provider-specific
-        await ethereum.request({
+        await window.ethereum.request({
           method: 'wallet_sendCalls',
           params: [{
             calls: [{
@@ -653,13 +357,17 @@ class AgentProtocol {
         })
       } catch {}
     }
+
     const now = Date.now()
     if (now < this.currentWeatherBid.expires && command.bid <= this.currentWeatherBid.amount) return false
+    
     session.balance -= command.bid
     session.totalPaid += command.bid
     this.currentWeatherBid = { agentId: command.agentId, amount: command.bid, expires: now + command.duration }
+    
     this.notifyWeatherListeners(command.config)
     this.gameEventListeners.forEach(l => l({ type: 'bid-won', agentId: command.agentId, preset: command.config.preset || 'custom' }))
+    this.syncWithStore()
     return true
   }
 
@@ -698,9 +406,7 @@ class AgentProtocol {
 
   subscribeToDecisions(callback: (decision: SkillDecision) => void) {
     this.decisionListeners.push(callback)
-    return () => {
-      this.decisionListeners = this.decisionListeners.filter((listener) => listener !== callback)
-    }
+    return () => { this.decisionListeners = this.decisionListeners.filter((listener) => listener !== callback) }
   }
 
   subscribeToEvents(callback: (event: Record<string, unknown>) => void) {
@@ -714,10 +420,6 @@ class AgentProtocol {
   
   getSessions() { return Array.from(this.sessions.values()) }
   getSession(id: string) { return this.sessions.get(id) }
-  getActiveSession(id?: string) {
-    if (id) return this.sessions.get(id)
-    return this.getSessions()[0]
-  }
   getWeatherStatus() { return this.currentWeatherBid }
   getDecisionFeed() { return this.decisionFeed }
   getSkillProvider() { return getSkillProviderInfo() }

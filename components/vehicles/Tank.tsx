@@ -3,10 +3,21 @@
 import * as THREE from 'three'
 import { useRef, useState, useEffect, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { useKeyboardControls } from '@react-three/drei'
 import { RigidBody, useRapier } from '@react-three/rapier'
 import type { RapierRigidBody } from '@react-three/rapier'
 import { agentProtocol } from '../../services/AgentProtocol'
+import { useVehiclePhysics, VehicleStats } from '../../hooks/useVehiclePhysics'
+
+const TANK_STATS: VehicleStats = {
+  maxSpeed: 30,
+  acceleration: 120,
+  steerStrength: 1.0,
+  mass: 5,
+  lateralGrip: 1.0,
+  frontOffset: 0,
+  backOffset: 0,
+  steeringMode: 'tank'
+}
 
 function TankArmorPulse() {
   const meshRef = useRef<THREE.Mesh>(null)
@@ -38,18 +49,13 @@ function TankArmorPulse() {
   )
 }
 
-// Standard Material for Tank
-const createLaserMaterial = () => {
-  const mat = new THREE.MeshStandardMaterial({
-    transparent: true,
-    depthWrite: false,
-    emissive: new THREE.Color('#ff0000'),
-    emissiveIntensity: 2.0,
-    color: '#ff0000',
-  })
-
-  return mat
-}
+const createLaserMaterial = () => new THREE.MeshStandardMaterial({
+  transparent: true,
+  depthWrite: false,
+  emissive: new THREE.Color('#ff0000'),
+  emissiveIntensity: 2.0,
+  color: '#ff0000',
+})
 
 export function Tank({ 
   id, 
@@ -68,12 +74,11 @@ export function Tank({
   const turretRef = useRef<THREE.Group>(null)
   const laserRef = useRef<THREE.Mesh>(null)
   const rapier = useRapier()
-  const [, getKeys] = useKeyboardControls()
   
-  const [inputs, setInputs] = useState({ forward: 0, turn: 0, brake: false, aim: 0, action: false })
+  const { inputs } = useVehiclePhysics(id, chassisRef, TANK_STATS, agentControlled, playerControlled)
+  
   const [muzzleFlash, setMuzzleFlash] = useState(false)
   const lastFireTime = useRef(0)
-
   const laserMaterial = useMemo(() => createLaserMaterial(), [])
 
   useEffect(() => {
@@ -82,71 +87,16 @@ export function Tank({
     }
   }, [onRef])
 
-  useEffect(() => {
-    if (agentControlled) {
-      const unsubscribe = agentProtocol.subscribeToVehicle((cmd) => {
-        if (cmd.vehicleId === id) {
-          setInputs({
-            forward: cmd.inputs.forward ?? 0,
-            turn: cmd.inputs.turn ?? 0,
-            brake: cmd.inputs.brake ?? false,
-            aim: cmd.inputs.aim ?? 0,
-            action: cmd.inputs.action ?? false,
-          })
-        }
-      })
-      return unsubscribe
-    }
-  }, [agentControlled, id])
-
-  useFrame((state, delta) => {
+  useFrame((state) => {
     if (!chassisRef.current) return
     const time = state.clock.getElapsedTime()
+    const { action, aim } = inputs
 
-    let { forward, turn, action, brake, aim } = inputs
-    type Keys = Record<'forward' | 'backward' | 'left' | 'right' | 'jump', boolean>
+    // Physics (Acceleration and Steering) are handled by useVehiclePhysics
 
-    if (!agentControlled && playerControlled) {
-      const keys = getKeys() as Keys
-      forward = (keys.forward ? 1 : 0) - (keys.backward ? 1 : 0)
-      turn = (keys.left ? 1 : 0) - (keys.right ? 1 : 0)
-      brake = keys.jump
-      action = !!keys.jump
-      aim = 0
-    }
-
-    // Always update world state for all vehicles if they move
-    const currentPos = chassisRef.current.translation()
-    const currentRot = chassisRef.current.rotation()
-    
-    agentProtocol.updateWorldState({
-      vehicles: agentProtocol.getWorldState().vehicles.map(v =>
-        v.id === id ? {
-          ...v,
-          rotation: [currentRot.x, currentRot.y, currentRot.z, currentRot.w],
-          position: [currentPos.x, currentPos.y, currentPos.z]
-        } : v
-      )
-    })
-
-    // Physics
+    // Turret & Combat Logic
     const rotation = chassisRef.current.rotation()
     const quaternion = new THREE.Quaternion(rotation.x, rotation.y, rotation.z, rotation.w)
-    const forwardDir = new THREE.Vector3(0, 0, -1).applyQuaternion(quaternion)
-
-    const acceleration = 120 * delta
-
-    if (forward !== 0) {
-      const force = forwardDir.clone().multiplyScalar(forward * acceleration)
-      chassisRef.current.applyImpulse({ x: force.x, y: 0, z: force.z }, true)
-    }
-
-    if (turn !== 0) {
-      const turnRate = 1.0 * delta
-      chassisRef.current.applyTorqueImpulse({ x: 0, y: turn * turnRate, z: 0 }, true)
-    }
-
-    // Firing & Laser
     const matrix = new THREE.Matrix4().makeRotationFromQuaternion(quaternion)
     const chassisTranslation = chassisRef.current.translation()
     const translation = new THREE.Vector3(chassisTranslation.x, chassisTranslation.y, chassisTranslation.z)
@@ -177,21 +127,6 @@ export function Tank({
       }
     }
 
-    // Stabilizer
-    const currentUp = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion)
-    const targetUp = new THREE.Vector3(0, 1, 0)
-    const stabilizeAxis = new THREE.Vector3().crossVectors(currentUp, targetUp)
-    const stabilizeAngle = currentUp.angleTo(targetUp)
-
-    if (stabilizeAngle > 0.05) {
-      const stabilizeStrength = 100 * delta * stabilizeAngle
-      chassisRef.current.applyTorqueImpulse({
-        x: stabilizeAxis.x * stabilizeStrength,
-        y: 0,
-        z: stabilizeAxis.z * stabilizeStrength
-      }, true)
-    }
-
     if (turretRef.current && agentControlled) {
       turretRef.current.rotation.y = THREE.MathUtils.lerp(turretRef.current.rotation.y, aim, 0.1)
     }
@@ -203,7 +138,7 @@ export function Tank({
         ref={chassisRef} 
         position={position} 
         colliders="cuboid" 
-        mass={5}
+        mass={TANK_STATS.mass}
         restitution={0.1}
         friction={1.0}
         linearDamping={0.5}
@@ -225,10 +160,8 @@ export function Tank({
             <meshStandardMaterial color="#1e210b" />
           </mesh>
           
-          {/* Armor energy pulse */}
           <TankArmorPulse />
 
-          {/* Laser Sight */}
           <mesh ref={laserRef} rotation={[Math.PI / 2, 0, 0]}>
             <cylinderGeometry args={[0.02, 0.02, 1, 8]} />
             <primitive object={laserMaterial} />
