@@ -12,8 +12,8 @@ export const supportedChains = [xLayer, xLayerTestnet] as const
 export const config = createConfig({
   chains: supportedChains,
   transports: {
-    [xLayer.id]: http(),
-    [xLayerTestnet.id]: http(),
+    [xLayer.id]: http('https://rpc.xlayer.tech'),
+    [xLayerTestnet.id]: http('https://xlayertestrpc.okx.com'),
   },
   connectors: [
     injected({ target: 'metaMask' }),
