@@ -156,6 +156,7 @@ class AgentProtocol {
   private vehicleListeners: ((command: VehicleCommand) => void)[] = []
   private combatListeners: ((event: CombatNotification) => void)[] = []
   private decisionListeners: ((decision: SkillDecision) => void)[] = []
+  private gameEventListeners: ((event: Record<string, unknown>) => void)[] = []
   private isPermissioned: boolean = false
   private decisionFeed: SkillDecision[] = []
   private lastAutomatedBidAt: Map<string, number> = new Map()
@@ -440,16 +441,23 @@ class AgentProtocol {
     const session = this.sessions.get(agentId)
     if (!session) return
     session.collectedCount += 1
+    const earned = stats.nutrition === 'healthy' ? 0.002 : 0.0005
     if (stats.nutrition === 'healthy') {
       session.vitality = Math.min(100, session.vitality + 10)
       session.burden = Math.max(0, session.burden - 5)
-      session.balance += 0.002
-      session.totalEarned += 0.002
     } else {
       session.burden = Math.min(100, session.burden + 15)
       session.vitality = Math.max(0, session.vitality - 5)
-      session.balance += 0.0005
-      session.totalEarned += 0.0005
+    }
+    session.balance += earned
+    session.totalEarned += earned
+    this.gameEventListeners.forEach(l => l({ type: 'food-collected', agentId, amount: earned }))
+    // Milestone check
+    const milestones = [1, 5, 10]
+    for (const m of milestones) {
+      if (session.totalEarned >= m && session.totalEarned - earned < m) {
+        this.gameEventListeners.forEach(l => l({ type: 'milestone', message: `${agentId.slice(0,8)} reached Ξ${m}!` }))
+      }
     }
   }
 
@@ -509,6 +517,7 @@ class AgentProtocol {
     session.totalPaid += command.bid
     this.currentWeatherBid = { agentId: command.agentId, amount: command.bid, expires: now + command.duration }
     this.notifyWeatherListeners(command.config)
+    this.gameEventListeners.forEach(l => l({ type: 'bid-won', agentId: command.agentId, preset: command.config.preset || 'custom' }))
     return true
   }
 
@@ -550,6 +559,11 @@ class AgentProtocol {
     return () => {
       this.decisionListeners = this.decisionListeners.filter((listener) => listener !== callback)
     }
+  }
+
+  subscribeToEvents(callback: (event: Record<string, unknown>) => void) {
+    this.gameEventListeners.push(callback)
+    return () => { this.gameEventListeners = this.gameEventListeners.filter(l => l !== callback) }
   }
 
   private notifyWeatherListeners(config: WeatherConfigUpdate) { this.weatherListeners.forEach(l => l(config)) }

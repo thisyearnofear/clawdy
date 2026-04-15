@@ -15,6 +15,9 @@ import { POLL_INTERVAL } from '../../services/web3Config'
 import { Leaderboard } from '../ui/Leaderboard'
 import { vehicleQueue, QueueState } from '../../services/VehicleQueue'
 import { useAccount } from 'wagmi'
+import { OnboardingOverlay } from '../ui/OnboardingOverlay'
+import { GameToasts, BidWinCelebration, emitToast } from '../ui/GameToasts'
+import { WinConditionBar } from '../ui/WinConditionBar'
 
 export default function CloudScene() {
   const { address } = useAccount()
@@ -29,6 +32,8 @@ export default function CloudScene() {
   const [queueState, setQueueState] = useState<QueueState | null>(null)
   const [now, setNow] = useState(() => Date.now())
   const [isMounted, setIsMounted] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(false)
+  const [bidWinPreset, setBidWinPreset] = useState<string | null>(null)
 
   const [config, setConfig] = useState<CloudConfig>({
     seed: 1, segments: 40, volume: 10, growth: 4, opacity: 0.8,
@@ -56,6 +61,10 @@ export default function CloudScene() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true)
+    // Show onboarding on first visit
+    if (!localStorage.getItem('clawdy-onboarded')) {
+      setShowOnboarding(true)
+    }
     const interval = setInterval(() => {
       setPlayerSession(agentProtocol.getSession('Player') || null)
       setNow(Date.now())
@@ -64,6 +73,18 @@ export default function CloudScene() {
     const unsubscribe = agentProtocol.subscribeToWeather((newConfig) => {
       if (newConfig.spawnRate !== undefined) setSpawnRate(newConfig.spawnRate)
       setConfig(prev => ({ ...prev, ...newConfig, preset: 'custom' }))
+    })
+
+    // Listen for bid wins from AgentProtocol
+    const unsubscribeBid = agentProtocol.subscribeToEvents?.((event) => {
+      if (event.type === 'bid-won') {
+        setBidWinPreset(event.preset as string)
+        emitToast('bid-win', 'Weather Auction Won!', `${event.preset} weather activated`)
+      } else if (event.type === 'food-collected') {
+        emitToast('collect', `+${(event.amount as number ?? 0.1).toFixed(2)} Ξ collected`, event.agentId as string)
+      } else if (event.type === 'milestone') {
+        emitToast('milestone', event.message as string)
+      }
     })
 
     // Subscribe to vehicle queue
@@ -87,6 +108,7 @@ export default function CloudScene() {
       clearInterval(interval)
       unsubscribe()
       unsubscribeQueue()
+      unsubscribeBid?.()
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [])
@@ -109,6 +131,25 @@ export default function CloudScene() {
         </Suspense>
       </Canvas>
       <Loader />
+
+      {/* Onboarding */}
+      {showOnboarding && (
+        <OnboardingOverlay onDone={() => {
+          setShowOnboarding(false)
+          localStorage.setItem('clawdy-onboarded', '1')
+        }} />
+      )}
+
+      {/* Bid win celebration */}
+      {bidWinPreset && (
+        <BidWinCelebration preset={bidWinPreset} onDone={() => setBidWinPreset(null)} />
+      )}
+
+      {/* Toast notifications */}
+      <GameToasts />
+
+      {/* Win condition bar */}
+      {isMounted && <WinConditionBar playerId={playerId} />}
 
       {/* --- MINIMAL HUD LAYER --- */}
       
