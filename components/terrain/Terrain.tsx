@@ -362,11 +362,6 @@ export function Terrain({
             chunk.deformer.setBasePositions(chunk.geometry.attributes.position.array as Float32Array)
           }
 
-          const mesh = meshRefs.current[index]
-          if (mesh) {
-            mesh.position.set(targetX * CHUNK_SIZE, CHUNK_Y_OFFSET, targetZ * CHUNK_SIZE)
-          }
-
           const rigidBody = rigidBodyRefs.current[index]
           if (rigidBody) {
             rigidBody.setTranslation(
@@ -434,7 +429,6 @@ export function Terrain({
             geometry={chunk.geometry}
             receiveShadow
             userData={{ registerVehicle }}
-            position={[chunk.coordX * CHUNK_SIZE, CHUNK_Y_OFFSET, chunk.coordZ * CHUNK_SIZE]}
           >
             <primitive object={terrainMaterial} attach="material" />
           </mesh>
