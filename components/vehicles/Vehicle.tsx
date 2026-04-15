@@ -152,7 +152,7 @@ export function Vehicle({
     // NATURAL FRICTION / DRAG (when not accelerating)
     if (forward === 0 && !brake) {
       // Rolling resistance
-      chassisRef.current.setLinvel({ x: velocity.x * 0.98, y: velocity.y, z: velocity.z * 0.98 }, true)
+      chassisRef.current.setLinvel({ x: velocity.x * 0.94, y: velocity.y, z: velocity.z * 0.94 }, true)
     }
 
     // Counteract sliding/drifting (align velocity with forward direction)
@@ -208,7 +208,7 @@ export function Vehicle({
         mass={2}
         restitution={0.1}
         friction={0.8}
-        linearDamping={0.1}
+        linearDamping={0.4}
         angularDamping={0.8}
         ccd={true}
       >

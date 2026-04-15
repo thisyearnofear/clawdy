@@ -223,7 +223,7 @@ export function MonsterTruck({
         mass={3}
         restitution={0.2}
         friction={1.0}
-        linearDamping={0.1}
+        linearDamping={0.4}
         angularDamping={0.6}
         ccd={true}
       >

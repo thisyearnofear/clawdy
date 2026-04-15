@@ -207,7 +207,7 @@ export function Speedster({
         mass={1.5}
         restitution={0.1}
         friction={0.9}
-        linearDamping={0.1}
+        linearDamping={0.4}
         angularDamping={0.8}
         ccd={true}
       >

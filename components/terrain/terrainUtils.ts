@@ -7,9 +7,9 @@ export const TERRAIN_CONFIG = {
   DEFORMATION_STRENGTH: 0.5,
   SEED: 1337,
   NOISE_LAYERS: [
-    { frequency: 0.03, amplitude: 4 },
-    { frequency: 0.1, amplitude: 1 },
-    { frequency: 0.5, amplitude: 0.2 }
+    { frequency: 0.03, amplitude: 2 },
+    { frequency: 0.1, amplitude: 0.5 },
+    { frequency: 0.5, amplitude: 0.1 }
   ]
 } as const
 
@@ -33,6 +33,6 @@ export const getTerrainHeight = (x: number, z: number) => {
   }
 
   const dist = Math.sqrt(x * x + z * z)
-  const flatFactor = Math.max(0, 1 - Math.min(1, dist / 20))
+  const flatFactor = Math.max(0, 1 - Math.min(1, dist / 35))
   return noise * (1 - flatFactor)
 }

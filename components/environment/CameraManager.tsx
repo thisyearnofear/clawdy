@@ -19,11 +19,14 @@ export function CameraManager({
   const controlsRef = useRef<CameraControls>(null)
 
   useEffect(() => {
-    // Initial setup if needed
     if (controlsRef.current) {
-      controlsRef.current.dollyToCursor = true
-      controlsRef.current.minDistance = 5
-      controlsRef.current.maxDistance = 50
+      controlsRef.current.dollyToCursor = false
+      controlsRef.current.minDistance = 8
+      controlsRef.current.maxDistance = 120
+      controlsRef.current.dollySpeed = 3
+      controlsRef.current.truckSpeed = 2
+      controlsRef.current.smoothTime = 0.15
+      controlsRef.current.draggingSmoothTime = 0.1
     }
   }, [])
 
