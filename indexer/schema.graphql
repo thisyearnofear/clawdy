@@ -20,6 +20,8 @@ type WeatherControl {
 type VehicleRental {
   id: ID! # vehicleId
   agent: Agent!
+  amount: BigInt!
+  minutesCount: BigInt!
   vehicleType: String!
   expiresAt: BigInt!
   timestamp: BigInt!

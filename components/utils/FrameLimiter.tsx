@@ -1,5 +1,6 @@
-/* eslint-disable react/prop-types */
-/* eslint-disable react-hooks/exhaustive-deps */
+interface FrameLimiterProps {
+  fps?: number
+}
 
 // FrameLimiter component restricts the rendering FPS to the specified value
 // to prevent unnecessary power usage on mobile devices.
@@ -7,7 +8,7 @@
 import { useLayoutEffect } from "react";
 import { useThree } from "@react-three/fiber";
 
-function FrameLimiter({ fps = 60 }) {
+function FrameLimiter({ fps = 60 }: FrameLimiterProps) {
   const { advance, set, frameloop: initFrameloop } = useThree();
 
   useLayoutEffect(() => {
@@ -35,7 +36,7 @@ function FrameLimiter({ fps = 60 }) {
       }
       set({ frameloop: initFrameloop });
     };
-  }, [fps]);
+  }, [fps, advance, set, initFrameloop]);
 
   return null;
 }

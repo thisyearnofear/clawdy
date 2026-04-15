@@ -1,47 +1,112 @@
-# Clawdy Agentic Ecosystem: Protocol Documentation
+# Clawdy Agent Protocol
 
-Welcome, Agent. This document defines the interfaces and economic rules for interacting with the **Clawdy Decentralized Sandbox** on Base Sepolia.
+This document defines the agent-facing surface for the X Layer submission build of `Clawdy`.
 
-## 1. Interaction Layer (The Bridge)
-The primary interface is via the global `window.clawdy` object and browser events.
+## Network
 
-### Observation (Sensory Input)
-Listen for the `clawdy:state` event to receive high-frequency world updates.
-```javascript
+- Primary target: `X Layer`
+- Optional testing target: `X Layer Testnet`
+
+## Agent Roles
+
+### Operator
+
+- connects the wallet
+- authorizes the Agentic Wallet budget
+- can override or supervise agent activity
+
+### Scout Agent
+
+- listens for world updates
+- identifies the nearest or highest-value opportunities
+- provides route candidates to execution roles
+
+### Weather Agent
+
+- bids for weather states when expected yield is worth the spend
+- focuses on short control windows and tactical advantage
+
+### Mobility Agent
+
+- leases vehicles
+- translates route targets into movement and interaction commands
+
+### Treasury Agent
+
+- approves spend thresholds
+- preserves the earn-pay-earn loop
+- will be the best place to attach skill-based decisioning
+
+## Public Runtime Surface
+
+The primary interface is the global `window.clawdy` object.
+
+### Observation
+
+Listen for `clawdy:state` to receive world state snapshots.
+
+```js
 window.addEventListener('clawdy:state', (event) => {
-  const world = event.detail;
-  // world.food -> Array of collectable items
-  // world.vehicles -> Array of current platform states
-  // world.bounds -> [X, Y, Z] terrain limits
-});
+  const world = event.detail
+  // world.food
+  // world.vehicles
+  // world.bounds
+})
 ```
 
-### Control (Action Output)
-- `clawdy.authorize(agentId)`: Join the session.
-- `clawdy.drive(agentId, vehicleId, { forward, turn, brake, action })`: Physics control.
-- `clawdy.bid(agentId, amountInEth, preset)`: On-chain weather control.
+### Control
 
-## 2. Economic Layer (Base Sepolia)
-Clawdy uses a **Pay-to-Play** model settling on Base.
+- `clawdy.getState()`
+- `clawdy.getSessions()`
+- `clawdy.getChain()`
+- `clawdy.authorize(agentId)`
+- `clawdy.requestSessionPermissions(address)`
+- `clawdy.bid(agentId, amountInEth, preset)`
+- `clawdy.drive(agentId, vehicleId, inputs)`
+- `clawdy.toggleAutoPilot(agentId)`
 
-### Weather Auction (Highest Bidder Wins)
-- **Contract:** `0x21F3E4482c045AF4a06c797FA5b742386f76956b` (Base Mainnet)
-- **Rules:** Bids must be > current bid OR current bid must be expired (> 1 min).
-- **Strategy:** High-volume rain increases food density but costs ETH.
+## Economic Layer
 
-### Vehicle Rental (X402 Logic)
-- **Contract:** `0xF39b1CD133e9f4D106b73084072526400D71e864` (Base Mainnet)
-- **Rate:** 0.001 ETH per minute.
-- **Rules:** Control is exclusive. If a vehicle is rented, you must wait for the session to expire before taking control.
+### Weather Auction
 
-## 3. Physical Constraints (Nutrition & Mass)
-Your performance is tied to your choices:
-- **Healthy Food (Apple/Broccoli):** +10 Vitality, +0.002 ETH Reward.
-- **Unhealthy Food (Burger/Pizza):** +15 Burden (Mass), +0.0005 ETH Reward.
-- **Obstacles (Soda/Rotten Burger):** Heavy mass, destroyable by Tank fire.
+- Contract address: `NEXT_PUBLIC_WEATHER_AUCTION_ADDRESS`
+- Purpose: temporary control of weather conditions through bidding
+- Tradeoff: higher spend should only happen when increased yield is justified
 
-## 4. Initialization (ERC-7715)
-Before acting, you must request a **Session Key**. 
-1. Call `clawdy.requestSessionPermissions(address)`.
-2. The user will grant you a budget (e.g. 0.1 ETH).
-3. Use the `wallet_sendCalls` capability to execute on-chain actions without human prompts.
+### Vehicle Rental
+
+- Contract address: `NEXT_PUBLIC_VEHICLE_RENT_ADDRESS`
+- Purpose: temporary vehicle control for route efficiency or combat capability
+- Tradeoff: mobility spend must support net-positive earnings
+
+## Agentic Wallet Flow
+
+Before an agent acts autonomously:
+
+1. the operator connects a wallet on X Layer
+2. the operator grants session-like execution permissions
+3. the runtime uses those permissions for approved onchain calls
+4. the UI reflects whether autonomous execution is active
+
+## Skill Integration Target
+
+The runtime now has a pluggable skill-decision seam.
+
+Current provider:
+
+- `local-policy`
+  - used as the internal policy engine while external MCP wiring is unavailable in this workspace
+
+Target provider:
+
+- **Onchain OS / MCP**
+  - intended to replace the local provider without changing the rest of the runtime flow
+
+Planned usage:
+
+- skill-assisted bidding decisions
+- route or target evaluation
+- treasury policy checks before spend
+- skill-assisted vehicle lease execution
+
+If time allows, Uniswap-oriented treasury behavior will be added after the MCP path is visible and working.

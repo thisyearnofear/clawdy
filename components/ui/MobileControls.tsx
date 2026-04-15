@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { useKeyboardControls } from '@react-three/drei';
 
 // Define the state for mobile controls
 interface MobileControlsState {
@@ -20,11 +19,8 @@ export function MobileControls() {
   });
 
   const touchStartRef = useRef({ x: 0, y: 0 });
-  const joystickRef = useRef({ x: 0, y: 0 });
+  const [joystickPos, setJoystickPos] = useState({ x: 0, y: 0 });
   
-  // Get the keyboard controls state setter
-  const [, getKeys] = useKeyboardControls();
-
   // Handle touch events for movement controls
   useEffect(() => {
     const handleTouchStart = (event: TouchEvent) => {
@@ -45,23 +41,23 @@ export function MobileControls() {
       );
       const angle = Math.atan2(deltaY, deltaX);
 
-      joystickRef.current.x = (distance / maxRadius) * Math.cos(angle);
-      joystickRef.current.y = (distance / maxRadius) * Math.sin(angle);
+      const x = (distance / maxRadius) * Math.cos(angle);
+      const y = (distance / maxRadius) * Math.sin(angle);
+      setJoystickPos({ x, y });
 
       // Update controls based on joystick position
       setControls(prev => ({
         ...prev,
-        forward: joystickRef.current.y < -0.3,
-        backward: joystickRef.current.y > 0.3,
-        left: joystickRef.current.x < -0.3,
-        right: joystickRef.current.x > 0.3
+        forward: y < -0.3,
+        backward: y > 0.3,
+        left: x < -0.3,
+        right: x > 0.3
       }));
     };
 
     const handleTouchEnd = () => {
-      joystickRef.current.x = 0;
-      joystickRef.current.y = 0;
-      setControls(prev => ({
+      setJoystickPos({ x: 0, y: 0 });
+      setControls((prev) => ({
         ...prev,
         forward: false,
         backward: false,
@@ -113,7 +109,7 @@ export function MobileControls() {
           <div 
             className="absolute top-1/2 left-1/2 w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm border border-white/50 transform -translate-x-1/2 -translate-y-1/2 transition-transform duration-100 ease-out"
             style={{
-              transform: `translate(calc(-50% + ${joystickRef.current.x * 80}px), calc(-50% + ${joystickRef.current.y * 80}px))`
+              transform: `translate(calc(-50% + ${joystickPos.x * 80}px), calc(-50% + ${joystickPos.y * 80}px))`
             }}
           ></div>
           

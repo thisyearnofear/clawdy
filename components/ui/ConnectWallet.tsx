@@ -1,7 +1,8 @@
 'use client'
 
-import { useAccount, useConnect, useDisconnect } from 'wagmi'
-import { agentProtocol } from '../../services/AgentProtocol'
+import { useAccount, useChainId, useConnect, useDisconnect } from 'wagmi'
+import { agentProtocol, CHAIN_NAME } from '../../services/AgentProtocol'
+import { primaryChain } from '../../services/web3Config'
 import { useState, useEffect } from 'react'
 
 // Wallet Icons as SVG components for better visuals
@@ -53,14 +54,17 @@ const getWalletColor = (name: string) => {
 
 export function ConnectWallet() {
   const { address, isConnected } = useAccount()
+  const chainId = useChainId()
   const { connectors, connect, status } = useConnect()
   const { disconnect } = useDisconnect()
   const [isAutonomyActive, setIsAutonomyActive] = useState(agentProtocol.isAutonomyEnabled())
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const isCorrectChain = chainId === primaryChain.id
 
   // Close modal when connected
   useEffect(() => {
     if (isConnected && isModalOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsModalOpen(false)
     }
   }, [isConnected, isModalOpen])
@@ -79,6 +83,9 @@ export function ConnectWallet() {
   if (isConnected) {
     return (
       <div className="flex items-center gap-3 bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-2 pr-4">
+        <div className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border ${isCorrectChain ? 'bg-emerald-500/15 border-emerald-400/40 text-emerald-300' : 'bg-amber-500/15 border-amber-400/40 text-amber-200'}`}>
+          {isCorrectChain ? CHAIN_NAME : `Switch to ${CHAIN_NAME}`}
+        </div>
         <div className="flex flex-col items-end">
           <span className="text-[9px] opacity-50 uppercase font-black tracking-wider">Connected</span>
           <span className="text-xs font-mono font-medium">{address?.slice(0, 6)}...{address?.slice(-4)}</span>
@@ -89,17 +96,21 @@ export function ConnectWallet() {
             onClick={initAutonomy}
             className="px-4 py-2 bg-yellow-500 hover:bg-yellow-400 text-black text-xs font-black rounded-xl shadow-lg transition-all animate-pulse"
           >
-            INITIALIZE AUTONOMY
+            ACTIVATE AGENTIC WALLET
           </button>
         ) : (
           <div className="px-3 py-1.5 bg-green-500/20 border border-green-500/50 text-green-400 text-[10px] font-bold rounded-lg flex items-center gap-2">
             <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping" />
-            AUTONOMY ACTIVE
+            AGENTIC WALLET LIVE
           </div>
         )}
 
         <button
-          onClick={() => disconnect()}
+          onClick={() => {
+            disconnect()
+            agentProtocol.logout()
+            setIsAutonomyActive(false)
+          }}
           className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 text-red-400 text-[10px] font-bold rounded-lg transition-all"
         >
           DISCONNECT
@@ -140,7 +151,7 @@ export function ConnectWallet() {
                 </div>
                 <div>
                   <h3 className="text-sm font-black text-white uppercase tracking-wider">Connect Wallet</h3>
-                  <p className="text-[10px] text-white/40">Select your preferred wallet</p>
+                  <p className="text-[10px] text-white/40">Connect on {CHAIN_NAME} and authorize your agent wallet</p>
                 </div>
               </div>
               <button
@@ -188,7 +199,7 @@ export function ConnectWallet() {
             {/* Modal Footer */}
             <div className="p-4 bg-white/5 border-t border-white/10">
               <p className="text-[10px] text-white/30 text-center">
-                New to wallets?{' '}
+                Target network: <span className="font-bold text-sky-300">{CHAIN_NAME}</span>. New to wallets?{' '}
                 <a 
                   href="https://ethereum.org/en/wallets/" 
                   target="_blank" 

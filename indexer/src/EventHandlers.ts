@@ -7,7 +7,7 @@ import {
 } from "../generated";
 
 // Helper to get or create an agent
-async function getOrCreateAgent(address: string, context: any): Promise<AgentEntity> {
+async function getOrCreateAgent(address: string, context: { Agent: { get: (id: string) => Promise<AgentEntity | null>; store: (entity: AgentEntity) => Promise<AgentEntity> } }): Promise<AgentEntity> {
   let agent = await context.Agent.get(address);
   if (!agent) {
     agent = {
@@ -55,7 +55,7 @@ VehicleRentContract.VehicleRented.handler(async ({ event, context }) => {
   // Update Agent stats
   const updatedAgent = {
     ...agent,
-    totalRentPaid: agent.totalRentPaid + event.params.amount, // Note: Need amount in event ideally, using placeholder logic
+    totalRentPaid: agent.totalRentPaid + event.params.amount,
     currentVehicleId: event.params.vehicleId,
     lastActiveTimestamp: BigInt(event.block.timestamp),
   };
@@ -65,6 +65,8 @@ VehicleRentContract.VehicleRented.handler(async ({ event, context }) => {
   const vehicleRental: VehicleRentalEntity = {
     id: event.params.vehicleId,
     agent_id: agentAddress,
+    amount: event.params.amount,
+    minutesCount: event.params.minutesCount,
     vehicleType: event.params.vehicleType,
     expiresAt: event.params.expiresAt,
     timestamp: BigInt(event.block.timestamp),

@@ -1,21 +1,9 @@
 'use client'
 
-import { useMemo, useRef, useEffect } from 'react'
+import { useMemo, useRef } from 'react'
 import { RigidBody, RigidBodyProps, RapierRigidBody, CuboidCollider } from '@react-three/rapier'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { MeshStandardNodeMaterial } from 'three/webgpu'
-import { 
-  color, 
-  mul, 
-  mix, 
-  float, 
-  timerLocal, 
-  sin, 
-  add,
-  worldPosition,
-  positionLocal
-} from 'three/tsl'
 
 export type FoodType = 'burger' | 'donut' | 'icecream' | 'hotdog' | 'pizza' | 'sushi' | 'taco' | 'apple' | 'broccoli' | 'soda' | 'rotten_burger'
 
@@ -40,7 +28,7 @@ export const FOOD_METADATA: Record<FoodType, Omit<FoodStats, 'type'>> = {
   rotten_burger: { nutrition: 'obstacle', mass: 5.0, isDestroyable: true },
 }
 
-const FOOD_COLORS: Record<FoodType, string> = {
+export const FOOD_COLORS: Record<FoodType, string> = {
   apple: '#e74c3c',
   sushi: '#ff7675',
   broccoli: '#228b22',
@@ -54,27 +42,14 @@ const FOOD_COLORS: Record<FoodType, string> = {
   rotten_burger: '#5d4037',
 }
 
-// TSL Material for Food Items
-// Adds a "pulsing freshness" or "decay" effect
-const createFoodMaterial = (baseColor: string, nutrition: string) => {
-  const mat = new MeshStandardNodeMaterial({
+// Standard Material for Food Items
+// Adds a simple pulsing effect using standard THREE.js
+const createFoodMaterial = (baseColor: string) => {
+  const mat = new THREE.MeshStandardMaterial({
     roughness: 0.7,
     metalness: 0.1,
+    color: baseColor,
   });
-
-  const time = timerLocal();
-  const base = color(baseColor);
-  
-  // Healthy items pulse with a green glow, unhealthy/obstacles have a subtle jitter or decay
-  const pulseScale = nutrition === 'healthy' ? 2.0 : 0.5;
-  const pulseColor = nutrition === 'healthy' ? color('#2ecc71') : color('#e67e22');
-  
-  const pulse = mul(add(sin(mul(time, pulseScale)), 1.0), 0.2);
-  
-  mat.colorNode = mix(base, pulseColor, pulse);
-  
-  // Add subtle emissive based on pulse
-  mat.emissiveNode = mul(pulseColor, mul(pulse, 0.5));
 
   return mat;
 }
@@ -89,15 +64,16 @@ interface ProceduralFoodProps extends RigidBodyProps {
 export function ProceduralFood({ id, itemType, onDespawn, onCollect, ...props }: ProceduralFoodProps) {
   const rigidBody = useRef<RapierRigidBody>(null)
   
+  // Default type deterministically based on id to avoid impure Math.random in useMemo
   const stats = useMemo((): FoodStats => {
     const types = Object.keys(FOOD_METADATA) as FoodType[]
-    const type = itemType || types[Math.floor(Math.random() * types.length)]
+    const type = itemType || types[id % types.length]
     return { type, ...FOOD_METADATA[type] }
-  }, [itemType])
+  }, [itemType, id])
 
   const material = useMemo(() => 
-    createFoodMaterial(FOOD_COLORS[stats.type], stats.nutrition)
-  , [stats.type, stats.nutrition])
+    createFoodMaterial(FOOD_COLORS[stats.type])
+  , [stats.type])
 
   useFrame(() => {
     if (rigidBody.current) {

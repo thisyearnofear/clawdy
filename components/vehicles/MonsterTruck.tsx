@@ -4,7 +4,8 @@ import * as THREE from 'three'
 import { useRef, useState, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useKeyboardControls } from '@react-three/drei'
-import { RigidBody, RapierRigidBody } from '@react-three/rapier'
+import type { RapierRigidBody } from '@react-three/rapier'
+import { RigidBody } from '@react-three/rapier'
 import { agentProtocol } from '../../services/AgentProtocol'
 
 export function MonsterTruck({ 
@@ -18,7 +19,7 @@ export function MonsterTruck({
   position?: [number, number, number], 
   agentControlled?: boolean, 
   playerControlled?: boolean,
-  onRef?: (ref: any) => void
+  onRef?: (ref: RapierRigidBody | null) => void
 }) {
   const chassisRef = useRef<RapierRigidBody>(null)
   const bodyRef = useRef<THREE.Group>(null)
@@ -35,7 +36,9 @@ export function MonsterTruck({
   useEffect(() => {
     if (agentControlled) {
       const unsubscribe = agentProtocol.subscribeToVehicle((cmd) => {
-        if (cmd.vehicleId === id) setInputs(cmd.inputs as any)
+        if (cmd.vehicleId === id) {
+          setInputs(cmd.inputs)
+        }
       })
       return unsubscribe
     }
@@ -49,9 +52,9 @@ export function MonsterTruck({
     const burdenFactor = session ? session.burden / 100 : 0
 
     let { forward, turn, brake } = inputs
-
+    type Keys = Record<'forward' | 'backward' | 'left' | 'right' | 'jump', boolean>
     if (!agentControlled && playerControlled) {
-      const keys = getKeys() as any
+      const keys = getKeys() as Keys
       forward = (keys.forward ? 1 : 0) - (keys.backward ? 1 : 0)
       turn = (keys.left ? 1 : 0) - (keys.right ? 1 : 0)
       brake = keys.jump
@@ -60,12 +63,14 @@ export function MonsterTruck({
     chassisRef.current.setAdditionalMass(burdenFactor * 8, true)
 
     if (agentControlled) {
+      const rotation = chassisRef.current!.rotation()
+      const position = chassisRef.current!.translation()
       agentProtocol.updateWorldState({
         vehicles: agentProtocol.getWorldState().vehicles.map(v =>
           v.id === id ? {
             ...v,
-            rotation: chassisRef.current!.rotation() as any,
-            position: chassisRef.current!.translation() as any
+            rotation: [rotation.x, rotation.y, rotation.z, rotation.w] as [number, number, number, number],
+            position: [position.x, position.y, position.z] as [number, number, number]
           } : v
         )
       })

@@ -228,6 +228,7 @@ export function Terrain({
 }) {
   const { camera } = useThree()
   const meshRefs = useRef<THREE.Mesh[]>([])
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rigidBodyRefs = useRef<any[]>([])
   const chunkStateRef = useRef<ChunkState[]>([])
   const deformationCacheRef = useRef<Map<string, DeformationCacheEntry>>(new Map())
@@ -312,7 +313,7 @@ export function Terrain({
     onSamplerReady?.(getHeightAt)
   }, [chunkSlots, getHeightAt, onSamplerReady])
 
-  useFrame((state) => {
+  useFrame(() => {
     if (!camera || !camera.position) return;
 
     const centerX = Math.floor(camera.position.x / CHUNK_SIZE)

@@ -2,9 +2,10 @@ import { useRef, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { CameraControls } from '@react-three/drei'
 import * as THREE from 'three'
+import type { RapierRigidBody } from '@react-three/rapier'
 
 interface CameraManagerProps {
-  target?: THREE.Object3D | null
+  target?: RapierRigidBody | null
   active: boolean
   offset?: [number, number, number] // Offset from target
   smoothTime?: number
@@ -29,17 +30,18 @@ export function CameraManager({
   useFrame((state, delta) => {
     if (!controlsRef.current) return
 
-    if (active && target && target.position) {
+    if (active && target) {
       // 1. Get Target Position
-      const currentTargetPos = target.position.clone()
+      const translation = target.translation()
+      const currentTargetPos = new THREE.Vector3(translation.x, translation.y, translation.z)
 
       // 2. Calculate Ideal Camera Position
       // We want the camera to be behind the car based on its rotation?
       // Or just a fixed offset in world space if we want a "top-down-ish" view?
       // For a driving game, usually we want it relative to the car's rotation (behind it).
 
-      const rotation = target.rotation
-      const quaternion = new THREE.Quaternion().setFromEuler(rotation)
+      const rotation = target.rotation()
+      const quaternion = new THREE.Quaternion(rotation.x, rotation.y, rotation.z, rotation.w)
 
       // Calculate offset relative to car's orientation
       // If we want the camera to ALWAYS be behind, we apply quaternion.

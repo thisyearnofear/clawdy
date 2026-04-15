@@ -108,6 +108,7 @@ export function Vegetation({
   const instancesRef = useRef<GrassInstance[]>([])
   const centerCoordRef = useRef({ x: 0, z: 0 })
   const lastHeightUpdateRef = useRef(0)
+  const timeRef = useRef<number | undefined>(undefined)
 
   const geometry = useMemo(() => {
     const blade = new THREE.PlaneGeometry(
@@ -127,10 +128,10 @@ export function Vegetation({
     return gridSize * gridSize * GRASS_CONFIG.PER_CHUNK_COUNT
   }, [])
 
-  const sampleHeight = (x: number, z: number) => {
+  const sampleHeight = useCallback((x: number, z: number) => {
     if (getHeightAt) return getHeightAt(x, z)
     return getTerrainHeight(x, z)
-  }
+  }, [getHeightAt])
 
   const rebuildInstances = useCallback((centerX: number, centerZ: number) => {
     const instances: GrassInstance[] = []
@@ -205,10 +206,13 @@ export function Vegetation({
   }, [camera, applyMatrices, rebuildInstances])
 
   useFrame(({ clock }) => {
+    // Update time uniform for shader animation (THREE.js requires this pattern)
     const uniforms = materialRef.current?.userData.uniforms
-    if (uniforms) {
-      uniforms.uTime.value = clock.getElapsedTime()
+    if (uniforms && timeRef.current !== undefined) {
+      // eslint-disable-next-line react-hooks/immutability
+      uniforms.uTime.value = timeRef.current
     }
+    timeRef.current = clock.getElapsedTime()
 
     if (!camera || !camera.position) return;
 

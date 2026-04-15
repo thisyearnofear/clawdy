@@ -4,33 +4,19 @@ import * as THREE from 'three'
 import { useRef, useState, useEffect, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useKeyboardControls } from '@react-three/drei'
-import { RigidBody, RapierRigidBody, useRapier } from '@react-three/rapier'
+import { RigidBody, useRapier } from '@react-three/rapier'
+import type { RapierRigidBody } from '@react-three/rapier'
 import { agentProtocol } from '../../services/AgentProtocol'
-import { MeshStandardNodeMaterial } from 'three/webgpu'
-import { 
-  sin, 
-  timerLocal, 
-  float, 
-  color,
-  mul,
-  add,
-  mix
-} from 'three/tsl'
 
-// TSL Laser Material
+// Standard Material for Tank
 const createLaserMaterial = () => {
-  const mat = new MeshStandardNodeMaterial({
+  const mat = new THREE.MeshStandardMaterial({
     transparent: true,
     depthWrite: false,
     emissive: new THREE.Color('#ff0000'),
-    emissiveIntensity: 5.0,
+    emissiveIntensity: 2.0,
+    color: '#ff0000',
   })
-
-  const time = timerLocal()
-  const pulse = add(mul(sin(mul(time, 20.0)), 0.5), 0.5)
-  
-  mat.opacityNode = mix(float(0.1), float(0.4), pulse)
-  mat.emissiveNode = mul(color('#ff0000'), add(pulse, 1.0))
 
   return mat
 }
@@ -46,7 +32,7 @@ export function Tank({
   position?: [number, number, number], 
   agentControlled?: boolean, 
   playerControlled?: boolean,
-  onRef?: (ref: any) => void
+  onRef?: (ref: RapierRigidBody | null) => void
 }) {
   const chassisRef = useRef<RapierRigidBody>(null)
   const turretRef = useRef<THREE.Group>(null)
@@ -69,7 +55,15 @@ export function Tank({
   useEffect(() => {
     if (agentControlled) {
       const unsubscribe = agentProtocol.subscribeToVehicle((cmd) => {
-        if (cmd.vehicleId === id) setInputs(cmd.inputs as any)
+        if (cmd.vehicleId === id) {
+          setInputs({
+            forward: cmd.inputs.forward ?? 0,
+            turn: cmd.inputs.turn ?? 0,
+            brake: cmd.inputs.brake ?? false,
+            aim: cmd.inputs.aim ?? 0,
+            action: cmd.inputs.action ?? false,
+          })
+        }
       })
       return unsubscribe
     }
@@ -79,18 +73,16 @@ export function Tank({
     if (!chassisRef.current) return
     const time = state.clock.getElapsedTime()
 
-    const session = agentProtocol.getActiveSession(agentControlled ? id : 'Player')
-    const vitalityFactor = session ? session.vitality / 100 : 1
-    const burdenFactor = session ? session.burden / 100 : 0
-
-    let { forward, turn, brake, aim, action } = inputs
+    let { forward, turn, action, brake, aim } = inputs
+    type Keys = Record<'forward' | 'backward' | 'left' | 'right' | 'jump', boolean>
 
     if (!agentControlled && playerControlled) {
-      const keys = getKeys() as any
+      const keys = getKeys() as Keys
       forward = (keys.forward ? 1 : 0) - (keys.backward ? 1 : 0)
       turn = (keys.left ? 1 : 0) - (keys.right ? 1 : 0)
       brake = keys.jump
       action = !!keys.jump
+      aim = 0
     }
 
     // Always update world state for all vehicles if they move
@@ -108,12 +100,10 @@ export function Tank({
     })
 
     // Physics
-    const velocity = chassisRef.current.linvel()
     const rotation = chassisRef.current.rotation()
     const quaternion = new THREE.Quaternion(rotation.x, rotation.y, rotation.z, rotation.w)
     const forwardDir = new THREE.Vector3(0, 0, -1).applyQuaternion(quaternion)
 
-    const maxSpeed = 15 * (0.5 + 0.5 * vitalityFactor)
     const acceleration = 120 * delta
 
     if (forward !== 0) {
@@ -128,7 +118,8 @@ export function Tank({
 
     // Firing & Laser
     const matrix = new THREE.Matrix4().makeRotationFromQuaternion(quaternion)
-    const translation = new THREE.Vector3(...chassisRef.current.translation() as any)
+    const chassisTranslation = chassisRef.current.translation()
+    const translation = new THREE.Vector3(chassisTranslation.x, chassisTranslation.y, chassisTranslation.z)
     const barrelOffset = new THREE.Vector3(0, 0.7, -2.2).applyMatrix4(matrix)
     const barrelPos = translation.clone().add(barrelOffset)
     const barrelDir = new THREE.Vector3(0, 0, -1).applyMatrix4(matrix)

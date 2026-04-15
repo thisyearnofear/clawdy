@@ -4,38 +4,17 @@ import { useRef, useMemo, forwardRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { agentProtocol } from '../../services/AgentProtocol'
 import * as THREE from 'three'
-import { MeshStandardNodeMaterial } from 'three/webgpu'
-import { 
-  sin, 
-  timerLocal, 
-  worldPosition, 
-  float, 
-  color,
-  mul,
-  add,
-  sub,
-  mix
-} from 'three/tsl'
+import { getAgentProfile, getAgentVehicleId } from '../../services/agents'
 
 const VisionLine = forwardRef<THREE.Mesh, { agentColor: string }>(({ agentColor }, ref) => {
   const material = useMemo(() => {
-    const mat = new MeshStandardNodeMaterial({
+    const mat = new THREE.MeshStandardMaterial({
       transparent: true,
       depthWrite: false,
       emissive: new THREE.Color(agentColor),
       emissiveIntensity: 2.0,
+      color: agentColor,
     })
-
-    // Pulsing Scanning Effect using TSL
-    const time = timerLocal()
-    const pulse = mul(add(sin(mul(time, 5.0)), 1.0), 0.5) // 0 to 1 pulse
-    
-    // Gradient along the line
-    const movingPulse = sin(sub(mul(worldPosition.y, 2.0), mul(time, 10.0)))
-    const pulseIntensity = add(mul(movingPulse, 0.5), 0.5)
-    
-    mat.emissiveNode = mix(color(agentColor), color('#ffffff'), mul(pulseIntensity, pulse))
-    mat.opacityNode = mix(float(0.2), float(0.8), pulseIntensity)
 
     return mat
   }, [agentColor])
@@ -58,7 +37,7 @@ export function AgentVision() {
     const sessions = agentProtocol.getSessions()
     const worldState = agentProtocol.getWorldState()
 
-    agentSessions.forEach((session, i) => {
+    agentSessions.forEach((session) => {
       const idx = sessions.findIndex(s => s.agentId === session.agentId)
       const mesh = lineRefs.current[idx] // Match by actual session index if possible, or just use agent index
       
@@ -67,7 +46,7 @@ export function AgentVision() {
         return
       }
 
-      const agentVehicleId = session.agentId === 'Agent-Zero' ? 'agent-1' : 'agent-2'
+      const agentVehicleId = getAgentVehicleId(session.agentId)
       const vehicle = worldState.vehicles.find(v => v.id === agentVehicleId)
       const food = worldState.food.find(f => f.id === session.targetFoodId)
 
@@ -98,7 +77,7 @@ export function AgentVision() {
       {agentSessions.map((session, i) => (
         <VisionLine 
           key={session.agentId} 
-          agentColor={session.agentId === 'Agent-Zero' ? '#00d2ff' : '#a29bfe'}
+          agentColor={getAgentProfile(session.agentId)?.accentColor || '#7dd3fc'}
           ref={el => { lineRefs.current[i] = el }} 
         />
       ))}

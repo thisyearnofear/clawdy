@@ -17,7 +17,14 @@ contract VehicleRent {
     
     uint256 public rentRatePerMinute = 0.001 ether;
 
-    event VehicleRented(string indexed vehicleId, address indexed agent, uint256 expiresAt, string vehicleType);
+    event VehicleRented(
+        string indexed vehicleId,
+        address indexed agent,
+        uint256 amount,
+        uint256 minutesCount,
+        uint256 expiresAt,
+        string vehicleType
+    );
     
     address public owner;
 
@@ -43,7 +50,14 @@ contract VehicleRent {
             vehicleType: vehicleType
         });
 
-        emit VehicleRented(vehicleId, msg.sender, rentals[vehicleId].expiresAt, vehicleType);
+        emit VehicleRented(
+            vehicleId,
+            msg.sender,
+            requiredAmount,
+            minutesCount,
+            rentals[vehicleId].expiresAt,
+            vehicleType
+        );
     }
 
     function getRentStatus(string calldata vehicleId) external view returns (address agent, uint256 expiresAt, string memory vehicleType) {

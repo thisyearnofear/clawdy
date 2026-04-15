@@ -22,9 +22,10 @@
     "react-device-detect": "^2.2.3",
     "react-dom": "19.2.3",
     "simplex-noise": "^4.0.3",
-    "three": "^0.182.0",
+    "three": "^0.183.2",
     "viem": "^2.45.1",
-    "wagmi": "^3.4.1"
+    "wagmi": "^3.4.1",
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -33,6 +34,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "solc": "^0.8.34",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

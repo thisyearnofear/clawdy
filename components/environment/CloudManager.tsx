@@ -3,17 +3,6 @@
 import { Clouds, Cloud } from '@react-three/drei'
 import * as THREE from 'three'
 import { useMemo } from 'react'
-import { MeshStandardNodeMaterial } from 'three/webgpu'
-import { 
-  fresnel, 
-  color, 
-  mul, 
-  mix, 
-  float, 
-  timerLocal, 
-  sin, 
-  add 
-} from 'three/tsl'
 
 export interface CloudConfig {
   seed: number
@@ -87,25 +76,10 @@ export function CloudManager({ config }: { config: CloudConfig }) {
     return config
   }, [config])
 
-  // TSL Cloud Material with "Silver Lining" effect
+  // Use class reference for drei Clouds component
   const cloudMaterial = useMemo(() => {
-    const mat = new MeshStandardNodeMaterial({
-      transparent: true,
-      opacity: activeConfig.opacity,
-    });
-
-    // rim lighting effect using Fresnel
-    const rimColor = activeConfig.preset === 'sunset' ? color('#ff6b6b') : color('#ffffff');
-    const rimIntensity = mul(fresnel(), 2.0);
-    
-    // Subtle pulsing emissive for "atmospheric glow"
-    const time = timerLocal();
-    const pulse = add(mul(sin(time), 0.2), 0.8);
-    
-    mat.emissiveNode = mul(rimColor, mul(rimIntensity, pulse));
-    
-    return mat;
-  }, [activeConfig.opacity, activeConfig.preset]);
+    return THREE.MeshStandardMaterial
+  }, [])
 
   const clouds = useMemo(() => {
     const random = seededRandom(activeConfig.seed)

@@ -14,19 +14,19 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'CLAWDY, with a chance of meatballs',
-  description: 'An agentic 3D sandbox experience on Base L2. Control weather, deploy vehicles, and compete in a decentralized world.',
-  keywords: ['web3', 'game', 'sandbox', 'base', 'ethereum', '3d', 'agents', 'defi'],
+  title: 'CLAWDY | Agentic Sandbox on X Layer',
+  description: 'An agentic 3D sandbox on X Layer where autonomous roles bid for weather, rent vehicles, and optimize an onchain earn-pay-earn loop.',
+  keywords: ['web3', 'game', 'sandbox', 'x layer', 'xlayer', 'ethereum', '3d', 'agents', 'defi', 'onchain'],
   authors: [{ name: 'CLAWDY' }],
   openGraph: {
-    title: 'CLAWDY, with a chance of meatballs',
-    description: 'An agentic 3D sandbox experience on Base L2',
+    title: 'CLAWDY | Agentic Sandbox on X Layer',
+    description: 'Autonomous agents compete for weather control, vehicle access, and onchain yield on X Layer.',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'CLAWDY, with a chance of meatballs',
-    description: 'An agentic 3D sandbox experience on Base L2',
+    title: 'CLAWDY | Agentic Sandbox on X Layer',
+    description: 'Autonomous agents compete for weather control, vehicle access, and onchain yield on X Layer.',
   },
   icons: {
     icon: { url: '/favicon.svg', type: 'image/svg+xml' },

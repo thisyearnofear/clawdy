@@ -1,15 +1,18 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { agentProtocol, AgentSession, VehicleType } from '../../services/AgentProtocol'
+import { agentProtocol, AgentSession, VehicleType, AGENT_ROLE_CONFIG, CHAIN_NAME } from '../../services/AgentProtocol'
 import { CLOUD_PRESETS } from '../environment/CloudManager'
 import { GlassPanel } from './GlassPanel'
+import { getAgentProfile, getControllableAgents } from '../../services/agents'
+import type { SkillDecision, SkillProviderInfo } from '../../services/skillEngine'
 
 export function AgentTerminal() {
   const [sessions, setSessions] = useState<AgentSession[]>([])
   const [activeAgentId, setActiveAgentId] = useState<string>('')
-  const [worldState, setWorldState] = useState(agentProtocol.getWorldState())
   const [weatherStatus, setWeatherStatus] = useState(agentProtocol.getWeatherStatus())
+  const [decisionFeed, setDecisionFeed] = useState<SkillDecision[]>(agentProtocol.getDecisionFeed())
+  const [skillProvider, setSkillProvider] = useState<SkillProviderInfo>(agentProtocol.getSkillProvider())
   const [logs, setLogs] = useState<string[]>([])
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleType>('tank')
   const [isOpen, setIsOpen] = useState(false)
@@ -17,10 +20,17 @@ export function AgentTerminal() {
   useEffect(() => {
     const interval = setInterval(() => {
       setSessions(agentProtocol.getSessions())
-      setWorldState(agentProtocol.getWorldState())
       setWeatherStatus(agentProtocol.getWeatherStatus())
+      setDecisionFeed(agentProtocol.getDecisionFeed())
+      setSkillProvider(agentProtocol.getSkillProvider())
     }, 500)
-    return () => clearInterval(interval)
+    const unsubscribeDecisions = agentProtocol.subscribeToDecisions((decision) => {
+      setDecisionFeed((prev) => [decision, ...prev].slice(0, 6))
+    })
+    return () => {
+      clearInterval(interval)
+      unsubscribeDecisions()
+    }
   }, [])
 
   const addLog = (msg: string) => {
@@ -29,8 +39,9 @@ export function AgentTerminal() {
 
   const spawnAgent = async (name: string) => {
     await agentProtocol.authorizeAgent(name, 3600000)
+    const created = agentProtocol.getSession(name)
     setActiveAgentId(name)
-    addLog(`${name} joined Base Network`)
+    addLog(`${name} joined ${CHAIN_NAME} as ${created ? AGENT_ROLE_CONFIG[created.role].label : 'agent'}`)
   }
 
   const toggleAutoPilot = () => {
@@ -61,7 +72,7 @@ export function AgentTerminal() {
   }
 
   const deployAgentVehicle = async () => {
-     const vehicleId = activeAgentId === 'Agent-Zero' ? 'agent-1' : 'agent-2'
+     const vehicleId = agentProtocol.getSession(activeAgentId)?.vehicleId || activeAgentId
      const success = await agentProtocol.rentVehicleOnChain(activeAgentId, vehicleId, selectedVehicle, 5)
      if (success) {
        agentProtocol.processVehicleCommand({
@@ -75,15 +86,15 @@ export function AgentTerminal() {
   }
 
   const drive = (direction: 'forward' | 'left' | 'right' | 'stop') => {
-    let inputs = { forward: 0, turn: 0, brake: false }
-    if (direction === 'forward') inputs.forward = 1
-    if (direction === 'left') inputs.turn = 1
-    if (direction === 'right') inputs.turn = -1
-    if (direction === 'stop') inputs.brake = true
+    const inputs = {
+      forward: direction === 'forward' ? 1 : 0,
+      turn: direction === 'left' ? 1 : direction === 'right' ? -1 : 0,
+      brake: direction === 'stop',
+    }
 
     agentProtocol.processVehicleCommand({
       agentId: activeAgentId,
-      vehicleId: activeAgentId === 'Agent-Zero' ? 'agent-1' : 'agent-2',
+      vehicleId: agentProtocol.getSession(activeAgentId)?.vehicleId || activeAgentId,
       inputs
     })
   }
@@ -92,7 +103,7 @@ export function AgentTerminal() {
     if (!activeAgentId) return
     agentProtocol.processVehicleCommand({
       agentId: activeAgentId,
-      vehicleId: activeAgentId === 'Agent-Zero' ? 'agent-1' : 'agent-2',
+      vehicleId: agentProtocol.getSession(activeAgentId)?.vehicleId || activeAgentId,
       inputs: { forward: 0, turn: 0, brake: false, action: true }
     })
     addLog(`${activeAgentId} weapon fired!`)
@@ -138,32 +149,51 @@ export function AgentTerminal() {
               className="shadow-2xl"
               onClose={() => setIsOpen(false)}
             >
+              <div className="mb-3 rounded-lg border border-sky-400/20 bg-sky-500/10 px-3 py-2">
+                <div className="text-[9px] font-black uppercase tracking-[0.25em] text-sky-300">{CHAIN_NAME} command mesh</div>
+                <div className="mt-1 text-[10px] text-white/60">A single runtime hosts role-based agents and a pluggable skill policy layer for this submission build.</div>
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="rounded-full border border-white/10 bg-black/20 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-white/70">
+                    Provider: {skillProvider.label}
+                  </span>
+                  <span className="text-[9px] text-white/45">{skillProvider.summary}</span>
+                </div>
+              </div>
               <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
-                {!sessions.find(s => s.agentId === 'Agent-Zero') && (
-                  <button onClick={() => spawnAgent('Agent-Zero')} className="bg-sky-600/40 hover:bg-sky-600/60 px-3 py-2 rounded-lg text-[10px] font-bold transition-colors whitespace-nowrap">+ ZERO</button>
-                )}
-                {!sessions.find(s => s.agentId === 'Agent-One') && (
-                  <button onClick={() => spawnAgent('Agent-One')} className="bg-purple-600/40 hover:bg-purple-600/60 px-3 py-2 rounded-lg text-[10px] font-bold transition-colors whitespace-nowrap">+ ONE</button>
-                )}
+                {getControllableAgents().map((profile) => (
+                  !sessions.find((session) => session.agentId === profile.id) ? (
+                    <button key={profile.id} onClick={() => spawnAgent(profile.id)} className="bg-sky-600/40 hover:bg-sky-600/60 px-3 py-2 rounded-lg text-[10px] font-bold transition-colors whitespace-nowrap">
+                      + {profile.shortLabel}
+                    </button>
+                  ) : null
+                ))}
               </div>
 
               {sessions.length > 0 && (
                 <div className="space-y-4">
                   <div className="flex gap-2">
-                    {sessions.filter(s => s.agentId !== 'Player').map(s => (
+                    {sessions.filter(s => s.agentId !== 'Player').map(s => {
+                      const profile = getAgentProfile(s.agentId)
+                      return (
                       <button 
                         key={s.agentId}
                         onClick={() => setActiveAgentId(s.agentId)}
                         className={`flex-1 p-2 rounded-lg border transition-all ${activeAgentId === s.agentId ? 'bg-white/20 border-white' : 'bg-black/40 border-white/5 opacity-50 hover:opacity-80'}`}
                       >
                         <span className="text-[10px] font-bold">{s.agentId}</span>
+                        <div className="text-[8px] mt-1" style={{ color: profile?.accentColor || '#7dd3fc' }}>{AGENT_ROLE_CONFIG[s.role].label}</div>
                         <div className="text-[8px] mt-1 text-green-400">Ξ{s.balance.toFixed(3)}</div>
                       </button>
-                    ))}
+                      )
+                    })}
                   </div>
 
                   {activeAgentId && activeSession && (
                     <div className="space-y-3">
+                      <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                        <div className="text-[9px] font-black uppercase tracking-widest text-white/50">{AGENT_ROLE_CONFIG[activeSession.role].label}</div>
+                        <div className="mt-1 text-[10px] text-white/65">{activeSession.mission}</div>
+                      </div>
                       <div className="grid grid-cols-3 gap-2">
                         <button onClick={() => triggerAgentAction('storm', 0.05)} className="bg-red-900/40 hover:bg-red-900/60 p-2 rounded-lg border border-red-500/20 text-[10px] font-bold transition-colors">STORM</button>
                         <button onClick={() => triggerAgentAction('candy', 0.02)} className="bg-pink-900/40 hover:bg-pink-900/60 p-2 rounded-lg border border-pink-500/20 text-[10px] font-bold transition-colors">CANDY</button>
@@ -217,6 +247,12 @@ export function AgentTerminal() {
                   <span className="uppercase font-bold tracking-widest">Weather:</span>
                   <span className="font-black">{weatherStatus.agentId || 'DECENTRALIZED'}</span>
                 </div>
+                {decisionFeed.slice(0, 3).map((decision, index) => (
+                  <div key={`${decision.agentId}-${decision.createdAt}-${index}`} className="rounded-lg border border-white/5 bg-white/5 px-2 py-2">
+                    <div className="text-[9px] font-black uppercase tracking-wider text-sky-300">{decision.title}</div>
+                    <div className="mt-1 text-[10px] text-white/60">{decision.summary}</div>
+                  </div>
+                ))}
                 {logs.map((log, i) => (
                   <div key={i} className="opacity-80 truncate text-[10px] font-mono">{`> ${log}`}</div>
                 ))}

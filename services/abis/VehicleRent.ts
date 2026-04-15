@@ -4,6 +4,8 @@ export const VEHICLE_RENT_ABI = [
     "inputs": [
       { "indexed": true, "internalType": "string", "name": "vehicleId", "type": "string" },
       { "indexed": true, "internalType": "address", "name": "agent", "type": "address" },
+      { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "minutesCount", "type": "uint256" },
       { "indexed": false, "internalType": "uint256", "name": "expiresAt", "type": "uint256" },
       { "indexed": false, "internalType": "string", "name": "vehicleType", "type": "string" }
     ],

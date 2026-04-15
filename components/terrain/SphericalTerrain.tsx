@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { RigidBody } from '@react-three/rapier';
 import { useFrame } from '@react-three/fiber';
 import { TERRAIN_CONFIG } from './terrainUtils';
+import { createNoise2D } from 'simplex-noise';
 
 // Configuration for spherical terrain
 const SPHERICAL_CONFIG = {
@@ -107,7 +108,7 @@ class SphericalTerrainChunkManager {
 
   // Get terrain height at a specific point using the same algorithm as flat terrain
   private getTerrainHeight(x: number, z: number): number {
-    const noise2D = (require('simplex-noise') as any).createNoise2D();
+    const noise2D = createNoise2D();
     let noise = 0;
     
     for (const layer of TERRAIN_CONFIG.NOISE_LAYERS) {
@@ -156,7 +157,6 @@ export function SphericalTerrain({
   const groupRef = useRef<THREE.Group>(null);
   const chunkManagerRef = useRef<SphericalTerrainChunkManager>(null);
   const meshRefs = useRef<Map<string, THREE.Mesh>>(new Map());
-  const tempVector = useRef(new THREE.Vector3());
 
   // Initialize chunk manager
   useEffect(() => {
@@ -279,7 +279,7 @@ export function SimpleSphericalTerrain() {
       const noiseY = lat * SPHERICAL_CONFIG.PLANET_RADIUS / (Math.PI / 2);
       
       // Apply the same terrain noise algorithm as flat terrain
-      const noise2D = (require('simplex-noise') as any).createNoise2D();
+      const noise2D = createNoise2D();
       let noise = 0;
       
       for (const layer of TERRAIN_CONFIG.NOISE_LAYERS) {
@@ -355,7 +355,7 @@ export const getSphericalTerrainHeight = (x: number, z: number): number => {
   const noiseY = lat * radius / (Math.PI / 2);
   
   // Apply the same terrain noise algorithm as flat terrain
-  const noise2D = (require('simplex-noise') as any).createNoise2D();
+  const noise2D = createNoise2D();
   let noise = 0;
   
   for (const layer of TERRAIN_CONFIG.NOISE_LAYERS) {
@@ -408,7 +408,7 @@ export function IntegratedSphericalTerrain({
       const noiseY = lat * SPHERICAL_CONFIG.PLANET_RADIUS / (Math.PI / 2);
       
       // Apply the same terrain noise algorithm as flat terrain
-      const noise2D = (require('simplex-noise') as any).createNoise2D();
+      const noise2D = createNoise2D();
       let noise = 0;
       
       for (const layer of TERRAIN_CONFIG.NOISE_LAYERS) {

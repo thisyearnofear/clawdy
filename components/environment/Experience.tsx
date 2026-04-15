@@ -1,10 +1,8 @@
 'use client'
 
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { PostProcessing } from 'three/webgpu'
-import { bloom } from 'three/tsl'
 import { CameraManager } from './CameraManager'
 import {
   PerspectiveCamera,
@@ -35,6 +33,8 @@ import { useAccount } from 'wagmi'
 import { MobileControls } from '../ui/MobileControls'
 import FrameLimiter from '../utils/FrameLimiter'
 import { CustomFogEffect } from './CustomFogEffect'
+import { getAgentByVehicleId, getControllableAgents } from '../../services/agents'
+import type { RapierRigidBody } from '@react-three/rapier'
 
 interface VehicleData {
   id: string
@@ -47,43 +47,22 @@ interface VehicleData {
 
 function Experience({
   cloudConfig,
-  spawnRate = 2,
-  playerVehicleType = 'speedster'
+  spawnRate = 2
 }: {
   cloudConfig: CloudConfig;
   spawnRate?: number;
-  playerVehicleType?: VehicleType
 }) {
-  const { gl } = useThree()
+  useThree() // Use WebGL renderer (removed WebGPU to fix build)
   const { address } = useAccount()
   const playerId = address || 'anonymous'
-  
-  // WebGPU Post-Processing setup
-  const postProcessing = useMemo(() => {
-    // Only works if the renderer is WebGPURenderer
-    if ((gl as any).isWebGPURenderer) {
-      const pp = new PostProcessing(gl as any)
-      
-      // Add Bloom effect using TSL
-      // bloom(inputNode, threshold, strength, radius)
-      const sceneNode = pp.outputNode || pp.sceneNode
-      pp.outputNode = bloom(sceneNode, 0.5, 1.5, 0.5)
-      
-      return pp
-    }
-    return null
-  }, [gl])
 
   const [foodItems, setFoodItems] = useState<{ id: number; position: [number, number, number] }[]>([])
   const [vehicles, setVehicles] = useState<VehicleData[]>([])
   const [queueState, setQueueState] = useState<QueueState | null>(null)
-  const [hasJoinedQueue, setHasJoinedQueue] = useState(false)
-  const [playerStatus, setPlayerStatus] = useState<{ position: number; estimatedWait: number } | null>(null)
   const [terrainSampler, setTerrainSampler] = useState<((x: number, z: number) => number) | null>(null)
+  const hasJoinedQueueRef = useRef(false)
   
-  const lastSpawnTime = useRef(0)
-  const playerVehicleRef = useRef<THREE.Object3D | null>(null)
-  const [playerVehicleObj, setPlayerVehicleObj] = useState<THREE.Object3D | null>(null)
+  const [playerVehicleObj, setPlayerVehicleObj] = useState<RapierRigidBody | null>(null)
 
   const getVehiclePosition = (index: number): [number, number, number] => {
     const positions: [number, number, number][] = [
@@ -100,10 +79,7 @@ function Experience({
   }
 
   const handleCollect = (id: number, stats: FoodStats, collectorId?: string) => {
-    let agentId = 'Player'
-    if (collectorId === 'agent-1') agentId = 'Agent-Zero'
-    if (collectorId === 'agent-2') agentId = 'Agent-One'
-    
+    const agentId = getAgentByVehicleId(collectorId)?.id || 'Player'
     agentProtocol.collectFood(agentId, stats)
     handleDespawn(id)
   }
@@ -126,10 +102,12 @@ function Experience({
         }))
       
       // Add agent vehicles (always available for AI)
-      const agentVehicles: VehicleData[] = [
-        { id: 'agent-1', type: 'tank', position: [8, 3, 8], agentControlled: true },
-        { id: 'agent-2', type: 'speedster', position: [-8, 3, -8], agentControlled: true }
-      ]
+      const agentVehicles: VehicleData[] = getControllableAgents().map((profile, index) => ({
+        id: profile.vehicleId || profile.id,
+        type: index === 0 ? 'tank' : index === 1 ? 'speedster' : 'truck',
+        position: index === 0 ? [8, 3, 8] : index === 1 ? [-8, 3, -8] : [10, 3, -4],
+        agentControlled: true,
+      }))
       
       setVehicles(prevVehicles => {
         const newVehicles = [...activeVehicles, ...agentVehicles];
@@ -146,12 +124,13 @@ function Experience({
 
   // Auto-join queue when connected
   useEffect(() => {
-    if (address && !hasJoinedQueue) {
-      const status = vehicleQueue.joinQueue(playerId, address)
-      setPlayerStatus(status)
-      setHasJoinedQueue(true)
+    if (address && !hasJoinedQueueRef.current) {
+      hasJoinedQueueRef.current = true
+      queueMicrotask(() => {
+        vehicleQueue.joinQueue(playerId, address)
+      })
     }
-  }, [address, playerId, hasJoinedQueue])
+  }, [address, playerId])
 
   useEffect(() => {
     const unsubCombat = agentProtocol.subscribeToCombat((event) => {
@@ -183,20 +162,17 @@ function Experience({
     address: VEHICLE_RENT_ADDRESS as `0x${string}`,
     abi: VEHICLE_RENT_ABI,
     eventName: 'VehicleRented',
-    onLogs(logs: any) {
-      const event = logs[0].args
-      if (event && event.vehicleId && event.vehicleType) {
-        setVehicles(prev => prev.map(v => v.id === event.vehicleId ? { ...v, type: event.vehicleType as any } : v))
+    onLogs(logs) {
+      const log = logs[0]
+      const event = log?.args
+      if (event && 'vehicleId' in event && 'vehicleType' in event && event.vehicleId && event.vehicleType) {
+        const vehicleType = event.vehicleType as VehicleType
+        setVehicles(prev => prev.map(v => v.id === event.vehicleId ? { ...v, type: vehicleType } : v))
       }
     },
   })
 
-  useFrame((state) => {
-    // Render the post-processing pass
-    if (postProcessing) {
-      postProcessing.render()
-    }
-
+  useFrame(() => {
     // Only update world state if vehicles have actually changed
     // CPU-side food spawning is now handled by ComputeFoodManager on the GPU
     agentProtocol.updateWorldState({
@@ -293,8 +269,7 @@ function Experience({
             // Only allow player control if this is their assigned vehicle
             playerControlled: isPlayerVehicle,
             // Pass ref for camera tracking
-            onRef: isPlayerVehicle ? (ref: any) => { 
-              playerVehicleRef.current = ref
+            onRef: isPlayerVehicle ? (ref: RapierRigidBody | null) => { 
               setPlayerVehicleObj(ref)
             } : undefined
           }

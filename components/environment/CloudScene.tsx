@@ -1,7 +1,7 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { Suspense, useState, useEffect, useCallback } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import Experience from './Experience'
 import { Loader } from '@react-three/drei'
 import { CloudConfig } from './CloudManager'
@@ -14,7 +14,6 @@ import { WEATHER_AUCTION_ABI } from '../../services/abis/WeatherAuction'
 import { Leaderboard } from '../ui/Leaderboard'
 import { vehicleQueue, QueueState } from '../../services/VehicleQueue'
 import { useAccount } from 'wagmi'
-import WebGPURenderer from 'three/webgpu'
 
 export default function CloudScene() {
   const { address } = useAccount()
@@ -27,7 +26,7 @@ export default function CloudScene() {
   const [activeTab, setActiveAgentTab] = useState<'weather' | 'vehicles' | 'stats'>('weather')
   const [showQuickControls, setShowQuickControls] = useState(false)
   const [queueState, setQueueState] = useState<QueueState | null>(null)
-  const [now, setNow] = useState(0)
+  const [now, setNow] = useState(() => Date.now())
   const [isMounted, setIsMounted] = useState(false)
 
   const [config, setConfig] = useState<CloudConfig>({
@@ -36,16 +35,12 @@ export default function CloudScene() {
     bounds: [10, 2, 10], count: 5
   })
 
-  // Callback to initialize WebGPURenderer
-  const createRenderer = useCallback((canvas: HTMLCanvasElement) => {
-    return new WebGPURenderer({ canvas, antialias: true })
-  }, [])
-
   useWatchContractEvent({
     address: WEATHER_AUCTION_ADDRESS as `0x${string}`,
     abi: WEATHER_AUCTION_ABI,
     eventName: 'WeatherChanged',
-    onLogs(logs: any) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onLogs(logs: any[]) {
       const event = logs[0]?.args
       if (event?.preset) {
         agentProtocol.processCommand({
@@ -57,6 +52,7 @@ export default function CloudScene() {
   })
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true)
     const interval = setInterval(() => {
       setPlayerSession(agentProtocol.getSession('Player') || null)
@@ -105,7 +101,7 @@ export default function CloudScene() {
 
   return (
     <div className="w-full h-screen bg-gradient-to-b from-sky-400 to-sky-200 relative overflow-hidden">
-      <Canvas shadows gl={createRenderer}>
+      <Canvas shadows>
         <Suspense fallback={null}>
           <Experience cloudConfig={config} spawnRate={spawnRate} playerVehicleType={playerVehicle} />
         </Suspense>
@@ -183,7 +179,7 @@ export default function CloudScene() {
         <div className="absolute bottom-6 right-6 z-10 flex flex-col gap-2 items-end">
           {/* Queue Status */}
           {queueState && address && (
-            <QueueStatusBadge playerId={playerId} queueState={queueState} />
+            <QueueStatusBadge playerId={playerId} queueState={queueState} now={now} />
           )}
           
           <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-3 shadow-xl">
@@ -354,7 +350,7 @@ function HelpHint() {
 }
 
 // Queue status badge component
-function QueueStatusBadge({ playerId, queueState }: { playerId: string; queueState: QueueState }) {
+function QueueStatusBadge({ playerId, queueState, now }: { playerId: string; queueState: QueueState; now: number }) {
   const isActive = queueState.isPlayerActive(playerId)
   const vehicle = queueState.getPlayerVehicle(playerId)
   const player = queueState.queue.find(p => p.id === playerId)
@@ -362,7 +358,7 @@ function QueueStatusBadge({ playerId, queueState }: { playerId: string; queueSta
   if (isActive && vehicle) {
     // Show active vehicle info with controls hint
     const timeLeft = player?.sessionEndTime 
-      ? Math.max(0, Math.floor((player.sessionEndTime - Date.now()) / 1000))
+      ? Math.max(0, Math.floor((player.sessionEndTime - now) / 1000))
       : 0
     const minutes = Math.floor(timeLeft / 60)
     const seconds = timeLeft % 60

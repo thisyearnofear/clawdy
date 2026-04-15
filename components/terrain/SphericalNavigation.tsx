@@ -35,7 +35,6 @@ export function SphericalNavigationController({
 
     // Calculate the vehicle's distance from the center of the sphere
     const currentPos = vehicle.position;
-    const distanceFromCenter = currentPos.length();
 
     // Calculate the surface normal (points outward from sphere center)
     surfaceNormalRef.current.copy(currentPos).normalize();
@@ -60,14 +59,12 @@ export function SphericalNavigationController({
     // Orient the vehicle to align with the surface normal
     // Point the vehicle's up direction to match the surface normal
     const targetUp = surfaceNormalRef.current.clone();
-    const currentForward = new THREE.Vector3(0, 0, 1).applyQuaternion(vehicle.quaternion);
 
     // Create a new orientation that keeps the vehicle aligned with the surface
     const newQuaternion = new THREE.Quaternion();
     newQuaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), targetUp);
 
     // Apply the new orientation while preserving forward direction
-    const rotatedForward = currentForward.clone().applyQuaternion(newQuaternion);
     vehicle.quaternion.copy(newQuaternion);
 
     // Notify parent of position update
@@ -121,14 +118,10 @@ export function SphericalNavigationController({
 
 /**
  * Hook for spherical navigation that can be used with any vehicle
+ * Returns a stable ref that can be used to access navigation methods
  */
 export function useSphericalNavigation(vehicleRef: React.RefObject<THREE.Object3D>) {
-  const navigationController = useRef<any>(null);
-  const controllerMethods = useRef({
-    applyMovement: (direction: THREE.Vector3) => {},
-    getCurrentSurfaceNormal: () => new THREE.Vector3(),
-    getSurfacePosition: () => new THREE.Vector3()
-  });
+  const navigationController = useRef<ReturnType<typeof SphericalNavigationController> | null>(null);
 
   useEffect(() => {
     if (!vehicleRef.current) return;
@@ -137,14 +130,10 @@ export function useSphericalNavigation(vehicleRef: React.RefObject<THREE.Object3
     navigationController.current = SphericalNavigationController({
       vehicleRef
     });
-
-    // Copy methods to ref for access
-    if ('applyMovement' in navigationController.current) {
-      controllerMethods.current = navigationController.current;
-    }
   }, [vehicleRef]);
 
-  return controllerMethods.current;
+  // Return the ref directly - consumer can access .current to get methods
+  return navigationController;
 }
 
 /**
