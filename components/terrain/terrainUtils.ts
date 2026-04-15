@@ -3,10 +3,10 @@ import { createNoise2D } from 'simplex-noise'
 export type SurfaceType = 'road' | 'grass' | 'sand' | 'mud'
 
 export const SURFACE_FRICTION: Record<SurfaceType, number> = {
-  road: 0.99,
-  grass: 0.96,
-  sand: 0.90,
-  mud: 0.85,
+  road: 0.995,
+  grass: 0.98,
+  sand: 0.93,
+  mud: 0.88,
 }
 
 export const SURFACE_COLORS: Record<SurfaceType, [number, number, number]> = {

@@ -93,8 +93,8 @@ export function Vehicle({
     const rightDir = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion)
 
     // ACCELERATION / BRAKING
-    const maxSpeed = 35 * (0.5 + 0.5 * vitalityFactor) // Slower if low vitality
-    const acceleration = 250 * delta // Force per second - much stronger
+    const maxSpeed = 45 * (0.5 + 0.5 * vitalityFactor) // Slower if low vitality
+    const acceleration = 400 * delta // Force per second - punchy acceleration
 
     if (forward !== 0) {
       // Only accelerate if below max speed (in the relevant direction)
@@ -159,8 +159,10 @@ export function Vehicle({
     const vPos = chassisRef.current.translation()
     const surfaceType = getSurfaceType(vPos.x, vPos.z)
     const rollingFriction = SURFACE_FRICTION[surfaceType]
-    if (forward === 0 && !brake) {
-      chassisRef.current.setLinvel({ x: velocity.x * rollingFriction, y: velocity.y, z: velocity.z * rollingFriction }, true)
+    // Always apply surface friction (even while accelerating on bad surfaces)
+    const frictionToApply = forward !== 0 ? Math.sqrt(rollingFriction) : rollingFriction
+    if (!brake) {
+      chassisRef.current.setLinvel({ x: velocity.x * frictionToApply, y: velocity.y, z: velocity.z * frictionToApply }, true)
     }
 
     // Counteract sliding/drifting (align velocity with forward direction)
@@ -169,10 +171,11 @@ export function Vehicle({
       const rightComponent = velocity.x * rightDir.x + velocity.z * rightDir.z
 
       // Reduce sideways velocity (simulate wheel friction preventing sliding)
+      const lateralGrip = surfaceType === 'road' ? 0.6 : surfaceType === 'grass' ? 0.5 : 0.4
       const correctedVel = {
-        x: forwardDir.x * forwardComponent + rightDir.x * rightComponent * 0.3,
+        x: forwardDir.x * forwardComponent + rightDir.x * rightComponent * lateralGrip,
         y: velocity.y,
-        z: forwardDir.z * forwardComponent + rightDir.z * rightComponent * 0.3
+        z: forwardDir.z * forwardComponent + rightDir.z * rightComponent * lateralGrip
       }
 
       chassisRef.current.setLinvel(correctedVel, true)
@@ -216,8 +219,8 @@ export function Vehicle({
         mass={2}
         restitution={0.1}
         friction={0.8}
-        linearDamping={0.4}
-        angularDamping={0.8}
+        linearDamping={0.05}
+        angularDamping={0.6}
         ccd={true}
       >
         {/* Chassis - blue for player, red for agent */}

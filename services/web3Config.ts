@@ -12,15 +12,20 @@ export const supportedChains = [xLayer, xLayerTestnet] as const
 // Poll every 12s (wagmi default is 4s) — sufficient for game event sync
 export const POLL_INTERVAL = 12_000
 
+// Use a no-op transport for the inactive chain to prevent 403 polling errors.
+// The inactive chain's transport points to the active RPC (never actually called).
+const testnetTransport = fallback([
+  http('https://xlayertestrpc.okx.com'),
+  http('https://testrpc.xlayer.tech'),
+])
+const mainnetTransport = http('https://rpc.xlayer.tech')
+
 export const config = createConfig({
   chains: supportedChains,
   pollingInterval: POLL_INTERVAL,
   transports: {
-    [xLayer.id]: http('https://rpc.xlayer.tech'),
-    [xLayerTestnet.id]: fallback([
-      http('https://xlayertestrpc.okx.com'),
-      http('https://testrpc.xlayer.tech'),
-    ]),
+    [xLayer.id]: isXLayerTestnet ? testnetTransport : mainnetTransport,
+    [xLayerTestnet.id]: testnetTransport,
   },
   // Stop polling when the browser tab is hidden
   syncConnectedChain: true,
