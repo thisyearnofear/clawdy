@@ -5,6 +5,7 @@ import { WEATHER_AUCTION_ABI } from './abis/WeatherAuction'
 import { VEHICLE_RENT_ABI } from './abis/VehicleRent'
 import { getAgentMission, getAgentRole, getAgentVehicleId } from './agents'
 import { evaluateAgentDecision, getSkillProviderInfo, SkillDecision } from './skillEngine'
+import type { ZgGameState } from './zgStorage'
 
 export type VehicleType = 'truck' | 'tank' | 'monster' | 'speedster'
 export type AgentRole = 'operator' | 'scout' | 'weather' | 'mobility' | 'treasury'
@@ -194,12 +195,14 @@ class AgentProtocol {
     }
   }
 
+  private zgSaveCounter = 0
+
   private persistState() {
     if (typeof window === 'undefined') return
     try {
-      const state: Record<string, unknown> = {}
+      const sessions: Record<string, unknown> = {}
       this.sessions.forEach((session, id) => {
-        state[id] = {
+        sessions[id] = {
           balance: session.balance,
           totalEarned: session.totalEarned,
           totalPaid: session.totalPaid,
@@ -211,36 +214,78 @@ class AgentProtocol {
           decisionCount: session.decisionCount,
         }
       })
-      localStorage.setItem('clawdy:sessions', JSON.stringify(state))
+      localStorage.setItem('clawdy:sessions', JSON.stringify(sessions))
       localStorage.setItem('clawdy:timestamp', Date.now().toString())
+
+      // Persist to 0G Storage every 6th cycle (~30s)
+      this.zgSaveCounter++
+      if (this.zgSaveCounter >= 6) {
+        this.zgSaveCounter = 0
+        this.persistTo0G(sessions)
+      }
     } catch { /* localStorage may be unavailable */ }
+  }
+
+  private async persistTo0G(sessions: Record<string, unknown>) {
+    try {
+      const { zgSaveState } = await import('./zgStorage')
+      const state = {
+        version: 1,
+        timestamp: Date.now(),
+        sessions: sessions as ZgGameState['sessions'],
+      }
+      const result = await zgSaveState('global', state)
+      if (result.rootHash) {
+        console.log('[0G Storage] State persisted, rootHash:', result.rootHash)
+      } else if (result.error) {
+        console.warn('[0G Storage] Save failed:', result.error)
+      }
+    } catch { /* 0G unavailable, localStorage is primary */ }
   }
 
   private restorePersistedState() {
     if (typeof window === 'undefined') return
+    // Try localStorage first (fast)
     try {
       const timestamp = localStorage.getItem('clawdy:timestamp')
-      if (!timestamp) return
-      // Only restore if saved less than 1 hour ago
-      if (Date.now() - Number(timestamp) > 3600000) return
-      const raw = localStorage.getItem('clawdy:sessions')
-      if (!raw) return
-      const saved = JSON.parse(raw) as Record<string, Record<string, number>>
-      for (const [id, data] of Object.entries(saved)) {
-        const session = this.sessions.get(id)
-        if (session && data) {
-          session.balance = data.balance ?? session.balance
-          session.totalEarned = data.totalEarned ?? session.totalEarned
-          session.totalPaid = data.totalPaid ?? session.totalPaid
-          session.collectedCount = data.collectedCount ?? session.collectedCount
-          session.executedBidCount = data.executedBidCount ?? session.executedBidCount
-          session.executedRentCount = data.executedRentCount ?? session.executedRentCount
-          session.vitality = data.vitality ?? session.vitality
-          session.burden = data.burden ?? session.burden
-          session.decisionCount = data.decisionCount ?? session.decisionCount
+      if (timestamp && Date.now() - Number(timestamp) <= 3600000) {
+        const raw = localStorage.getItem('clawdy:sessions')
+        if (raw) {
+          this.applyRestoredState(JSON.parse(raw))
+          return
         }
       }
-    } catch { /* ignore parse errors */ }
+    } catch { /* ignore */ }
+    // Fall back to 0G Storage (async)
+    this.restoreFrom0G()
+  }
+
+  private applyRestoredState(saved: Record<string, Record<string, number>>) {
+    for (const [id, data] of Object.entries(saved)) {
+      const session = this.sessions.get(id)
+      if (session && data) {
+        session.balance = data.balance ?? session.balance
+        session.totalEarned = data.totalEarned ?? session.totalEarned
+        session.totalPaid = data.totalPaid ?? session.totalPaid
+        session.collectedCount = data.collectedCount ?? session.collectedCount
+        session.executedBidCount = data.executedBidCount ?? session.executedBidCount
+        session.executedRentCount = data.executedRentCount ?? session.executedRentCount
+        session.vitality = data.vitality ?? session.vitality
+        session.burden = data.burden ?? session.burden
+        session.decisionCount = data.decisionCount ?? session.decisionCount
+      }
+    }
+  }
+
+  private async restoreFrom0G() {
+    try {
+      const { zgLoadState } = await import('./zgStorage')
+      const result = await zgLoadState('global')
+      if (result.state?.sessions) {
+        console.log('[0G Storage] Restored state from 0G, timestamp:', result.state.timestamp)
+        this.applyRestoredState(result.state.sessions as unknown as Record<string, Record<string, number>>)
+      }
+    } catch { /* 0G unavailable */ }
   }
 
   private initPublicApi() {
