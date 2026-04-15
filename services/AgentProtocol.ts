@@ -173,7 +173,74 @@ class AgentProtocol {
 
   constructor() {
     this.authorizeAgent('Player', 3600000 * 24, 10.0)
+    // Auto-start AI agent sessions with autopilot enabled
+    this.initAIAgents()
     this.initPublicApi()
+    // Restore persisted state if available
+    this.restorePersistedState()
+    // Periodically persist state
+    if (typeof window !== 'undefined') {
+      setInterval(() => this.persistState(), 5000)
+    }
+  }
+
+  private async initAIAgents() {
+    const { getControllableAgents } = await import('./agents')
+    const agents = getControllableAgents()
+    for (const agent of agents) {
+      await this.authorizeAgent(agent.id, 3600000 * 24, 5.0)
+      const session = this.sessions.get(agent.id)
+      if (session) session.autoPilot = true
+    }
+  }
+
+  private persistState() {
+    if (typeof window === 'undefined') return
+    try {
+      const state: Record<string, unknown> = {}
+      this.sessions.forEach((session, id) => {
+        state[id] = {
+          balance: session.balance,
+          totalEarned: session.totalEarned,
+          totalPaid: session.totalPaid,
+          collectedCount: session.collectedCount,
+          executedBidCount: session.executedBidCount,
+          executedRentCount: session.executedRentCount,
+          vitality: session.vitality,
+          burden: session.burden,
+          decisionCount: session.decisionCount,
+        }
+      })
+      localStorage.setItem('clawdy:sessions', JSON.stringify(state))
+      localStorage.setItem('clawdy:timestamp', Date.now().toString())
+    } catch { /* localStorage may be unavailable */ }
+  }
+
+  private restorePersistedState() {
+    if (typeof window === 'undefined') return
+    try {
+      const timestamp = localStorage.getItem('clawdy:timestamp')
+      if (!timestamp) return
+      // Only restore if saved less than 1 hour ago
+      if (Date.now() - Number(timestamp) > 3600000) return
+      const raw = localStorage.getItem('clawdy:sessions')
+      if (!raw) return
+      const saved = JSON.parse(raw) as Record<string, Record<string, number>>
+      for (const [id, data] of Object.entries(saved)) {
+        const session = this.sessions.get(id)
+        if (session && data) {
+          session.balance = data.balance ?? session.balance
+          session.totalEarned = data.totalEarned ?? session.totalEarned
+          session.totalPaid = data.totalPaid ?? session.totalPaid
+          session.collectedCount = data.collectedCount ?? session.collectedCount
+          session.executedBidCount = data.executedBidCount ?? session.executedBidCount
+          session.executedRentCount = data.executedRentCount ?? session.executedRentCount
+          session.vitality = data.vitality ?? session.vitality
+          session.burden = data.burden ?? session.burden
+          session.decisionCount = data.decisionCount ?? session.decisionCount
+        }
+      }
+    } catch { /* ignore parse errors */ }
   }
 
   private initPublicApi() {
@@ -413,13 +480,29 @@ class AgentProtocol {
           const target = this.worldState.food.find(f => f.id === nearestId)!
           const dx = target.position[0] - agentVehicle.position[0]
           const dz = target.position[2] - agentVehicle.position[2]
-          const angleToTarget = Math.atan2(dx, dz)
-          const currentRotationY = agentVehicle.rotation[1] * Math.PI 
-          const diff = angleToTarget - currentRotationY
+          const dist = Math.sqrt(dx * dx + dz * dz)
+          const angleToTarget = Math.atan2(dx, -dz) // atan2(x, -z) for Three.js forward=-Z
+          // Extract yaw from quaternion [x,y,z,w]
+          const [qx, qy, qz, qw] = agentVehicle.rotation
+          const currentYaw = Math.atan2(2 * (qw * qy + qx * qz), 1 - 2 * (qy * qy + qz * qz)) // eslint-disable-line @typescript-eslint/no-unused-vars
+          let diff = angleToTarget - currentYaw
+          // Normalize to [-PI, PI]
+          while (diff > Math.PI) diff -= 2 * Math.PI
+          while (diff < -Math.PI) diff += 2 * Math.PI
+          const turnStrength = Math.max(-1, Math.min(1, diff * 2))
+          const forwardStrength = dist > 2 ? 0.8 : 0.3
           this.processVehicleCommand({
             agentId: session.agentId,
             vehicleId: agentVehicleId,
-            inputs: { forward: 0.5, turn: Math.sin(diff), brake: false }
+            inputs: { forward: forwardStrength, turn: turnStrength, brake: false }
+          })
+        } else if (session.autoPilot) {
+          // No food — wander randomly
+          const wanderTurn = Math.sin(Date.now() * 0.001 + session.agentId.charCodeAt(6) * 10) * 0.5
+          this.processVehicleCommand({
+            agentId: session.agentId,
+            vehicleId: agentVehicleId,
+            inputs: { forward: 0.4, turn: wanderTurn, brake: false }
           })
         }
       } else {
