@@ -1,6 +1,6 @@
 import { createConfig } from 'wagmi'
 import { injected, walletConnect, coinbaseWallet } from 'wagmi/connectors'
-import { http } from 'wagmi'
+import { http, fallback } from 'wagmi'
 import { xLayer, xLayerTestnet } from 'viem/chains'
 
 export const isXLayerTestnet =
@@ -9,12 +9,24 @@ export const isXLayerTestnet =
 export const primaryChain = isXLayerTestnet ? xLayerTestnet : xLayer
 export const supportedChains = [xLayer, xLayerTestnet] as const
 
+// Poll every 12s (wagmi default is 4s) — sufficient for game event sync
+export const POLL_INTERVAL = 12_000
+
 export const config = createConfig({
   chains: supportedChains,
+  pollingInterval: POLL_INTERVAL,
   transports: {
-    [xLayer.id]: http('https://rpc.xlayer.tech'),
-    [xLayerTestnet.id]: http('https://xlayertestrpc.okx.com'),
+    [xLayer.id]: fallback([
+      http('https://rpc.xlayer.tech'),
+      http('https://xlayer-rpc.publicnode.com'),
+    ]),
+    [xLayerTestnet.id]: fallback([
+      http('https://xlayertestrpc.okx.com'),
+      http('https://testrpc.xlayer.tech'),
+    ]),
   },
+  // Stop polling when the browser tab is hidden
+  syncConnectedChain: true,
   connectors: [
     injected({ target: 'metaMask' }),
     coinbaseWallet({ 

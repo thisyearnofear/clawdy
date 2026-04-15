@@ -30,6 +30,7 @@ import { vehicleQueue, QueueState } from '../../services/VehicleQueue'
 import { useWatchContractEvent } from 'wagmi'
 import { VEHICLE_RENT_ABI } from '../../services/abis/VehicleRent'
 import { useAccount } from 'wagmi'
+import { POLL_INTERVAL } from '../../services/web3Config'
 import { MobileControls } from '../ui/MobileControls'
 import FrameLimiter from '../utils/FrameLimiter'
 import { CustomFogEffect } from './CustomFogEffect'
@@ -164,6 +165,7 @@ function Experience({
     address: VEHICLE_RENT_ADDRESS as `0x${string}`,
     abi: VEHICLE_RENT_ABI,
     eventName: 'VehicleRented',
+    pollingInterval: POLL_INTERVAL,
     onLogs(logs) {
       const log = logs[0]
       const event = log?.args

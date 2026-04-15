@@ -11,6 +11,7 @@ import { VehicleType } from '../../services/AgentProtocol'
 import { ConnectWallet } from '../ui/ConnectWallet'
 import { useWatchContractEvent } from 'wagmi'
 import { WEATHER_AUCTION_ABI } from '../../services/abis/WeatherAuction'
+import { POLL_INTERVAL } from '../../services/web3Config'
 import { Leaderboard } from '../ui/Leaderboard'
 import { vehicleQueue, QueueState } from '../../services/VehicleQueue'
 import { useAccount } from 'wagmi'
@@ -39,6 +40,7 @@ export default function CloudScene() {
     address: WEATHER_AUCTION_ADDRESS as `0x${string}`,
     abi: WEATHER_AUCTION_ABI,
     eventName: 'WeatherChanged',
+    pollingInterval: POLL_INTERVAL,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onLogs(logs: any[]) {
       const event = logs[0]?.args
