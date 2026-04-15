@@ -182,9 +182,26 @@ function Experience({
     },
   })
 
+  // Throttle world state updates to avoid per-frame overhead
+  const lastWorldUpdateRef = useRef(0)
   useFrame(() => {
-    // Only update world state if vehicles have actually changed
-    // CPU-side food spawning is now handled by ComputeFoodManager on the GPU
+    const now = Date.now()
+    if (now - lastWorldUpdateRef.current < 200) return // 5 Hz max
+    lastWorldUpdateRef.current = now
+    // Merge food + bounds into world state without overwriting live vehicle positions
+    const currentVehicles = agentProtocol.getWorldState().vehicles
+    // Ensure all vehicles exist in world state (add any missing ones)
+    const vehicleIds = new Set(currentVehicles.map(v => v.id))
+    const newVehicles = vehicles
+      .filter(v => !vehicleIds.has(v.id))
+      .map(v => ({
+        id: v.id,
+        type: v.type,
+        position: v.position,
+        rotation: [0, 0, 0, 1] as [number, number, number, number],
+        isRented: v.playerId !== undefined,
+        rentExpiresAt: 0
+      }))
     agentProtocol.updateWorldState({
        food: foodItems.map(f => ({ 
          id: f.id, 
@@ -192,14 +209,7 @@ function Experience({
          nutrition: 'unknown', 
          position: f.position 
        })),
-       vehicles: vehicles.map(v => ({
-         id: v.id,
-         type: v.type,
-         position: v.position,
-         rotation: [0, 0, 0, 1],
-         isRented: v.playerId !== undefined,
-         rentExpiresAt: 0
-       })),
+       vehicles: [...currentVehicles, ...newVehicles],
        bounds: cloudConfig.bounds
     })
   })

@@ -79,9 +79,13 @@ export default function CloudScene() {
       setConfig(prev => ({ ...prev, ...newConfig, preset: 'custom' }))
     })
 
-    // Listen for bid wins from AgentProtocol
+    // Listen for bid wins from AgentProtocol (debounce celebration)
+    let lastBidWinAt = 0
     const unsubscribeBid = agentProtocol.subscribeToEvents?.((event) => {
       if (event.type === 'bid-won') {
+        const now = Date.now()
+        if (now - lastBidWinAt < 5000) return // Suppress repeated celebrations within 5s
+        lastBidWinAt = now
         setBidWinPreset(event.preset as string)
         emitToast('bid-win', 'Weather Auction Won!', `${event.preset} weather activated`)
         playSound('bid-win')

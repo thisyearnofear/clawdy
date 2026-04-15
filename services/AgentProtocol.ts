@@ -444,12 +444,20 @@ class AgentProtocol {
     })
   }
 
+  private lastAgentTickAt = 0
+  private static readonly AGENT_TICK_INTERVAL = 250 // Run agent AI at ~4 Hz
+
   updateWorldState(update: Partial<WorldState>) {
     this.worldState = { ...this.worldState, ...update, timestamp: Date.now() }
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('clawdy:state', { detail: this.worldState }))
     }
     
+    // Throttle heavy agent AI to avoid per-frame overhead
+    const now = Date.now()
+    if (now - this.lastAgentTickAt < AgentProtocol.AGENT_TICK_INTERVAL) return
+    this.lastAgentTickAt = now
+
     this.sessions.forEach(session => {
       if (session.agentId === 'Player') return
       const agentVehicleId = session.vehicleId
@@ -482,11 +490,9 @@ class AgentProtocol {
           const dz = target.position[2] - agentVehicle.position[2]
           const dist = Math.sqrt(dx * dx + dz * dz)
           const angleToTarget = Math.atan2(dx, -dz) // atan2(x, -z) for Three.js forward=-Z
-          // Extract yaw from quaternion [x,y,z,w]
-          const [qx, qy, qz, qw] = agentVehicle.rotation
-          const currentYaw = Math.atan2(2 * (qw * qy + qx * qz), 1 - 2 * (qy * qy + qz * qz))
+          const [, qy, , qw] = agentVehicle.rotation
+          const currentYaw = Math.atan2(2 * (qw * qy), 1 - 2 * (qy * qy))
           let diff = angleToTarget - currentYaw
-          // Normalize to [-PI, PI]
           while (diff > Math.PI) diff -= 2 * Math.PI
           while (diff < -Math.PI) diff += 2 * Math.PI
           const turnStrength = Math.max(-1, Math.min(1, diff * 2))
@@ -497,14 +503,22 @@ class AgentProtocol {
             inputs: { forward: forwardStrength, turn: turnStrength, brake: false }
           })
         } else if (session.autoPilot) {
-          // No food — wander randomly
-          const wanderTurn = Math.sin(Date.now() * 0.001 + session.agentId.charCodeAt(6) * 10) * 0.5
+          const wanderTurn = Math.sin(now * 0.001 + session.agentId.charCodeAt(6) * 10) * 0.5
           this.processVehicleCommand({
             agentId: session.agentId,
             vehicleId: agentVehicleId,
             inputs: { forward: 0.4, turn: wanderTurn, brake: false }
           })
         }
+      } else if (session.autoPilot) {
+        // No food visible — wander
+        const wanderTurn = Math.sin(now * 0.001 + session.agentId.charCodeAt(6) * 10) * 0.5
+        this.processVehicleCommand({
+          agentId: session.agentId,
+          vehicleId: session.vehicleId,
+          inputs: { forward: 0.4, turn: wanderTurn, brake: false }
+        })
+        session.targetFoodId = null
       } else {
         session.targetFoodId = null
         this.publishDecision(

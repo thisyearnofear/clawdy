@@ -210,6 +210,7 @@ export function Speedster({
         linearDamping={0.4}
         angularDamping={0.8}
         ccd={true}
+        userData={{ agentId: agentControlled ? id : undefined, isPlayer: !agentControlled }}
       >
         {/* LOW PROFILE - Speedster hugs the ground */}
         

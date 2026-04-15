@@ -222,6 +222,7 @@ export function Vehicle({
         linearDamping={0.05}
         angularDamping={0.6}
         ccd={true}
+        userData={{ agentId: agentControlled ? id : undefined, isPlayer: playerControlled }}
       >
         {/* Chassis - blue for player, red for agent */}
         <mesh castShadow>

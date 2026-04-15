@@ -226,6 +226,7 @@ export function MonsterTruck({
         linearDamping={0.4}
         angularDamping={0.6}
         ccd={true}
+        userData={{ agentId: agentControlled ? id : undefined, isPlayer: !agentControlled }}
       >
         {/* MASSIVE Wheels - Monster Truck signature */}
         {[[-1.8, -0.3, 1.8], [1.8, -0.3, 1.8], [-1.8, -0.3, -1.8], [1.8, -0.3, -1.8]].map((pos, i) => (
