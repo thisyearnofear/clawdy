@@ -1,17 +1,20 @@
 import { createConfig } from 'wagmi'
 import { injected, walletConnect, coinbaseWallet } from 'wagmi/connectors'
+import { http } from 'wagmi'
 import { xLayer, xLayerTestnet } from 'viem/chains'
 
 export const isXLayerTestnet =
   process.env.NEXT_PUBLIC_USE_XLAYER_TESTNET === 'true'
 
 export const primaryChain = isXLayerTestnet ? xLayerTestnet : xLayer
-export const supportedChains = [primaryChain] as const
+export const supportedChains = [xLayer, xLayerTestnet] as const
 
 export const config = createConfig({
   chains: supportedChains,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  transports: {} as Record<number, any>,
+  transports: {
+    [xLayer.id]: http(),
+    [xLayerTestnet.id]: http(),
+  },
   connectors: [
     injected({ target: 'metaMask' }),
     coinbaseWallet({ 

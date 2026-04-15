@@ -7,22 +7,28 @@ import * as THREE from 'three'
 import { getAgentProfile, getAgentVehicleId } from '../../services/agents'
 
 const VisionLine = forwardRef<THREE.Mesh, { agentColor: string }>(({ agentColor }, ref) => {
-  const material = useMemo(() => {
-    const mat = new THREE.MeshStandardMaterial({
-      transparent: true,
-      depthWrite: false,
-      emissive: new THREE.Color(agentColor),
-      emissiveIntensity: 2.0,
-      color: agentColor,
-    })
+  const matRef = useRef<THREE.MeshStandardMaterial>(null)
 
-    return mat
-  }, [agentColor])
+  // Animate the beam pulse
+  useFrame((state) => {
+    if (!matRef.current) return
+    const t = state.clock.getElapsedTime()
+    matRef.current.emissiveIntensity = 1.5 + Math.sin(t * 6) * 1.0
+    matRef.current.opacity = 0.4 + Math.sin(t * 6) * 0.2
+  })
 
   return (
     <mesh ref={ref} visible={false}>
-      <cylinderGeometry args={[0.05, 0.05, 1, 8]} />
-      <primitive object={material} />
+      <cylinderGeometry args={[0.06, 0.03, 1, 8]} />
+      <meshStandardMaterial
+        ref={matRef}
+        transparent
+        depthWrite={false}
+        emissive={agentColor}
+        emissiveIntensity={2.0}
+        color={agentColor}
+        opacity={0.6}
+      />
     </mesh>
   )
 })

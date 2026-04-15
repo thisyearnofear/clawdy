@@ -8,6 +8,36 @@ import { RigidBody, useRapier } from '@react-three/rapier'
 import type { RapierRigidBody } from '@react-three/rapier'
 import { agentProtocol } from '../../services/AgentProtocol'
 
+function TankArmorPulse() {
+  const meshRef = useRef<THREE.Mesh>(null)
+  const matRef = useRef<THREE.MeshStandardMaterial>(null)
+
+  useFrame((state) => {
+    if (meshRef.current && matRef.current) {
+      const t = state.clock.getElapsedTime()
+      matRef.current.emissiveIntensity = 0.3 + Math.sin(t * 2) * 0.3
+      matRef.current.opacity = 0.15 + Math.sin(t * 2) * 0.1
+      meshRef.current.scale.setScalar(1.05 + Math.sin(t * 2) * 0.03)
+    }
+  })
+
+  return (
+    <mesh ref={meshRef} position={[0, 0.1, 0]}>
+      <boxGeometry args={[2.7, 1.2, 4.2]} />
+      <meshStandardMaterial
+        ref={matRef}
+        color="#4b5320"
+        emissive="#88aa44"
+        emissiveIntensity={0}
+        transparent
+        opacity={0.3}
+        depthWrite={false}
+        side={THREE.DoubleSide}
+      />
+    </mesh>
+  )
+}
+
 // Standard Material for Tank
 const createLaserMaterial = () => {
   const mat = new THREE.MeshStandardMaterial({
@@ -195,6 +225,9 @@ export function Tank({
             <meshStandardMaterial color="#1e210b" />
           </mesh>
           
+          {/* Armor energy pulse */}
+          <TankArmorPulse />
+
           {/* Laser Sight */}
           <mesh ref={laserRef} rotation={[Math.PI / 2, 0, 0]}>
             <cylinderGeometry args={[0.02, 0.02, 1, 8]} />

@@ -42,13 +42,14 @@ export const FOOD_COLORS: Record<FoodType, string> = {
   rotten_burger: '#5d4037',
 }
 
-// Standard Material for Food Items
-// Adds a simple pulsing effect using standard THREE.js
+// Standard Material for Food Items with emissive glow for collectible visibility
 const createFoodMaterial = (baseColor: string) => {
   const mat = new THREE.MeshStandardMaterial({
-    roughness: 0.7,
-    metalness: 0.1,
+    roughness: 0.5,
+    metalness: 0.2,
     color: baseColor,
+    emissive: new THREE.Color(baseColor),
+    emissiveIntensity: 0.3,
   });
 
   return mat;
@@ -71,16 +72,19 @@ export function ProceduralFood({ id, itemType, onDespawn, onCollect, ...props }:
     return { type, ...FOOD_METADATA[type] }
   }, [itemType, id])
 
-  const material = useMemo(() => 
-    createFoodMaterial(FOOD_COLORS[stats.type])
-  , [stats.type])
+  const matRef = useRef<THREE.MeshStandardMaterial>(null)
 
-  useFrame(() => {
+  useFrame((state) => {
     if (rigidBody.current) {
       const translation = rigidBody.current.translation()
       if (translation.y < -20 && onDespawn) {
         onDespawn()
       }
+    }
+    // Pulsing emissive glow
+    if (matRef.current) {
+      const t = state.clock.getElapsedTime()
+      matRef.current.emissiveIntensity = 0.2 + Math.sin(t * 3 + id * 0.5) * 0.2
     }
   })
 
@@ -126,7 +130,14 @@ export function ProceduralFood({ id, itemType, onDespawn, onCollect, ...props }:
     >
       <mesh>
         {renderShape()}
-        <primitive object={material} />
+        <meshStandardMaterial
+          ref={matRef}
+          roughness={0.5}
+          metalness={0.2}
+          color={FOOD_COLORS[stats.type]}
+          emissive={FOOD_COLORS[stats.type]}
+          emissiveIntensity={0.3}
+        />
       </mesh>
       
       {/* Sensor collider for collection detection */}

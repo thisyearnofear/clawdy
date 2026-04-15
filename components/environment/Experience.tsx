@@ -33,6 +33,8 @@ import { useAccount } from 'wagmi'
 import { MobileControls } from '../ui/MobileControls'
 import FrameLimiter from '../utils/FrameLimiter'
 import { CustomFogEffect } from './CustomFogEffect'
+import { WeatherParticles } from './WeatherParticles'
+import { WeatherPostProcessing } from './WeatherPostProcessing'
 import { getAgentByVehicleId, getControllableAgents } from '../../services/agents'
 import type { RapierRigidBody } from '@react-three/rapier'
 
@@ -239,11 +241,14 @@ function Experience({
         active={isPlayerActive}
       />
       
-      <Sky sunPosition={[100, 20, 100]} />
+      <Sky sunPosition={cloudConfig.preset === 'stormy' ? [100, 5, 100] : cloudConfig.preset === 'sunset' ? [100, 8, 50] : [100, 20, 100]} />
       <Environment preset="city" />
-      <ambientLight intensity={0.5} />
-      <directionalLight position={[10, 10, 5]} intensity={1} castShadow />
-      <fog attach="fog" args={['#c9d5ff', 18, 90]} />
+      <ambientLight intensity={cloudConfig.preset === 'stormy' ? 0.3 : cloudConfig.preset === 'sunset' ? 0.6 : 0.5} />
+      <directionalLight position={[10, 10, 5]} intensity={cloudConfig.preset === 'stormy' ? 0.5 : 1} castShadow />
+      <fog attach="fog" args={[cloudConfig.preset === 'stormy' ? '#4a5568' : cloudConfig.preset === 'sunset' ? '#ffccaa' : cloudConfig.preset === 'candy' ? '#ffe0f0' : '#c9d5ff', cloudConfig.preset === 'stormy' ? 10 : 18, cloudConfig.preset === 'stormy' ? 60 : 90]} />
+
+      <WeatherParticles config={cloudConfig} />
+      <WeatherPostProcessing config={cloudConfig} />
 
       <Physics gravity={[0, -9.81, 0]}>
         <CloudManager config={cloudConfig} />

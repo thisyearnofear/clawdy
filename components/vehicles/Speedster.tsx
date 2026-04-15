@@ -8,6 +8,32 @@ import type { RapierRigidBody } from '@react-three/rapier'
 import { RigidBody } from '@react-three/rapier'
 import { agentProtocol } from '../../services/AgentProtocol'
 
+function SpeedsterUnderglow() {
+  const matRef = useRef<THREE.MeshStandardMaterial>(null)
+
+  useFrame((state) => {
+    if (!matRef.current) return
+    const t = state.clock.getElapsedTime()
+    matRef.current.emissiveIntensity = 1.0 + Math.sin(t * 4) * 0.8
+    matRef.current.opacity = 0.25 + Math.sin(t * 4) * 0.15
+  })
+
+  return (
+    <mesh position={[0, -0.25, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <planeGeometry args={[2.2, 4.5]} />
+      <meshStandardMaterial
+        ref={matRef}
+        color="#00d2d3"
+        emissive="#00d2d3"
+        emissiveIntensity={1.5}
+        transparent
+        opacity={0.4}
+        depthWrite={false}
+      />
+    </mesh>
+  )
+}
+
 export function Speedster({ 
   id, 
   position = [0, 5, 0], 
@@ -274,11 +300,14 @@ export function Speedster({
           <meshStandardMaterial color="#fff" emissive="#fff" emissiveIntensity={1} />
         </mesh>
         
-        {/* LED strip */}
+        {/* LED strip — animated energy glow */}
         <mesh position={[0, 0.02, -2.06]}>
           <boxGeometry args={[1.4, 0.04, 0.03]} />
           <meshStandardMaterial color="#00d2d3" emissive="#00d2d3" emissiveIntensity={0.8} />
         </mesh>
+        
+        {/* Underglow — energy aura */}
+        <SpeedsterUnderglow />
         
         {/* Rear diffuser */}
         <mesh position={[0, -0.15, 2.15]} castShadow>

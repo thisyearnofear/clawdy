@@ -8,6 +8,41 @@ import type { RapierRigidBody } from '@react-three/rapier'
 import { RigidBody } from '@react-three/rapier'
 import { agentProtocol } from '../../services/AgentProtocol'
 
+function TruckEngineGlow() {
+  const lightRef = useRef<THREE.PointLight>(null)
+  const matRef = useRef<THREE.MeshStandardMaterial>(null)
+
+  useFrame((state) => {
+    const t = state.clock.getElapsedTime()
+    const flicker = 1.5 + Math.sin(t * 8) * 0.5 + Math.sin(t * 13) * 0.3
+    if (lightRef.current) {
+      lightRef.current.intensity = flicker * 2
+    }
+    if (matRef.current) {
+      matRef.current.emissiveIntensity = flicker
+      matRef.current.opacity = 0.3 + Math.sin(t * 8) * 0.15
+    }
+  })
+
+  return (
+    <group position={[0, 1.2, 2]}>
+      <pointLight ref={lightRef} color="#ff4400" intensity={3} distance={6} />
+      <mesh>
+        <sphereGeometry args={[0.3, 8, 8]} />
+        <meshStandardMaterial
+          ref={matRef}
+          color="#ff6600"
+          emissive="#ff4400"
+          emissiveIntensity={2}
+          transparent
+          opacity={0.6}
+          depthWrite={false}
+        />
+      </mesh>
+    </group>
+  )
+}
+
 export function MonsterTruck({ 
   id, 
   position = [0, 5, 0], 
@@ -242,6 +277,9 @@ export function MonsterTruck({
             <boxGeometry args={[1.2, 0.4, 0.8]} />
             <meshStandardMaterial color="#c0392b" />
           </mesh>
+          
+          {/* Engine exhaust glow */}
+          <TruckEngineGlow />
           
           {/* Windshield */}
           <mesh position={[0, 2, -0.8]} rotation={[0.3, 0, 0]}>
