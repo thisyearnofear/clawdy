@@ -86,7 +86,7 @@ export default function CloudScene() {
         emitToast('bid-win', 'Weather Auction Won!', `${event.preset} weather activated`)
         playSound('bid-win')
       } else if (event.type === 'food-collected') {
-        emitToast('collect', `+${(event.amount as number ?? 0.1).toFixed(2)} Ξ collected`, event.agentId as string)
+        emitToast('collect', `+${(event.amount as number ?? 0.1).toFixed(2)} OKB collected`, event.agentId as string)
         playSound('collect')
         const session = agentProtocol.getSession('Player')
         if (session) emitEconomyFeedback(event.amount as number ?? 0.1, session.balance)
@@ -252,7 +252,7 @@ export default function CloudScene() {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-black text-white/50 uppercase">Balance</span>
-                <span className="text-xs font-mono font-bold text-sky-400">Ξ{playerSession.balance.toFixed(2)}</span>
+                <span className="text-xs font-mono font-bold text-sky-400">{playerSession.balance.toFixed(2)} OKB</span>
               </div>
               <div className="w-px h-6 bg-white/10" />
               <div className="flex items-center gap-2">

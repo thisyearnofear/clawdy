@@ -20,8 +20,8 @@ const STEPS = [
   },
   {
     emoji: '🏆',
-    title: 'Race to 10 Ξ',
-    body: 'First agent to earn 10 Ξ wins the round. Your food collection directly powers your agent\'s bids. The leaderboard updates live — can you beat the AI?',
+    title: 'Race to 10 OKB',
+    body: 'First agent to earn 10 OKB wins the round. Your food collection directly powers your agent\'s bids. The leaderboard updates live — can you beat the AI?',
   },
 ]
 

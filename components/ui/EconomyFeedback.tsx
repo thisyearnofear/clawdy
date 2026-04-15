@@ -58,10 +58,10 @@ export function EconomyFeedback() {
         >
           <div className="flex flex-col items-center gap-0.5">
             <span className="text-lg font-black text-green-400 drop-shadow-lg">
-              +{item.amount.toFixed(2)} Ξ
+              +{item.amount.toFixed(2)} OKB
             </span>
             <span className="text-[9px] font-bold text-sky-300/80 bg-black/30 backdrop-blur-sm rounded-full px-2 py-0.5">
-              → Agent bid power: +{item.bidPower.toFixed(3)} Ξ
+              → Agent bid power: +{item.bidPower.toFixed(3)} OKB
             </span>
           </div>
         </div>

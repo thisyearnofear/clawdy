@@ -39,14 +39,14 @@ export function WinConditionBar({ playerId }: { playerId: string }) {
       ) : (
         <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl px-5 py-2 shadow-xl flex items-center gap-4 min-w-[260px]">
           <div className="text-[9px] font-black uppercase tracking-widest text-white/40 whitespace-nowrap">
-            Goal: {WIN_TARGET} Ξ
+            Goal: {WIN_TARGET} OKB
           </div>
           <div className="flex-1 flex flex-col gap-1">
             <div className="flex justify-between items-center">
               <span className={`text-[9px] font-bold truncate max-w-[100px] ${isLeading ? 'text-yellow-300' : 'text-white/60'}`}>
                 {isLeading ? '👑 ' : ''}{displayEntry.id.slice(0, 10)}
               </span>
-              <span className="text-[9px] font-mono text-sky-300">Ξ{displayEntry.totalEarned.toFixed(2)} / {WIN_TARGET}</span>
+              <span className="text-[9px] font-mono text-sky-300">{displayEntry.totalEarned.toFixed(2)} / {WIN_TARGET} OKB</span>
             </div>
             <div className="w-full bg-white/10 rounded-full h-1.5 overflow-hidden">
               <div
@@ -57,7 +57,7 @@ export function WinConditionBar({ playerId }: { playerId: string }) {
           </div>
           {leader && leader.id !== displayEntry.id && (
             <div className="text-[9px] text-yellow-300/60 whitespace-nowrap">
-              👑 Ξ{leader.totalEarned.toFixed(2)}
+              👑 {leader.totalEarned.toFixed(2)} OKB
             </div>
           )}
         </div>

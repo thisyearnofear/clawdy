@@ -60,7 +60,7 @@ export function Leaderboard() {
                 <div className="mt-1 text-[8px] text-white/35">B{agent.executedBidCount} · R{agent.executedRentCount}</div>
               </td>
               <td className="px-2 py-2 text-right">
-                <div className="text-green-400">Ξ{agent.totalEarned.toFixed(3)}</div>
+                <div className="text-green-400">{agent.totalEarned.toFixed(3)} OKB</div>
                 <div className="mt-1 text-[8px] opacity-40">C{agent.collectedCount}</div>
               </td>
             </tr>

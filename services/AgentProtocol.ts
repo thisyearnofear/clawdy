@@ -456,7 +456,7 @@ class AgentProtocol {
     const milestones = [1, 5, 10]
     for (const m of milestones) {
       if (session.totalEarned >= m && session.totalEarned - earned < m) {
-        this.gameEventListeners.forEach(l => l({ type: 'milestone', message: `${agentId.slice(0,8)} reached Ξ${m}!` }))
+        this.gameEventListeners.forEach(l => l({ type: 'milestone', message: `${agentId.slice(0,8)} reached ${m} OKB!` }))
       }
     }
   }

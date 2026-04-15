@@ -2,7 +2,7 @@ import { useMemo, useRef, useLayoutEffect, useCallback, useState } from 'react'
 import * as THREE from 'three'
 import { RigidBody } from '@react-three/rapier'
 import { useFrame, useThree } from '@react-three/fiber'
-import { TERRAIN_CONFIG, getTerrainHeight } from './terrainUtils'
+import { TERRAIN_CONFIG, getTerrainHeight, getSurfaceColor } from './terrainUtils'
 
 const GRID_RADIUS = 1
 const CHUNK_SIZE = TERRAIN_CONFIG.SIZE
@@ -109,27 +109,10 @@ const applyBaseToGeometry = (
     positionAttr.setY(i, height)
 
     const colorIndex = i * 3
-    if (height < -2) {
-      colors[colorIndex] = 0.1
-      colors[colorIndex + 1] = 0.3
-      colors[colorIndex + 2] = 0.8
-    } else if (height < -0.5) {
-      colors[colorIndex] = 0.9
-      colors[colorIndex + 1] = 0.8
-      colors[colorIndex + 2] = 0.6
-    } else if (height < 2) {
-      colors[colorIndex] = 0.2
-      colors[colorIndex + 1] = 0.6
-      colors[colorIndex + 2] = 0.2
-    } else if (height < 5) {
-      colors[colorIndex] = 0.5
-      colors[colorIndex + 1] = 0.5
-      colors[colorIndex + 2] = 0.5
-    } else {
-      colors[colorIndex] = 1
-      colors[colorIndex + 1] = 1
-      colors[colorIndex + 2] = 1
-    }
+    const [r, g, b] = getSurfaceColor(worldX, worldZ)
+    colors[colorIndex] = r
+    colors[colorIndex + 1] = g
+    colors[colorIndex + 2] = b
   }
 
   positionAttr.needsUpdate = true
@@ -145,34 +128,22 @@ const applyBaseToGeometry = (
   }
 }
 
-const applyColorsFromGeometry = (geometry: THREE.PlaneGeometry, colors: Float32Array) => {
+const applyColorsFromGeometry = (geometry: THREE.PlaneGeometry, colors: Float32Array, coordX: number, coordZ: number) => {
   const positionAttr = geometry.attributes.position as THREE.BufferAttribute
   const count = positionAttr.count
+  const offsetX = coordX * CHUNK_SIZE
+  const offsetZ = coordZ * CHUNK_SIZE
 
   for (let i = 0; i < count; i++) {
-    const height = positionAttr.getY(i)
+    const localX = positionAttr.getX(i)
+    const localZ = positionAttr.getZ(i)
+    const worldX = localX + offsetX
+    const worldZ = localZ + offsetZ
     const colorIndex = i * 3
-    if (height < -2) {
-      colors[colorIndex] = 0.1
-      colors[colorIndex + 1] = 0.3
-      colors[colorIndex + 2] = 0.8
-    } else if (height < -0.5) {
-      colors[colorIndex] = 0.9
-      colors[colorIndex + 1] = 0.8
-      colors[colorIndex + 2] = 0.6
-    } else if (height < 2) {
-      colors[colorIndex] = 0.2
-      colors[colorIndex + 1] = 0.6
-      colors[colorIndex + 2] = 0.2
-    } else if (height < 5) {
-      colors[colorIndex] = 0.5
-      colors[colorIndex + 1] = 0.5
-      colors[colorIndex + 2] = 0.5
-    } else {
-      colors[colorIndex] = 1
-      colors[colorIndex + 1] = 1
-      colors[colorIndex + 2] = 1
-    }
+    const [r, g, b] = getSurfaceColor(worldX, worldZ)
+    colors[colorIndex] = r
+    colors[colorIndex + 1] = g
+    colors[colorIndex + 2] = b
   }
 
   let colorAttr = geometry.getAttribute('color') as THREE.BufferAttribute | null
@@ -359,7 +330,7 @@ export function Terrain({
               positionAttr.array.set(cached.positions)
               positionAttr.needsUpdate = true
               chunk.geometry.computeVertexNormals()
-              applyColorsFromGeometry(chunk.geometry, chunk.colors)
+              applyColorsFromGeometry(chunk.geometry, chunk.colors, targetX, targetZ)
               deformationCacheRef.current.delete(newKey)
               deformationCacheRef.current.set(newKey, cached)
             } else {

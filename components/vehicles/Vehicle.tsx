@@ -7,6 +7,7 @@ import { useKeyboardControls } from '@react-three/drei'
 import type { RapierRigidBody } from '@react-three/rapier'
 import { RigidBody } from '@react-three/rapier'
 import { agentProtocol } from '../../services/AgentProtocol'
+import { getSurfaceType, getTerrainNormal, SURFACE_FRICTION } from '../terrain/terrainUtils'
 
 export function Vehicle({ 
   id, 
@@ -100,9 +101,14 @@ export function Vehicle({
       const forwardSpeed = velocity.x * forwardDir.x + velocity.z * forwardDir.z
 
       if (Math.abs(forwardSpeed) < maxSpeed || (forwardSpeed > 0 && forward < 0) || (forwardSpeed < 0 && forward > 0)) {
-        // Apply force at center of mass for acceleration
-        const force = forwardDir.clone().multiplyScalar(forward * acceleration)
-        chassisRef.current.applyImpulse({ x: force.x, y: 0, z: force.z }, true)
+        // Apply force aligned to terrain surface normal
+        const pos = chassisRef.current.translation()
+        const [nx, ny, nz] = getTerrainNormal(pos.x, pos.z)
+        const surfaceNormal = new THREE.Vector3(nx, ny, nz)
+        // Project forward direction onto surface plane
+        const surfaceForward = forwardDir.clone().sub(surfaceNormal.clone().multiplyScalar(forwardDir.dot(surfaceNormal))).normalize()
+        const force = surfaceForward.multiplyScalar(forward * acceleration)
+        chassisRef.current.applyImpulse({ x: force.x, y: force.y, z: force.z }, true)
       }
     }
 
@@ -149,10 +155,12 @@ export function Vehicle({
       chassisRef.current.setAngvel({ x: 0, y: 0, z: 0 }, true)
     }
 
-    // NATURAL FRICTION / DRAG (when not accelerating)
+    // NATURAL FRICTION / DRAG - varies by surface type
+    const vPos = chassisRef.current.translation()
+    const surfaceType = getSurfaceType(vPos.x, vPos.z)
+    const rollingFriction = SURFACE_FRICTION[surfaceType]
     if (forward === 0 && !brake) {
-      // Rolling resistance
-      chassisRef.current.setLinvel({ x: velocity.x * 0.94, y: velocity.y, z: velocity.z * 0.94 }, true)
+      chassisRef.current.setLinvel({ x: velocity.x * rollingFriction, y: velocity.y, z: velocity.z * rollingFriction }, true)
     }
 
     // Counteract sliding/drifting (align velocity with forward direction)
