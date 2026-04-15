@@ -16,10 +16,7 @@ export const config = createConfig({
   chains: supportedChains,
   pollingInterval: POLL_INTERVAL,
   transports: {
-    [xLayer.id]: fallback([
-      http('https://rpc.xlayer.tech'),
-      http('https://xlayer-rpc.publicnode.com'),
-    ]),
+    [xLayer.id]: http('https://rpc.xlayer.tech'),
     [xLayerTestnet.id]: fallback([
       http('https://xlayertestrpc.okx.com'),
       http('https://testrpc.xlayer.tech'),

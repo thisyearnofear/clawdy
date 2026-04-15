@@ -1,4 +1,4 @@
-import { useMemo, useRef, useLayoutEffect, useCallback } from 'react'
+import { useMemo, useRef, useLayoutEffect, useCallback, useState } from 'react'
 import * as THREE from 'three'
 import { RigidBody } from '@react-three/rapier'
 import { useFrame, useThree } from '@react-three/fiber'
@@ -238,6 +238,14 @@ export function Terrain({
   const tempVehiclePos = useMemo(() => new THREE.Vector3(), [])
   const tempLocalPoint = useMemo(() => new THREE.Vector3(), [])
 
+  const [chunkKeys, setChunkKeys] = useState<string[]>(() => {
+    const slots: string[] = []
+    for (let gz = -GRID_RADIUS; gz <= GRID_RADIUS; gz += 1)
+      for (let gx = -GRID_RADIUS; gx <= GRID_RADIUS; gx += 1)
+        slots.push(`${gx},${gz}`)
+    return slots
+  })
+
   const chunkSlots = useMemo(() => {
     const slots: ChunkState[] = []
     for (let gz = -GRID_RADIUS; gz <= GRID_RADIUS; gz += 1) {
@@ -362,18 +370,12 @@ export function Terrain({
             chunk.deformer.setBasePositions(chunk.geometry.attributes.position.array as Float32Array)
           }
 
-          const rigidBody = rigidBodyRefs.current[index]
-          if (rigidBody) {
-            rigidBody.setTranslation(
-              { x: targetX * CHUNK_SIZE, y: CHUNK_Y_OFFSET, z: targetZ * CHUNK_SIZE },
-              false
-            )
-          }
-
           chunkCoordMapRef.current.set(keyFor(targetX, targetZ), index)
           index += 1
         }
       }
+      // Update keys to trigger RigidBody remount with correct positions
+      setChunkKeys(chunkStateRef.current.map((c) => `${c.coordX},${c.coordZ}`))
     }
 
     if (vehiclesRef.current.length === 0) return
@@ -414,7 +416,7 @@ export function Terrain({
     <group>
       {chunkSlots.map((chunk, index) => (
         <RigidBody
-          key={`terrain-${index}`}
+          key={chunkKeys[index]}
           type="fixed"
           colliders="trimesh"
           position={[chunk.coordX * CHUNK_SIZE, CHUNK_Y_OFFSET, chunk.coordZ * CHUNK_SIZE]}
