@@ -15,7 +15,7 @@ import {
 import { isMobile } from 'react-device-detect'
 import { Physics } from '@react-three/rapier'
 import { ProceduralFood, FoodStats } from './ProceduralFood'
-import { ComputeFoodManager } from './ComputeFoodManager'
+import { FoodSpawner } from './FoodSpawner'
 import { CloudManager, CloudConfig } from './CloudManager'
 import { Terrain } from '../terrain/Terrain'
 import { Vegetation } from '../vegetation/Vegetation'
@@ -77,8 +77,14 @@ function Experience({
     return positions[index] || [0, 3, 0]
   }
 
+  const foodCountRef = useRef(0)
+
   const handleDespawn = (id: number) => {
-    setFoodItems((prev) => prev.filter((item) => item.id !== id))
+    setFoodItems((prev) => {
+      const next = prev.filter((item) => item.id !== id)
+      foodCountRef.current = next.length
+      return next
+    })
   }
 
   const handleCollect = (id: number, stats: FoodStats, collectorId?: string) => {
@@ -254,7 +260,13 @@ function Experience({
 
       <Physics gravity={[0, -9.81, 0]}>
         <CloudManager config={cloudConfig} />
-        <ComputeFoodManager spawnRate={spawnRate} bounds={cloudConfig.bounds} />
+        <FoodSpawner
+          spawnRate={spawnRate}
+          bounds={cloudConfig.bounds}
+          spawnHeight={18}
+          maxItems={30}
+          onSpawn={(item) => setFoodItems((prev) => [...prev, item])}
+        />
         <AgentVision />
 
         {foodItems.map((item) => (
