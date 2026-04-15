@@ -484,7 +484,7 @@ class AgentProtocol {
           const angleToTarget = Math.atan2(dx, -dz) // atan2(x, -z) for Three.js forward=-Z
           // Extract yaw from quaternion [x,y,z,w]
           const [qx, qy, qz, qw] = agentVehicle.rotation
-          const currentYaw = Math.atan2(2 * (qw * qy + qx * qz), 1 - 2 * (qy * qy + qz * qz)) // eslint-disable-line @typescript-eslint/no-unused-vars
+          const currentYaw = Math.atan2(2 * (qw * qy + qx * qz), 1 - 2 * (qy * qy + qz * qz))
           let diff = angleToTarget - currentYaw
           // Normalize to [-PI, PI]
           while (diff > Math.PI) diff -= 2 * Math.PI
