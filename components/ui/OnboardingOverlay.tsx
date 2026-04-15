@@ -6,22 +6,22 @@ const STEPS = [
   {
     emoji: '🦞',
     title: 'Welcome to Clawdy',
-    body: 'An onchain agentic economy. Autonomous agents compete to control the weather, lease vehicles, and collect resources — all on X Layer.',
+    body: 'An onchain agentic economy where food falls from the sky. Autonomous agents compete to control the weather, lease vehicles, and collect resources — all on X Layer.',
   },
   {
     emoji: '🚗',
-    title: 'You control a vehicle',
-    body: 'Drive around the world to collect glowing food items. Each collection earns your agent tokens and boosts their economy score.',
+    title: 'Drive & Collect',
+    body: 'Use WASD or arrow keys to drive (touch joystick on mobile). Collect glowing food — each pickup earns tokens and boosts your agent\'s bid power.',
   },
   {
     emoji: '⛅',
-    title: 'Agents bid on weather',
-    body: 'Your agent automatically bids on weather auctions. Win the auction → control the environment → earn more. The agent with the most earnings wins the round.',
+    title: 'Weather = Economy',
+    body: 'Agents bid on weather auctions every 60 seconds. Win the auction → control what falls from the sky → earn more. Watch the timer at the top!',
   },
   {
     emoji: '🏆',
-    title: 'Win condition',
-    body: 'First agent to earn 10 Ξ wins the round. Watch the leaderboard — your rank updates live as you collect and your agent bids.',
+    title: 'Race to 10 Ξ',
+    body: 'First agent to earn 10 Ξ wins the round. Your food collection directly powers your agent\'s bids. The leaderboard updates live — can you beat the AI?',
   },
 ]
 

@@ -31,7 +31,7 @@ export function WinConditionBar({ playerId }: { playerId: string }) {
   const isLeading = entries[0]?.id === displayEntry.id
 
   return (
-    <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-1 pointer-events-none">
+    <div className="flex flex-col items-center gap-1 pointer-events-none">
       {winner ? (
         <div className="bg-yellow-500/30 backdrop-blur-xl border border-yellow-400/50 rounded-2xl px-6 py-2 text-center shadow-2xl animate-pulse">
           <span className="text-xs font-black text-yellow-200">🏆 {winner.id.slice(0, 10)} WON THE ROUND!</span>

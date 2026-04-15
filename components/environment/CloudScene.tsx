@@ -18,6 +18,10 @@ import { useAccount } from 'wagmi'
 import { OnboardingOverlay } from '../ui/OnboardingOverlay'
 import { GameToasts, BidWinCelebration, emitToast } from '../ui/GameToasts'
 import { WinConditionBar } from '../ui/WinConditionBar'
+import { SoundManager, playSound } from '../ui/SoundManager'
+import { EconomyFeedback, emitEconomyFeedback } from '../ui/EconomyFeedback'
+import { AuctionTimer } from '../ui/AuctionTimer'
+import { MobileTouchControls } from '../ui/MobileTouchControls'
 
 export default function CloudScene() {
   const { address } = useAccount()
@@ -80,10 +84,15 @@ export default function CloudScene() {
       if (event.type === 'bid-won') {
         setBidWinPreset(event.preset as string)
         emitToast('bid-win', 'Weather Auction Won!', `${event.preset} weather activated`)
+        playSound('bid-win')
       } else if (event.type === 'food-collected') {
         emitToast('collect', `+${(event.amount as number ?? 0.1).toFixed(2)} Ξ collected`, event.agentId as string)
+        playSound('collect')
+        const session = agentProtocol.getSession('Player')
+        if (session) emitEconomyFeedback(event.amount as number ?? 0.1, session.balance)
       } else if (event.type === 'milestone') {
         emitToast('milestone', event.message as string)
+        playSound('milestone')
       }
     })
 
@@ -148,8 +157,22 @@ export default function CloudScene() {
       {/* Toast notifications */}
       <GameToasts />
 
-      {/* Win condition bar */}
-      {isMounted && <WinConditionBar playerId={playerId} />}
+      {/* Sound manager */}
+      <SoundManager />
+
+      {/* Economy feedback floaters */}
+      <EconomyFeedback />
+
+      {/* Mobile touch controls */}
+      <MobileTouchControls />
+
+      {/* Win condition bar + auction timer */}
+      {isMounted && (
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2 pointer-events-none">
+          <WinConditionBar playerId={playerId} />
+          <AuctionTimer />
+        </div>
+      )}
 
       {/* --- MINIMAL HUD LAYER --- */}
       
