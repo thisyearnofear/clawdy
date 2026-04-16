@@ -12,6 +12,7 @@ import { POLL_INTERVAL } from '../../services/web3Config'
 import { emitToast } from '../ui/GameToasts'
 import { playSound } from '../ui/SoundManager'
 import { emitEconomyFeedback } from '../ui/EconomyFeedback'
+import { AgentChatter, emitChatter } from '../ui/AgentChatter'
 import { HUD } from '../ui/HUD'
 import { ControlPanel } from '../ui/ControlPanel'
 import { Overlays } from '../ui/Overlays'
@@ -73,15 +74,19 @@ export default function CloudScene() {
         setUI({ bidWinPreset: event.preset as string })
         emitToast('bid-win', 'Weather Auction Won!', `${event.preset} weather activated`)
         playSound('bid-win')
+        emitChatter(event.agentId as string || 'Agent', 'bid-won')
       } else if (event.type === 'food-collected') {
         emitToast('collect', `+${(event.amount as number ?? 0.1).toFixed(2)} OKB collected`, event.agentId as string)
         playSound('collect')
+        if (Math.random() < 0.3) emitChatter(event.agentId as string || 'Agent', 'food-collected')
         const session = agentProtocol.getSession('Player')
         if (session) emitEconomyFeedback(event.amount as number ?? 0.1, session.balance)
       } else if (event.type === 'milestone') {
         emitToast('milestone', event.message as string)
         playSound('milestone')
+        emitChatter(event.agentId as string || 'Agent', 'milestone')
       } else if (event.type === 'agent-died') {
+        emitChatter(event.agentId as string || 'Agent', 'agent-died')
         emitToast('bid-win', `Agent Decommissioned`, `${(event.agentId as string).slice(0,8)} ran out of vitality. Legacy: ${Number(event.totalEarned).toFixed(3)} OKB`)
       }
     })
@@ -162,6 +167,8 @@ export default function CloudScene() {
         playerVehicle={playerVehicle}
         setPlayerVehicle={setPlayerVehicle}
       />
+
+      <AgentChatter />
 
       {/* Help hint component */}
       <HelpHint />

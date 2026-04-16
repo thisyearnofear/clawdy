@@ -5,7 +5,8 @@ import { useState, useEffect } from 'react'
 const STEPS = [
   {
     emoji: '🦞',
-    title: 'Welcome to Clawdy',
+    title: 'CLAWDY',
+    subtitle: '(with a chance of meatballs)',
     body: 'An onchain agentic economy where food falls from the sky. Autonomous agents compete to control the weather, lease vehicles, and collect resources — all on X Layer.',
   },
   {
@@ -58,6 +59,9 @@ export function OnboardingOverlay({ onDone }: { onDone: () => void }) {
 
         <div className="mt-4 text-6xl">{current.emoji}</div>
         <h2 className="text-xl font-black text-white tracking-tight">{current.title}</h2>
+        {'subtitle' in current && current.subtitle && (
+          <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em] -mt-3">{current.subtitle}</span>
+        )}
         <p className="text-sm text-white/60 leading-relaxed">{current.body}</p>
 
         <div className="flex gap-3 w-full mt-2">
