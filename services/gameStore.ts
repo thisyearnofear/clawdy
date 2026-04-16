@@ -38,6 +38,7 @@ export interface UIState {
   bidWinPreset: string | null
   isLoading: boolean
   error: string | null
+  showHUD: boolean
 }
 
 // ── Transactions ─────────────────────────────────────────────────────
@@ -158,6 +159,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     bidWinPreset: null,
     isLoading: false,
     error: null,
+    showHUD: true,
   },
   setUI: (update) => set((prev) => ({ ui: { ...prev.ui, ...update } })),
 

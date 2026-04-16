@@ -9,10 +9,10 @@ import { agentProtocol } from '../../services/AgentProtocol'
 import { useVehiclePhysics, VehicleStats } from '../../hooks/useVehiclePhysics'
 
 const TANK_STATS: VehicleStats = {
-  maxSpeed: 30,
-  acceleration: 120,
-  steerStrength: 1.0,
-  mass: 5,
+  maxSpeed: 35,
+  acceleration: 400,
+  steerStrength: 2.5,
+  mass: 6,
   lateralGrip: 1.0,
   frontOffset: 0,
   backOffset: 0,

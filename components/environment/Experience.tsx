@@ -124,6 +124,27 @@ function Experience({
         if (JSON.stringify(prevVehicles) === JSON.stringify(newVehicles)) {
           return prevVehicles;
         }
+
+        // Register new vehicles in world state
+        const currentWorldVehicles = agentProtocol.getWorldState().vehicles
+        const worldVehicleIds = new Set(currentWorldVehicles.map(v => v.id))
+        const brandNewVehicles = newVehicles
+          .filter(v => !worldVehicleIds.has(v.id))
+          .map(v => ({
+            id: v.id,
+            type: v.type,
+            position: v.position,
+            rotation: [0, 0, 0, 1] as [number, number, number, number],
+            isRented: v.playerId !== undefined,
+            rentExpiresAt: 0
+          }))
+        
+        if (brandNewVehicles.length > 0) {
+          agentProtocol.updateWorldState({
+            vehicles: [...currentWorldVehicles, ...brandNewVehicles]
+          })
+        }
+
         return newVehicles;
       });
     })
@@ -188,20 +209,9 @@ function Experience({
     const now = Date.now()
     if (now - lastWorldUpdateRef.current < 200) return // 5 Hz max
     lastWorldUpdateRef.current = now
-    // Merge food + bounds into world state without overwriting live vehicle positions
-    const currentVehicles = agentProtocol.getWorldState().vehicles
-    // Ensure all vehicles exist in world state (add any missing ones)
-    const vehicleIds = new Set(currentVehicles.map(v => v.id))
-    const newVehicles = vehicles
-      .filter(v => !vehicleIds.has(v.id))
-      .map(v => ({
-        id: v.id,
-        type: v.type,
-        position: v.position,
-        rotation: [0, 0, 0, 1] as [number, number, number, number],
-        isRented: v.playerId !== undefined,
-        rentExpiresAt: 0
-      }))
+    
+    // Only update food + bounds in this loop
+    // Vehicle positions are synced per-frame by the vehicle components themselves
     agentProtocol.updateWorldState({
        food: foodItems.map(f => ({ 
          id: f.id, 
@@ -209,7 +219,6 @@ function Experience({
          nutrition: 'unknown', 
          position: f.position 
        })),
-       vehicles: [...currentVehicles, ...newVehicles],
        bounds: cloudConfig.bounds
     })
   })

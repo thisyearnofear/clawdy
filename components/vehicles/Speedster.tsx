@@ -6,16 +6,15 @@ import { useFrame } from '@react-three/fiber'
 import type { RapierRigidBody } from '@react-three/rapier'
 import { RigidBody } from '@react-three/rapier'
 import { useVehiclePhysics, VehicleStats } from '../../hooks/useVehiclePhysics'
-
 const SPEEDSTER_STATS: VehicleStats = {
-  maxSpeed: 60,
-  acceleration: 450,
-  steerStrength: 50,
+  maxSpeed: 85,
+  acceleration: 800,
+  steerStrength: 120,
   mass: 1.5,
-  lateralGrip: 0.5,
+  lateralGrip: 0.9,
   frontOffset: 1.8,
   backOffset: -1.8,
-  steeringMode: 'car',
+  steeringMode: 'car'
 }
 
 function SpeedsterUnderglow() {

@@ -6,16 +6,15 @@ import { useFrame } from '@react-three/fiber'
 import type { RapierRigidBody } from '@react-three/rapier'
 import { RigidBody } from '@react-three/rapier'
 import { useVehiclePhysics, VehicleStats } from '../../hooks/useVehiclePhysics'
-
 const TRUCK_STATS: VehicleStats = {
-  maxSpeed: 45,
-  acceleration: 350,
-  steerStrength: 40,
-  mass: 3,
-  lateralGrip: 0.3,
-  frontOffset: 2.0,
-  backOffset: -2.0,
-  steeringMode: 'car',
+  maxSpeed: 50,
+  acceleration: 1000,
+  steerStrength: 150,
+  mass: 4,
+  lateralGrip: 0.4,
+  frontOffset: 1.5,
+  backOffset: -1.5,
+  steeringMode: 'car'
 }
 
 function TruckEngineGlow() {

@@ -277,15 +277,34 @@ class AgentProtocol {
   private stateListeners: ((state: WorldState) => void)[] = []
 
   updateWorldState(update: Partial<WorldState>) {
-    this.worldState = { ...this.worldState, ...update, timestamp: Date.now() }
+    // Merge updates
+    const newState = { ...this.worldState, ...update, timestamp: Date.now() }
     
+    // Quick shallow check for vehicle movement to avoid redundant work
+    const vehiclesChanged = update.vehicles && JSON.stringify(update.vehicles) !== JSON.stringify(this.worldState.vehicles)
+    const foodChanged = update.food && JSON.stringify(update.food) !== JSON.stringify(this.worldState.food)
+    
+    if (!vehiclesChanged && !foodChanged && !update.bounds) {
+       // Only timestamp changed? Skip heavy sync.
+       return
+    }
+
+    this.worldState = newState
     this.stateListeners.forEach(l => l(this.worldState))
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('clawdy:state', { detail: this.worldState }))
+      
+      // Throttle store sync to avoid React bottleneck during physics
+      const now = Date.now()
+      if (now - this.lastStoreSyncAt > 100) { // 10Hz sync to UI store
+        this.lastStoreSyncAt = now
+        this.syncWithStore()
+      }
     }
-    this.syncWithStore()
   }
+
+  private lastStoreSyncAt = 0
 
   subscribeToState(callback: (state: WorldState) => void) {
     this.stateListeners.push(callback)

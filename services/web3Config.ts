@@ -17,8 +17,12 @@ export const POLL_INTERVAL = 12_000
 const testnetTransport = fallback([
   http('https://xlayertestrpc.okx.com'),
   http('https://testrpc.xlayer.tech'),
+  http('https://xlayer-testnet.drpc.org'),
 ])
-const mainnetTransport = http('https://rpc.xlayer.tech')
+const mainnetTransport = fallback([
+  http('https://rpc.xlayer.tech'),
+  http('https://xlayer.drpc.org'),
+])
 
 export const config = createConfig({
   chains: supportedChains,

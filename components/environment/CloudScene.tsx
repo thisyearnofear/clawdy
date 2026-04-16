@@ -96,6 +96,9 @@ export default function CloudScene() {
         e.preventDefault()
         setUI({ showQuickControls: !ui.showQuickControls })
       }
+      if (e.key.toLowerCase() === 'h') {
+        setUI({ showHUD: !ui.showHUD })
+      }
     }
     window.addEventListener('keydown', handleKeyDown)
 
@@ -118,7 +121,7 @@ export default function CloudScene() {
 
   return (
     <div className="w-full h-screen bg-gradient-to-b from-sky-400 to-sky-200 relative overflow-hidden">
-      <Canvas shadows>
+      <Canvas shadows={{ type: 1 }}> {/* 1 is PCFShadowMap in THREE */}
         <Suspense fallback={null}>
           <Experience cloudConfig={config} spawnRate={spawnRate} playerVehicleType={playerVehicle} />
         </Suspense>

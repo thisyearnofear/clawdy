@@ -44,12 +44,12 @@ export class PersistenceService {
         sessions: sessions as ZgGameState['sessions'],
       }
       const result = await zgSaveState('global', state)
+      // Only log on success to keep console clean, or keep totally silent if configured
       if (result.rootHash) {
-        console.log('[0G Storage] State persisted, rootHash:', result.rootHash)
-      } else if (result.error) {
-        console.warn('[0G Storage] Save failed:', result.error)
+        // console.log('[0G Storage] State persisted')
       }
-    } catch { /* 0G unavailable */ }
+      } catch { /* Silent fail */ }
+
   }
 
   async restoreState(applyCallback: (saved: Record<string, Record<string, number>>) => void) {

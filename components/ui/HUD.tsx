@@ -30,8 +30,11 @@ export function HUD({
 }: HUDProps) {
   const { address } = useAccount()
   const sessions = useGameStore(state => state.sessions)
+  const showHUD = useGameStore(state => state.ui.showHUD)
   const playerSession = sessions['Player']
   
+  if (!showHUD) return null
+
   return (
     <>
       {/* Win condition bar + auction timer */}
