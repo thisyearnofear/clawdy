@@ -264,6 +264,11 @@ function Experience({
   const activeWindEffect = activeWeatherEffects.wind
   const activeLightningEffect = activeWeatherEffects.lightning
   const activeDayNightEffect = activeWeatherEffects.dayNight
+  const cameraWeatherIntensity = Math.max(
+    activeWindEffect?.intensity ?? 0,
+    activeLightningEffect?.intensity ?? 0,
+    activeDayNightEffect?.intensity ?? 0
+  )
 
   const windGravity: [number, number, number] = useMemo(() => {
     if (!activeWindEffect) return [0, 0, 0]
@@ -327,6 +332,8 @@ function Experience({
       <CameraManager 
         target={cameraTarget}
         active={isCameraFollowingVehicle}
+        mode={isPlayerActive ? 'active' : 'spectator'}
+        intensity={cameraWeatherIntensity}
       />
       
       <Sky sunPosition={

@@ -48,6 +48,9 @@ export function QueueStatusBadge({ playerId }: { playerId: string }) {
               <span>Brake/Action</span>
             </span>
           </div>
+          <div className="mt-1 text-[9px] text-white/60 md:hidden text-right">
+            Mobile: joystick to steer • tap A to act
+          </div>
         </div>
         
         {/* Active vehicle badge */}
@@ -87,6 +90,9 @@ export function QueueStatusBadge({ playerId }: { playerId: string }) {
       <div className="flex items-center gap-2">
         <span className="text-[10px] font-black text-white/50 uppercase">{address ? 'Join Queue to Drive' : 'Connect wallet to drive'}</span>
       </div>
+      {address && (
+        <div className="text-[9px] text-white/50 mt-1">Drop-in slots rotate quickly during weather influence windows.</div>
+      )}
     </div>
   )
 }

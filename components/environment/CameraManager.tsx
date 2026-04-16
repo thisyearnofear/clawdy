@@ -7,6 +7,8 @@ import type { RapierRigidBody } from '@react-three/rapier'
 interface CameraManagerProps {
   target?: RapierRigidBody | null
   active: boolean
+  mode?: 'spectator' | 'active'
+  intensity?: number
   offset?: [number, number, number] // Offset from target
   smoothTime?: number
 }
@@ -14,9 +16,21 @@ interface CameraManagerProps {
 export function CameraManager({ 
   target, 
   active, 
+  mode = 'spectator',
+  intensity = 0,
   offset = [0, 8, 15] 
 }: CameraManagerProps) {
   const controlsRef = useRef<CameraControls>(null)
+  const cameraPos = useRef(new THREE.Vector3())
+  const cameraTarget = useRef(new THREE.Vector3())
+  const targetPos = useRef(new THREE.Vector3())
+  const backward = useRef(new THREE.Vector3())
+  const quaternion = useRef(new THREE.Quaternion())
+  const upOffset = useRef(new THREE.Vector3())
+
+  const followSpeed = mode === 'active' ? 3.2 : 1.9
+  const targetLerpSpeed = mode === 'active' ? 6 : 3.6
+  const weatherBoost = 1 + Math.min(0.5, Math.max(0, intensity) * 0.4)
 
   useEffect(() => {
     if (controlsRef.current) {
@@ -34,65 +48,31 @@ export function CameraManager({
     if (!controlsRef.current) return
 
     if (active && target) {
-      // 1. Get Target Position
       const translation = target.translation()
-      const currentTargetPos = new THREE.Vector3(translation.x, translation.y, translation.z)
-
-      // 2. Calculate Ideal Camera Position
-      // We want the camera to be behind the car based on its rotation?
-      // Or just a fixed offset in world space if we want a "top-down-ish" view?
-      // For a driving game, usually we want it relative to the car's rotation (behind it).
-
+      targetPos.current.set(translation.x, translation.y, translation.z)
       const rotation = target.rotation()
-      const quaternion = new THREE.Quaternion(rotation.x, rotation.y, rotation.z, rotation.w)
+      quaternion.current.set(rotation.x, rotation.y, rotation.z, rotation.w)
 
-      // Calculate offset relative to car's orientation
-      // If we want the camera to ALWAYS be behind, we apply quaternion.
-      // But for a simple start, let's keep it "Orbit-like" but following.
-      // Actually, strictly following rotation can be nauseating if the car spins.
-      // A common hybrid is: Follow position strictly, but damp the rotation follow.
+      backward.current.set(0, 0, 1).applyQuaternion(quaternion.current)
+      backward.current.y = 0
+      backward.current.normalize()
 
-      // Let's try simple position follow first (World Space Offset)
-      // const idealPos = currentTargetPos.clone().add(new THREE.Vector3(...offset))
+      const trailingDistance = mode === 'active' ? offset[2] : offset[2] + 4
+      const followHeight = mode === 'active' ? offset[1] : offset[1] + 2
+      const idealPos = targetPos.current.clone()
+        .add(backward.current.multiplyScalar(trailingDistance))
+        .add(upOffset.current.set(0, followHeight, 0))
 
-      // Better: Position relative to car's "backward" direction but smoothed
-      const backward = new THREE.Vector3(0, 0, 1).applyQuaternion(quaternion)
-      backward.y = 0 // Keep camera height independent of car tilt roughly
-      backward.normalize()
+      controlsRef.current.getPosition(cameraPos.current)
+      controlsRef.current.getTarget(cameraTarget.current)
 
-      const idealPos = currentTargetPos.clone()
-        .add(backward.multiplyScalar(offset[2])) // Z distance
-        .add(new THREE.Vector3(0, offset[1], 0)) // Height
-
-      // Smoothly interpolate current camera target to vehicle position
-      // CameraControls handles the "camera position" via setLookAt
-
-      // We use `setLookAt` to smoothly move the camera
-      // But CameraControls `setLookAt` with `transition` might be too slow for per-frame.
-      // We should use `update` implicitly, but set the position manually?
-      // No, `CameraControls` is designed to be imperative.
-
-      // Use standard lerp for custom follow logic
-      // Ideally we disable standard controls and just set transform,
-      // OR we use CameraControls features.
-
-      // Let's use `setPosition` and `setTarget` with `true` (enable transition? no, instantaneous for frame loop)
-
-      const cameraPos = new THREE.Vector3()
-      const cameraTarget = new THREE.Vector3()
-      controlsRef.current.getPosition(cameraPos)
-      controlsRef.current.getTarget(cameraTarget)
-
-      // Lerp the target (look at point) to the car
-      cameraTarget.lerp(currentTargetPos, delta * 5)
-
-      // Lerp the position to the ideal position
-      cameraPos.lerp(idealPos, delta * 2)
+      cameraTarget.current.lerp(targetPos.current, delta * targetLerpSpeed * weatherBoost)
+      cameraPos.current.lerp(idealPos, delta * followSpeed * weatherBoost)
 
       controlsRef.current.setLookAt(
-        cameraPos.x, cameraPos.y, cameraPos.z,
-        cameraTarget.x, cameraTarget.y, cameraTarget.z,
-        false // no transition, instant update
+        cameraPos.current.x, cameraPos.current.y, cameraPos.current.z,
+        cameraTarget.current.x, cameraTarget.current.y, cameraTarget.current.z,
+        false
       )
     }
   })

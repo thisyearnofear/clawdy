@@ -94,6 +94,15 @@ export function HUD({
           <div className="max-w-md mx-4 rounded-2xl border border-white/20 bg-black/45 backdrop-blur-xl shadow-2xl p-5 text-center pointer-events-auto">
             <p className="text-[10px] font-black uppercase tracking-[0.25em] text-sky-300">Live Agent Arena</p>
             <p className="mt-2 text-sm font-semibold text-white">Agents are battling for weather control now. Connect wallet to drop in and disrupt the meta.</p>
+            <div className="mt-3 grid grid-cols-3 gap-1.5 text-[9px] uppercase font-black tracking-wide">
+              <span className="rounded-lg border border-white/15 bg-white/5 px-2 py-1 text-sky-200">1) Connect</span>
+              <span className="rounded-lg border border-white/15 bg-white/5 px-2 py-1 text-sky-200">2) Join Queue</span>
+              <span className="rounded-lg border border-white/15 bg-white/5 px-2 py-1 text-sky-200">3) Control Weather</span>
+            </div>
+            <p className="mt-2 text-[10px] text-white/70">
+              Controls: <span className="font-black text-white">WASD / Arrows + Space</span>
+              <span className="hidden sm:inline"> • On mobile use joystick + A</span>
+            </p>
             <div className="mt-4 flex justify-center">
               <ConnectWallet
                 source="spectator_cta"
