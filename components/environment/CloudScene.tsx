@@ -18,6 +18,7 @@ import { ControlPanel } from '../ui/ControlPanel'
 import { Overlays } from '../ui/Overlays'
 import { useGameStore } from '../../services/gameStore'
 import { vehicleQueue } from '../../services/VehicleQueue'
+import { trackEvent } from '../../services/analytics'
 
 const WEATHER_DOMAINS_BY_PRESET = {
   stormy: [
@@ -114,6 +115,12 @@ export default function CloudScene() {
             startedAt: now,
             expiresAt: now + 60_000,
           })
+          trackEvent('weather_auction_effect_applied', {
+            preset,
+            domain: effect.domain,
+            intensity: effect.intensity,
+            source: 'auction',
+          })
         })
       } else if (event.type === 'food-collected') {
         emitToast('collect', `+${(event.amount as number ?? 0.1).toFixed(2)} OKB collected`, event.agentId as string)
@@ -149,6 +156,12 @@ export default function CloudScene() {
           source: 'drop-in',
           startedAt: now,
           expiresAt: now + 25_000,
+        })
+        trackEvent('player_influence_window_started', {
+          playerId,
+          domain: 'wind',
+          intensity: 0.5,
+          source: 'drop-in',
         })
       }
       previousPlayerActive = playerActive

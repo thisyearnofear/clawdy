@@ -4,6 +4,7 @@ import { useAccount, useChainId, useConnect, useDisconnect } from 'wagmi'
 import { agentProtocol, CHAIN_NAME } from '../../services/AgentProtocol'
 import { primaryChain } from '../../services/web3Config'
 import { useState, useEffect } from 'react'
+import { trackEvent } from '../../services/analytics'
 
 // Wallet Icons as SVG components for better visuals
 const MetaMaskIcon = () => (
@@ -54,9 +55,10 @@ const getWalletColor = (name: string) => {
 
 interface ConnectWalletProps {
   buttonClassName?: string
+  source?: 'hud_top_right' | 'spectator_cta'
 }
 
-export function ConnectWallet({ buttonClassName }: ConnectWalletProps = {}) {
+export function ConnectWallet({ buttonClassName, source = 'hud_top_right' }: ConnectWalletProps = {}) {
   const { address, isConnected } = useAccount()
   const chainId = useChainId()
   const { connectors, connect, status } = useConnect()
@@ -72,6 +74,14 @@ export function ConnectWallet({ buttonClassName }: ConnectWalletProps = {}) {
       setIsModalOpen(false)
     }
   }, [isConnected, isModalOpen])
+
+  useEffect(() => {
+    if (!isConnected || !address) return
+    trackEvent('wallet_connected', {
+      walletAddress: address,
+      source,
+    })
+  }, [address, isConnected, source])
 
   const initAutonomy = async () => {
     if (address) {
@@ -127,7 +137,13 @@ export function ConnectWallet({ buttonClassName }: ConnectWalletProps = {}) {
     <>
       {/* Single Connect Button */}
       <button
-        onClick={() => setIsModalOpen(true)}
+        onClick={() => {
+          trackEvent('connect_wallet_clicked', {
+            source,
+            walletConnected: isConnected,
+          })
+          setIsModalOpen(true)
+        }}
         className={buttonClassName || 'group px-6 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-black rounded-xl shadow-lg shadow-sky-900/20 transition-all active:scale-95 flex items-center gap-2'}
       >
         <svg className="w-4 h-4 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">

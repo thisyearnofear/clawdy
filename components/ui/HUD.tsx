@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAccount } from 'wagmi'
 import { ConnectWallet } from './ConnectWallet'
 import { WinConditionBar } from './WinConditionBar'
@@ -9,6 +9,7 @@ import { AgentTerminal } from './AgentTerminal'
 import { useGameStore } from '../../services/gameStore'
 import { CloudConfig } from '../environment/CloudManager'
 import { QueueStatusBadge } from './QueueStatusBadge'
+import { trackEvent } from '../../services/analytics'
 
 const DOMAIN_LABELS = {
   wind: 'Wind',
@@ -42,11 +43,22 @@ export function HUD({
   const playerSession = sessions['Player']
   const activeDomainEffects = Object.values(activeWeatherEffects)
   const [now, setNow] = useState(() => Date.now())
+  const hasTrackedSpectatorCtaRef = useRef(false)
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(timer)
   }, [])
+
+  useEffect(() => {
+    if (!isMounted || address || hasTrackedSpectatorCtaRef.current) return
+    hasTrackedSpectatorCtaRef.current = true
+    trackEvent('spectator_cta_viewed', {
+      playerId,
+      source: 'hud_overlay',
+      activeDomains: activeDomainEffects.length,
+    })
+  }, [activeDomainEffects.length, address, isMounted, playerId])
   
   if (!showHUD) return null
 
@@ -73,7 +85,7 @@ export function HUD({
 
       {/* Wallet - Top right */}
       <div className="absolute top-6 right-6 z-30">
-        {isMounted ? <ConnectWallet /> : null}
+        {isMounted ? <ConnectWallet source="hud_top_right" /> : null}
       </div>
 
       {/* Spectator CTA - Center */}
@@ -83,7 +95,10 @@ export function HUD({
             <p className="text-[10px] font-black uppercase tracking-[0.25em] text-sky-300">Live Agent Arena</p>
             <p className="mt-2 text-sm font-semibold text-white">Agents are battling for weather control now. Connect wallet to drop in and disrupt the meta.</p>
             <div className="mt-4 flex justify-center">
-              <ConnectWallet buttonClassName="group px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-black rounded-xl shadow-lg shadow-sky-900/20 transition-all active:scale-95 flex items-center gap-2" />
+              <ConnectWallet
+                source="spectator_cta"
+                buttonClassName="group px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-black rounded-xl shadow-lg shadow-sky-900/20 transition-all active:scale-95 flex items-center gap-2"
+              />
             </div>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import { VehicleType } from './AgentProtocol'
+import { trackEvent } from './analytics'
 
 export interface QueuedPlayer {
   id: string
@@ -69,6 +70,14 @@ export class VehicleQueueManager {
     this.activePlayerId = player.id
 
     console.log(`[VehicleQueue] Assigned ${vehicle.id} to player ${player.id}`)
+    trackEvent('queue_activated', {
+      playerId: player.id,
+      walletAddress: player.address,
+      vehicleId: vehicle.id,
+      vehicleType: vehicle.type,
+      waitMs: now - player.joinedAt,
+      queueSizeAtActivation: this.queue.filter(p => p.status === 'waiting').length,
+    })
   }
 
   private checkExpiredSessions() {
@@ -96,6 +105,13 @@ export class VehicleQueueManager {
     }
 
     console.log(`[VehicleQueue] Released ${vehicle.id} from player ${player.id}`)
+    trackEvent('queue_left', {
+      playerId: player.id,
+      walletAddress: player.address,
+      vehicleId: vehicle.id,
+      vehicleType: vehicle.type,
+      reason: 'session_expired',
+    })
   }
 
   // Public API
@@ -123,6 +139,13 @@ export class VehicleQueueManager {
     const position = this.queue.filter(p => p.status === 'waiting').length
     this.notifyListeners()
 
+    trackEvent('queue_joined', {
+      playerId,
+      walletAddress: address,
+      position,
+      estimatedWait: position * 30,
+    })
+
     return { position, estimatedWait: position * 30 }
   }
 
@@ -132,8 +155,10 @@ export class VehicleQueueManager {
 
     const player = this.queue[index]
     
+    const wasActive = player.status === 'active'
+
     // If active, release vehicle
-    if (player.status === 'active' && player.vehicleId) {
+    if (wasActive && player.vehicleId) {
       const vehicle = this.vehicles.find(v => v.id === player.vehicleId)
       if (vehicle) {
         this.releaseVehicle(player, vehicle)
@@ -142,6 +167,15 @@ export class VehicleQueueManager {
 
     this.queue.splice(index, 1)
     this.notifyListeners()
+
+    if (!wasActive) {
+      trackEvent('queue_left', {
+        playerId,
+        walletAddress: player.address,
+        vehicleId: player.vehicleId,
+        reason: 'manual_leave_waiting',
+      })
+    }
     return true
   }
 
