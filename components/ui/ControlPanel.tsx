@@ -30,6 +30,9 @@ export function ControlPanel({
   playerVehicle,
   setPlayerVehicle
 }: ControlPanelProps) {
+  const handlingMode = useGameStore(s => s.handlingMode)
+  const setHandlingMode = useGameStore(s => s.setHandlingMode)
+
   return (
     <>
       {/* Backdrop */}
@@ -115,6 +118,29 @@ export function ControlPanel({
 
           {activeTab === 'vehicles' && (
             <div className="space-y-4 animate-in fade-in slide-in-from-right-4">
+              <div className="space-y-2">
+                <p className="text-[10px] font-black opacity-30 uppercase tracking-widest">Handling Mode</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    { key: 'arcade', label: 'Arcade' },
+                    { key: 'offroad', label: 'Offroad' },
+                    { key: 'chaos', label: 'Chaos' },
+                  ] as const).map((mode) => (
+                    <button
+                      key={mode.key}
+                      onClick={() => setHandlingMode(mode.key)}
+                      className={`px-2 py-2 rounded-lg text-[9px] uppercase font-black transition-all border ${
+                        handlingMode === mode.key
+                          ? 'bg-white text-sky-900 border-white'
+                          : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
+                      }`}
+                    >
+                      {mode.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <p className="text-[10px] font-black opacity-30 uppercase tracking-widest">Select Platform</p>
               <div className="grid grid-cols-1 gap-2">
                 {(['truck', 'tank', 'monster', 'speedster'] as VehicleType[]).map((type) => (

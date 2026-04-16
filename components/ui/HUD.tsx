@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useAccount } from 'wagmi'
 import { ConnectWallet } from './ConnectWallet'
 import { WinConditionBar } from './WinConditionBar'
@@ -8,6 +9,12 @@ import { AgentTerminal } from './AgentTerminal'
 import { useGameStore } from '../../services/gameStore'
 import { CloudConfig } from '../environment/CloudManager'
 import { QueueStatusBadge } from './QueueStatusBadge'
+
+const DOMAIN_LABELS = {
+  wind: 'Wind',
+  lightning: 'Lightning',
+  dayNight: 'Day/Night',
+} as const
 
 interface HUDProps {
   playerId: string
@@ -31,7 +38,15 @@ export function HUD({
   const { address } = useAccount()
   const sessions = useGameStore(state => state.sessions)
   const showHUD = useGameStore(state => state.ui.showHUD)
+  const activeWeatherEffects = useGameStore(state => state.activeWeatherEffects)
   const playerSession = sessions['Player']
+  const activeDomainEffects = Object.values(activeWeatherEffects)
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [])
   
   if (!showHUD) return null
 
@@ -60,6 +75,43 @@ export function HUD({
       <div className="absolute top-6 right-6 z-30">
         {isMounted ? <ConnectWallet /> : null}
       </div>
+
+      {/* Spectator CTA - Center */}
+      {isMounted && !address && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+          <div className="max-w-md mx-4 rounded-2xl border border-white/20 bg-black/45 backdrop-blur-xl shadow-2xl p-5 text-center pointer-events-auto">
+            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-sky-300">Live Agent Arena</p>
+            <p className="mt-2 text-sm font-semibold text-white">Agents are battling for weather control now. Connect wallet to drop in and disrupt the meta.</p>
+            <div className="mt-4 flex justify-center">
+              <ConnectWallet buttonClassName="group px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-black rounded-xl shadow-lg shadow-sky-900/20 transition-all active:scale-95 flex items-center gap-2" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isMounted && activeDomainEffects.length > 0 && (
+        <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+          <div className="bg-black/45 backdrop-blur-xl border border-white/15 rounded-2xl px-4 py-3 shadow-xl min-w-[280px]">
+            <p className="text-[9px] uppercase tracking-[0.22em] text-sky-300 font-black">Active Weather Domains</p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {activeDomainEffects.map((effect) => {
+                const secondsLeft = Math.max(0, Math.floor((effect.expiresAt - now) / 1000))
+                return (
+                  <span
+                    key={effect.domain}
+                    className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider bg-white/10 text-white border border-white/15"
+                  >
+                    {DOMAIN_LABELS[effect.domain]} {Math.round(effect.intensity * 100)}% • {secondsLeft}s
+                  </span>
+                )
+              })}
+            </div>
+            {activeDomainEffects.some(effect => effect.source === 'drop-in') && (
+              <p className="mt-2 text-[9px] text-yellow-300 font-bold uppercase tracking-wide">Player influence window active</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Floating Action Buttons - Right side */}
       <div className="absolute top-1/2 right-6 -translate-y-1/2 flex flex-col gap-3 z-20">

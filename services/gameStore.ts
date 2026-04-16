@@ -47,6 +47,90 @@ export const GRAVITY_FOR_PRESET: Record<string, GravityMode> = {
   custom: 'normal',
 }
 
+// ── Handling Modes ───────────────────────────────────────────────────
+export type HandlingMode = 'arcade' | 'offroad' | 'chaos'
+export type VehicleHandlingProfile = 'vehicle' | 'speedster' | 'monster' | 'tank'
+
+export interface HandlingTuning {
+  speedScale: number
+  accelerationScale: number
+  steerScale: number
+  gripScale: number
+  baseLinearDamping: number
+  surfaceDampingInfluence: number
+  angularDamping: number
+  brakingDamping: number
+  carSteerResponse: number
+  tankTurnResponse: number
+  pitchTorqueMultiplier: number
+  leanTorqueMultiplier: number
+  stabilizerStrength: number
+  stabilizerThreshold: number
+  angularVelocityRetention: number
+  speedBoostMultiplier: number
+  antiGravityLift: number
+}
+
+export const HANDLING_MATRIX: Record<HandlingMode, HandlingTuning> = {
+  arcade: {
+    speedScale: 0.85,
+    accelerationScale: 0.7,
+    steerScale: 0.9,
+    gripScale: 1.15,
+    baseLinearDamping: 0.18,
+    surfaceDampingInfluence: 1.8,
+    angularDamping: 2.8,
+    brakingDamping: 5.5,
+    carSteerResponse: 1.1,
+    tankTurnResponse: 0.75,
+    pitchTorqueMultiplier: 0,
+    leanTorqueMultiplier: 0,
+    stabilizerStrength: 145,
+    stabilizerThreshold: 0.03,
+    angularVelocityRetention: 0.84,
+    speedBoostMultiplier: 1.6,
+    antiGravityLift: 5.5,
+  },
+  offroad: {
+    speedScale: 0.92,
+    accelerationScale: 0.85,
+    steerScale: 0.95,
+    gripScale: 1.0,
+    baseLinearDamping: 0.12,
+    surfaceDampingInfluence: 1.4,
+    angularDamping: 2.2,
+    brakingDamping: 5.0,
+    carSteerResponse: 1.0,
+    tankTurnResponse: 0.9,
+    pitchTorqueMultiplier: 0.18,
+    leanTorqueMultiplier: 0.14,
+    stabilizerStrength: 120,
+    stabilizerThreshold: 0.02,
+    angularVelocityRetention: 0.88,
+    speedBoostMultiplier: 1.9,
+    antiGravityLift: 7.0,
+  },
+  chaos: {
+    speedScale: 1.15,
+    accelerationScale: 1.35,
+    steerScale: 1.35,
+    gripScale: 0.78,
+    baseLinearDamping: 0.03,
+    surfaceDampingInfluence: 0.9,
+    angularDamping: 1.2,
+    brakingDamping: 4.0,
+    carSteerResponse: 1.45,
+    tankTurnResponse: 1.3,
+    pitchTorqueMultiplier: 1.2,
+    leanTorqueMultiplier: 1.0,
+    stabilizerStrength: 70,
+    stabilizerThreshold: 0.01,
+    angularVelocityRetention: 0.93,
+    speedBoostMultiplier: 2.6,
+    antiGravityLift: 10.0,
+  },
+}
+
 // ── UI State ─────────────────────────────────────────────────────────
 export interface UIState {
   isSidebarOpen: boolean
@@ -71,6 +155,17 @@ export interface PendingTransaction {
   error?: string
 }
 
+export type WeatherDomain = 'wind' | 'lightning' | 'dayNight'
+
+export interface WeatherDomainEffect {
+  domain: WeatherDomain
+  label: string
+  intensity: number
+  startedAt: number
+  expiresAt: number
+  source: 'auction' | 'drop-in' | 'system'
+}
+
 // ── Cloud / Weather Config ───────────────────────────────────────────
 type WeatherConfigUpdate = Partial<CloudConfig> & { spawnRate?: number }
 
@@ -93,6 +188,9 @@ export interface GameStore {
   setCloudConfig: (update: WeatherConfigUpdate) => void
   spawnRate: number
   setSpawnRate: (rate: number) => void
+  activeWeatherEffects: Partial<Record<WeatherDomain, WeatherDomainEffect>>
+  setWeatherEffect: (effect: WeatherDomainEffect | null, domain?: WeatherDomain) => void
+  clearExpiredWeatherEffects: (now?: number) => void
 
   // Player
   playerId: string
@@ -120,6 +218,10 @@ export interface GameStore {
   gravityMode: GravityMode
   setGravityMode: (mode: GravityMode) => void
   gravityVector: [number, number, number]
+
+  // Handling
+  handlingMode: HandlingMode
+  setHandlingMode: (mode: HandlingMode) => void
 
   // Connection
   isConnected: boolean
@@ -168,6 +270,31 @@ export const useGameStore = create<GameStore>((set, get) => ({
   })),
   spawnRate: 2,
   setSpawnRate: (spawnRate) => set({ spawnRate }),
+  activeWeatherEffects: {},
+  setWeatherEffect: (effect, domain) => set((prev) => {
+    if (!effect && !domain) return prev
+    const next = { ...prev.activeWeatherEffects }
+    if (!effect && domain) {
+      delete next[domain]
+      return { activeWeatherEffects: next }
+    }
+    if (effect) {
+      next[effect.domain] = effect
+    }
+    return { activeWeatherEffects: next }
+  }),
+  clearExpiredWeatherEffects: (now = Date.now()) => set((prev) => {
+    let changed = false
+    const next = { ...prev.activeWeatherEffects }
+    for (const domain of Object.keys(next) as WeatherDomain[]) {
+      const effect = next[domain]
+      if (effect && effect.expiresAt <= now) {
+        delete next[domain]
+        changed = true
+      }
+    }
+    return changed ? { activeWeatherEffects: next } : prev
+  }),
 
   // Player
   playerId: 'anonymous',
@@ -250,6 +377,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
   gravityMode: 'normal' as GravityMode,
   gravityVector: GRAVITY_VALUES.normal,
   setGravityMode: (mode) => set({ gravityMode: mode, gravityVector: GRAVITY_VALUES[mode] }),
+
+  // Handling
+  handlingMode: 'arcade' as HandlingMode,
+  setHandlingMode: (handlingMode) => set({ handlingMode }),
 
   // Connection
   isConnected: false,

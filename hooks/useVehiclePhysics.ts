@@ -7,8 +7,14 @@ import { useKeyboardControls } from '@react-three/drei'
 import type { RapierRigidBody } from '@react-three/rapier'
 import { agentProtocol } from '../services/AgentProtocol'
 import { getSurfaceType, getTerrainNormal, SURFACE_FRICTION } from '../components/terrain/terrainUtils'
+import {
+  HANDLING_MATRIX,
+  type VehicleHandlingProfile,
+  useGameStore,
+} from '../services/gameStore'
 
 export interface VehicleStats {
+  profile: VehicleHandlingProfile
   maxSpeed: number
   acceleration: number
   steerStrength: number
@@ -27,6 +33,8 @@ export function useVehiclePhysics(
   playerControlled: boolean = true
 ) {
   const [, getKeys] = useKeyboardControls()
+  const handlingMode = useGameStore(state => state.handlingMode)
+  const handling = HANDLING_MATRIX[handlingMode]
   const [inputs, setInputs] = useState({ forward: 0, turn: 0, brake: false, aim: 0, action: false })
   
   // Smoothing for physics forces
@@ -111,17 +119,25 @@ export function useVehiclePhysics(
     const vPos = chassisRef.current.translation()
     const surfaceType = getSurfaceType(vPos.x, vPos.z)
     const rollingFriction = SURFACE_FRICTION[surfaceType] || 0.98
-    const baseDamping = (1 - rollingFriction) * 5
-    chassisRef.current.setLinearDamping(rawBrake ? 5.0 : baseDamping)
-    chassisRef.current.setAngularDamping(2.0)
+    const baseDamping = handling.baseLinearDamping + (1 - rollingFriction) * handling.surfaceDampingInfluence
+    chassisRef.current.setLinearDamping(rawBrake ? handling.brakingDamping : baseDamping)
+    chassisRef.current.setAngularDamping(handling.angularDamping)
 
     // --- 3. HIGH-TORQUE MOTOR ACCELERATION (with Power-ups) ---
     const isSpeedBoosted = session && session.speedBoostUntil && session.speedBoostUntil > Date.now()
     const isAntiGravity = session && session.antiGravityUntil && session.antiGravityUntil > Date.now()
 
-    const boostFactor = isSpeedBoosted ? 2.5 : 1.0
-    const maxSpeed = stats.maxSpeed * (0.4 + 0.6 * vitalityFactor) * boostFactor
-    const accelerationPower = stats.acceleration * stats.mass * 5 * boostFactor
+    const vehicleModeScale: Record<VehicleHandlingProfile, number> = {
+      speedster: 1.08,
+      vehicle: 1.0,
+      monster: 0.94,
+      tank: 0.82,
+    }
+    const boostFactor = isSpeedBoosted ? handling.speedBoostMultiplier : 1.0
+    const modeSpeedScale = handling.speedScale * vehicleModeScale[stats.profile]
+    const modeAccelScale = handling.accelerationScale * vehicleModeScale[stats.profile]
+    const maxSpeed = stats.maxSpeed * modeSpeedScale * (0.55 + 0.45 * vitalityFactor) * boostFactor
+    const accelerationPower = stats.acceleration * modeAccelScale * boostFactor
 
     if (Math.abs(smoothedForward.current) > 0.01) {
       const forwardSpeed = velocity.x * forwardDir.x + velocity.z * forwardDir.z
@@ -132,13 +148,14 @@ export function useVehiclePhysics(
         const force = surfaceForward.multiplyScalar(smoothedForward.current * accelerationPower * delta)
         chassisRef.current.applyImpulse({ x: force.x, y: force.y, z: force.z }, true)
 
-        // Weight Transfer: Pitch
-        const pitchForce = -smoothedForward.current * stats.mass * 2.0
-        chassisRef.current.applyTorqueImpulse({
-           x: rightDir.x * pitchForce,
-           y: rightDir.y * pitchForce,
-           z: rightDir.z * pitchForce
-        }, true)
+        if (handling.pitchTorqueMultiplier > 0) {
+          const pitchForce = -smoothedForward.current * stats.mass * handling.pitchTorqueMultiplier
+          chassisRef.current.applyTorqueImpulse({
+            x: rightDir.x * pitchForce,
+            y: rightDir.y * pitchForce,
+            z: rightDir.z * pitchForce,
+          }, true)
+        }
       }
     }
 
@@ -146,21 +163,22 @@ export function useVehiclePhysics(
     const steerBoost = isSpeedBoosted ? 1.5 : 1.0
     if (Math.abs(smoothedTurn.current) > 0.01) {
       if (stats.steeringMode === 'car' && speed > 0.5) {
-        const steerStrength = stats.steerStrength * stats.mass * 2.5 * delta * steerBoost
+        const steerStrength = stats.steerStrength * handling.steerScale * handling.carSteerResponse * delta * steerBoost
         const steerForce = rightDir.clone().multiplyScalar(smoothedTurn.current * steerStrength * Math.min(speed / 10, 1))
         const fOffset = forwardDir.clone().multiplyScalar(stats.frontOffset)
         const steerPoint = { x: vPos.x + fOffset.x, y: vPos.y, z: vPos.z + fOffset.z }
         chassisRef.current.applyImpulseAtPoint({ x: steerForce.x, y: 0, z: steerForce.z }, steerPoint, true)
 
-        // Weight Transfer: Lean
-        const leanForce = -smoothedTurn.current * stats.mass * 1.5 * Math.min(speed / 20, 1)
-        chassisRef.current.applyTorqueImpulse({
-           x: forwardDir.x * leanForce,
-           y: forwardDir.y * leanForce,
-           z: forwardDir.z * leanForce
-        }, true)
+        if (handling.leanTorqueMultiplier > 0) {
+          const leanForce = -smoothedTurn.current * stats.mass * handling.leanTorqueMultiplier * Math.min(speed / 20, 1)
+          chassisRef.current.applyTorqueImpulse({
+            x: forwardDir.x * leanForce,
+            y: forwardDir.y * leanForce,
+            z: forwardDir.z * leanForce,
+          }, true)
+        }
       } else if (stats.steeringMode === 'tank') {
-        const turnRate = stats.steerStrength * stats.mass * 5 * delta * steerBoost
+        const turnRate = stats.steerStrength * handling.steerScale * handling.tankTurnResponse * delta * steerBoost
         chassisRef.current.applyTorqueImpulse({ x: 0, y: smoothedTurn.current * turnRate, z: 0 }, true)
       }
     }
@@ -168,13 +186,13 @@ export function useVehiclePhysics(
     // --- 5. ANTI-GRAVITY ---
     if (isAntiGravity) {
       // Counter-act some gravity
-      chassisRef.current.applyImpulse({ x: 0, y: stats.mass * 8.5 * delta, z: 0 }, true)
+      chassisRef.current.applyImpulse({ x: 0, y: stats.mass * handling.antiGravityLift * delta, z: 0 }, true)
     }
 
     // --- 6. DRIFT / LATERAL FRICTION ---
     if (speed > 1) {
       const sidewaysVelocity = velocity.x * rightDir.x + velocity.z * rightDir.z
-      const driftGrip = surfaceType === 'road' ? stats.lateralGrip : stats.lateralGrip * 0.6
+      const driftGrip = (surfaceType === 'road' ? stats.lateralGrip : stats.lateralGrip * 0.65) * handling.gripScale
       const gripImpulse = -sidewaysVelocity * driftGrip * stats.mass * delta * 15
       chassisRef.current.applyImpulse({ x: rightDir.x * gripImpulse, y: 0, z: rightDir.z * gripImpulse }, true)
     }
@@ -185,14 +203,18 @@ export function useVehiclePhysics(
     const stabilizeAxis = new THREE.Vector3().crossVectors(currentUp, targetUp)
     const stabilizeAngle = currentUp.angleTo(targetUp)
 
-    if (stabilizeAngle > 0.01) {
-      const stabilizeStrength = stats.mass * 80 * delta * stabilizeAngle
+    if (stabilizeAngle > handling.stabilizerThreshold) {
+      const stabilizeStrength = stats.mass * handling.stabilizerStrength * delta * stabilizeAngle
       chassisRef.current.applyTorqueImpulse({ x: stabilizeAxis.x * stabilizeStrength, y: stabilizeAxis.y * stabilizeStrength, z: stabilizeAxis.z * stabilizeStrength }, true)
     }
     
     // Damp angular velocity to prevent wild spinning
     const angvel = chassisRef.current.angvel()
-    chassisRef.current.setAngvel({ x: angvel.x * 0.95, y: angvel.y * 0.95, z: angvel.z * 0.95 }, true)
+    chassisRef.current.setAngvel({
+      x: angvel.x * handling.angularVelocityRetention,
+      y: angvel.y * handling.angularVelocityRetention,
+      z: angvel.z * handling.angularVelocityRetention,
+    }, true)
   })
 
   return { inputs, setInputs }

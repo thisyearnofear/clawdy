@@ -38,7 +38,7 @@ import { WeatherParticles } from './WeatherParticles'
 import { WeatherPostProcessing } from './WeatherPostProcessing'
 import { getAgentByVehicleId, getControllableAgents } from '../../services/agents'
 import type { RapierRigidBody } from '@react-three/rapier'
-import { useGameStore, GRAVITY_FOR_PRESET } from '../../services/gameStore'
+import { useGameStore, GRAVITY_FOR_PRESET, type GravityMode } from '../../services/gameStore'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
 
 interface VehicleData {
@@ -68,6 +68,7 @@ function Experience({
   const hasJoinedQueueRef = useRef(false)
   
   const [playerVehicleObj, setPlayerVehicleObj] = useState<RapierRigidBody | null>(null)
+  const [spectatorVehicleObj, setSpectatorVehicleObj] = useState<RapierRigidBody | null>(null)
 
   const getVehiclePosition = (index: number): [number, number, number] => {
     // Return a position on the edge of the map
@@ -229,6 +230,12 @@ function Experience({
   // Check if current player has an active vehicle
   const playerVehicle = queueState?.getPlayerVehicle(playerId)
   const isPlayerActive = queueState?.isPlayerActive(playerId) ?? false
+  const spectatorVehicle = useMemo(
+    () => vehicles.find(v => v.agentControlled) || vehicles[0],
+    [vehicles]
+  )
+  const cameraTarget = isPlayerActive ? playerVehicleObj : spectatorVehicleObj
+  const isCameraFollowingVehicle = Boolean(cameraTarget)
 
   // Get player vehicle position for spherical terrain
   const playerVehiclePosition = useMemo(() => {
@@ -242,17 +249,57 @@ function Experience({
   }, [isPlayerActive, playerVehicle, vehicles]);
 
   const [useSphericalTerrain, setUseSphericalTerrain] = useState(false);
+  const [weatherPhase, setWeatherPhase] = useState(0)
+
+  useFrame((state) => {
+    setWeatherPhase(state.clock.elapsedTime)
+  })
 
   // Gravity tied to weather preset
   const gravityVector = useGameStore(s => s.gravityVector)
   const setGravityMode = useGameStore(s => s.setGravityMode)
-  const gravityMode = useGameStore(s => s.gravityMode)
+  const handlingMode = useGameStore(s => s.handlingMode)
+  const activeWeatherEffects = useGameStore(s => s.activeWeatherEffects)
+
+  const activeWindEffect = activeWeatherEffects.wind
+  const activeLightningEffect = activeWeatherEffects.lightning
+  const activeDayNightEffect = activeWeatherEffects.dayNight
+
+  const windGravity: [number, number, number] = useMemo(() => {
+    if (!activeWindEffect) return [0, 0, 0]
+    const phase = weatherPhase * 0.8
+    const strength = 2.2 * activeWindEffect.intensity
+    return [Math.sin(phase) * strength, 0, Math.cos(phase * 0.8) * strength]
+  }, [activeWindEffect, weatherPhase])
+
+  const physicsGravity: [number, number, number] = useMemo(() => {
+    return [
+      gravityVector[0] + windGravity[0],
+      gravityVector[1],
+      gravityVector[2] + windGravity[2],
+    ]
+  }, [gravityVector, windGravity])
+
+  const dayNightBlend = activeDayNightEffect?.intensity ?? 0
+  const isNightMode = dayNightBlend > 0.55 || cloudConfig.preset === 'cosmic'
+  const lightningPulse = activeLightningEffect ? (Math.sin(weatherPhase * 7) + 1) * 0.5 * activeLightningEffect.intensity : 0
 
   useEffect(() => {
     const preset = cloudConfig.preset || 'custom'
-    const mode = GRAVITY_FOR_PRESET[preset] || 'normal'
-    setGravityMode(mode)
-  }, [cloudConfig.preset, setGravityMode])
+    const presetMode = GRAVITY_FOR_PRESET[preset] || 'normal'
+
+    const modeByHandling: Record<typeof handlingMode, (mode: GravityMode) => GravityMode> = {
+      arcade: (mode) => (mode === 'zero' ? 'low' : mode),
+      offroad: (mode) => {
+        if (mode === 'zero') return 'low'
+        if (mode === 'hyper') return 'normal'
+        return mode
+      },
+      chaos: (mode) => (mode === 'normal' ? 'low' : mode),
+    }
+
+    setGravityMode(modeByHandling[handlingMode](presetMode))
+  }, [cloudConfig.preset, handlingMode, setGravityMode])
 
   // Keyboard handler for toggling spherical terrain
   useEffect(() => {
@@ -278,20 +325,32 @@ function Experience({
     >
       <PerspectiveCamera makeDefault position={[0, 15, 30]} />
       <CameraManager 
-        target={playerVehicleObj}
-        active={isPlayerActive}
+        target={cameraTarget}
+        active={isCameraFollowingVehicle}
       />
       
-      <Sky sunPosition={cloudConfig.preset === 'stormy' ? [100, 5, 100] : cloudConfig.preset === 'sunset' ? [100, 8, 50] : cloudConfig.preset === 'cosmic' ? [100, 2, 100] : [100, 20, 100]} />
+      <Sky sunPosition={
+        isNightMode
+          ? [100, 1 + dayNightBlend * 2, 90]
+          : cloudConfig.preset === 'stormy'
+            ? [100, 5, 100]
+            : cloudConfig.preset === 'sunset'
+              ? [100, 8, 50]
+              : [100, 20, 100]
+      } />
       <Environment preset="city" />
-      <ambientLight intensity={cloudConfig.preset === 'stormy' ? 0.3 : cloudConfig.preset === 'cosmic' ? 0.15 : cloudConfig.preset === 'sunset' ? 0.6 : 0.5} />
-      <directionalLight position={[10, 10, 5]} intensity={cloudConfig.preset === 'stormy' ? 0.5 : cloudConfig.preset === 'cosmic' ? 0.3 : 1} castShadow />
-      <fog attach="fog" args={[cloudConfig.preset === 'stormy' ? '#4a5568' : cloudConfig.preset === 'sunset' ? '#ffccaa' : cloudConfig.preset === 'candy' ? '#ffe0f0' : cloudConfig.preset === 'cosmic' ? '#0a0a2e' : '#c9d5ff', cloudConfig.preset === 'stormy' ? 10 : cloudConfig.preset === 'cosmic' ? 20 : 18, cloudConfig.preset === 'stormy' ? 60 : cloudConfig.preset === 'cosmic' ? 120 : 90]} />
+      <ambientLight intensity={(cloudConfig.preset === 'stormy' ? 0.3 : cloudConfig.preset === 'cosmic' ? 0.15 : cloudConfig.preset === 'sunset' ? 0.6 : 0.5) * (1 - dayNightBlend * 0.55) + lightningPulse * 0.35} />
+      <directionalLight position={[10, 10, 5]} intensity={(cloudConfig.preset === 'stormy' ? 0.5 : cloudConfig.preset === 'cosmic' ? 0.3 : 1) * (1 - dayNightBlend * 0.5) + lightningPulse} castShadow />
+      <fog attach="fog" args={[
+        isNightMode ? '#0a0a2e' : cloudConfig.preset === 'stormy' ? '#4a5568' : cloudConfig.preset === 'sunset' ? '#ffccaa' : cloudConfig.preset === 'candy' ? '#ffe0f0' : '#c9d5ff',
+        cloudConfig.preset === 'stormy' ? 10 : cloudConfig.preset === 'cosmic' ? 20 : 18,
+        (cloudConfig.preset === 'stormy' ? 60 : cloudConfig.preset === 'cosmic' ? 120 : 90) - (activeLightningEffect?.intensity ?? 0) * 18,
+      ]} />
 
       <WeatherParticles config={cloudConfig} />
       <WeatherPostProcessing config={cloudConfig} />
 
-      <Physics gravity={gravityVector}>
+      <Physics gravity={physicsGravity}>
         <LaunchPads />
         <SkyIslands />
         <CloudManager config={cloudConfig} />
@@ -316,6 +375,7 @@ function Experience({
 
         {vehicles.map((v) => {
           const isPlayerVehicle = v.playerId === playerId && isPlayerActive
+          const isSpectatorVehicle = !isPlayerVehicle && spectatorVehicle?.id === v.id
           const props = { 
             id: v.id, 
             position: v.position, 
@@ -323,9 +383,15 @@ function Experience({
             // Only allow player control if this is their assigned vehicle
             playerControlled: isPlayerVehicle,
             // Pass ref for camera tracking
-            onRef: isPlayerVehicle ? (ref: RapierRigidBody | null) => { 
-              setPlayerVehicleObj(ref)
-            } : undefined
+            onRef: isPlayerVehicle
+              ? (ref: RapierRigidBody | null) => {
+                setPlayerVehicleObj(ref)
+              }
+              : isSpectatorVehicle
+                ? (ref: RapierRigidBody | null) => {
+                  setSpectatorVehicleObj(ref)
+                }
+                : undefined
           }
           
           return (

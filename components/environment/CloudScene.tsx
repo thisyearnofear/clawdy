@@ -17,18 +17,45 @@ import { HUD } from '../ui/HUD'
 import { ControlPanel } from '../ui/ControlPanel'
 import { Overlays } from '../ui/Overlays'
 import { useGameStore } from '../../services/gameStore'
+import { vehicleQueue } from '../../services/VehicleQueue'
+
+const WEATHER_DOMAINS_BY_PRESET = {
+  stormy: [
+    { domain: 'wind', label: 'Crosswind Surge', intensity: 0.9 },
+    { domain: 'lightning', label: 'Lightning Front', intensity: 1.0 },
+    { domain: 'dayNight', label: 'Storm Dusk', intensity: 0.7 },
+  ],
+  sunset: [
+    { domain: 'dayNight', label: 'Golden Hour', intensity: 0.35 },
+    { domain: 'wind', label: 'Warm Updrafts', intensity: 0.3 },
+  ],
+  cosmic: [
+    { domain: 'dayNight', label: 'Deep Night', intensity: 1.0 },
+    { domain: 'wind', label: 'Void Shear', intensity: 0.55 },
+    { domain: 'lightning', label: 'Ionic Flashes', intensity: 0.65 },
+  ],
+  candy: [
+    { domain: 'wind', label: 'Sugar Gusts', intensity: 0.25 },
+    { domain: 'dayNight', label: 'Neon Glow', intensity: 0.25 },
+  ],
+  custom: [
+    { domain: 'wind', label: 'Variable Winds', intensity: 0.2 },
+  ],
+} as const
 
 export default function CloudScene() {
   const { address } = useAccount()
   const playerId = address || 'anonymous'
   
   // State from GameStore
-  const { 
+  const {
     cloudConfig: config, setCloudConfig,
     spawnRate, setSpawnRate,
     playerVehicle, setPlayerVehicle,
     ui, setUI,
-    tickRound
+    tickRound,
+    setWeatherEffect,
+    clearExpiredWeatherEffects,
   } = useGameStore()
 
   const [isMounted, setIsMounted] = useState(false)
@@ -75,6 +102,19 @@ export default function CloudScene() {
         emitToast('bid-win', 'Weather Auction Won!', `${event.preset} weather activated`)
         playSound('bid-win')
         emitChatter(event.agentId as string || 'Agent', 'bid-won')
+
+        const preset = (event.preset as keyof typeof WEATHER_DOMAINS_BY_PRESET) || 'custom'
+        const effects = WEATHER_DOMAINS_BY_PRESET[preset] ?? WEATHER_DOMAINS_BY_PRESET.custom
+        const now = Date.now()
+        effects.forEach((effect) => {
+          setWeatherEffect({
+            ...effect,
+            domain: effect.domain,
+            source: 'auction',
+            startedAt: now,
+            expiresAt: now + 60_000,
+          })
+        })
       } else if (event.type === 'food-collected') {
         emitToast('collect', `+${(event.amount as number ?? 0.1).toFixed(2)} OKB collected`, event.agentId as string)
         playSound('collect')
@@ -92,7 +132,27 @@ export default function CloudScene() {
     })
 
     // Tick round every second
-    const roundInterval = setInterval(() => tickRound(), 1000)
+    const roundInterval = setInterval(() => {
+      tickRound()
+      clearExpiredWeatherEffects()
+    }, 1000)
+
+    let previousPlayerActive = false
+    const unsubscribeQueue = vehicleQueue.subscribe((state) => {
+      const playerActive = state.isPlayerActive(playerId)
+      if (playerActive && !previousPlayerActive) {
+        const now = Date.now()
+        setWeatherEffect({
+          domain: 'wind',
+          label: 'Player Drop-In Turbulence',
+          intensity: 0.5,
+          source: 'drop-in',
+          startedAt: now,
+          expiresAt: now + 25_000,
+        })
+      }
+      previousPlayerActive = playerActive
+    })
 
     // Keyboard controls
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -112,10 +172,20 @@ export default function CloudScene() {
     return () => {
       unsubscribeWeather()
       unsubscribeEvents?.()
+      unsubscribeQueue()
       clearInterval(roundInterval)
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [tickRound, setCloudConfig, setUI, ui.isSidebarOpen, ui.showQuickControls])
+  }, [
+    clearExpiredWeatherEffects,
+    playerId,
+    setCloudConfig,
+    setUI,
+    setWeatherEffect,
+    tickRound,
+    ui.isSidebarOpen,
+    ui.showQuickControls,
+  ])
 
   const updateConfig = <K extends keyof CloudConfig>(key: K, value: CloudConfig[K]) => {
     setCloudConfig({ [key]: value })

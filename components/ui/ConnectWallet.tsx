@@ -52,7 +52,11 @@ const getWalletColor = (name: string) => {
   return 'from-slate-500/20 to-slate-600/20 border-slate-500/30 text-slate-400'
 }
 
-export function ConnectWallet() {
+interface ConnectWalletProps {
+  buttonClassName?: string
+}
+
+export function ConnectWallet({ buttonClassName }: ConnectWalletProps = {}) {
   const { address, isConnected } = useAccount()
   const chainId = useChainId()
   const { connectors, connect, status } = useConnect()
@@ -124,7 +128,7 @@ export function ConnectWallet() {
       {/* Single Connect Button */}
       <button
         onClick={() => setIsModalOpen(true)}
-        className="group px-6 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-black rounded-xl shadow-lg shadow-sky-900/20 transition-all active:scale-95 flex items-center gap-2"
+        className={buttonClassName || 'group px-6 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-black rounded-xl shadow-lg shadow-sky-900/20 transition-all active:scale-95 flex items-center gap-2'}
       >
         <svg className="w-4 h-4 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />

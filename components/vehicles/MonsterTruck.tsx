@@ -7,6 +7,7 @@ import type { RapierRigidBody } from '@react-three/rapier'
 import { RigidBody } from '@react-three/rapier'
 import { useVehiclePhysics, VehicleStats } from '../../hooks/useVehiclePhysics'
 const TRUCK_STATS: VehicleStats = {
+  profile: 'monster',
   maxSpeed: 50,
   acceleration: 1000,
   steerStrength: 150,
