@@ -7,7 +7,7 @@ export const isXLayerTestnet =
   process.env.NEXT_PUBLIC_USE_XLAYER_TESTNET === 'true'
 
 export const primaryChain = isXLayerTestnet ? xLayerTestnet : xLayer
-export const supportedChains = [xLayer, xLayerTestnet] as const
+export const supportedChains = [primaryChain] as const
 
 // Poll every 12s (wagmi default is 4s) — sufficient for game event sync
 export const POLL_INTERVAL = 12_000
@@ -28,7 +28,7 @@ export const config = createConfig({
   chains: supportedChains,
   pollingInterval: POLL_INTERVAL,
   transports: {
-    [xLayer.id]: isXLayerTestnet ? testnetTransport : mainnetTransport,
+    [xLayer.id]: mainnetTransport,
     [xLayerTestnet.id]: testnetTransport,
   },
   // Stop polling when the browser tab is hidden

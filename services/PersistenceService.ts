@@ -3,6 +3,7 @@ import { ZgGameState } from './zgStorage'
 
 export class PersistenceService {
   private zgSaveCounter = 0
+  private zgAvailability: boolean | null = null
 
   constructor() {}
 
@@ -37,13 +38,26 @@ export class PersistenceService {
 
   private async persistTo0G(sessions: Record<string, unknown>) {
     try {
-      const { zgSaveState } = await import('./zgStorage')
+      const { zgSaveState, zgIsAvailable } = await import('./zgStorage')
+
+      if (this.zgAvailability !== false) {
+        this.zgAvailability = await zgIsAvailable()
+      }
+
+      if (!this.zgAvailability) {
+        return
+      }
+
       const state = {
         version: 1,
         timestamp: Date.now(),
         sessions: sessions as ZgGameState['sessions'],
       }
       const result = await zgSaveState('global', state)
+      if (result.error) {
+        this.zgAvailability = false
+        return
+      }
       // Only log on success to keep console clean, or keep totally silent if configured
       if (result.rootHash) {
         // console.log('[0G Storage] State persisted')

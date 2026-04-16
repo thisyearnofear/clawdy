@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   if (!PRIVATE_KEY) {
-    return NextResponse.json({ error: 'DEPLOYER_PRIVATE_KEY not configured' }, { status: 500 })
+    return NextResponse.json({ error: 'DEPLOYER_PRIVATE_KEY not configured' }, { status: 503 })
   }
 
   try {
@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
     try { unlinkSync(tmpPath) } catch { /* ignore */ }
 
     if (uploadErr !== null) {
-      return NextResponse.json({ error: `Upload error: ${uploadErr}` }, { status: 500 })
+      return NextResponse.json({ error: `Upload error: ${uploadErr}` }, { status: 502 })
     }
 
     const txHash = tx && 'txHash' in tx ? tx.txHash : undefined
@@ -109,6 +109,6 @@ export async function POST(req: NextRequest) {
       timestamp: Date.now(),
     })
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+    return NextResponse.json({ error: (e as Error).message }, { status: 502 })
   }
 }

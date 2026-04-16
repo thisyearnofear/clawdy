@@ -92,9 +92,9 @@ export function BidWinCelebration({ preset, onDone }: { preset: string; onDone: 
       <div className="relative flex flex-col items-center gap-3 animate-in zoom-in-50 fade-in duration-300">
         <div className="text-7xl animate-bounce">🏆</div>
         <div className="bg-yellow-500/30 backdrop-blur-xl border border-yellow-400/50 rounded-3xl px-8 py-4 text-center shadow-2xl shadow-yellow-500/20">
-          <div className="text-xs font-black uppercase tracking-widest text-yellow-300/70 mb-1">Weather Auction Won!</div>
+          <div className="text-xs font-black uppercase tracking-widest text-yellow-300/70 mb-1">Weather Auction Resolved</div>
           <div className="text-2xl font-black text-white capitalize">{preset} weather</div>
-          <div className="text-xs text-yellow-200/60 mt-1">You control the environment</div>
+          <div className="text-xs text-yellow-200/60 mt-1">Winning bidder controls the environment</div>
         </div>
       </div>
     </div>
