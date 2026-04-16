@@ -81,6 +81,8 @@ export default function CloudScene() {
       } else if (event.type === 'milestone') {
         emitToast('milestone', event.message as string)
         playSound('milestone')
+      } else if (event.type === 'agent-died') {
+        emitToast('bid-win', `Agent Decommissioned`, `${(event.agentId as string).slice(0,8)} ran out of vitality. Legacy: ${Number(event.totalEarned).toFixed(3)} OKB`)
       }
     })
 

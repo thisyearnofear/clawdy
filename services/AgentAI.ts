@@ -16,8 +16,28 @@ export class AgentAI {
        // Defer to avoid circular initialization issues
        setTimeout(() => {
          agentProtocol.subscribeToState((state) => this.onWorldUpdate(state))
+         this.startContinuousSpawning()
        }, 500)
     }
+  }
+
+  private startContinuousSpawning() {
+    // Initial batch
+    this.initAIAgents()
+    
+    // Spawn a new agent every 15-30 seconds if population is below cap
+    setInterval(() => {
+      const activeCount = agentProtocol.getSessions().length
+      if (activeCount < 8) {
+         const newId = `Agent-${Math.random().toString(36).slice(2, 7).toUpperCase()}`
+         agentProtocol.authorizeAgent(newId, 3600000, 2.0).then(success => {
+            if (success) {
+               const session = agentProtocol.getSession(newId)
+               if (session) session.autoPilot = true
+            }
+         })
+      }
+    }, 20000)
   }
 
   async initAIAgents() {

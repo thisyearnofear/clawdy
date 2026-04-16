@@ -38,6 +38,8 @@ import { WeatherParticles } from './WeatherParticles'
 import { WeatherPostProcessing } from './WeatherPostProcessing'
 import { getAgentByVehicleId, getControllableAgents } from '../../services/agents'
 import type { RapierRigidBody } from '@react-three/rapier'
+import { useGameStore, GRAVITY_FOR_PRESET } from '../../services/gameStore'
+import { RigidBody, CuboidCollider } from '@react-three/rapier'
 
 interface VehicleData {
   id: string
@@ -68,13 +70,14 @@ function Experience({
   const [playerVehicleObj, setPlayerVehicleObj] = useState<RapierRigidBody | null>(null)
 
   const getVehiclePosition = (index: number): [number, number, number] => {
-    const positions: [number, number, number][] = [
-      [0, 3, 0],
-      [5, 3, 5],
-      [-5, 3, -5],
-      [5, 3, -5]
+    // Return a position on the edge of the map
+    const angle = (index / 10) * Math.PI * 2
+    const radius = cloudConfig.bounds[0] * 0.8
+    return [
+      Math.cos(angle) * radius,
+      5,
+      Math.sin(angle) * radius
     ]
-    return positions[index] || [0, 3, 0]
   }
 
   const foodCountRef = useRef(0)
@@ -240,6 +243,17 @@ function Experience({
 
   const [useSphericalTerrain, setUseSphericalTerrain] = useState(false);
 
+  // Gravity tied to weather preset
+  const gravityVector = useGameStore(s => s.gravityVector)
+  const setGravityMode = useGameStore(s => s.setGravityMode)
+  const gravityMode = useGameStore(s => s.gravityMode)
+
+  useEffect(() => {
+    const preset = cloudConfig.preset || 'custom'
+    const mode = GRAVITY_FOR_PRESET[preset] || 'normal'
+    setGravityMode(mode)
+  }, [cloudConfig.preset, setGravityMode])
+
   // Keyboard handler for toggling spherical terrain
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -268,16 +282,18 @@ function Experience({
         active={isPlayerActive}
       />
       
-      <Sky sunPosition={cloudConfig.preset === 'stormy' ? [100, 5, 100] : cloudConfig.preset === 'sunset' ? [100, 8, 50] : [100, 20, 100]} />
+      <Sky sunPosition={cloudConfig.preset === 'stormy' ? [100, 5, 100] : cloudConfig.preset === 'sunset' ? [100, 8, 50] : cloudConfig.preset === 'cosmic' ? [100, 2, 100] : [100, 20, 100]} />
       <Environment preset="city" />
-      <ambientLight intensity={cloudConfig.preset === 'stormy' ? 0.3 : cloudConfig.preset === 'sunset' ? 0.6 : 0.5} />
-      <directionalLight position={[10, 10, 5]} intensity={cloudConfig.preset === 'stormy' ? 0.5 : 1} castShadow />
-      <fog attach="fog" args={[cloudConfig.preset === 'stormy' ? '#4a5568' : cloudConfig.preset === 'sunset' ? '#ffccaa' : cloudConfig.preset === 'candy' ? '#ffe0f0' : '#c9d5ff', cloudConfig.preset === 'stormy' ? 10 : 18, cloudConfig.preset === 'stormy' ? 60 : 90]} />
+      <ambientLight intensity={cloudConfig.preset === 'stormy' ? 0.3 : cloudConfig.preset === 'cosmic' ? 0.15 : cloudConfig.preset === 'sunset' ? 0.6 : 0.5} />
+      <directionalLight position={[10, 10, 5]} intensity={cloudConfig.preset === 'stormy' ? 0.5 : cloudConfig.preset === 'cosmic' ? 0.3 : 1} castShadow />
+      <fog attach="fog" args={[cloudConfig.preset === 'stormy' ? '#4a5568' : cloudConfig.preset === 'sunset' ? '#ffccaa' : cloudConfig.preset === 'candy' ? '#ffe0f0' : cloudConfig.preset === 'cosmic' ? '#0a0a2e' : '#c9d5ff', cloudConfig.preset === 'stormy' ? 10 : cloudConfig.preset === 'cosmic' ? 20 : 18, cloudConfig.preset === 'stormy' ? 60 : cloudConfig.preset === 'cosmic' ? 120 : 90]} />
 
       <WeatherParticles config={cloudConfig} />
       <WeatherPostProcessing config={cloudConfig} />
 
-      <Physics gravity={[0, -9.81, 0]}>
+      <Physics gravity={gravityVector}>
+        <LaunchPads />
+        <SkyIslands />
         <CloudManager config={cloudConfig} />
         <FoodSpawner
           spawnRate={spawnRate}
@@ -511,6 +527,105 @@ function InWorldQueueStatus({
       >
         Connect wallet to drive vehicles
       </Text>
+    </group>
+  )
+}
+
+// Launch pads scattered around the map — ramps that fling vehicles upward
+const LAUNCH_PAD_POSITIONS: [number, number, number][] = [
+  [25, 0.5, 0],
+  [-25, 0.5, 0],
+  [0, 0.5, 25],
+  [0, 0.5, -25],
+  [35, 0.5, 35],
+  [-35, 0.5, -35],
+]
+
+function LaunchPads() {
+  return (
+    <>
+      {LAUNCH_PAD_POSITIONS.map((pos, i) => (
+        <LaunchPad key={`pad-${i}`} position={pos} />
+      ))}
+    </>
+  )
+}
+
+function LaunchPad({ position }: { position: [number, number, number] }) {
+  const meshRef = useRef<THREE.Mesh>(null)
+
+  useFrame((state) => {
+    if (meshRef.current) {
+      const t = state.clock.getElapsedTime()
+      const mat = meshRef.current.material as THREE.MeshStandardMaterial
+      mat.emissiveIntensity = 0.5 + Math.sin(t * 3) * 0.3
+    }
+  })
+
+  return (
+    <RigidBody type="fixed" position={position} rotation={[-0.35, 0, 0]}>
+      <CuboidCollider args={[3, 0.15, 4]} />
+      <mesh ref={meshRef} castShadow receiveShadow>
+        <boxGeometry args={[6, 0.3, 8]} />
+        <meshStandardMaterial color="#ff6600" emissive="#ff3300" emissiveIntensity={0.5} metalness={0.8} roughness={0.2} />
+      </mesh>
+      {/* Arrow indicators */}
+      <mesh position={[0, 0.2, -2]}>
+        <coneGeometry args={[0.5, 1.2, 4]} />
+        <meshStandardMaterial color="#ffcc00" emissive="#ffcc00" emissiveIntensity={1} />
+      </mesh>
+    </RigidBody>
+  )
+}
+
+// Sky islands — floating platforms with rare food at y=30-50
+const SKY_ISLAND_POSITIONS: { pos: [number, number, number]; size: [number, number, number]; color: string }[] = [
+  { pos: [20, 30, 20], size: [8, 1, 8], color: '#88ccff' },
+  { pos: [-20, 35, -15], size: [10, 1, 6], color: '#aaddff' },
+  { pos: [0, 40, -30], size: [12, 1, 12], color: '#ccddff' },
+  { pos: [-30, 45, 20], size: [6, 1, 10], color: '#99bbff' },
+  { pos: [35, 50, -10], size: [8, 1, 8], color: '#bbccff' },
+]
+
+function SkyIslands() {
+  return (
+    <>
+      {SKY_ISLAND_POSITIONS.map((island, i) => (
+        <SkyIsland key={`island-${i}`} position={island.pos} size={island.size} color={island.color} />
+      ))}
+    </>
+  )
+}
+
+function SkyIsland({ position, size, color }: { position: [number, number, number]; size: [number, number, number]; color: string }) {
+  const glowRef = useRef<THREE.Mesh>(null)
+
+  useFrame((state) => {
+    if (glowRef.current) {
+      const t = state.clock.getElapsedTime()
+      glowRef.current.position.y = position[1] - 0.3 + Math.sin(t * 0.5) * 0.2
+    }
+  })
+
+  return (
+    <group>
+      <RigidBody type="fixed" position={position}>
+        <CuboidCollider args={[size[0] / 2, size[1] / 2, size[2] / 2]} />
+        <mesh castShadow receiveShadow>
+          <boxGeometry args={size} />
+          <meshStandardMaterial color={color} metalness={0.3} roughness={0.6} transparent opacity={0.85} />
+        </mesh>
+        {/* Top surface glow */}
+        <mesh position={[0, size[1] / 2 + 0.05, 0]}>
+          <planeGeometry args={[size[0] * 0.9, size[2] * 0.9]} />
+          <meshStandardMaterial color="#ffffff" emissive={color} emissiveIntensity={0.4} transparent opacity={0.5} side={2} />
+        </mesh>
+      </RigidBody>
+      {/* Floating glow underneath */}
+      <mesh ref={glowRef} position={[position[0], position[1] - 0.3, position[2]]}>
+        <sphereGeometry args={[Math.max(size[0], size[2]) * 0.4, 16, 8]} />
+        <meshBasicMaterial color={color} transparent opacity={0.15} />
+      </mesh>
     </group>
   )
 }

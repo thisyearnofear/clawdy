@@ -14,7 +14,7 @@ export interface CloudConfig {
   color: string
   secondaryColor?: string
   bounds: [number, number, number]
-  preset?: 'custom' | 'stormy' | 'sunset' | 'candy'
+  preset?: 'custom' | 'stormy' | 'sunset' | 'candy' | 'cosmic'
   count?: number // Number of individual cloud clusters
 }
 
@@ -54,6 +54,18 @@ export const CLOUD_PRESETS = {
     secondaryColor: '#74b9ff', // Blue
     bounds: [100, 5, 100] as [number, number, number],
     count: 18
+  },
+  cosmic: {
+    seed: 40,
+    segments: 30,
+    volume: 6,
+    growth: 3,
+    opacity: 0.4,
+    speed: 0.05,
+    color: '#1a1a3e',
+    secondaryColor: '#4a0080',
+    bounds: [150, 15, 150] as [number, number, number],
+    count: 8
   }
 }
 
@@ -70,8 +82,8 @@ const seededRandom = (seed: number) => {
 
 export function CloudManager({ config }: { config: CloudConfig }) {
   const activeConfig = useMemo(() => {
-    if (config.preset && config.preset !== 'custom') {
-      return { ...config, ...CLOUD_PRESETS[config.preset] }
+    if (config.preset && config.preset !== 'custom' && config.preset in CLOUD_PRESETS) {
+      return { ...config, ...CLOUD_PRESETS[config.preset as keyof typeof CLOUD_PRESETS] }
     }
     return config
   }, [config])

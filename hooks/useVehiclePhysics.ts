@@ -73,7 +73,6 @@ export function useVehiclePhysics(
       rawAction = !!keys.jump
       rawAim = 0
 
-      // Update state so the component return value is accurate for visuals
       if (rawForward !== inputs.forward || rawTurn !== inputs.turn || rawBrake !== inputs.brake || rawAction !== inputs.action) {
         setInputs({ forward: rawForward, turn: rawTurn, brake: rawBrake, action: rawAction, aim: rawAim })
       }
@@ -116,9 +115,13 @@ export function useVehiclePhysics(
     chassisRef.current.setLinearDamping(rawBrake ? 5.0 : baseDamping)
     chassisRef.current.setAngularDamping(2.0)
 
-    // --- 3. HIGH-TORQUE MOTOR ACCELERATION ---
-    const maxSpeed = stats.maxSpeed * (0.4 + 0.6 * vitalityFactor)
-    const accelerationPower = stats.acceleration * stats.mass * 5
+    // --- 3. HIGH-TORQUE MOTOR ACCELERATION (with Power-ups) ---
+    const isSpeedBoosted = session && session.speedBoostUntil && session.speedBoostUntil > Date.now()
+    const isAntiGravity = session && session.antiGravityUntil && session.antiGravityUntil > Date.now()
+
+    const boostFactor = isSpeedBoosted ? 2.5 : 1.0
+    const maxSpeed = stats.maxSpeed * (0.4 + 0.6 * vitalityFactor) * boostFactor
+    const accelerationPower = stats.acceleration * stats.mass * 5 * boostFactor
 
     if (Math.abs(smoothedForward.current) > 0.01) {
       const forwardSpeed = velocity.x * forwardDir.x + velocity.z * forwardDir.z
@@ -129,6 +132,7 @@ export function useVehiclePhysics(
         const force = surfaceForward.multiplyScalar(smoothedForward.current * accelerationPower * delta)
         chassisRef.current.applyImpulse({ x: force.x, y: force.y, z: force.z }, true)
 
+        // Weight Transfer: Pitch
         const pitchForce = -smoothedForward.current * stats.mass * 2.0
         chassisRef.current.applyTorqueImpulse({
            x: rightDir.x * pitchForce,
@@ -139,14 +143,16 @@ export function useVehiclePhysics(
     }
 
     // --- 4. IMPROVED STEERING ---
+    const steerBoost = isSpeedBoosted ? 1.5 : 1.0
     if (Math.abs(smoothedTurn.current) > 0.01) {
       if (stats.steeringMode === 'car' && speed > 0.5) {
-        const steerStrength = stats.steerStrength * stats.mass * 2.5 * delta
+        const steerStrength = stats.steerStrength * stats.mass * 2.5 * delta * steerBoost
         const steerForce = rightDir.clone().multiplyScalar(smoothedTurn.current * steerStrength * Math.min(speed / 10, 1))
         const fOffset = forwardDir.clone().multiplyScalar(stats.frontOffset)
         const steerPoint = { x: vPos.x + fOffset.x, y: vPos.y, z: vPos.z + fOffset.z }
         chassisRef.current.applyImpulseAtPoint({ x: steerForce.x, y: 0, z: steerForce.z }, steerPoint, true)
 
+        // Weight Transfer: Lean
         const leanForce = -smoothedTurn.current * stats.mass * 1.5 * Math.min(speed / 20, 1)
         chassisRef.current.applyTorqueImpulse({
            x: forwardDir.x * leanForce,
@@ -154,12 +160,18 @@ export function useVehiclePhysics(
            z: forwardDir.z * leanForce
         }, true)
       } else if (stats.steeringMode === 'tank') {
-        const turnRate = stats.steerStrength * stats.mass * 5 * delta
+        const turnRate = stats.steerStrength * stats.mass * 5 * delta * steerBoost
         chassisRef.current.applyTorqueImpulse({ x: 0, y: smoothedTurn.current * turnRate, z: 0 }, true)
       }
     }
 
-    // --- 5. DRIFT / LATERAL FRICTION ---
+    // --- 5. ANTI-GRAVITY ---
+    if (isAntiGravity) {
+      // Counter-act some gravity
+      chassisRef.current.applyImpulse({ x: 0, y: stats.mass * 8.5 * delta, z: 0 }, true)
+    }
+
+    // --- 6. DRIFT / LATERAL FRICTION ---
     if (speed > 1) {
       const sidewaysVelocity = velocity.x * rightDir.x + velocity.z * rightDir.z
       const driftGrip = surfaceType === 'road' ? stats.lateralGrip : stats.lateralGrip * 0.6
@@ -167,7 +179,7 @@ export function useVehiclePhysics(
       chassisRef.current.applyImpulse({ x: rightDir.x * gripImpulse, y: 0, z: rightDir.z * gripImpulse }, true)
     }
 
-    // --- 6. PRO STABILIZER ---
+    // --- 7. PRO STABILIZER ---
     const currentUp = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion)
     const targetUp = new THREE.Vector3(0, 1, 0)
     const stabilizeAxis = new THREE.Vector3().crossVectors(currentUp, targetUp)
@@ -177,6 +189,10 @@ export function useVehiclePhysics(
       const stabilizeStrength = stats.mass * 80 * delta * stabilizeAngle
       chassisRef.current.applyTorqueImpulse({ x: stabilizeAxis.x * stabilizeStrength, y: stabilizeAxis.y * stabilizeStrength, z: stabilizeAxis.z * stabilizeStrength }, true)
     }
+    
+    // Damp angular velocity to prevent wild spinning
+    const angvel = chassisRef.current.angvel()
+    chassisRef.current.setAngvel({ x: angvel.x * 0.95, y: angvel.y * 0.95, z: angvel.z * 0.95 }, true)
   })
 
   return { inputs, setInputs }

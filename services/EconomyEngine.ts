@@ -29,18 +29,50 @@ export class EconomyEngine {
     }
   }
 
+  tickDegradation(session: AgentSession, deltaSeconds: number) {
+    if (session.agentId === 'Player' || session.isDead) return
+
+    // Base decay: -1 vitality every 5 seconds
+    const decayRate = 0.2
+    session.vitality = Math.max(0, session.vitality - decayRate * deltaSeconds)
+    
+    // Burden increases fatigue
+    if (session.burden > 50) {
+      session.vitality = Math.max(0, session.vitality - decayRate * deltaSeconds * 0.5)
+    }
+
+    if (session.vitality <= 0) {
+      session.isDead = true
+    }
+  }
+
   collectFood(session: AgentSession, stats: FoodStats): { earned: number; vitalityGain: number; burdenGain: number } {
     session.collectedCount += 1
-    const earned = stats.nutrition === 'healthy' ? 0.002 : 0.0005
-    let vitalityGain = 0
-    let burdenGain = 0
+    let earned = 0.002
+    let vitalityGain = 10
+    let burdenGain = -5
 
-    if (stats.nutrition === 'healthy') {
-      vitalityGain = 10
-      burdenGain = -5
-    } else {
-      vitalityGain = -5
-      burdenGain = 15
+    // Specialized Food Logic
+    switch (stats.type) {
+      case 'golden_meatball':
+        earned = 0.01
+        vitalityGain = 25
+        burdenGain = -15
+        break
+      case 'spicy_pepper':
+        session.speedBoostUntil = Date.now() + 10000 // 10s speed boost
+        vitalityGain = 5
+        burdenGain = 10
+        break
+      case 'floaty_marshmallow':
+        session.antiGravityUntil = Date.now() + 8000 // 8s anti-gravity
+        vitalityGain = 2
+        burdenGain = -20
+        break
+      default: // meatball
+        earned = 0.002
+        vitalityGain = 10
+        burdenGain = -5
     }
 
     session.vitality = Math.max(0, Math.min(100, session.vitality + vitalityGain))

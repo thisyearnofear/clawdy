@@ -106,6 +106,8 @@ declare global {
   }
 }
 
+export type FoodType = 'meatball' | 'golden_meatball' | 'spicy_pepper' | 'floaty_marshmallow'
+
 export interface AgentSession {
   agentId: string
   role: AgentRole
@@ -126,6 +128,10 @@ export interface AgentSession {
   collectedCount: number
   lastSkillProvider?: string
   isRealOnChain?: boolean
+  // Power-ups
+  speedBoostUntil?: number
+  antiGravityUntil?: number
+  isDead?: boolean
 }
 
 export interface WeatherStatus {
@@ -136,6 +142,7 @@ export interface WeatherStatus {
 
 class AgentProtocol {
   private sessions: Map<string, AgentSession> = new Map()
+  private graveyard: AgentSession[] = []
   private weatherListeners: ((config: WeatherConfigUpdate) => void)[] = []
   private vehicleListeners: ((command: VehicleCommand) => void)[] = []
   private combatListeners: ((event: CombatNotification) => void)[] = []
@@ -175,7 +182,7 @@ class AgentProtocol {
 
   private syncWithStore() {
     const store = useGameStore.getState()
-    store.syncSessions(Array.from(this.sessions.values()))
+    store.syncSessions(Array.from(this.sessions.values()), this.graveyard)
     store.setWorldState(this.worldState)
     store.setWeatherStatus(this.currentWeatherBid)
   }
@@ -280,6 +287,26 @@ class AgentProtocol {
     // Merge updates
     const newState = { ...this.worldState, ...update, timestamp: Date.now() }
     
+    // Check for agent death/decommissioning
+    const now = Date.now()
+    const activeSessions = Array.from(this.sessions.values())
+    
+    activeSessions.forEach(session => {
+       if (session.agentId === 'Player') return
+       
+       // Tick degradation (assume ~100ms between world updates on average)
+       economyEngine.tickDegradation(session, 0.1)
+
+       if (session.isDead) {
+          console.log(`[AgentProtocol] Agent ${session.agentId} has died. Removing from world.`)
+          this.gameEventListeners.forEach(l => l({ type: 'agent-died', agentId: session.agentId, totalEarned: session.totalEarned }))
+          this.graveyard.push({ ...session })
+          if (this.graveyard.length > 20) this.graveyard.shift() // Keep last 20
+          this.sessions.delete(session.agentId)
+          newState.vehicles = newState.vehicles.filter(v => v.id !== session.vehicleId)
+       }
+    })
+
     // Quick shallow check for vehicle movement to avoid redundant work
     const vehiclesChanged = update.vehicles && JSON.stringify(update.vehicles) !== JSON.stringify(this.worldState.vehicles)
     const foodChanged = update.food && JSON.stringify(update.food) !== JSON.stringify(this.worldState.food)

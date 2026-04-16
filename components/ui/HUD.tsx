@@ -79,7 +79,7 @@ export function HUD({
           {showQuickControls && (
             <div className="absolute right-14 top-0 bg-black/60 backdrop-blur-xl rounded-2xl border border-white/10 p-2 shadow-2xl animate-in fade-in slide-in-from-right-4">
               <div className="flex flex-col gap-1">
-                {(['stormy', 'sunset', 'candy', 'custom'] as const).map((p) => (
+                {(['stormy', 'sunset', 'candy', 'cosmic', 'custom'] as const).map((p) => (
                   <button
                     key={p}
                     onClick={() => onApplyPreset(p)}

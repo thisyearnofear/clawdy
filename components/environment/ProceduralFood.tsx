@@ -5,16 +5,25 @@ import { RigidBody, RigidBodyProps, RapierRigidBody, CuboidCollider } from '@rea
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
-export type FoodType = 'burger' | 'donut' | 'icecream' | 'hotdog' | 'pizza' | 'sushi' | 'taco' | 'apple' | 'broccoli' | 'soda' | 'rotten_burger'
+export type FoodType = 
+  | 'meatball' 
+  | 'golden_meatball' 
+  | 'spicy_pepper' 
+  | 'floaty_marshmallow'
+  | 'burger' | 'donut' | 'icecream' | 'hotdog' | 'pizza' | 'sushi' | 'taco' | 'apple' | 'broccoli' | 'soda' | 'rotten_burger'
 
 export interface FoodStats {
   type: FoodType
-  nutrition: 'healthy' | 'unhealthy' | 'obstacle'
+  nutrition: 'healthy' | 'unhealthy' | 'obstacle' | 'powerup'
   mass: number
   isDestroyable: boolean
 }
 
 export const FOOD_METADATA: Record<FoodType, Omit<FoodStats, 'type'>> = {
+  meatball: { nutrition: 'healthy', mass: 0.8, isDestroyable: true },
+  golden_meatball: { nutrition: 'powerup', mass: 1.2, isDestroyable: true },
+  spicy_pepper: { nutrition: 'powerup', mass: 0.4, isDestroyable: true },
+  floaty_marshmallow: { nutrition: 'powerup', mass: 0.2, isDestroyable: true },
   apple: { nutrition: 'healthy', mass: 0.5, isDestroyable: true },
   sushi: { nutrition: 'healthy', mass: 0.4, isDestroyable: true },
   broccoli: { nutrition: 'healthy', mass: 0.3, isDestroyable: true },
@@ -29,6 +38,10 @@ export const FOOD_METADATA: Record<FoodType, Omit<FoodStats, 'type'>> = {
 }
 
 export const FOOD_COLORS: Record<FoodType, string> = {
+  meatball: '#e67e22',
+  golden_meatball: '#f1c40f',
+  spicy_pepper: '#ff0000',
+  floaty_marshmallow: '#ffffff',
   apple: '#e74c3c',
   sushi: '#ff7675',
   broccoli: '#228b22',
@@ -42,19 +55,6 @@ export const FOOD_COLORS: Record<FoodType, string> = {
   rotten_burger: '#5d4037',
 }
 
-// Standard Material for Food Items with emissive glow for collectible visibility
-const createFoodMaterial = (baseColor: string) => {
-  const mat = new THREE.MeshStandardMaterial({
-    roughness: 0.5,
-    metalness: 0.2,
-    color: baseColor,
-    emissive: new THREE.Color(baseColor),
-    emissiveIntensity: 0.3,
-  });
-
-  return mat;
-}
-
 interface ProceduralFoodProps extends RigidBodyProps {
   id: number
   itemType?: FoodType
@@ -64,15 +64,26 @@ interface ProceduralFoodProps extends RigidBodyProps {
 
 export function ProceduralFood({ id, itemType, onDespawn, onCollect, ...props }: ProceduralFoodProps) {
   const rigidBody = useRef<RapierRigidBody>(null)
-  
-  // Default type deterministically based on id to avoid impure Math.random in useMemo
+  const matRef = useRef<THREE.MeshStandardMaterial>(null)
+
   const stats = useMemo((): FoodStats => {
-    const types = Object.keys(FOOD_METADATA) as FoodType[]
-    const type = itemType || types[id % types.length]
+    // 10% chance for special powerups, otherwise random standard food
+    const specialTypes: FoodType[] = ['golden_meatball', 'spicy_pepper', 'floaty_marshmallow']
+    const standardTypes: FoodType[] = ['meatball', 'apple', 'sushi', 'broccoli', 'burger', 'pizza', 'donut', 'hotdog', 'taco', 'icecream']
+    
+    let type: FoodType
+    if (itemType) {
+      type = itemType
+    } else {
+      const rand = (id * 1337) % 100
+      if (rand < 10) {
+        type = specialTypes[id % specialTypes.length]
+      } else {
+        type = standardTypes[id % standardTypes.length]
+      }
+    }
     return { type, ...FOOD_METADATA[type] }
   }, [itemType, id])
-
-  const matRef = useRef<THREE.MeshStandardMaterial>(null)
 
   useFrame((state) => {
     if (rigidBody.current) {
@@ -80,21 +91,33 @@ export function ProceduralFood({ id, itemType, onDespawn, onCollect, ...props }:
       if (translation.y < -20 && onDespawn) {
         onDespawn()
       }
+      
+      // Floating effect for marshmallows
+      if (stats.type === 'floaty_marshmallow') {
+        rigidBody.current.applyImpulse({ x: 0, y: 0.1, z: 0 }, true)
+      }
     }
-    // Pulsing emissive glow
+    
+    // Pulsing emissive glow for all collectibles
     if (matRef.current) {
       const t = state.clock.getElapsedTime()
-      matRef.current.emissiveIntensity = 0.2 + Math.sin(t * 3 + id * 0.5) * 0.2
+      const pulseSpeed = stats.nutrition === 'powerup' ? 6 : 3
+      matRef.current.emissiveIntensity = 0.4 + Math.sin(t * pulseSpeed + id * 0.5) * 0.4
     }
   })
 
-  // Geometry mapping for simplified but performant shapes
   const renderShape = () => {
     switch (stats.type) {
+      case 'spicy_pepper':
+        return <coneGeometry args={[0.3, 1, 8]} />
+      case 'floaty_marshmallow':
+        return <cylinderGeometry args={[0.5, 0.5, 0.4, 16]} />
+      case 'golden_meatball':
+      case 'meatball':
       case 'apple':
       case 'broccoli':
       case 'icecream':
-        return <sphereGeometry args={[0.5, 12, 12]} />
+        return <sphereGeometry args={[stats.type === 'golden_meatball' ? 0.7 : 0.5, 12, 12]} />
       case 'soda':
       case 'burger':
       case 'rotten_burger':
@@ -121,28 +144,27 @@ export function ProceduralFood({ id, itemType, onDespawn, onCollect, ...props }:
       angularDamping={0.5}
       ccd={true}
       onIntersectionEnter={(payload) => {
-        // Collision detection for agents or player
         const other = payload.other.rigidBodyObject
         if (other && other.userData && (other.userData.agentId || other.userData.isPlayer)) {
           if (onCollect) onCollect(id, stats, other.userData.agentId)
         }
       }}
     >
-      <mesh>
-        {renderShape()}
-        <meshStandardMaterial
-          ref={matRef}
-          roughness={0.5}
-          metalness={0.2}
-          color={FOOD_COLORS[stats.type]}
-          emissive={FOOD_COLORS[stats.type]}
-          emissiveIntensity={0.3}
-        />
-      </mesh>
+      <group rotation={stats.type === 'spicy_pepper' ? [Math.PI, 0, 0] : [0, 0, 0]}>
+        <mesh castShadow>
+          {renderShape()}
+          <meshStandardMaterial
+            ref={matRef}
+            roughness={0.2}
+            metalness={stats.type === 'golden_meatball' ? 0.9 : 0.2}
+            color={FOOD_COLORS[stats.type]}
+            emissive={FOOD_COLORS[stats.type]}
+            emissiveIntensity={0.5}
+          />
+        </mesh>
+      </group>
       
-      {/* Sensor collider for collection detection */}
       <CuboidCollider args={[0.8, 0.8, 0.8]} sensor />
-      {/* Physical collider */}
       <CuboidCollider args={[0.5, 0.5, 0.5]} />
     </RigidBody>
   )

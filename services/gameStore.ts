@@ -29,6 +29,24 @@ function createInitialRound(): RoundState {
   }
 }
 
+// ── Gravity Modes ────────────────────────────────────────────────────
+export type GravityMode = 'normal' | 'low' | 'zero' | 'hyper'
+
+export const GRAVITY_VALUES: Record<GravityMode, [number, number, number]> = {
+  normal: [0, -9.81, 0],
+  low: [0, -3.0, 0],
+  zero: [0, -0.5, 0],
+  hyper: [0, -18.0, 0],
+}
+
+export const GRAVITY_FOR_PRESET: Record<string, GravityMode> = {
+  stormy: 'hyper',
+  sunset: 'normal',
+  candy: 'low',
+  cosmic: 'zero',
+  custom: 'normal',
+}
+
 // ── UI State ─────────────────────────────────────────────────────────
 export interface UIState {
   isSidebarOpen: boolean
@@ -64,7 +82,8 @@ export interface GameStore {
 
   // Sessions
   sessions: Record<string, AgentSession>
-  syncSessions: (sessions: AgentSession[]) => void
+  deadAgents: AgentSession[]
+  syncSessions: (sessions: AgentSession[], deadAgents?: AgentSession[]) => void
   setSession: (agentId: string, session: Partial<AgentSession>) => void
 
   // Weather
@@ -97,6 +116,11 @@ export interface GameStore {
   updateTransaction: (id: string, update: Partial<PendingTransaction>) => void
   removeTransaction: (id: string) => void
 
+  // Gravity
+  gravityMode: GravityMode
+  setGravityMode: (mode: GravityMode) => void
+  gravityVector: [number, number, number]
+
   // Connection
   isConnected: boolean
   setConnected: (connected: boolean) => void
@@ -117,10 +141,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   // Sessions
   sessions: {},
-  syncSessions: (sessions) => {
+  deadAgents: [],
+  syncSessions: (sessions, deadAgents = []) => {
     const map: Record<string, AgentSession> = {}
     sessions.forEach(s => { map[s.agentId] = s })
-    set({ sessions: map })
+    set({ sessions: map, deadAgents })
   },
   setSession: (agentId, updates) => set((prev) => {
     const existing = prev.sessions[agentId]
@@ -220,6 +245,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
   removeTransaction: (id) => set((prev) => ({
     pendingTransactions: prev.pendingTransactions.filter((t) => t.id !== id)
   })),
+
+  // Gravity
+  gravityMode: 'normal' as GravityMode,
+  gravityVector: GRAVITY_VALUES.normal,
+  setGravityMode: (mode) => set({ gravityMode: mode, gravityVector: GRAVITY_VALUES[mode] }),
 
   // Connection
   isConnected: false,

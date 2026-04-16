@@ -52,6 +52,15 @@ function buildParticleData(preset: string, bounds: [number, number, number]) {
       vel[i * 3 + 2] = (Math.random() - 0.5) * 1
       sz[i] = 0.12 + Math.random() * 0.2
     }
+  } else if (preset === 'cosmic') {
+    color = '#aa66ff'
+    alpha = 0.6
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      vel[i * 3] = (Math.random() - 0.5) * 0.3
+      vel[i * 3 + 1] = (Math.random() - 0.5) * 0.2 // float in all directions
+      vel[i * 3 + 2] = (Math.random() - 0.5) * 0.3
+      sz[i] = 0.05 + Math.random() * 0.15
+    }
   } else {
     alpha = 0.3
     for (let i = 0; i < PARTICLE_COUNT; i++) {

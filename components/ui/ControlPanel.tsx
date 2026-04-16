@@ -83,7 +83,7 @@ export function ControlPanel({
           {activeTab === 'weather' && (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
               <div className="grid grid-cols-2 gap-2">
-                {(['custom', 'stormy', 'sunset', 'candy'] as const).map((p) => (
+                {(['custom', 'stormy', 'sunset', 'candy', 'cosmic'] as const).map((p) => (
                   <button key={p} onClick={() => updateConfig('preset', p)} className={`px-2 py-3 rounded-xl text-[10px] uppercase font-bold border transition-all ${cloudConfig.preset === p ? 'bg-white text-sky-900' : 'bg-white/5 border-white/10 text-white hover:bg-white/10'}`}>{p}</button>
                 ))}
               </div>
