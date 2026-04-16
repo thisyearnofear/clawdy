@@ -105,7 +105,7 @@ export interface GameStore {
 const defaultCloudConfig: CloudConfig = {
   seed: 1, segments: 40, volume: 10, growth: 4, opacity: 0.8,
   speed: 0.2, color: '#ffffff', secondaryColor: '#e0e0e0',
-  bounds: [10, 2, 10], count: 5,
+  bounds: [80, 5, 80], count: 12,
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({

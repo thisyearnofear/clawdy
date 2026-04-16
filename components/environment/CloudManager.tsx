@@ -28,8 +28,8 @@ export const CLOUD_PRESETS = {
     speed: 0.8,
     color: '#6a7588', // Lighter gray
     secondaryColor: '#2d3436', // Darker gray
-    bounds: [25, 4, 25] as [number, number, number],
-    count: 8
+    bounds: [100, 10, 100] as [number, number, number],
+    count: 15
   },
   sunset: {
     seed: 20,
@@ -40,8 +40,8 @@ export const CLOUD_PRESETS = {
     speed: 0.2,
     color: '#ff9f43', // Orange
     secondaryColor: '#ff6b6b', // Pinkish red
-    bounds: [30, 3, 20] as [number, number, number],
-    count: 6
+    bounds: [120, 8, 120] as [number, number, number],
+    count: 12
   },
   candy: {
     seed: 30,
@@ -52,8 +52,8 @@ export const CLOUD_PRESETS = {
     speed: 0.3,
     color: '#ff9ff3', // Pink
     secondaryColor: '#74b9ff', // Blue
-    bounds: [20, 2, 20] as [number, number, number],
-    count: 10
+    bounds: [100, 5, 100] as [number, number, number],
+    count: 18
   }
 }
 
@@ -76,27 +76,28 @@ export function CloudManager({ config }: { config: CloudConfig }) {
     return config
   }, [config])
 
-  // Use class reference for drei Clouds component
   const cloudMaterial = useMemo(() => {
     return THREE.MeshStandardMaterial
   }, [])
 
   const clouds = useMemo(() => {
     const random = seededRandom(activeConfig.seed)
-    const count = activeConfig.count || 5
+    const count = activeConfig.count || 12
     const items: { position: [number, number, number]; color: string; speed: number }[] = []
-    const rangeX = activeConfig.bounds[0] * 1.5
-    const rangeZ = activeConfig.bounds[2] * 1.5
+    
+    // Increased distribution range
+    const rangeX = activeConfig.bounds[0] * 2
+    const rangeZ = activeConfig.bounds[2] * 2
     
     // Always keep one center cloud
-    items.push({ position: [0, 15, 0], color: activeConfig.color, speed: activeConfig.speed })
+    items.push({ position: [0, 25, 0], color: activeConfig.color, speed: activeConfig.speed })
 
     for (let i = 1; i < count; i++) {
       const isSecondary = activeConfig.secondaryColor && random() > 0.5
       items.push({
         position: [
           (random() - 0.5) * rangeX,
-          15 + (random() - 0.5) * 4, // Vary height slightly
+          25 + (random() - 0.5) * 10, // Higher and more variance
           (random() - 0.5) * rangeZ
         ],
         color: isSecondary ? activeConfig.secondaryColor! : activeConfig.color,
@@ -113,7 +114,7 @@ export function CloudManager({ config }: { config: CloudConfig }) {
           key={index}
           seed={activeConfig.seed + index}
           segments={activeConfig.segments}
-          bounds={activeConfig.bounds}
+          bounds={[20, 5, 20]} // Size of individual cluster
           volume={activeConfig.volume}
           growth={activeConfig.growth}
           opacity={activeConfig.opacity}

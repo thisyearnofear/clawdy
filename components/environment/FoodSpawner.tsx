@@ -26,6 +26,7 @@ export function FoodSpawner({
   useEffect(() => {
     const interval = setInterval(() => {
       if (countRef.current >= maxItems) return
+      // Use full bounds for distribution
       const px = (Math.random() - 0.5) * bounds[0]
       const pz = (Math.random() - 0.5) * bounds[2]
       const id = nextId++
