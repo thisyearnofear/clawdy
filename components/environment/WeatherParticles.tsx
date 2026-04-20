@@ -77,6 +77,8 @@ function buildParticleData(preset: string, bounds: [number, number, number]) {
 export function WeatherParticles({ config }: { config: CloudConfig }) {
   const meshRef = useRef<THREE.Points>(null)
   const velocitiesRef = useRef<Float32Array | null>(null)
+  const baseOpacityRef = useRef(0.5)
+  const intensityRef = useRef(0.3)
   const preset = config.preset || 'custom'
 
   // Initialize on first render via effect
@@ -84,6 +86,7 @@ export function WeatherParticles({ config }: { config: CloudConfig }) {
     if (!meshRef.current) return
     const data = buildParticleData(preset, config.bounds)
     velocitiesRef.current = data.velocities
+    baseOpacityRef.current = data.opacity
 
     const geo = meshRef.current.geometry
     geo.setAttribute('position', new THREE.BufferAttribute(data.positions, 3))
@@ -104,10 +107,23 @@ export function WeatherParticles({ config }: { config: CloudConfig }) {
     const boundsX = config.bounds[0] * 4
     const boundsZ = config.bounds[2] * 4
 
+    // Smooth intensity ramp per preset (prevents "hard cut" between weather states).
+    const targetIntensity =
+      preset === 'stormy' ? 1.0 :
+      preset === 'candy' ? 0.55 :
+      preset === 'sunset' ? 0.35 :
+      preset === 'cosmic' ? 0.25 :
+      0.3
+    intensityRef.current = THREE.MathUtils.lerp(intensityRef.current, targetIntensity, 0.05)
+    const intensityScale = 0.35 + intensityRef.current * 0.65
+
+    const mat = meshRef.current.material as THREE.PointsMaterial
+    mat.opacity = Math.min(0.9, baseOpacityRef.current * intensityScale)
+
     for (let i = 0; i < PARTICLE_COUNT; i++) {
-      arr[i * 3] += velocities[i * 3] * delta
-      arr[i * 3 + 1] += velocities[i * 3 + 1] * delta
-      arr[i * 3 + 2] += velocities[i * 3 + 2] * delta
+      arr[i * 3] += velocities[i * 3] * delta * intensityScale
+      arr[i * 3 + 1] += velocities[i * 3 + 1] * delta * intensityScale
+      arr[i * 3 + 2] += velocities[i * 3 + 2] * delta * intensityScale
 
       if (arr[i * 3 + 1] < -1) {
         arr[i * 3] = (Math.random() - 0.5) * boundsX

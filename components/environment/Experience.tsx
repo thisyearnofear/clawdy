@@ -14,7 +14,7 @@ import {
 } from '@react-three/drei'
 import { isMobile } from 'react-device-detect'
 import { Physics } from '@react-three/rapier'
-import { ProceduralFood, FoodStats } from './ProceduralFood'
+import { ProceduralFood, FoodStats, type FoodType } from './ProceduralFood'
 import { FoodSpawner } from './FoodSpawner'
 import { CloudManager, CloudConfig } from './CloudManager'
 import { Terrain } from '../terrain/Terrain'
@@ -36,6 +36,8 @@ import FrameLimiter from '../utils/FrameLimiter'
 import { CustomFogEffect } from './CustomFogEffect'
 import { WeatherParticles } from './WeatherParticles'
 import { WeatherPostProcessing } from './WeatherPostProcessing'
+import { PuddleRipples } from './PuddleRipples'
+import { FloodWater } from './FloodWater'
 import { getAgentByVehicleId, getControllableAgents } from '../../services/agents'
 import type { RapierRigidBody } from '@react-three/rapier'
 import { useGameStore, GRAVITY_FOR_PRESET, type GravityMode } from '../../services/gameStore'
@@ -61,7 +63,7 @@ function Experience({
   const { address } = useAccount()
   const playerId = address || 'anonymous'
 
-  const [foodItems, setFoodItems] = useState<{ id: number; position: [number, number, number] }[]>([])
+  const [foodItems, setFoodItems] = useState<{ id: number; position: [number, number, number]; itemType?: FoodType }[]>([])
   const [vehicles, setVehicles] = useState<VehicleData[]>([])
   const [queueState, setQueueState] = useState<QueueState | null>(null)
   const [terrainSampler, setTerrainSampler] = useState<((x: number, z: number) => number) | null>(null)
@@ -96,6 +98,44 @@ function Experience({
     agentProtocol.collectFood(agentId, stats)
     handleDespawn(id)
   }
+
+  // Lightweight comeback assist:
+  // If the Player is behind, slightly increase the odds of powerup drops (and reduce obstacles by omission).
+  const sessions = useGameStore(s => s.sessions)
+  const playerSession = sessions['Player']
+  const leaderEarned = Object.values(sessions).reduce((max, s) => Math.max(max, s.totalEarned ?? 0), 0)
+  const playerEarned = playerSession?.totalEarned ?? 0
+  const behindBy = Math.max(0, leaderEarned - playerEarned)
+  const isPlayerBehind = behindBy > 0.008
+
+  const chooseAssistedFoodType = (): FoodType | undefined => {
+    if (!isPlayerBehind) return undefined
+
+    // Behind more => slightly more help (capped).
+    // Base special chance in ProceduralFood is ~10%.
+    const bonus = Math.min(0.18, behindBy * 6) // at ~0.03 behind => +0.18
+    const specialChance = 0.10 + bonus
+
+    if (Math.random() < specialChance) {
+      const specials: FoodType[] = ['golden_meatball', 'spicy_pepper', 'floaty_marshmallow']
+      // Bias golden slightly when far behind
+      const roll = Math.random()
+      if (roll < Math.min(0.55, 0.25 + behindBy * 10)) return 'golden_meatball'
+      return specials[Math.floor(Math.random() * specials.length)]
+    }
+
+    // Otherwise, leave type undefined for normal distribution.
+    return undefined
+  }
+
+  // Endgame intensity: last 10s rains harder (but cap it to keep perf stable).
+  const round = useGameStore(s => s.round)
+  const remainingSec = Math.max(0, Math.ceil((round.endsAt - Date.now()) / 1000))
+  const endgameMultiplier =
+    round.isActive && remainingSec > 0 && remainingSec <= 10
+      ? remainingSec <= 5 ? 2.4 : 1.8
+      : 1
+  const effectiveSpawnRate = Math.min(10, spawnRate * endgameMultiplier)
 
   // Subscribe to queue updates
   useEffect(() => {
@@ -355,18 +395,23 @@ function Experience({
       ]} />
 
       <WeatherParticles config={cloudConfig} />
+      <PuddleRipples bounds={cloudConfig.bounds} getHeightAt={terrainSampler ?? undefined} />
       <WeatherPostProcessing config={cloudConfig} />
+      <FloodWater bounds={cloudConfig.bounds} />
 
       <Physics gravity={physicsGravity}>
         <LaunchPads />
         <SkyIslands />
         <CloudManager config={cloudConfig} />
         <FoodSpawner
-          spawnRate={spawnRate}
+          spawnRate={effectiveSpawnRate}
           bounds={cloudConfig.bounds}
           spawnHeight={18}
           maxItems={30}
-          onSpawn={(item) => setFoodItems((prev) => [...prev, item])}
+          onSpawn={(item) => {
+            const assistedType = chooseAssistedFoodType()
+            setFoodItems((prev) => [...prev, { ...item, itemType: assistedType }])
+          }}
         />
         <AgentVision />
 
@@ -374,6 +419,7 @@ function Experience({
           <ProceduralFood 
             key={item.id} 
             id={item.id}
+            itemType={item.itemType}
             position={item.position} 
             onDespawn={() => handleDespawn(item.id)}
             onCollect={(id, stats, collector) => handleCollect(id, stats, collector)}

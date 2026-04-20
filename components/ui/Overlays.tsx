@@ -5,6 +5,10 @@ import { GameToasts, BidWinCelebration } from './GameToasts'
 import { SoundManager } from './SoundManager'
 import { EconomyFeedback } from './EconomyFeedback'
 import { MobileTouchControls } from './MobileTouchControls'
+import { RoundRecap } from './RoundRecap'
+import { FinalRushOverlay } from './FinalRushOverlay'
+import { WeatherGradeOverlay } from './WeatherGradeOverlay'
+import { LightningFlashOverlay } from './LightningFlashOverlay'
 
 interface OverlaysProps {
   showOnboarding: boolean
@@ -25,6 +29,18 @@ export function Overlays({
       {showOnboarding && (
         <OnboardingOverlay onDone={onDoneOnboarding} />
       )}
+
+      {/* Global color grading / vignette */}
+      <WeatherGradeOverlay />
+
+      {/* Final 10 seconds */}
+      <FinalRushOverlay />
+
+      {/* Lightning flashes */}
+      <LightningFlashOverlay />
+
+      {/* End-of-round recap */}
+      <RoundRecap />
 
       {/* Bid win celebration */}
       {bidWinPreset && (

@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { RigidBody } from '@react-three/rapier'
 import { useFrame, useThree } from '@react-three/fiber'
 import { TERRAIN_CONFIG, getTerrainHeight, getSurfaceColor } from './terrainUtils'
+import { useGameStore } from '../../services/gameStore'
 
 const GRID_RADIUS = 1
 const CHUNK_SIZE = TERRAIN_CONFIG.SIZE
@@ -198,6 +199,8 @@ export function Terrain({
   onSamplerReady?: (sampler: (x: number, z: number) => number) => void
 }) {
   const { camera } = useThree()
+  const preset = useGameStore(s => s.cloudConfig.preset) || 'custom'
+  const lightning = useGameStore(s => s.activeWeatherEffects.lightning?.intensity ?? 0)
   const meshRefs = useRef<THREE.Mesh[]>([])
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rigidBodyRefs = useRef<any[]>([])
@@ -258,6 +261,9 @@ export function Terrain({
     return material
   }, [])
 
+  // Wetness ramp: storms lower roughness (shinier) and slightly increase metalness.
+  const wetnessRef = useRef(0)
+
   const registerVehicle = useCallback((vehicle: THREE.Object3D) => {
     if (!vehiclesRef.current.includes(vehicle)) {
       vehiclesRef.current.push(vehicle)
@@ -294,6 +300,16 @@ export function Terrain({
 
   useFrame(() => {
     if (!camera || !camera.position) return;
+
+    // Update wetness material properties (fast + cheap)
+    const targetWet =
+      preset === 'stormy' || (preset === 'custom' && lightning > 0.35) ? 1 : 0
+    wetnessRef.current = THREE.MathUtils.lerp(wetnessRef.current, targetWet, 0.04 + lightning * 0.06)
+    // Base values:
+    // dry: roughness 0.8 / metalness 0.1
+    // wet: roughness 0.35 / metalness 0.25
+    terrainMaterial.roughness = THREE.MathUtils.lerp(0.8, 0.35, wetnessRef.current)
+    terrainMaterial.metalness = THREE.MathUtils.lerp(0.1, 0.25, wetnessRef.current)
 
     const centerX = Math.floor(camera.position.x / CHUNK_SIZE)
     const centerZ = Math.floor(camera.position.z / CHUNK_SIZE)
@@ -381,7 +397,7 @@ export function Terrain({
       if (!chunk.dirty) continue
       chunk.dirty = false
     }
-  })
+  }, 1)
 
   return (
     <group>

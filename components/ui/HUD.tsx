@@ -40,9 +40,15 @@ export function HUD({
   const sessions = useGameStore(state => state.sessions)
   const showHUD = useGameStore(state => state.ui.showHUD)
   const activeWeatherEffects = useGameStore(state => state.activeWeatherEffects)
+  const [now, setNow] = useState(() => Date.now())
   const playerSession = sessions['Player']
   const activeDomainEffects = Object.values(activeWeatherEffects)
-  const [now, setNow] = useState(() => Date.now())
+  const isSpeedBoosted = !!(playerSession?.speedBoostUntil && playerSession.speedBoostUntil > now)
+  const isAntiGravity = !!(playerSession?.antiGravityUntil && playerSession.antiGravityUntil > now)
+  const comboCount = playerSession?.comboCount ?? 0
+  const comboMultiplier = playerSession?.comboMultiplier ?? 1
+  const comboExpiresAt = playerSession?.comboExpiresAt ?? 0
+  const comboSecondsLeft = comboCount >= 2 ? Math.max(0, Math.ceil((comboExpiresAt - now) / 1000)) : 0
   const hasTrackedSpectatorCtaRef = useRef(false)
 
   useEffect(() => {
@@ -195,8 +201,38 @@ export function HUD({
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-black text-white/50 uppercase">Balance</span>
-                <span className="text-xs font-mono font-bold text-sky-400">{playerSession.balance.toFixed(2)} OKB</span>
+                <span className="text-xs font-mono font-bold text-sky-400">{playerSession.balance.toFixed(2)} 0G</span>
               </div>
+              {(isSpeedBoosted || isAntiGravity) && (
+                <>
+                  <div className="w-px h-6 bg-white/10" />
+                  <div className="flex items-center gap-1.5">
+                    {isSpeedBoosted && (
+                      <span className="rounded-full border border-orange-400/30 bg-orange-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-orange-200">
+                        Boost
+                      </span>
+                    )}
+                    {isAntiGravity && (
+                      <span className="rounded-full border border-purple-400/30 bg-purple-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-purple-200">
+                        Float
+                      </span>
+                    )}
+                  </div>
+                </>
+              )}
+              {comboCount >= 2 && (
+                <>
+                  <div className="w-px h-6 bg-white/10" />
+                  <div className="flex items-center gap-1.5">
+                    <span className="rounded-full border border-yellow-400/30 bg-yellow-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-yellow-200">
+                      Combo x{comboCount}
+                    </span>
+                    <span className="rounded-full border border-yellow-400/20 bg-black/20 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-yellow-200/80">
+                      {comboMultiplier.toFixed(2)}× • {comboSecondsLeft}s
+                    </span>
+                  </div>
+                </>
+              )}
               <div className="w-px h-6 bg-white/10" />
               <div className="flex items-center gap-2">
                 <div className="flex flex-col">

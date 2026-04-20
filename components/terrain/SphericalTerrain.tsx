@@ -4,6 +4,7 @@ import { RigidBody } from '@react-three/rapier';
 import { useFrame } from '@react-three/fiber';
 import { TERRAIN_CONFIG } from './terrainUtils';
 import { createNoise2D } from 'simplex-noise';
+import { useGameStore } from '../../services/gameStore'
 
 // Configuration for spherical terrain
 const SPHERICAL_CONFIG = {
@@ -380,6 +381,9 @@ export function IntegratedSphericalTerrain({
   const meshRef = useRef<THREE.Mesh>(null);
   const lastUpdateRef = useRef(0);
   const updateInterval = 0.1; // Update every 100ms
+  const preset = useGameStore(s => s.cloudConfig.preset) || 'custom'
+  const lightning = useGameStore(s => s.activeWeatherEffects.lightning?.intensity ?? 0)
+  const wetnessRef = useRef(0)
 
   // Create spherical terrain geometry
   const { geometry, colors } = useMemo(() => {
@@ -478,6 +482,16 @@ export function IntegratedSphericalTerrain({
 
       groupRef.current.rotation.y = rotationY;
       groupRef.current.rotation.x = rotationX;
+    }
+
+    // Wetness: apply subtle sheen during storms
+    const targetWet =
+      preset === 'stormy' || (preset === 'custom' && lightning > 0.35) ? 1 : 0
+    wetnessRef.current = THREE.MathUtils.lerp(wetnessRef.current, targetWet, 0.04 + lightning * 0.06)
+    const mat = meshRef.current?.material as THREE.MeshStandardMaterial | undefined
+    if (mat) {
+      mat.roughness = THREE.MathUtils.lerp(0.8, 0.35, wetnessRef.current)
+      mat.metalness = THREE.MathUtils.lerp(0.1, 0.25, wetnessRef.current)
     }
   });
 

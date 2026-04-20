@@ -1,9 +1,12 @@
 'use client'
 
+import { useMemo, useState } from 'react'
 import { Leaderboard } from './Leaderboard'
 import { CloudConfig } from '../environment/CloudManager'
-import { VehicleType } from '../../services/AgentProtocol'
+import { VehicleType, CHAIN_NAME, WEATHER_AUCTION_ADDRESS, VEHICLE_RENT_ADDRESS } from '../../services/AgentProtocol'
 import { useGameStore } from '../../services/gameStore'
+import { primaryChain } from '../../services/web3Config'
+import { emitToast } from './GameToasts'
 
 interface ControlPanelProps {
   isOpen: boolean
@@ -32,6 +35,114 @@ export function ControlPanel({
 }: ControlPanelProps) {
   const handlingMode = useGameStore(s => s.handlingMode)
   const setHandlingMode = useGameStore(s => s.setHandlingMode)
+  const zgStorage = useGameStore(s => s.zgStorage)
+  const setZgStorage = useGameStore(s => s.setZgStorage)
+  const sessions = useGameStore(s => s.sessions)
+  const [isSavingSnapshot, setIsSavingSnapshot] = useState(false)
+
+  const explorerBase = primaryChain.blockExplorers?.default.url
+
+  const shorten = (value: string, left = 6, right = 4) => {
+    if (!value) return ''
+    if (value.length <= left + right) return value
+    return `${value.slice(0, left)}…${value.slice(-right)}`
+  }
+
+  const copy = async (label: string, value?: string) => {
+    if (!value) return
+    try {
+      await navigator.clipboard.writeText(value)
+      emitToast('milestone', `${label} copied`)
+    } catch {
+      emitToast('bid-lose', `Could not copy ${label}`)
+    }
+  }
+
+  const contractLink = (address: string) =>
+    explorerBase && address && address !== '0x0000000000000000000000000000000000000000'
+      ? `${explorerBase.replace(/\/$/, '')}/address/${address}`
+      : null
+
+  const sessionSnapshot = useMemo(() => {
+    const out: Record<string, {
+      balance: number
+      totalEarned: number
+      totalPaid: number
+      collectedCount: number
+      executedBidCount: number
+      executedRentCount: number
+      vitality: number
+      burden: number
+      decisionCount: number
+    }> = {}
+    for (const [id, s] of Object.entries(sessions)) {
+      out[id] = {
+        balance: s.balance ?? 0,
+        totalEarned: s.totalEarned ?? 0,
+        totalPaid: s.totalPaid ?? 0,
+        collectedCount: s.collectedCount ?? 0,
+        executedBidCount: s.executedBidCount ?? 0,
+        executedRentCount: s.executedRentCount ?? 0,
+        vitality: s.vitality ?? 0,
+        burden: s.burden ?? 0,
+        decisionCount: s.decisionCount ?? 0,
+      }
+    }
+    return out
+  }, [sessions])
+
+  const saveSnapshotNow = async () => {
+    if (isSavingSnapshot) return
+
+    // We want this to feel like a “save progress” feature, not a judge tool.
+    if (!zgStorage.available) {
+      emitToast('bid-lose', 'Cloud save is offline', 'Using local save for now')
+      return
+    }
+    if (!zgStorage.configured) {
+      emitToast('bid-lose', 'Cloud save not enabled', 'Set a server key to enable 0G Storage uploads')
+      return
+    }
+
+    setIsSavingSnapshot(true)
+    try {
+      const { zgSaveState } = await import('../../services/zgStorage')
+      const result = await zgSaveState('global', {
+        version: 1,
+        timestamp: Date.now(),
+        sessions: sessionSnapshot,
+      })
+
+      if (result.error || !result.rootHash) {
+        emitToast('bid-lose', 'Could not save progress', result.error || 'Unknown error')
+        setZgStorage({
+          checkedAt: Date.now(),
+          lastError: result.error || 'Unknown error',
+        })
+        return
+      }
+
+      emitToast('milestone', 'Progress saved', '0G Storage snapshot updated')
+      setZgStorage({
+        checkedAt: Date.now(),
+        available: true,
+        configured: true,
+        lastError: undefined,
+        lastUpload: {
+          key: 'global',
+          rootHash: result.rootHash,
+          txHash: result.txHash,
+          timestamp: Date.now(),
+        },
+      })
+    } catch (err) {
+      const msg = (err as Error).message
+      emitToast('bid-lose', 'Could not save progress', msg)
+      setZgStorage({ checkedAt: Date.now(), lastError: msg })
+    } finally {
+      setIsSavingSnapshot(false)
+    }
+  }
 
   return (
     <>
@@ -162,6 +273,144 @@ export function ControlPanel({
           {activeTab === 'stats' && (
             <div className="animate-in fade-in slide-in-from-right-4 h-full flex flex-col">
               <Leaderboard />
+
+              {/* Network & Persistence (user-facing transparency) */}
+              <div className="mt-4 space-y-3">
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <div className="text-[9px] font-black uppercase tracking-[0.25em] text-white/50">Network</div>
+                  <div className="mt-2 flex items-center justify-between gap-3">
+                    <div className="text-sm font-black text-white">{CHAIN_NAME}</div>
+                    <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-white/60">
+                      chainId {primaryChain.id}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 space-y-2 text-[10px] text-white/70">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-white/45 font-black uppercase tracking-widest">WeatherAuction</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => copy('WeatherAuction address', WEATHER_AUCTION_ADDRESS)}
+                          className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 font-mono text-[10px] text-white/80 hover:bg-white/10"
+                          title="Copy"
+                        >
+                          {shorten(WEATHER_AUCTION_ADDRESS)}
+                        </button>
+                        {contractLink(WEATHER_AUCTION_ADDRESS) && (
+                          <a
+                            href={contractLink(WEATHER_AUCTION_ADDRESS)!}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="rounded-lg border border-sky-400/20 bg-sky-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-sky-200 hover:bg-sky-500/20"
+                          >
+                            Explorer
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-white/45 font-black uppercase tracking-widest">VehicleRent</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => copy('VehicleRent address', VEHICLE_RENT_ADDRESS)}
+                          className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 font-mono text-[10px] text-white/80 hover:bg-white/10"
+                          title="Copy"
+                        >
+                          {shorten(VEHICLE_RENT_ADDRESS)}
+                        </button>
+                        {contractLink(VEHICLE_RENT_ADDRESS) && (
+                          <a
+                            href={contractLink(VEHICLE_RENT_ADDRESS)!}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="rounded-lg border border-sky-400/20 bg-sky-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-sky-200 hover:bg-sky-500/20"
+                          >
+                            Explorer
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <div className="text-[9px] font-black uppercase tracking-[0.25em] text-white/50">Persistence</div>
+                  <div className="mt-2 flex items-center justify-between">
+                    <div className="text-sm font-black text-white">0G Storage</div>
+                    <span
+                      className={`rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-wider ${
+                        zgStorage.available && zgStorage.configured
+                          ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200'
+                          : zgStorage.available === false
+                          ? 'border-red-400/30 bg-red-500/10 text-red-200'
+                          : 'border-white/10 bg-white/5 text-white/60'
+                      }`}
+                    >
+                      {zgStorage.available && zgStorage.configured
+                        ? 'Live'
+                        : zgStorage.available === false
+                        ? 'Offline'
+                        : 'Checking…'}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-between gap-2">
+                    <button
+                      onClick={saveSnapshotNow}
+                      disabled={!zgStorage.available || !zgStorage.configured || isSavingSnapshot}
+                      className={`rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-widest border transition-all ${
+                        !zgStorage.available || !zgStorage.configured || isSavingSnapshot
+                          ? 'border-white/10 bg-white/5 text-white/30 cursor-not-allowed'
+                          : 'border-sky-400/25 bg-sky-500/10 text-sky-200 hover:bg-sky-500/20'
+                      }`}
+                      title="Save your current progress to decentralized storage"
+                    >
+                      {isSavingSnapshot ? 'Saving…' : 'Save now'}
+                    </button>
+                    <span className="text-[10px] text-white/40">
+                      {zgStorage.lastUpload?.timestamp
+                        ? `Last saved ${Math.max(1, Math.round((Date.now() - zgStorage.lastUpload.timestamp) / 1000))}s ago`
+                        : 'Cloud save keeps your progress across sessions'}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 space-y-2 text-[10px] text-white/65">
+                    {zgStorage.lastUpload?.rootHash ? (
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-white/45 font-black uppercase tracking-widest">Last snapshot</span>
+                        <button
+                          onClick={() => copy('rootHash', zgStorage.lastUpload?.rootHash)}
+                          className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 font-mono text-[10px] text-white/80 hover:bg-white/10"
+                          title="Copy rootHash"
+                        >
+                          {shorten(zgStorage.lastUpload.rootHash, 8, 6)}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="text-white/45">No decentralized snapshot yet (will appear after the first sync).</div>
+                    )}
+
+                    {zgStorage.lastUpload?.txHash && (
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-white/45 font-black uppercase tracking-widest">Upload tx</span>
+                        <button
+                          onClick={() => copy('txHash', zgStorage.lastUpload?.txHash)}
+                          className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 font-mono text-[10px] text-white/80 hover:bg-white/10"
+                          title="Copy txHash"
+                        >
+                          {shorten(zgStorage.lastUpload.txHash, 10, 6)}
+                        </button>
+                      </div>
+                    )}
+
+                    {zgStorage.lastError && (
+                      <div className="rounded-lg border border-red-400/20 bg-red-500/10 px-3 py-2 text-[10px] text-red-200">
+                        {zgStorage.lastError}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -170,7 +419,7 @@ export function ControlPanel({
         <div className="p-4 border-t border-white/10 bg-black/20">
            <div className="flex justify-between items-center opacity-30">
               <span className="text-[8px] font-black tracking-tighter italic">CLAWDY</span>
-              <span className="text-[8px] font-black tracking-widest">BASE L2 SETTLED</span>
+              <span className="text-[8px] font-black tracking-widest">0G CHAIN SETTLED</span>
            </div>
         </div>
       </div>

@@ -182,7 +182,7 @@ export function AgentTerminal() {
                       >
                         <span className="text-[10px] font-bold">{s.agentId}</span>
                         <div className="text-[8px] mt-1" style={{ color: profile?.accentColor || '#7dd3fc' }}>{AGENT_ROLE_CONFIG[s.role].label}</div>
-                        <div className="text-[8px] mt-1 text-green-400">{s.balance.toFixed(3)} OKB</div>
+                        <div className="text-[8px] mt-1 text-green-400">{s.balance.toFixed(3)} 0G</div>
                       </button>
                       )
                     })}

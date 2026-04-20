@@ -1,207 +1,92 @@
 # CLAWDY
 
-Agentic sandbox on X Layer where autonomous roles compete for weather control, vehicle access, and reward capture in a live onchain game loop.
+Clawdy is a real-time 3D agentic economy on **0G** where autonomous roles bid for weather control, rent vehicles, and persist long-term memory via **0G Storage**.
 
-## Submission Status
+## What it does / Problem it solves
 
-This repo is being actively aligned for the **X Layer Arena** track of the X Layer / Onchain OS hackathon.
+Most “AI x Web3” demos are either (a) pure AI chat, or (b) pure DeFi bots. **Clawdy** makes autonomy *visible* and *verifiable* by embedding agents into a playable economy loop where:
 
-Current focus:
+- decisions are surfaced in UI (agent roles + terminal logs)
+- actions settle **on-chain** (weather bids + vehicle rentals on **0G Chain**)
+- state persists across sessions (agent economy state saved to **0G Storage**)
 
-- X Layer chain pivot
-- explicit agent role framing
-- Agentic Wallet flow
-- Onchain OS / MCP integration
-- leaderboard and onchain activity visibility
+## 0G Components Used
 
-## Project Intro
+- **0G Chain**: smart contracts for weather auctions + vehicle rentals.
+- **0G Storage**: persistent agent memory / economy state snapshots (upload + download).
 
-`Clawdy` is a real-time 3D sandbox where players and autonomous agents interact with a shared world economy.
+> Optional (nice-to-have): **0G Compute** for inference-backed decisioning. The codebase currently runs a deterministic policy engine with a provider seam for upgrading.
 
-Agents can:
+## Architecture (high level)
 
-- observe world state
-- bid on weather changes to influence food/resource density
-- rent vehicles to improve mobility and control
-- route themselves toward profitable opportunities
-- operate under a wallet-authorized autonomy budget
-
-The submission goal is to turn `Clawdy` into an **X Layer-native agentic economy loop**:
-
-1. observe
-2. decide
-3. spend onchain
-4. gain advantage
-5. earn
-6. repeat
-
-## Architecture Overview
-
-### Frontend
-
-- Next.js App Router frontend
-- React Three Fiber powered 3D world
-- in-browser HUD for wallet, agent roles, and economy state
-
-### Agent Runtime
-
-- `window.clawdy` public bridge for world state and agent controls
-- role-based agent sessions managed in `services/AgentProtocol.ts`
-- wallet-authorized autonomy flow via execution-permission style calls
-
-### Onchain Layer
-
-- `WeatherAuction.sol`
-  - agents bid for temporary weather control
-- `VehicleRent.sol`
-  - agents pay for temporary vehicle access
-
-### Indexing Layer
-
-- Envio-based indexer for weather and vehicle activity
-- intended for leaderboard, activity proof, and judge-facing metrics
-
-## Agent Roles
-
-The current submission architecture uses a single runtime with multiple documented roles.
-
-- `Operator`
-  - supervises the session and authorizes agent budgets
-- `Scout Agent`
-  - scans world state and identifies profitable routes
-- `Weather Agent`
-  - bids for climate states that improve expected yield
-- `Mobility Agent`
-  - leases vehicles and executes movement strategy
-- `Treasury Agent`
-  - manages spend policy and preserves the earn-pay-earn loop
-
-## Agentic Wallet
-
-`Clawdy` uses an Agentic Wallet style flow for autonomous execution:
-
-1. user connects a wallet on X Layer
-2. user grants session-like execution permissions
-3. the runtime uses those permissions to submit eligible onchain actions
-4. the UI shows whether autonomous execution is active
-
-## Onchain OS / Uniswap Skill Usage
-
-### Current State
-
-The project now includes a **pluggable skill-decision layer** inside the existing agent runtime.
-
-Available providers (toggle via `NEXT_PUBLIC_SKILL_PROVIDER`):
-
-- `onchain-os` — routes skill evaluation through the Onchain OS MCP endpoint; falls back to local policy transparently when the endpoint is unreachable
-- `local-policy` — lightweight, deterministic policy engine used as a fallback
-
-Role in the loop:
-
-- MCP-backed skill evaluation helps agents decide when to bid, rent, or route
-- skill outputs are surfaced in the terminal and agent status HUD
-- provider label and MCP latency are visible for judges to verify
-
-Executable paths:
-
-- weather bid recommendation → weather bid execution
-- mobility lease recommendation → vehicle rent execution
-
-## Working Mechanics
-
-### Weather Control
-
-Agents place bids to win temporary control over the weather profile. Weather affects resource conditions in the sandbox, creating a direct economic tradeoff between cost and opportunity.
-
-### Vehicle Rental
-
-Agents pay for temporary access to vehicles with different mobility or combat profiles. Better vehicle access can improve route efficiency and resource capture.
-
-### Resource Collection
-
-Agents and players collect food/resources with different reward and burden effects. This creates a strategic balance between short-term earnings and long-term performance.
-
-### Economy Loop
-
-The target loop for the hackathon submission is:
-
-1. scout identifies opportunity
-2. skill layer evaluates expected value
-3. treasury approves spending threshold
-4. weather or mobility agent executes onchain action
-5. agent gains better collection efficiency
-6. leaderboard and metrics reflect the outcome
-
-## Deployment Addresses (X Layer Testnet — chain 1952)
-
-- WeatherAuction: `0x723e444ee6d7da19fade372f85da06dd849bf1e0`
-- VehicleRent: `0xea88bd6121d181cfd6f60997b4bdd0297ca432fe`
-- Deployer: `0x5912d140b58c62ff007D803D25ea7CcC818548D3`
-- Frontend: `http://localhost:3000` (local dev)
-- Indexer endpoint: `http://localhost:8080/v1/graphql` (local Envio)
-
-## Project Positioning in the X Layer Ecosystem
-
-`Clawdy` is positioned as an **agentic consumer app** for X Layer:
-
-- a game-like interface that turns agent actions into visible user value
-- repeated onchain actions that fit X Layer activity and ecosystem goals
-- a reusable pattern for agent wallets, skill invocation, and live economic loops
-
-This is not just a static demo contract. The intended value is a persistent, playable, agent-driven environment where X Layer transactions materially affect what happens in the world.
-
-## Team Members
-
-- udingethe — design, product, and contracts
-
-## Repo Structure
-
-```text
-app/                  Next.js app shell
-components/           3D world, HUD, vehicles, and UI
-contracts/            Weather and vehicle game contracts
-indexer/              Envio indexing project
-services/             Agent runtime, chain config, queueing, contract ABIs
-HACKATHON_PIVOT_PLAN.md  Phase-by-phase execution plan
+```mermaid
+flowchart LR
+  UI[Next.js + R3F 3D World] --> AP[Agent Protocol Runtime]
+  AP -->|bid/rent tx| OC[0G Chain<br/>WeatherAuction + VehicleRent]
+  AP -->|state snapshots| SAPI[/api/0g-storage (Next.js Route)/]
+  SAPI -->|upload/download| OS[0G Storage + Indexer]
+  OC -->|events| M[Metrics / Leaderboard]
+  AP --> M
 ```
 
-## Local Development
+### Key modules
+
+- Frontend: `app/`, `components/` (Next.js + React Three Fiber)
+- Agent runtime & economy: `services/AgentProtocol.ts`, `services/EconomyEngine.ts`, `services/skillEngine.ts`
+- On-chain: `contracts/WeatherAuction.sol`, `contracts/VehicleRent.sol`
+- 0G Storage integration: `app/api/0g-storage/route.ts`, `services/zgStorage.ts`, `services/PersistenceService.ts`
+
+## Agent Roles (judge-facing)
+
+- **Operator**: connects wallet + enables Agentic Wallet permissions
+- **Scout Agent**: identifies best nearby opportunities
+- **Weather Agent**: bids when expected yield justifies cost
+- **Mobility Agent**: rents vehicles to convert plans into movement
+- **Treasury Agent**: enforces spend thresholds and budget policy
+
+## How to run locally
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+Open: `http://localhost:3000`
 
-Optional env for indexer-backed leaderboard data:
+### Environment variables
+
+Create `.env.local`:
 
 ```bash
-NEXT_PUBLIC_USE_XLAYER_TESTNET=true|false
+# Wallet / chain
+NEXT_PUBLIC_USE_0G_TESTNET=true|false
 NEXT_PUBLIC_WEATHER_AUCTION_ADDRESS=0x...
 NEXT_PUBLIC_VEHICLE_RENT_ADDRESS=0x...
-NEXT_PUBLIC_INDEXER_GRAPHQL_URL=https://your-indexer-endpoint/graphql
+
+# 0G Storage (server-side route needs a funded key to upload)
+DEPLOYER_PRIVATE_KEY=0x...
+ZG_RPC_URL=https://evmrpc.0g.ai
+ZG_INDEXER_URL=https://indexer-storage-mainnet-standard.0g.ai
 ```
 
-If this is unset, the app falls back to runtime metrics plus placeholder indexed snapshots.
+## Deploy contracts on 0G
 
-Indexer templates and chain-specific setup live in [indexer/README.md](/Users/udingethe/Dev/clawdy/indexer/README.md:1).
+This repo includes a minimal deploy script:
 
-## Current Status
+```bash
+# mainnet (default)
+node scripts/deploy.js
 
-- ✅ Contracts deployed on X Layer testnet
-- ✅ Onchain OS / MCP skill provider wired with local-policy fallback
-- ✅ Indexer configs updated with deployed addresses and correct chain ID
-- ✅ Deployment addresses and team fields filled in
-- ⬜ Record a 1–3 minute demo video
-- ⬜ Submit via Google Form
+# testnet (Galileo)
+USE_0G_TESTNET=true node scripts/deploy.js
+```
 
-## Submission Assets
+Then copy the printed addresses into `.env.local` and redeploy your frontend.
 
-- demo script: [DEMO_SCRIPT.md](/Users/udingethe/Dev/clawdy/DEMO_SCRIPT.md:1)
-- submission checklist: [SUBMISSION_CHECKLIST.md](/Users/udingethe/Dev/clawdy/SUBMISSION_CHECKLIST.md:1)
-- X post draft: [X_POST_DRAFT.md](/Users/udingethe/Dev/clawdy/X_POST_DRAFT.md:1)
+## Demo Video
 
-## Parallel Work Reference
+Use: [DEMO_SCRIPT.md](./DEMO_SCRIPT.md)
 
-See [HACKATHON_PIVOT_PLAN.md](/Users/udingethe/Dev/clawdy/HACKATHON_PIVOT_PLAN.md:1) for the full phased plan and parallel workstreams.
+## Submission / Review
+
+If you need the full submission-oriented checklist (contracts, explorer links, proof fields), see: **[SUBMISSION.md](./SUBMISSION.md)**.

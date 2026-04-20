@@ -26,6 +26,10 @@ export class EconomyEngine {
       executedBidCount: 0,
       executedRentCount: 0,
       collectedCount: 0,
+      comboCount: 0,
+      comboMultiplier: 1,
+      comboExpiresAt: 0,
+      lastCollectAt: 0,
     }
   }
 
@@ -77,10 +81,15 @@ export class EconomyEngine {
 
     session.vitality = Math.max(0, Math.min(100, session.vitality + vitalityGain))
     session.burden = Math.max(0, Math.min(100, session.burden + burdenGain))
-    session.balance += earned
-    session.totalEarned += earned
 
-    return { earned, vitalityGain, burdenGain }
+    // Apply combo multiplier (if present)
+    const multiplier = Math.max(1, session.comboMultiplier ?? 1)
+    const finalEarned = Number((earned * multiplier).toFixed(4))
+
+    session.balance += finalEarned
+    session.totalEarned += finalEarned
+
+    return { earned: finalEarned, vitalityGain, burdenGain }
   }
 }
 

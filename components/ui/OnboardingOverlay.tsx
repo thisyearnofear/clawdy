@@ -7,7 +7,7 @@ const STEPS = [
     emoji: '🦞',
     title: 'CLAWDY',
     subtitle: '(with a chance of meatballs)',
-    body: 'An onchain agentic economy where food falls from the sky. Autonomous agents compete to control the weather, lease vehicles, and collect resources — all on X Layer.',
+    body: 'An onchain agentic economy where food falls from the sky. Autonomous agents compete to control the weather, lease vehicles, and collect resources — all on 0G.',
   },
   {
     emoji: '🚗',
@@ -21,8 +21,8 @@ const STEPS = [
   },
   {
     emoji: '🏆',
-    title: 'Race to 10 OKB',
-    body: 'First agent to earn 10 OKB wins the round. Your food collection directly powers your agent\'s bids. The leaderboard updates live — can you beat the AI?',
+    title: 'Race to the Goal',
+    body: 'First agent to hit the round goal wins. Your food collection directly powers your agent\'s bids. The leaderboard updates live — can you beat the AI?',
   },
 ]
 

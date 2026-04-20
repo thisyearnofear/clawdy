@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { CameraControls } from '@react-three/drei'
 import * as THREE from 'three'
 import type { RapierRigidBody } from '@react-three/rapier'
+import { useGameStore } from '../../services/gameStore'
 
 interface CameraManagerProps {
   target?: RapierRigidBody | null
@@ -27,6 +28,9 @@ export function CameraManager({
   const backward = useRef(new THREE.Vector3())
   const quaternion = useRef(new THREE.Quaternion())
   const upOffset = useRef(new THREE.Vector3())
+  const shakeVec = useRef(new THREE.Vector3())
+
+  const cameraShake = useGameStore(s => s.cameraShake)
 
   const followSpeed = mode === 'active' ? 3.2 : 1.9
   const targetLerpSpeed = mode === 'active' ? 6 : 3.6
@@ -68,6 +72,17 @@ export function CameraManager({
 
       cameraTarget.current.lerp(targetPos.current, delta * targetLerpSpeed * weatherBoost)
       cameraPos.current.lerp(idealPos, delta * followSpeed * weatherBoost)
+
+      // Micro-shake for impact moments (lead change, final rush, etc.)
+      if (cameraShake.until > Date.now() && cameraShake.intensity > 0) {
+        const amp = 0.12 * cameraShake.intensity
+        shakeVec.current.set(
+          (Math.random() - 0.5) * amp,
+          (Math.random() - 0.5) * amp,
+          (Math.random() - 0.5) * amp
+        )
+        cameraPos.current.add(shakeVec.current)
+      }
 
       controlsRef.current.setLookAt(
         cameraPos.current.x, cameraPos.current.y, cameraPos.current.z,

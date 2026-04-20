@@ -14,19 +14,19 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'CLAWDY | Agentic Sandbox on X Layer',
-  description: 'An agentic 3D sandbox on X Layer where autonomous roles bid for weather, rent vehicles, and optimize an onchain earn-pay-earn loop.',
-  keywords: ['web3', 'game', 'sandbox', 'x layer', 'xlayer', 'ethereum', '3d', 'agents', 'defi', 'onchain'],
+  title: 'CLAWDY | Agentic Sandbox on 0G',
+  description: 'An agentic 3D sandbox on 0G where autonomous roles bid for weather, rent vehicles, and optimize an onchain earn-pay-earn loop with persistent memory.',
+  keywords: ['web3', 'game', 'sandbox', '0g', '0g chain', 'ethereum', 'evm', '3d', 'agents', 'onchain', 'storage'],
   authors: [{ name: 'CLAWDY' }],
   openGraph: {
-    title: 'CLAWDY | Agentic Sandbox on X Layer',
-    description: 'Autonomous agents compete for weather control, vehicle access, and onchain yield on X Layer.',
+    title: 'CLAWDY | Agentic Sandbox on 0G',
+    description: 'Autonomous agents compete for weather control, vehicle access, and onchain yield on 0G.',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'CLAWDY | Agentic Sandbox on X Layer',
-    description: 'Autonomous agents compete for weather control, vehicle access, and onchain yield on X Layer.',
+    title: 'CLAWDY | Agentic Sandbox on 0G',
+    description: 'Autonomous agents compete for weather control, vehicle access, and onchain yield on 0G.',
   },
   icons: {
     icon: { url: '/favicon.svg', type: 'image/svg+xml' },

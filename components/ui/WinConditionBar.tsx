@@ -1,10 +1,14 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import { useGameStore } from '../../services/gameStore'
+import { emitToast } from './GameToasts'
+import { playSound } from './SoundManager'
 
 export function WinConditionBar({ playerId }: { playerId: string }) {
   const round = useGameStore(s => s.round)
   const sessions = useGameStore(s => s.sessions)
+  const triggerCameraShake = useGameStore(s => s.triggerCameraShake)
   const entries = Object.values(sessions).sort((a, b) => b.totalEarned - a.totalEarned)
   
   const WIN_TARGET = round.goalOKB
@@ -18,6 +22,27 @@ export function WinConditionBar({ playerId }: { playerId: string }) {
   const progress = Math.min((displayEntry.totalEarned / WIN_TARGET) * 100, 100)
   const isLeading = entries[0]?.agentId === displayEntry.agentId
 
+  // Lead-change pop during the final rush window.
+  const lastLeaderRef = useRef<string | null>(null)
+  const lastPopAtRef = useRef(0)
+  useEffect(() => {
+    const leaderId = leader?.agentId ?? null
+    const now = Date.now()
+    const remainingSec = Math.max(0, Math.ceil((round.endsAt - now) / 1000))
+    const isFinalRush = round.isActive && remainingSec > 0 && remainingSec <= 10
+
+    if (leaderId && lastLeaderRef.current && leaderId !== lastLeaderRef.current && isFinalRush) {
+      // Cooldown so we don't spam if things flip rapidly.
+      if (now - lastPopAtRef.current > 900) {
+        lastPopAtRef.current = now
+        triggerCameraShake(0.9, 260)
+        playSound('milestone')
+        emitToast('bid-win', 'Lead stolen!', `${leaderId.slice(0, 10)} took #1`)
+      }
+    }
+    lastLeaderRef.current = leaderId
+  }, [leader?.agentId, round.endsAt, round.isActive, triggerCameraShake])
+
   return (
     <div className="flex flex-col items-center gap-1 pointer-events-none">
       {!round.isActive && round.winner ? (
@@ -27,14 +52,14 @@ export function WinConditionBar({ playerId }: { playerId: string }) {
       ) : (
         <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl px-5 py-2 shadow-xl flex items-center gap-4 min-w-[260px]">
           <div className="text-[9px] font-black uppercase tracking-widest text-white/40 whitespace-nowrap">
-            Goal: {WIN_TARGET} OKB
+            Goal: {WIN_TARGET} 0G
           </div>
           <div className="flex-1 flex flex-col gap-1">
             <div className="flex justify-between items-center">
               <span className={`text-[9px] font-bold truncate max-w-[100px] ${isLeading ? 'text-yellow-300' : 'text-white/60'}`}>
                 {isLeading ? '👑 ' : ''}{displayEntry.agentId.slice(0, 10)}
               </span>
-              <span className="text-[9px] font-mono text-sky-300">{displayEntry.totalEarned.toFixed(3)} / {WIN_TARGET} OKB</span>
+              <span className="text-[9px] font-mono text-sky-300">{displayEntry.totalEarned.toFixed(3)} / {WIN_TARGET} 0G</span>
             </div>
             <div className="w-full bg-white/10 rounded-full h-1.5 overflow-hidden">
               <div
@@ -45,7 +70,7 @@ export function WinConditionBar({ playerId }: { playerId: string }) {
           </div>
           {leader && leader.agentId !== displayEntry.agentId && (
             <div className="text-[9px] text-yellow-300/60 whitespace-nowrap">
-              👑 {leader.totalEarned.toFixed(3)} OKB
+              👑 {leader.totalEarned.toFixed(3)} 0G
             </div>
           )}
         </div>

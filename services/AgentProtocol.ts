@@ -12,9 +12,9 @@ export type VehicleType = 'truck' | 'tank' | 'monster' | 'speedster'
 export type AgentRole = 'operator' | 'scout' | 'weather' | 'mobility' | 'treasury'
 
 export const CHAIN_NAME =
-  process.env.NEXT_PUBLIC_USE_XLAYER_TESTNET === 'true'
-    ? 'X Layer Testnet'
-    : 'X Layer'
+  (process.env.NEXT_PUBLIC_USE_0G_TESTNET ?? process.env.NEXT_PUBLIC_USE_XLAYER_TESTNET) === 'true'
+    ? '0G Testnet (Galileo)'
+    : '0G Mainnet'
 
 export const AGENT_ROLE_CONFIG: Record<
   AgentRole,
@@ -27,8 +27,10 @@ export const AGENT_ROLE_CONFIG: Record<
   treasury: { label: 'Treasury Agent', permissions: ['spend_policy', 'budget_control'] },
 }
 
-export const WEATHER_AUCTION_ADDRESS = (process.env.NEXT_PUBLIC_WEATHER_AUCTION_ADDRESS || '0x21F3E4482c045AF4a06c797FA5b742386f76956b') as `0x${string}`
-export const VEHICLE_RENT_ADDRESS = (process.env.NEXT_PUBLIC_VEHICLE_RENT_ADDRESS || '0xF39b1CD133e9f4D106b73084072526400D71e864') as `0x${string}`
+export const WEATHER_AUCTION_ADDRESS = (process.env.NEXT_PUBLIC_WEATHER_AUCTION_ADDRESS ||
+  '0x0000000000000000000000000000000000000000') as `0x${string}`
+export const VEHICLE_RENT_ADDRESS = (process.env.NEXT_PUBLIC_VEHICLE_RENT_ADDRESS ||
+  '0x0000000000000000000000000000000000000000') as `0x${string}`
 
 export interface WorldState {
   timestamp: number
@@ -128,6 +130,11 @@ export interface AgentSession {
   collectedCount: number
   lastSkillProvider?: string
   isRealOnChain?: boolean
+  // Combo / streak (session-scoped, not intended as long-term persistence)
+  comboCount?: number
+  comboMultiplier?: number
+  comboExpiresAt?: number
+  lastCollectAt?: number
   // Power-ups
   speedBoostUntil?: number
   antiGravityUntil?: number
@@ -343,16 +350,58 @@ class AgentProtocol {
   async collectFood(agentId: string, stats: FoodStats) {
     const session = this.sessions.get(agentId)
     if (!session) return
+
+    // ── Combo / streak logic ─────────────────────────────────────────
+    // Design goals:
+    // - feel-good momentum (reward chaining)
+    // - readable (toasts + HUD)
+    // - bounded (cap multiplier)
+    const COMBO_WINDOW_MS = 6_000
+    const COMBO_MAX_MULTIPLIER = 2.0
+    const COMBO_STEP = 0.12
+
+    const now = Date.now()
+    const lastCollectAt = session.lastCollectAt ?? 0
+    const withinWindow = now - lastCollectAt <= COMBO_WINDOW_MS
+
+    const nextComboCount = withinWindow ? (session.comboCount ?? 0) + 1 : 1
+    const nextMultiplier = Math.min(
+      COMBO_MAX_MULTIPLIER,
+      Number((1 + (nextComboCount - 1) * COMBO_STEP).toFixed(2))
+    )
+
+    session.comboCount = nextComboCount
+    session.comboMultiplier = nextMultiplier
+    session.comboExpiresAt = now + COMBO_WINDOW_MS
+    session.lastCollectAt = now
     
     const { earned } = economyEngine.collectFood(session, stats)
     
-    this.gameEventListeners.forEach(l => l({ type: 'food-collected', agentId, amount: earned }))
+    this.gameEventListeners.forEach(l => l({
+      type: 'food-collected',
+      agentId,
+      amount: earned,
+      comboCount: session.comboCount,
+      comboMultiplier: session.comboMultiplier,
+      comboExpiresAt: session.comboExpiresAt,
+    }))
+
+    // Power-up callouts (for UI delight / clarity)
+    if (stats.type === 'spicy_pepper') {
+      this.gameEventListeners.forEach(l => l({ type: 'powerup', agentId, power: 'boost' }))
+    }
+    if (stats.type === 'floaty_marshmallow') {
+      this.gameEventListeners.forEach(l => l({ type: 'powerup', agentId, power: 'float' }))
+    }
+    if (stats.type === 'golden_meatball') {
+      this.gameEventListeners.forEach(l => l({ type: 'powerup', agentId, power: 'jackpot' }))
+    }
     
     // Milestone check
-    const milestones = [1, 5, 10]
+    const milestones = [0.01, 0.03, 0.05]
     for (const m of milestones) {
       if (session.totalEarned >= m && session.totalEarned - earned < m) {
-        this.gameEventListeners.forEach(l => l({ type: 'milestone', message: `${agentId.slice(0,8)} reached ${m} OKB!` }))
+        this.gameEventListeners.forEach(l => l({ type: 'milestone', message: `${agentId.slice(0,8)} reached ${m.toFixed(3)} 0G!` }))
       }
     }
     this.syncWithStore()

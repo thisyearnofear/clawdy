@@ -1,4 +1,4 @@
-# CLAWDY Demo Script
+# CLAWDY Demo Script (0G APAC Hackathon)
 
 Use this script for a **1 to 3 minute** hackathon demo video.
 
@@ -6,11 +6,11 @@ Use this script for a **1 to 3 minute** hackathon demo video.
 
 Show that `Clawdy` is:
 
-- an agentic app on X Layer
+- an agentic app on 0G
 - driven by role-based agents
 - capable of autonomous onchain actions
 - built around an earn-pay-earn loop
-- designed to upgrade from fallback policy to Onchain OS MCP
+- backed by 0G-native infra (0G Chain + 0G Storage persistence)
 
 ## Demo Structure
 
@@ -26,7 +26,7 @@ Show:
 
 Say:
 
-`Clawdy is an agentic sandbox on X Layer where autonomous roles compete for weather control, vehicle access, and resource yield in a live onchain economy loop.`
+`Clawdy is an agentic sandbox on 0G where autonomous roles compete for weather control, vehicle access, and resource yield in a live onchain economy loop with persistent 0G Storage memory.`
 
 ## Segment 2: Agent Roles
 
@@ -53,7 +53,7 @@ Target length: `15 to 25 seconds`
 
 Show:
 
-- wallet connected on X Layer
+- wallet connected on 0G
 - `ACTIVATE AGENTIC WALLET`
 - autonomy active state
 
@@ -75,7 +75,7 @@ Show:
 
 Say:
 
-`The runtime includes a pluggable skill-decision seam. Right now the fallback local policy provider is live, and it already drives bid and lease execution. This seam is designed to be replaced by Onchain OS MCP without changing the rest of the app.`
+`The runtime includes a pluggable skill-decision seam. Right now the fallback local policy provider is live and drives bid and lease execution. This seam can be upgraded to 0G Compute-backed inference without changing the rest of the app.`
 
 ## Segment 5: Onchain Actions
 
@@ -90,6 +90,20 @@ Show:
 Say:
 
 `Weather and mobility actions settle onchain. The weather agent spends for temporary control when expected yield is worth it, and the mobility agent leases vehicles when route execution needs a better platform.`
+
+## Segment 6.5: 0G Storage (Persistence Proof)
+
+Target length: `10 to 20 seconds`
+
+Show:
+
+- UI continuing after refresh OR
+- the browser console log: `[0G Storage] Restored state from 0G...` OR
+- `/api/0g-storage?health=1` response
+
+Say:
+
+`Agent state is persisted to 0G Storage, so the economy loop survives refreshes and sessions. This is long-context memory for agents, backed by decentralized storage.`
 
 ## Segment 6: Proof Layer
 
@@ -111,7 +125,7 @@ Show:
 
 Say:
 
-`The proof layer shows whether activity is coming from live indexed data, fallback snapshots, or runtime state. The leaderboard tracks executions, yield, and collections so judges can see the economy loop directly.`
+`The proof layer shows activity in the loop—bids, rentals, and collections—so judges can see the economy loop directly, alongside 0G Chain Scan links for on-chain verification.`
 
 ## Segment 7: Close
 
@@ -119,7 +133,7 @@ Target length: `10 to 15 seconds`
 
 Say:
 
-`Clawdy turns autonomous agents into a visible X Layer product: observe, decide, spend onchain, gain advantage, earn, and repeat.`
+`Clawdy turns autonomous agents into a visible 0G product: observe, decide, spend onchain, gain advantage, earn, and repeat.`
 
 ## Recording Notes
 

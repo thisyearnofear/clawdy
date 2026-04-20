@@ -4,26 +4,41 @@ import path from 'path';
 import { createPublicClient, createWalletClient, http, defineChain } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 
-const xlayerTestnet = defineChain({
-  id: 1952,
-  name: 'X Layer Testnet',
-  nativeCurrency: { name: 'OKB', symbol: 'OKB', decimals: 18 },
-  rpcUrls: { default: { http: ['https://testrpc.xlayer.tech'] } },
-  blockExplorers: { default: { name: 'OKLink', url: 'https://www.oklink.com/xlayer-test' } },
+const zeroGMainnet = defineChain({
+  id: 16661,
+  name: '0G Mainnet',
+  nativeCurrency: { name: '0G', symbol: '0G', decimals: 18 },
+  rpcUrls: { default: { http: ['https://evmrpc.0g.ai'] } },
+  blockExplorers: { default: { name: '0G Chain Scan', url: 'https://chainscan.0g.ai' } },
 });
+
+const zeroGTestnet = defineChain({
+  id: 16602,
+  name: '0G Testnet (Galileo)',
+  nativeCurrency: { name: '0G', symbol: '0G', decimals: 18 },
+  rpcUrls: { default: { http: ['https://evmrpc-testnet.0g.ai'] } },
+  blockExplorers: { default: { name: '0G Chain Scan (Galileo)', url: 'https://chainscan-galileo.0g.ai' } },
+});
+
+const useTestnet = process.env.USE_0G_TESTNET === 'true';
+const chain = useTestnet ? zeroGTestnet : zeroGMainnet;
 
 const pk = process.env.DEPLOYER_PRIVATE_KEY || fs.readFileSync(path.join(__dirname, '..', '.env.local'), 'utf8').match(/DEPLOYER_PRIVATE_KEY=(0x[0-9a-fA-F]+)/)[1];
 const account = privateKeyToAccount(pk);
 
-const publicClient = createPublicClient({ chain: xlayerTestnet, transport: http() });
-const walletClient = createWalletClient({ account, chain: xlayerTestnet, transport: http() });
+const publicClient = createPublicClient({ chain, transport: http() });
+const walletClient = createWalletClient({ account, chain, transport: http() });
 
 function compile(contractName) {
   const source = fs.readFileSync(path.join(__dirname, '..', 'contracts', `${contractName}.sol`), 'utf8');
   const input = {
     language: 'Solidity',
     sources: { [`${contractName}.sol`]: { content: source } },
-    settings: { outputSelection: { '*': { '*': ['abi', 'evm.bytecode.object'] } } },
+    settings: {
+      evmVersion: 'cancun',
+      optimizer: { enabled: true, runs: 200 },
+      outputSelection: { '*': { '*': ['abi', 'evm.bytecode.object'] } },
+    },
   };
   const output = JSON.parse(solc.compile(JSON.stringify(input)));
   if (output.errors) {
@@ -49,12 +64,14 @@ async function deploy(contractName) {
 (async () => {
   const balance = await publicClient.getBalance({ address: account.address });
   console.log(`Deployer: ${account.address}`);
-  console.log(`Balance: ${Number(balance) / 1e18} OKB\n`);
+  console.log(`Network: ${chain.name} (chainId ${chain.id})`);
+  console.log(`Balance: ${Number(balance) / 1e18} 0G\n`);
 
   const weatherAddr = await deploy('WeatherAuction');
   const vehicleAddr = await deploy('VehicleRent');
 
   console.log('\n=== DEPLOYMENT RESULTS ===');
+  console.log(`NEXT_PUBLIC_USE_0G_TESTNET=${useTestnet ? 'true' : 'false'}`);
   console.log(`NEXT_PUBLIC_WEATHER_AUCTION_ADDRESS=${weatherAddr}`);
   console.log(`NEXT_PUBLIC_VEHICLE_RENT_ADDRESS=${vehicleAddr}`);
 })();

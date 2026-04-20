@@ -39,7 +39,7 @@ export function Leaderboard() {
                   <div className="text-sky-300">{agent.executedBidCount + agent.executedRentCount}</div>
                 </td>
                 <td className="px-2 py-2 text-right">
-                  <div className="text-green-400">{agent.totalEarned.toFixed(3)} OKB</div>
+                  <div className="text-green-400">{agent.totalEarned.toFixed(3)} 0G</div>
                 </td>
               </tr>
             ))}
@@ -66,7 +66,7 @@ export function Leaderboard() {
                     </div>
                   </td>
                   <td className="px-2 py-2 text-right text-white/30">
-                    {agent.totalEarned.toFixed(3)} OKB
+                    {agent.totalEarned.toFixed(3)} 0G
                   </td>
                 </tr>
               ))}

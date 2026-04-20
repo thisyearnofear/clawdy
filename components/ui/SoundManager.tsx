@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect, useRef, useCallback } from 'react'
+import { useGameStore } from '../../services/gameStore'
 
 // Tiny Web Audio API sound manager — no external files needed
 // All sounds are synthesized procedurally
 
-type SoundType = 'collect' | 'bid-win' | 'bid-lose' | 'milestone' | 'engine-idle' | 'ui-click'
+type SoundType = 'collect' | 'bid-win' | 'bid-lose' | 'milestone' | 'engine-idle' | 'ui-click' | 'thunder'
 
 let audioCtx: AudioContext | null = null
 
@@ -90,6 +91,41 @@ function playUIClick() {
   osc.stop(ctx.currentTime + 0.05)
 }
 
+function playThunder() {
+  const ctx = getCtx()
+  // Variation: sometimes distant rumble, sometimes close crack.
+  const distance = Math.random() // 0=close, 1=distant
+  const isDistant = distance > 0.55
+
+  // Low rumble (always)
+  const rumble = ctx.createOscillator()
+  const rumbleGain = ctx.createGain()
+  rumble.type = 'sawtooth'
+  rumble.frequency.setValueAtTime(isDistant ? 55 : 85, ctx.currentTime)
+  rumble.frequency.exponentialRampToValueAtTime(isDistant ? 24 : 32, ctx.currentTime + (isDistant ? 1.8 : 1.2))
+  rumbleGain.gain.setValueAtTime(0.0001, ctx.currentTime)
+  rumbleGain.gain.exponentialRampToValueAtTime(isDistant ? 0.08 : 0.14, ctx.currentTime + 0.06)
+  rumbleGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + (isDistant ? 2.2 : 1.4))
+  rumble.connect(rumbleGain).connect(ctx.destination)
+  rumble.start()
+  rumble.stop(ctx.currentTime + (isDistant ? 2.3 : 1.5))
+
+  if (!isDistant) {
+    // Crack (close thunder only)
+    const crack = ctx.createOscillator()
+    const crackGain = ctx.createGain()
+    crack.type = 'triangle'
+    crack.frequency.setValueAtTime(1300, ctx.currentTime + 0.02)
+    crack.frequency.exponentialRampToValueAtTime(260, ctx.currentTime + 0.16)
+    crackGain.gain.setValueAtTime(0.0001, ctx.currentTime + 0.02)
+    crackGain.gain.exponentialRampToValueAtTime(0.09, ctx.currentTime + 0.05)
+    crackGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2)
+    crack.connect(crackGain).connect(ctx.destination)
+    crack.start(ctx.currentTime + 0.02)
+    crack.stop(ctx.currentTime + 0.22)
+  }
+}
+
 const SOUND_MAP: Record<SoundType, () => void> = {
   'collect': playCollect,
   'bid-win': playBidWin,
@@ -97,6 +133,7 @@ const SOUND_MAP: Record<SoundType, () => void> = {
   'milestone': playMilestone,
   'engine-idle': () => {}, // placeholder
   'ui-click': playUIClick,
+  'thunder': playThunder,
 }
 
 // Global play function
@@ -141,10 +178,101 @@ function startAmbient(ctx: AudioContext): () => void {
   }
 }
 
+function makeNoiseBuffer(ctx: AudioContext, seconds = 2) {
+  const sampleRate = ctx.sampleRate
+  const length = Math.max(1, Math.floor(sampleRate * seconds))
+  const buffer = ctx.createBuffer(1, length, sampleRate)
+  const data = buffer.getChannelData(0)
+  for (let i = 0; i < length; i++) data[i] = (Math.random() * 2 - 1) * 0.6
+  return buffer
+}
+
+type StormAmbienceController = {
+  setMix: (opts: { storm: number; night: number }) => void
+  stop: () => void
+}
+
+// Storm ambience bed (rain/noise + distant wind) whose mix can be ramped.
+function startStormAmbience(ctx: AudioContext): StormAmbienceController {
+  const buffer = makeNoiseBuffer(ctx, 2.5)
+
+  // Rain noise (bandpassed)
+  const rain = ctx.createBufferSource()
+  rain.buffer = buffer
+  rain.loop = true
+  const rainHP = ctx.createBiquadFilter()
+  rainHP.type = 'highpass'
+  rainHP.frequency.value = 450
+  const rainLP = ctx.createBiquadFilter()
+  rainLP.type = 'lowpass'
+  rainLP.frequency.value = 5200
+  const rainGain = ctx.createGain()
+  rainGain.gain.value = 0
+  rain.connect(rainHP)
+  rainHP.connect(rainLP)
+  rainLP.connect(rainGain).connect(ctx.destination)
+  rain.start()
+
+  // Night wind / ambience (lowpassed noise + slow wobble)
+  const wind = ctx.createBufferSource()
+  wind.buffer = buffer
+  wind.loop = true
+  const windLP = ctx.createBiquadFilter()
+  windLP.type = 'lowpass'
+  windLP.frequency.value = 260
+  const windGain = ctx.createGain()
+  windGain.gain.value = 0
+  const windLfo = ctx.createOscillator()
+  windLfo.type = 'sine'
+  windLfo.frequency.value = 0.15
+  const windLfoGain = ctx.createGain()
+  windLfoGain.gain.value = 0.6
+  windLfo.connect(windLfoGain).connect(windGain.gain)
+  wind.connect(windLP).connect(windGain).connect(ctx.destination)
+  windLfo.start()
+  wind.start()
+
+  const setMix = ({ storm, night }: { storm: number; night: number }) => {
+    const now = ctx.currentTime
+    const s = Math.max(0, Math.min(1, storm))
+    const n = Math.max(0, Math.min(1, night))
+
+    // Keep these subtle so they don't fatigue.
+    const rainTarget = 0.03 + s * 0.09
+    const windTarget = 0.015 + n * 0.04 + s * 0.01
+
+    rainGain.gain.cancelScheduledValues(now)
+    windGain.gain.cancelScheduledValues(now)
+    rainGain.gain.linearRampToValueAtTime(rainTarget, now + 0.35)
+    windGain.gain.linearRampToValueAtTime(windTarget, now + 0.6)
+  }
+
+  const stop = () => {
+    const now = ctx.currentTime
+    rainGain.gain.linearRampToValueAtTime(0, now + 0.3)
+    windGain.gain.linearRampToValueAtTime(0, now + 0.5)
+    setTimeout(() => {
+      try { rain.stop(); } catch {}
+      try { wind.stop(); } catch {}
+      try { windLfo.stop(); } catch {}
+      rain.disconnect()
+      wind.disconnect()
+      windLfo.disconnect()
+    }, 700)
+  }
+
+  return { setMix, stop }
+}
+
 // React component that manages ambient sound + listens for game events
 export function SoundManager() {
   const stopAmbientRef = useRef<(() => void) | null>(null)
+  const stormAmbienceRef = useRef<StormAmbienceController | null>(null)
   const enabledRef = useRef(false)
+
+  const preset = useGameStore(s => s.cloudConfig.preset) || 'custom'
+  const lightning = useGameStore(s => s.activeWeatherEffects.lightning?.intensity ?? 0)
+  const dayNight = useGameStore(s => s.activeWeatherEffects.dayNight?.intensity ?? 0)
 
   const enable = useCallback(() => {
     if (enabledRef.current) return
@@ -152,6 +280,7 @@ export function SoundManager() {
     try {
       const ctx = getCtx()
       stopAmbientRef.current = startAmbient(ctx)
+      stormAmbienceRef.current = startStormAmbience(ctx)
     } catch {
       // ignore
     }
@@ -166,8 +295,18 @@ export function SoundManager() {
       window.removeEventListener('click', handler)
       window.removeEventListener('keydown', handler)
       stopAmbientRef.current?.()
+      stormAmbienceRef.current?.stop()
     }
   }, [enable])
+
+  useEffect(() => {
+    if (!enabledRef.current) return
+    // Map weather state to an ambience mix.
+    const isStorm = preset === 'stormy' || lightning > 0.25
+    const storm = Math.max(0, Math.min(1, (isStorm ? 0.5 : 0) + lightning))
+    const night = Math.max(0, Math.min(1, dayNight))
+    stormAmbienceRef.current?.setMix({ storm, night })
+  }, [preset, lightning, dayNight])
 
   return null // invisible component
 }

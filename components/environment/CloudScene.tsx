@@ -47,6 +47,8 @@ const WEATHER_DOMAINS_BY_PRESET = {
 export default function CloudScene() {
   const { address } = useAccount()
   const playerId = address || 'anonymous'
+  const isWeatherAuctionConfigured =
+    WEATHER_AUCTION_ADDRESS !== '0x0000000000000000000000000000000000000000'
   
   // State from GameStore
   const {
@@ -67,6 +69,7 @@ export default function CloudScene() {
     abi: WEATHER_AUCTION_ABI,
     eventName: 'WeatherChanged',
     pollingInterval: POLL_INTERVAL,
+    enabled: isWeatherAuctionConfigured,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onLogs(logs: any[]) {
       const event = logs[0]?.args
@@ -106,7 +109,6 @@ export default function CloudScene() {
 
         const preset = (event.preset as keyof typeof WEATHER_DOMAINS_BY_PRESET) || 'custom'
         const effects = WEATHER_DOMAINS_BY_PRESET[preset] ?? WEATHER_DOMAINS_BY_PRESET.custom
-        const now = Date.now()
         effects.forEach((effect) => {
           setWeatherEffect({
             ...effect,
@@ -123,18 +125,40 @@ export default function CloudScene() {
           })
         })
       } else if (event.type === 'food-collected') {
-        emitToast('collect', `+${(event.amount as number ?? 0.1).toFixed(2)} OKB collected`, event.agentId as string)
+        const amount = (event.amount as number ?? 0.1)
+        const comboCount = Number(event.comboCount ?? 1)
+        const comboMultiplier = Number(event.comboMultiplier ?? 1)
+
+        emitToast('collect', `+${amount.toFixed(3)} 0G collected`, event.agentId as string)
         playSound('collect')
         if (Math.random() < 0.3) emitChatter(event.agentId as string || 'Agent', 'food-collected')
         const session = agentProtocol.getSession('Player')
         if (session) emitEconomyFeedback(event.amount as number ?? 0.1, session.balance)
+
+        // Combo delight: only start calling it out after the second chain.
+        if (comboCount >= 2) {
+          emitToast('milestone', `Combo x${comboCount}!`, `${comboMultiplier.toFixed(2)}× yield`)
+          if (comboCount >= 4) playSound('milestone')
+        }
+      } else if (event.type === 'powerup') {
+        const power = event.power as string
+        if (power === 'boost') {
+          emitToast('milestone', 'Speed Boost!', 'Spicy pepper activated')
+          playSound('milestone')
+        } else if (power === 'float') {
+          emitToast('milestone', 'Anti-Gravity!', 'Floaty marshmallow activated')
+          playSound('milestone')
+        } else if (power === 'jackpot') {
+          emitToast('milestone', 'Golden Drop!', 'Bonus yield collected')
+          playSound('milestone')
+        }
       } else if (event.type === 'milestone') {
         emitToast('milestone', event.message as string)
         playSound('milestone')
         emitChatter(event.agentId as string || 'Agent', 'milestone')
       } else if (event.type === 'agent-died') {
         emitChatter(event.agentId as string || 'Agent', 'agent-died')
-        emitToast('bid-win', `Agent Decommissioned`, `${(event.agentId as string).slice(0,8)} ran out of vitality. Legacy: ${Number(event.totalEarned).toFixed(3)} OKB`)
+        emitToast('bid-win', `Agent Decommissioned`, `${(event.agentId as string).slice(0,8)} ran out of vitality. Legacy: ${Number(event.totalEarned).toFixed(3)} 0G`)
       }
     })
 

@@ -7,6 +7,8 @@ export interface RoundState {
   roundNumber: number
   startedAt: number
   endsAt: number
+  endedAt?: number
+  nextRoundAt?: number
   durationMs: number
   isActive: boolean
   winner: string | null
@@ -22,6 +24,8 @@ function createInitialRound(): RoundState {
     roundNumber: 1,
     startedAt: now,
     endsAt: now + ROUND_DURATION_MS,
+    endedAt: undefined,
+    nextRoundAt: undefined,
     durationMs: ROUND_DURATION_MS,
     isActive: true,
     winner: null,
@@ -166,6 +170,26 @@ export interface WeatherDomainEffect {
   source: 'auction' | 'drop-in' | 'system'
 }
 
+// ── 0G Storage (Persistence) ─────────────────────────────────────────
+export interface ZgStorageStatus {
+  checkedAt?: number
+  available: boolean | null
+  configured: boolean | null
+  network?: string
+  indexer?: string
+  lastError?: string
+  lastUpload?: {
+    key: string
+    rootHash: string
+    txHash?: string
+    timestamp: number
+  }
+  lastRestore?: {
+    timestamp: number
+    rootHash?: string
+  }
+}
+
 // ── Cloud / Weather Config ───────────────────────────────────────────
 type WeatherConfigUpdate = Partial<CloudConfig> & { spawnRate?: number }
 
@@ -213,6 +237,14 @@ export interface GameStore {
   addTransaction: (tx: PendingTransaction) => void
   updateTransaction: (id: string, update: Partial<PendingTransaction>) => void
   removeTransaction: (id: string) => void
+
+  // 0G Storage (Persistence)
+  zgStorage: ZgStorageStatus
+  setZgStorage: (update: Partial<ZgStorageStatus>) => void
+
+  // Camera feedback (micro shake for impact moments)
+  cameraShake: { until: number; intensity: number }
+  triggerCameraShake: (intensity?: number, durationMs?: number) => void
 
   // Gravity
   gravityMode: GravityMode
@@ -324,6 +356,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
         roundNumber: prev.round.roundNumber + 1,
         startedAt: now,
         endsAt: now + ROUND_DURATION_MS,
+        endedAt: undefined,
+        nextRoundAt: undefined,
         durationMs: ROUND_DURATION_MS,
         isActive: true,
         winner: null,
@@ -331,9 +365,18 @@ export const useGameStore = create<GameStore>((set, get) => ({
       },
     }
   }),
-  endRound: (winner) => set((prev) => ({
-    round: { ...prev.round, isActive: false, winner },
-  })),
+  endRound: (winner) => set((prev) => {
+    const now = Date.now()
+    return {
+      round: {
+        ...prev.round,
+        isActive: false,
+        winner,
+        endedAt: now,
+        nextRoundAt: now + 5000,
+      },
+    }
+  }),
   tickRound: () => {
     const { round, sessions, endRound, startNewRound } = get()
     if (!round.isActive) return
@@ -371,6 +414,21 @@ export const useGameStore = create<GameStore>((set, get) => ({
   })),
   removeTransaction: (id) => set((prev) => ({
     pendingTransactions: prev.pendingTransactions.filter((t) => t.id !== id)
+  })),
+
+  // 0G Storage (Persistence)
+  zgStorage: {
+    available: null,
+    configured: null,
+  },
+  setZgStorage: (update) => set((prev) => ({
+    zgStorage: { ...prev.zgStorage, ...update },
+  })),
+
+  // Camera feedback
+  cameraShake: { until: 0, intensity: 0 },
+  triggerCameraShake: (intensity = 0.6, durationMs = 350) => set(() => ({
+    cameraShake: { until: Date.now() + durationMs, intensity },
   })),
 
   // Gravity

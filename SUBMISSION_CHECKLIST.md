@@ -2,19 +2,18 @@
 
 ## Contracts and Indexing
 
-- [x] Deploy `WeatherAuction` to X Layer testnet — `0x723e444ee6d7da19fade372f85da06dd849bf1e0`
-- [x] Deploy `VehicleRent` to X Layer testnet — `0xea88bd6121d181cfd6f60997b4bdd0297ca432fe`
-- [x] Replace zero addresses in indexer configs (config.yaml + config.testnet.template.yaml)
-- [ ] Run `npm run codegen` inside `indexer/` (requires Envio CLI)
-- [ ] Run the indexer and confirm the GraphQL endpoint works
-- [x] Set `NEXT_PUBLIC_INDEXER_GRAPHQL_URL` in `.env.local`
+- [ ] Deploy `WeatherAuction` to **0G mainnet** — `TBD`
+- [ ] Deploy `VehicleRent` to **0G mainnet** — `TBD`
+- [ ] Add 0G Chain Scan explorer links for both contracts (`https://chainscan.0g.ai/address/<addr>`)
+- [ ] (Optional) Run the indexer and confirm the GraphQL endpoint works
+- [ ] (Optional) Set `NEXT_PUBLIC_INDEXER_GRAPHQL_URL` in `.env.local`
 
 ## Frontend Env
 
-- [x] Set `NEXT_PUBLIC_USE_XLAYER_TESTNET`
+- [x] Set `NEXT_PUBLIC_USE_0G_TESTNET` (or legacy `NEXT_PUBLIC_USE_XLAYER_TESTNET`)
 - [x] Set `NEXT_PUBLIC_WEATHER_AUCTION_ADDRESS`
 - [x] Set `NEXT_PUBLIC_VEHICLE_RENT_ADDRESS`
-- [ ] Confirm the app connects to the intended X Layer network
+- [ ] Confirm the app connects to the intended 0G network
 
 ## Product Verification
 
@@ -22,27 +21,25 @@
 - [ ] Confirm weather bid execution works
 - [ ] Confirm mobility lease execution works
 - [ ] Confirm provider and activity HUD render correctly
-- [ ] Confirm leaderboard source badge flips to `Live Indexed` when the endpoint is live
+- [ ] Confirm any leaderboard source badge flips to `Live Indexed` when the endpoint is live (if indexer is used)
 
-## Skill Provider
+## 0G Storage (Required Proof)
 
-- [x] Wire Onchain OS / MCP provider in `services/skillEngine.ts`
-- [x] Add `NEXT_PUBLIC_SKILL_PROVIDER` env var toggle (`onchain-os` | `local-policy`)
-- [x] Graceful fallback to local-policy when MCP endpoint is unreachable
+- [ ] Configure `DEPLOYER_PRIVATE_KEY` for `/api/0g-storage` uploads
+- [ ] Confirm `/api/0g-storage?health=1` returns `ok: true`
+- [ ] Confirm a state upload returns `{ rootHash, txHash }`
+- [ ] Confirm restore path works (refresh → state restored from 0G Storage)
 
 ## README Completion
 
-- [x] Replace `TBD` deployment addresses in README.md
-- [x] Replace `TBD` team members in README.md
-- [x] Update Current Gaps section to reflect completed items
-- [ ] Add final architecture visual or screenshot link
-- [x] Re-read README against actual deployed behavior
+- [ ] Fill mainnet deployment addresses in README.md
+- [ ] Fill team members in README.md
+- [ ] Add a final architecture visual or at least the Mermaid diagram + a screenshot link
+- [ ] Verify README matches deployed reality
 
 ## Demo and Submission
 
-- [ ] Record the demo using [DEMO_SCRIPT.md](/Users/udingethe/Dev/clawdy/DEMO_SCRIPT.md:1)
+- [ ] Record the demo using [DEMO_SCRIPT.md](./DEMO_SCRIPT.md)
 - [ ] Upload demo to YouTube or Google Drive
 - [ ] Add the demo link to the submission form
-- [ ] Post project intro on X
-- [ ] Add the X post link to the submission form
-- [ ] Submit before the deadline
+- [ ] Submit via HackQuest before the deadline

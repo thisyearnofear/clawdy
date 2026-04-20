@@ -32,11 +32,22 @@ export interface ZgGameState {
 
 const ZG_API_BASE = '/api/0g-storage'
 
+export interface ZgHealthStatus {
+  ok: boolean
+  configured?: boolean
+  network?: string
+  indexer?: string
+  error?: string
+}
+
 /**
  * Save game state to 0G Storage via API route.
  * Falls back to localStorage on failure.
  */
-export async function zgSaveState(key: string, state: ZgGameState): Promise<{ rootHash?: string; error?: string }> {
+export async function zgSaveState(
+  key: string,
+  state: ZgGameState
+): Promise<{ rootHash?: string; txHash?: string; error?: string }> {
   try {
     const res = await fetch(ZG_API_BASE, {
       method: 'POST',
@@ -51,7 +62,7 @@ export async function zgSaveState(key: string, state: ZgGameState): Promise<{ ro
       localStorage.setItem(`clawdy:0g:${key}`, data.rootHash)
       localStorage.setItem(`clawdy:0g:${key}:ts`, Date.now().toString())
     }
-    return { rootHash: data.rootHash }
+    return { rootHash: data.rootHash, txHash: data.txHash }
   } catch (err) {
     return { error: (err as Error).message }
   }
@@ -84,5 +95,19 @@ export async function zgIsAvailable(): Promise<boolean> {
     return res.ok
   } catch {
     return false
+  }
+}
+
+/**
+ * Fetch detailed status from the 0G Storage API route.
+ */
+export async function zgHealth(): Promise<ZgHealthStatus> {
+  try {
+    const res = await fetch(`${ZG_API_BASE}?health=1`)
+    const data = (await res.json()) as ZgHealthStatus
+    if (!res.ok) return { ok: false, error: data.error || 'Health check failed' }
+    return data
+  } catch (err) {
+    return { ok: false, error: (err as Error).message }
   }
 }

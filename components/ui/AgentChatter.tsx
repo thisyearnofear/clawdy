@@ -42,7 +42,7 @@ const CHATTER_LINES: Record<string, { emoji: string; lines: string[] }> = {
       'Next time...',
       'Rigged!',
       'I\'ll be back',
-      'Saving my OKB anyway',
+      'Saving my 0G anyway',
       'Whatever.',
       'That was MY bid!',
     ],
@@ -51,7 +51,7 @@ const CHATTER_LINES: Record<string, { emoji: string; lines: string[] }> = {
     emoji: '🏆',
     lines: [
       'Getting rich!',
-      'Stack those OKB',
+      'Stack those 0G',
       'To the moon!',
       'Unstoppable',
       'Who\'s the boss?',

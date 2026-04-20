@@ -1,15 +1,19 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { EffectComposer, Bloom, Vignette, ChromaticAberration } from '@react-three/postprocessing'
 import { BlendFunction } from 'postprocessing'
 import * as THREE from 'three'
 import type { CloudConfig } from './CloudManager'
 
+function lerp(a: number, b: number, t: number) {
+  return a + (b - a) * t
+}
+
 export function WeatherPostProcessing({ config }: { config: CloudConfig }) {
   const preset = config.preset || 'custom'
 
-  const settings = useMemo(() => {
+  const target = useMemo(() => {
     switch (preset) {
       case 'stormy':
         return {
@@ -49,6 +53,34 @@ export function WeatherPostProcessing({ config }: { config: CloudConfig }) {
         }
     }
   }, [preset])
+
+  const [settings, setSettings] = useState(() => target)
+  const lastRef = useRef(performance.now())
+
+  // Smoothly blend effect parameters to avoid hard cuts between presets.
+  useEffect(() => {
+    let raf = 0
+    const tick = (t: number) => {
+      const dt = Math.min(0.05, (t - lastRef.current) / 1000)
+      lastRef.current = t
+      const speed = preset === 'stormy' ? 4.5 : 3.0
+      const k = Math.min(1, dt * speed)
+      setSettings(prev => ({
+        bloomIntensity: lerp(prev.bloomIntensity, target.bloomIntensity, k),
+        bloomThreshold: lerp(prev.bloomThreshold, target.bloomThreshold, k),
+        bloomRadius: lerp(prev.bloomRadius, target.bloomRadius, k),
+        vignetteOffset: lerp(prev.vignetteOffset, target.vignetteOffset, k),
+        vignetteDarkness: lerp(prev.vignetteDarkness, target.vignetteDarkness, k),
+        chromaticOffset: new THREE.Vector2(
+          lerp(prev.chromaticOffset.x, target.chromaticOffset.x, k),
+          lerp(prev.chromaticOffset.y, target.chromaticOffset.y, k)
+        ),
+      }))
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [preset, target])
 
   return (
     <EffectComposer>
