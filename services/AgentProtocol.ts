@@ -138,6 +138,8 @@ export interface AgentSession {
   // Power-ups
   speedBoostUntil?: number
   antiGravityUntil?: number
+  airBubbleUntil?: number
+  airBubbleCount?: number
   isDead?: boolean
 }
 
@@ -395,6 +397,9 @@ class AgentProtocol {
     }
     if (stats.type === 'golden_meatball') {
       this.gameEventListeners.forEach(l => l({ type: 'powerup', agentId, power: 'jackpot' }))
+    }
+    if (stats.type === 'air_bubble') {
+      this.gameEventListeners.forEach(l => l({ type: 'powerup', agentId, power: 'bubble' }))
     }
     
     // Milestone check

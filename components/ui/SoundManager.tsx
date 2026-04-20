@@ -6,7 +6,7 @@ import { useGameStore } from '../../services/gameStore'
 // Tiny Web Audio API sound manager — no external files needed
 // All sounds are synthesized procedurally
 
-type SoundType = 'collect' | 'bid-win' | 'bid-lose' | 'milestone' | 'engine-idle' | 'ui-click' | 'thunder'
+type SoundType = 'collect' | 'bid-win' | 'bid-lose' | 'milestone' | 'engine-idle' | 'ui-click' | 'thunder' | 'splash'
 
 let audioCtx: AudioContext | null = null
 
@@ -126,6 +126,49 @@ function playThunder() {
   }
 }
 
+function playSplash() {
+  const ctx = getCtx()
+
+  // Quick filtered noise burst (water hiss) + tiny pop
+  const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.08), ctx.sampleRate)
+  const data = buffer.getChannelData(0)
+  for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length)
+
+  const src = ctx.createBufferSource()
+  src.buffer = buffer
+
+  const hp = ctx.createBiquadFilter()
+  hp.type = 'highpass'
+  hp.frequency.value = 700
+
+  const lp = ctx.createBiquadFilter()
+  lp.type = 'lowpass'
+  lp.frequency.value = 4200
+
+  const gain = ctx.createGain()
+  gain.gain.setValueAtTime(0.0001, ctx.currentTime)
+  gain.gain.exponentialRampToValueAtTime(0.08, ctx.currentTime + 0.01)
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08)
+
+  src.connect(hp)
+  hp.connect(lp)
+  lp.connect(gain).connect(ctx.destination)
+  src.start()
+  src.stop(ctx.currentTime + 0.09)
+
+  const pop = ctx.createOscillator()
+  const popGain = ctx.createGain()
+  pop.type = 'sine'
+  pop.frequency.setValueAtTime(220, ctx.currentTime)
+  pop.frequency.exponentialRampToValueAtTime(120, ctx.currentTime + 0.06)
+  popGain.gain.setValueAtTime(0.0001, ctx.currentTime)
+  popGain.gain.exponentialRampToValueAtTime(0.05, ctx.currentTime + 0.01)
+  popGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.07)
+  pop.connect(popGain).connect(ctx.destination)
+  pop.start()
+  pop.stop(ctx.currentTime + 0.08)
+}
+
 const SOUND_MAP: Record<SoundType, () => void> = {
   'collect': playCollect,
   'bid-win': playBidWin,
@@ -134,6 +177,7 @@ const SOUND_MAP: Record<SoundType, () => void> = {
   'engine-idle': () => {}, // placeholder
   'ui-click': playUIClick,
   'thunder': playThunder,
+  'splash': playSplash,
 }
 
 // Global play function

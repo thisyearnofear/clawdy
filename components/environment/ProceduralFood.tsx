@@ -10,6 +10,7 @@ export type FoodType =
   | 'golden_meatball' 
   | 'spicy_pepper' 
   | 'floaty_marshmallow'
+  | 'air_bubble'
   | 'burger' | 'donut' | 'icecream' | 'hotdog' | 'pizza' | 'sushi' | 'taco' | 'apple' | 'broccoli' | 'soda' | 'rotten_burger'
 
 export interface FoodStats {
@@ -24,6 +25,7 @@ export const FOOD_METADATA: Record<FoodType, Omit<FoodStats, 'type'>> = {
   golden_meatball: { nutrition: 'powerup', mass: 1.2, isDestroyable: true },
   spicy_pepper: { nutrition: 'powerup', mass: 0.4, isDestroyable: true },
   floaty_marshmallow: { nutrition: 'powerup', mass: 0.2, isDestroyable: true },
+  air_bubble: { nutrition: 'powerup', mass: 0.15, isDestroyable: true },
   apple: { nutrition: 'healthy', mass: 0.5, isDestroyable: true },
   sushi: { nutrition: 'healthy', mass: 0.4, isDestroyable: true },
   broccoli: { nutrition: 'healthy', mass: 0.3, isDestroyable: true },
@@ -42,6 +44,7 @@ export const FOOD_COLORS: Record<FoodType, string> = {
   golden_meatball: '#f1c40f',
   spicy_pepper: '#ff0000',
   floaty_marshmallow: '#ffffff',
+  air_bubble: '#7fd6ff',
   apple: '#e74c3c',
   sushi: '#ff7675',
   broccoli: '#228b22',
@@ -96,6 +99,9 @@ export function ProceduralFood({ id, itemType, onDespawn, onCollect, ...props }:
       if (stats.type === 'floaty_marshmallow') {
         rigidBody.current.applyImpulse({ x: 0, y: 0.1, z: 0 }, true)
       }
+      if (stats.type === 'air_bubble') {
+        rigidBody.current.applyImpulse({ x: 0, y: 0.14, z: 0 }, true)
+      }
     }
     
     // Pulsing emissive glow for all collectibles
@@ -112,6 +118,8 @@ export function ProceduralFood({ id, itemType, onDespawn, onCollect, ...props }:
         return <coneGeometry args={[0.3, 1, 8]} />
       case 'floaty_marshmallow':
         return <cylinderGeometry args={[0.5, 0.5, 0.4, 16]} />
+      case 'air_bubble':
+        return <sphereGeometry args={[0.55, 16, 16]} />
       case 'golden_meatball':
       case 'meatball':
       case 'apple':
@@ -155,11 +163,13 @@ export function ProceduralFood({ id, itemType, onDespawn, onCollect, ...props }:
           {renderShape()}
           <meshStandardMaterial
             ref={matRef}
-            roughness={0.2}
+            roughness={stats.type === 'air_bubble' ? 0.05 : 0.2}
             metalness={stats.type === 'golden_meatball' ? 0.9 : 0.2}
             color={FOOD_COLORS[stats.type]}
             emissive={FOOD_COLORS[stats.type]}
             emissiveIntensity={0.5}
+            transparent={stats.type === 'air_bubble'}
+            opacity={stats.type === 'air_bubble' ? 0.35 : 1}
           />
         </mesh>
       </group>

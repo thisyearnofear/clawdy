@@ -6,6 +6,7 @@ import { useFrame } from '@react-three/fiber'
 import type { RapierRigidBody } from '@react-three/rapier'
 import { RigidBody } from '@react-three/rapier'
 import { useVehiclePhysics, VehicleStats } from '../../hooks/useVehiclePhysics'
+import { WaterTurnSplashes } from '../environment/WaterTurnSplashes'
 const VEHICLE_STATS: VehicleStats = {
   profile: 'vehicle',
   maxSpeed: 55,
@@ -33,7 +34,7 @@ export function Vehicle({
 }) {
   const chassisRef = useRef<RapierRigidBody>(null)
   
-  useVehiclePhysics(id, chassisRef, VEHICLE_STATS, agentControlled, playerControlled)
+  const { inputs } = useVehiclePhysics(id, chassisRef, VEHICLE_STATS, agentControlled, playerControlled)
 
   useEffect(() => {
     if (onRef && chassisRef.current) {
@@ -89,6 +90,13 @@ export function Vehicle({
           <meshStandardMaterial color="#fff" emissive="#fff" emissiveIntensity={0.5} />
         </mesh>
       </RigidBody>
+
+      <WaterTurnSplashes
+        chassisRef={chassisRef}
+        enabled={playerControlled && !agentControlled}
+        turnInput={inputs.turn}
+        brake={inputs.brake}
+      />
     </group>
   )
 }

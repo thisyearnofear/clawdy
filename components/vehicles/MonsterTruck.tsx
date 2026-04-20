@@ -6,6 +6,7 @@ import { useFrame } from '@react-three/fiber'
 import type { RapierRigidBody } from '@react-three/rapier'
 import { RigidBody } from '@react-three/rapier'
 import { useVehiclePhysics, VehicleStats } from '../../hooks/useVehiclePhysics'
+import { WaterTurnSplashes } from '../environment/WaterTurnSplashes'
 const TRUCK_STATS: VehicleStats = {
   profile: 'monster',
   maxSpeed: 50,
@@ -192,6 +193,13 @@ export function MonsterTruck({
           </mesh>
         </group>
       </RigidBody>
+
+      <WaterTurnSplashes
+        chassisRef={chassisRef}
+        enabled={playerControlled && !agentControlled}
+        turnInput={inputs.turn}
+        brake={inputs.brake}
+      />
     </group>
   )
 }

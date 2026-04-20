@@ -9,9 +9,12 @@ export function FloodWater({ bounds }: { bounds: [number, number, number] }) {
   const preset = useGameStore(s => s.cloudConfig.preset) || 'custom'
   const lightning = useGameStore(s => s.activeWeatherEffects.lightning?.intensity ?? 0)
   const round = useGameStore(s => s.round)
+  const setFlood = useGameStore(s => s.setFlood)
 
   const meshRef = useRef<THREE.Mesh>(null)
   const levelRef = useRef(-2) // current water level
+  const phaseRef = useRef<'idle' | 'rising' | 'peak' | 'draining'>('idle')
+  const peakUntilRef = useRef(0)
 
   const material = useMemo(() => {
     const mat = new THREE.ShaderMaterial({
@@ -116,12 +119,58 @@ export function FloodWater({ bounds }: { bounds: [number, number, number] }) {
     const remainingSec = Math.max(0, Math.ceil((round.endsAt - Date.now()) / 1000))
     const finalRushBoost = round.isActive && remainingSec > 0 && remainingSec <= 10 ? 1 : 0
 
-    const targetVisible = stormIntensity > 0.05
-    const targetLevel = targetVisible ? (-0.8 + stormIntensity * 1.35 + finalRushBoost * 0.25) : -2
-    levelRef.current = THREE.MathUtils.lerp(levelRef.current, targetLevel, 0.02 + stormIntensity * 0.03)
+    // Beat-based pacing: rise → peak → drain (with hysteresis)
+    const riseOn = stormIntensity > 0.22
+    const keepOn = stormIntensity > 0.12
+    const now = performance.now()
+
+    if (phaseRef.current === 'idle') {
+      if (riseOn) {
+        phaseRef.current = 'rising'
+        peakUntilRef.current = 0
+      }
+    } else if (phaseRef.current === 'rising') {
+      // Reach peak when close to target
+      if (!keepOn) phaseRef.current = 'draining'
+      if (levelRef.current > 0.25) {
+        phaseRef.current = 'peak'
+        // Hold peak a bit so it feels intentional; longer during Final Rush.
+        peakUntilRef.current = now + (finalRushBoost ? 8000 : 5500)
+      }
+    } else if (phaseRef.current === 'peak') {
+      if (now >= peakUntilRef.current && !keepOn) phaseRef.current = 'draining'
+      // If storm stays strong, refresh peak hold slightly.
+      if (stormIntensity > 0.55) peakUntilRef.current = Math.max(peakUntilRef.current, now + 2500)
+    } else if (phaseRef.current === 'draining') {
+      if (riseOn) phaseRef.current = 'rising'
+      if (levelRef.current < -1.7) phaseRef.current = 'idle'
+    }
+
+    const targetVisible = phaseRef.current !== 'idle'
+    const baseTargetLevel = -0.95 + stormIntensity * 1.55
+    const peakTargetLevel = 0.55 + stormIntensity * 0.85 + finalRushBoost * 0.25
+    const drainTargetLevel = -2
+
+    const targetLevel =
+      phaseRef.current === 'rising'
+        ? baseTargetLevel
+        : phaseRef.current === 'peak'
+          ? peakTargetLevel
+          : phaseRef.current === 'draining'
+            ? drainTargetLevel
+            : drainTargetLevel
+
+    const lerpSpeed =
+      phaseRef.current === 'rising'
+        ? 0.03 + stormIntensity * 0.04 + finalRushBoost * 0.03
+        : phaseRef.current === 'peak'
+          ? 0.02
+          : 0.02 + stormIntensity * 0.015
+
+    levelRef.current = THREE.MathUtils.lerp(levelRef.current, targetLevel, lerpSpeed)
 
     // Opacity + foam ramp
-    const targetOpacity = targetVisible ? (0.08 + stormIntensity * 0.22) : 0
+    const targetOpacity = targetVisible ? (0.06 + stormIntensity * 0.26 + finalRushBoost * 0.04) : 0
     material.uniforms.uOpacity.value = THREE.MathUtils.lerp(material.uniforms.uOpacity.value, targetOpacity, 0.05)
     material.uniforms.uFoam.value = THREE.MathUtils.lerp(material.uniforms.uFoam.value, stormIntensity, 0.04)
 
@@ -129,10 +178,14 @@ export function FloodWater({ bounds }: { bounds: [number, number, number] }) {
       meshRef.current.position.y = levelRef.current
       meshRef.current.visible = material.uniforms.uOpacity.value > 0.01
     }
+
+    // Store update (lightweight; only when meaningful values change)
+    const active = targetVisible
+    const intensity = stormIntensity
+    setFlood({ active, intensity, level: levelRef.current })
   })
 
   return (
     <mesh ref={meshRef} geometry={geometry} material={material} />
   )
 }
-

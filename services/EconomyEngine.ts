@@ -58,6 +58,13 @@ export class EconomyEngine {
 
     // Specialized Food Logic
     switch (stats.type) {
+      case 'air_bubble':
+        session.airBubbleUntil = Date.now() + 6000 // 6s water-drag immunity + small boost
+        session.airBubbleCount = (session.airBubbleCount ?? 0) + 1
+        earned = 0.0005
+        vitalityGain = 0
+        burdenGain = -8
+        break
       case 'golden_meatball':
         earned = 0.01
         vitalityGain = 25

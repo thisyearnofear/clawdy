@@ -6,6 +6,7 @@ import { useFrame } from '@react-three/fiber'
 import type { RapierRigidBody } from '@react-three/rapier'
 import { RigidBody } from '@react-three/rapier'
 import { useVehiclePhysics, VehicleStats } from '../../hooks/useVehiclePhysics'
+import { WaterTurnSplashes } from '../environment/WaterTurnSplashes'
 const SPEEDSTER_STATS: VehicleStats = {
   profile: 'speedster',
   maxSpeed: 85,
@@ -217,6 +218,14 @@ export function Speedster({
            </group>
         ))}
       </RigidBody>
+
+      {/* Splash rings during sharp turns in flood water (player only) */}
+      <WaterTurnSplashes
+        chassisRef={chassisRef}
+        enabled={playerControlled && !agentControlled}
+        turnInput={inputs.turn}
+        brake={inputs.brake}
+      />
     </group>
   )
 }

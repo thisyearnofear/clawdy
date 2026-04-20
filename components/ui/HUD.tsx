@@ -41,14 +41,18 @@ export function HUD({
   const showHUD = useGameStore(state => state.ui.showHUD)
   const activeWeatherEffects = useGameStore(state => state.activeWeatherEffects)
   const [now, setNow] = useState(() => Date.now())
+  const flood = useGameStore(state => state.flood)
+  const playerWater = useGameStore(state => state.playerWater)
   const playerSession = sessions['Player']
   const activeDomainEffects = Object.values(activeWeatherEffects)
   const isSpeedBoosted = !!(playerSession?.speedBoostUntil && playerSession.speedBoostUntil > now)
   const isAntiGravity = !!(playerSession?.antiGravityUntil && playerSession.antiGravityUntil > now)
+  const isAirBubble = !!(playerSession?.airBubbleUntil && playerSession.airBubbleUntil > now)
   const comboCount = playerSession?.comboCount ?? 0
   const comboMultiplier = playerSession?.comboMultiplier ?? 1
   const comboExpiresAt = playerSession?.comboExpiresAt ?? 0
   const comboSecondsLeft = comboCount >= 2 ? Math.max(0, Math.ceil((comboExpiresAt - now) / 1000)) : 0
+  const bubbleSecondsLeft = isAirBubble ? Math.max(0, Math.ceil(((playerSession?.airBubbleUntil ?? 0) - now) / 1000)) : 0
   const hasTrackedSpectatorCtaRef = useRef(false)
 
   useEffect(() => {
@@ -220,6 +224,19 @@ export function HUD({
                   </div>
                 </>
               )}
+              {isAirBubble && (
+                <>
+                  <div className="w-px h-6 bg-white/10" />
+                  <div className="flex items-center gap-1.5">
+                    <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-cyan-200">
+                      Bubble
+                    </span>
+                    <span className="rounded-full border border-cyan-300/20 bg-black/20 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-cyan-200/80 tabular-nums">
+                      {bubbleSecondsLeft}s
+                    </span>
+                  </div>
+                </>
+              )}
               {comboCount >= 2 && (
                 <>
                   <div className="w-px h-6 bg-white/10" />
@@ -229,6 +246,32 @@ export function HUD({
                     </span>
                     <span className="rounded-full border border-yellow-400/20 bg-black/20 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-yellow-200/80">
                       {comboMultiplier.toFixed(2)}× • {comboSecondsLeft}s
+                    </span>
+                  </div>
+                </>
+              )}
+              {flood.active && flood.intensity > 0.2 && (
+                <>
+                  <div className="w-px h-6 bg-white/10" />
+                  <div className="flex items-center gap-1.5">
+                    <span className="rounded-full border border-sky-400/30 bg-sky-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-sky-200">
+                      Flooding
+                    </span>
+                    <span className="rounded-full border border-sky-400/20 bg-black/20 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-sky-200/80 tabular-nums">
+                      {Math.round(flood.intensity * 100)}%
+                    </span>
+                  </div>
+                </>
+              )}
+              {playerWater.inWater && (
+                <>
+                  <div className="w-px h-6 bg-white/10" />
+                  <div className="flex items-center gap-1.5">
+                    <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-cyan-200">
+                      In water
+                    </span>
+                    <span className="rounded-full border border-cyan-300/20 bg-black/20 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-cyan-200/80 tabular-nums">
+                      {Math.round((playerWater.depth ?? 0) * 100)}%
                     </span>
                   </div>
                 </>

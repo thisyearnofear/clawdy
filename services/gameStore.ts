@@ -246,6 +246,14 @@ export interface GameStore {
   cameraShake: { until: number; intensity: number }
   triggerCameraShake: (intensity?: number, durationMs?: number) => void
 
+  // Flood (visual + light gameplay hooks)
+  flood: { active: boolean; intensity: number; level: number }
+  setFlood: (update: Partial<GameStore['flood']>) => void
+
+  // Player water interaction (readable moment-to-moment feedback)
+  playerWater: { inWater: boolean; depth: number }
+  setPlayerWater: (update: Partial<GameStore['playerWater']>) => void
+
   // Gravity
   gravityMode: GravityMode
   setGravityMode: (mode: GravityMode) => void
@@ -429,6 +437,18 @@ export const useGameStore = create<GameStore>((set, get) => ({
   cameraShake: { until: 0, intensity: 0 },
   triggerCameraShake: (intensity = 0.6, durationMs = 350) => set(() => ({
     cameraShake: { until: Date.now() + durationMs, intensity },
+  })),
+
+  // Flood
+  flood: { active: false, intensity: 0, level: -2 },
+  setFlood: (update) => set((prev) => ({
+    flood: { ...prev.flood, ...update },
+  })),
+
+  // Player water
+  playerWater: { inWater: false, depth: 0 },
+  setPlayerWater: (update) => set((prev) => ({
+    playerWater: { ...prev.playerWater, ...update },
   })),
 
   // Gravity

@@ -151,6 +151,9 @@ export default function CloudScene() {
         } else if (power === 'jackpot') {
           emitToast('milestone', 'Golden Drop!', 'Bonus yield collected')
           playSound('milestone')
+        } else if (power === 'bubble') {
+          emitToast('milestone', 'Air Bubble!', 'Water drag cleared (briefly)')
+          playSound('milestone')
         }
       } else if (event.type === 'milestone') {
         emitToast('milestone', event.message as string)

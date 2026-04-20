@@ -35,6 +35,8 @@ export function useVehiclePhysics(
   const [, getKeys] = useKeyboardControls()
   const handlingMode = useGameStore(state => state.handlingMode)
   const handling = HANDLING_MATRIX[handlingMode]
+  const flood = useGameStore(state => state.flood)
+  const setPlayerWater = useGameStore(state => state.setPlayerWater)
   const [inputs, setInputs] = useState({ forward: 0, turn: 0, brake: false, aim: 0, action: false })
   
   // Smoothing for physics forces
@@ -64,6 +66,7 @@ export function useVehiclePhysics(
     const session = agentProtocol.getSession(agentControlled ? id : 'Player')
     const vitalityFactor = session ? session.vitality / 100 : 1
     const burdenFactor = session ? session.burden / 100 : 0
+    const isAirBubble = !!(session && session.airBubbleUntil && session.airBubbleUntil > Date.now())
 
     // Determine current raw input
     let rawForward = inputs.forward
@@ -120,8 +123,27 @@ export function useVehiclePhysics(
     const surfaceType = getSurfaceType(vPos.x, vPos.z)
     const rollingFriction = SURFACE_FRICTION[surfaceType] || 0.98
     const baseDamping = handling.baseLinearDamping + (1 - rollingFriction) * handling.surfaceDampingInfluence
-    chassisRef.current.setLinearDamping(rawBrake ? handling.brakingDamping : baseDamping)
-    chassisRef.current.setAngularDamping(handling.angularDamping)
+
+    // Flood drag: if the vehicle is under the water surface, movement becomes heavier/slower.
+    // This is intentionally subtle (delight + readability without breaking balance).
+    const waterSurfaceY = flood.level
+    const chassisHalfHeight = 0.35
+    // Air Bubble temporarily negates water drag.
+    const submergeDepth = flood.active && !isAirBubble
+      ? THREE.MathUtils.clamp((waterSurfaceY - (vPos.y - chassisHalfHeight)) / 1.0, 0, 1)
+      : 0
+
+    // Publish player-only water state for HUD clarity.
+    if (!agentControlled && playerControlled) {
+      const inWater = submergeDepth > 0.18 && flood.active
+      setPlayerWater({ inWater, depth: submergeDepth })
+    }
+
+    const floodLinearDrag = submergeDepth * (1.4 + flood.intensity * 1.6)
+    const floodAngularDrag = submergeDepth * (0.8 + flood.intensity * 1.4)
+
+    chassisRef.current.setLinearDamping(rawBrake ? handling.brakingDamping : baseDamping + floodLinearDrag)
+    chassisRef.current.setAngularDamping(handling.angularDamping + floodAngularDrag)
 
     // --- 3. HIGH-TORQUE MOTOR ACCELERATION (with Power-ups) ---
     const isSpeedBoosted = session && session.speedBoostUntil && session.speedBoostUntil > Date.now()
@@ -134,10 +156,12 @@ export function useVehiclePhysics(
       tank: 0.82,
     }
     const boostFactor = isSpeedBoosted ? handling.speedBoostMultiplier : 1.0
+    const floodSlow = 1 - submergeDepth * 0.35
+    const bubbleBoost = isAirBubble ? 1.18 : 1.0
     const modeSpeedScale = handling.speedScale * vehicleModeScale[stats.profile]
     const modeAccelScale = handling.accelerationScale * vehicleModeScale[stats.profile]
-    const maxSpeed = stats.maxSpeed * modeSpeedScale * (0.55 + 0.45 * vitalityFactor) * boostFactor
-    const accelerationPower = stats.acceleration * modeAccelScale * boostFactor
+    const maxSpeed = stats.maxSpeed * modeSpeedScale * (0.55 + 0.45 * vitalityFactor) * boostFactor * floodSlow
+    const accelerationPower = stats.acceleration * modeAccelScale * boostFactor * floodSlow * bubbleBoost
 
     if (Math.abs(smoothedForward.current) > 0.01) {
       const forwardSpeed = velocity.x * forwardDir.x + velocity.z * forwardDir.z

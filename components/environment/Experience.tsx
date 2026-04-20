@@ -107,8 +107,22 @@ function Experience({
   const playerEarned = playerSession?.totalEarned ?? 0
   const behindBy = Math.max(0, leaderEarned - playerEarned)
   const isPlayerBehind = behindBy > 0.008
+  const flood = useGameStore(s => s.flood)
 
   const chooseAssistedFoodType = (): FoodType | undefined => {
+    // Flood moment: gently bias toward mobility powerups so players feel the weather.
+    if (flood.active && flood.intensity > 0.25) {
+      // Rare flood-only pickup: Air Bubble (brief drag immunity + small speed boost).
+      const pBubble = Math.min(0.12, 0.03 + flood.intensity * 0.06)
+      if (Math.random() < pBubble) return 'air_bubble'
+
+      const p = Math.min(0.22, 0.06 + flood.intensity * 0.12)
+      if (Math.random() < p) {
+        // Slight bias to Float during floods; Boost is second.
+        return Math.random() < 0.6 ? 'floaty_marshmallow' : 'spicy_pepper'
+      }
+    }
+
     if (!isPlayerBehind) return undefined
 
     // Behind more => slightly more help (capped).

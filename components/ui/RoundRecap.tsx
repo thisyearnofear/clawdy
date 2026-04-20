@@ -115,6 +115,12 @@ export function RoundRecap() {
                     {(player.executedBidCount ?? 0) + (player.executedRentCount ?? 0)}
                   </div>
                 </div>
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3 col-span-2">
+                  <div className="text-[9px] font-black uppercase tracking-widest text-white/40">Air bubbles</div>
+                  <div className="mt-1 text-sm font-mono font-black text-cyan-200">
+                    {player.airBubbleCount ?? 0}
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -135,4 +141,3 @@ export function RoundRecap() {
     </div>
   )
 }
-
