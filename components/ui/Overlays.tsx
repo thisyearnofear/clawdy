@@ -28,7 +28,25 @@ export function Overlays({
   onDoneBidWin
 }: OverlaysProps) {
   const flood = useGameStore(s => s.flood)
+  const ui = useGameStore(s => s.ui)
+  const setUI = useGameStore(s => s.setUI)
+  const setModalOpen = useGameStore(s => s.setModalOpen)
   const lastFloodPhaseRef = useRef<typeof flood.phase>('idle')
+
+  // Keep a single source of truth for "blocking" overlays.
+  useEffect(() => {
+    setModalOpen('onboarding', showOnboarding)
+  }, [setModalOpen, showOnboarding])
+
+  const isBlockingOverlayOpen =
+    ui.modals.wallet || ui.modals.onboarding || ui.modals.recap || ui.modals.spectatorCta
+
+  // Mobile declutter: if a blocking overlay is open, close secondary UI surfaces.
+  useEffect(() => {
+    if (!isBlockingOverlayOpen) return
+    // Keep these centralized so other components stay dumb.
+    setUI({ showQuickControls: false, isSidebarOpen: false })
+  }, [isBlockingOverlayOpen, setUI])
 
   // Flood phase callouts (no new components; keep this centralized).
   useEffect(() => {

@@ -12,6 +12,7 @@ export function RoundRecap() {
   const round = useGameStore(s => s.round)
   const sessions = useGameStore(s => s.sessions)
   const floodStats = useGameStore(s => s.playerFloodStats)
+  const setModalOpen = useGameStore(s => s.setModalOpen)
   const [now, setNow] = useState(() => Date.now())
   const [dismissedRound, setDismissedRound] = useState<number | null>(null)
 
@@ -30,6 +31,21 @@ export function RoundRecap() {
   }, [sessions])
 
   const isVisible = !round.isActive && !!round.winner && dismissedRound !== round.roundNumber
+  
+  // Expose recap as a blocking modal to the rest of the UI.
+  useEffect(() => {
+    setModalOpen('recap', isVisible)
+  }, [isVisible, setModalOpen, round.roundNumber])
+
+  useEffect(() => {
+    if (!isVisible) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setDismissedRound(round.roundNumber)
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [round.roundNumber, isVisible])
+
   if (!isVisible) return null
 
   const nextInMs = Math.max(0, (round.nextRoundAt ?? (now + 5000)) - now)
@@ -40,7 +56,12 @@ export function RoundRecap() {
   const playerRank = player ? leaderboard.findIndex(e => e.agentId === player.agentId) + 1 : null
 
   return (
-    <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+    <div
+      className="fixed inset-0 z-[95] flex items-center justify-center bg-black/60 backdrop-blur-md p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) setDismissedRound(round.roundNumber)
+      }}
+    >
       <div className="w-full max-w-md rounded-3xl border border-white/15 bg-slate-900/95 shadow-2xl overflow-hidden">
         <div className="p-5 border-b border-white/10 bg-white/5 flex items-start justify-between gap-4">
           <div>

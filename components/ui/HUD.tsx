@@ -39,8 +39,16 @@ export function HUD({
   const { address } = useAccount()
   const sessions = useGameStore(state => state.sessions)
   const showHUD = useGameStore(state => state.ui.showHUD)
+  const hideSpectatorCta = useGameStore(state => state.ui.hideSpectatorCta)
+  const setUI = useGameStore(state => state.setUI)
+  const setModalOpen = useGameStore(state => state.setModalOpen)
+  const isBlockingOverlayOpen = useGameStore(state =>
+    state.ui.modals.wallet || state.ui.modals.onboarding || state.ui.modals.recap || state.ui.modals.spectatorCta
+  )
   const activeWeatherEffects = useGameStore(state => state.activeWeatherEffects)
   const [now, setNow] = useState(() => Date.now())
+  const [spectatorCtaDismissed, setSpectatorCtaDismissed] = useState(false)
+  const [spectatorCtaDontShow, setSpectatorCtaDontShow] = useState(false)
   const flood = useGameStore(state => state.flood)
   const playerWater = useGameStore(state => state.playerWater)
   const playerSession = sessions['Player']
@@ -62,6 +70,16 @@ export function HUD({
     return () => clearInterval(timer)
   }, [])
 
+  // Restore persisted CTA dismissal (mobile clutter fix)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const raw = localStorage.getItem('clawdy:hideSpectatorCta')
+      if (raw === '1') setUI({ hideSpectatorCta: true })
+    } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   useEffect(() => {
     if (!isMounted || address || hasTrackedSpectatorCtaRef.current) return
     hasTrackedSpectatorCtaRef.current = true
@@ -71,6 +89,13 @@ export function HUD({
       activeDomains: activeDomainEffects.length,
     })
   }, [activeDomainEffects.length, address, isMounted, playerId])
+
+  const spectatorCtaVisible = isMounted && !address && !hideSpectatorCta && !spectatorCtaDismissed
+
+  // Register spectator CTA as a blocking overlay so the layer manager can hide other UI.
+  useEffect(() => {
+    setModalOpen('spectatorCta', spectatorCtaVisible)
+  }, [setModalOpen, spectatorCtaVisible])
   
   if (!showHUD) return null
 
@@ -101,9 +126,36 @@ export function HUD({
       </div>
 
       {/* Spectator CTA - Center */}
-      {isMounted && !address && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
-          <div className="max-w-md mx-4 rounded-2xl border border-white/20 bg-black/45 backdrop-blur-xl shadow-2xl p-5 text-center pointer-events-auto">
+      {spectatorCtaVisible && (
+        <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/35 backdrop-blur-[1px]"
+            onClick={() => {
+              setSpectatorCtaDismissed(true)
+              if (spectatorCtaDontShow) {
+                setUI({ hideSpectatorCta: true })
+                try { localStorage.setItem('clawdy:hideSpectatorCta', '1') } catch { /* ignore */ }
+              }
+            }}
+          />
+          {/* Mobile bottom sheet (default) / Center card (sm+) */}
+          <div className="relative w-full max-w-md rounded-2xl border border-white/20 bg-black/55 backdrop-blur-xl shadow-2xl p-5 text-center max-h-[60vh] overflow-y-auto overscroll-contain sm:max-h-none">
+            <button
+              onClick={() => {
+                setSpectatorCtaDismissed(true)
+                if (spectatorCtaDontShow) {
+                  setUI({ hideSpectatorCta: true })
+                  try { localStorage.setItem('clawdy:hideSpectatorCta', '1') } catch { /* ignore */ }
+                }
+              }}
+              className="absolute top-3 right-3 text-white/40 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg"
+              aria-label="Dismiss"
+              title="Dismiss"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
             <p className="text-[10px] font-black uppercase tracking-[0.25em] text-sky-300">Live Agent Arena</p>
             <p className="mt-2 text-sm font-semibold text-white">Agents are battling for weather control now. Connect wallet to drop in and disrupt the meta.</p>
             <div className="mt-3 grid grid-cols-3 gap-1.5 text-[9px] uppercase font-black tracking-wide">
@@ -121,12 +173,24 @@ export function HUD({
                 buttonClassName="group px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-black rounded-xl shadow-lg shadow-sky-900/20 transition-all active:scale-95 flex items-center gap-2"
               />
             </div>
+            <div className="mt-3 flex items-center justify-center gap-2 text-[10px] text-white/60">
+              <input
+                id="spectatorCtaDontShow"
+                type="checkbox"
+                className="accent-sky-400"
+                checked={spectatorCtaDontShow}
+                onChange={(e) => setSpectatorCtaDontShow(e.target.checked)}
+              />
+              <label htmlFor="spectatorCtaDontShow" className="select-none">
+                Don’t show again
+              </label>
+            </div>
           </div>
         </div>
       )}
 
       {isMounted && activeDomainEffects.length > 0 && (
-        <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+        <div className="hidden sm:block absolute top-6 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
           <div className="bg-black/45 backdrop-blur-xl border border-white/15 rounded-2xl px-4 py-3 shadow-xl min-w-[280px]">
             <p className="text-[9px] uppercase tracking-[0.22em] text-sky-300 font-black">Active Weather Domains</p>
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -150,7 +214,11 @@ export function HUD({
       )}
 
       {/* Floating Action Buttons - Right side */}
-      <div className="absolute top-1/2 right-6 -translate-y-1/2 flex flex-col gap-3 z-20">
+      <div
+        className={`absolute top-1/2 right-6 -translate-y-1/2 ${
+          isBlockingOverlayOpen ? 'hidden sm:flex' : 'flex'
+        } flex-col gap-3 z-20`}
+      >
         {/* Quick Weather Presets */}
         <div className="relative">
           <button

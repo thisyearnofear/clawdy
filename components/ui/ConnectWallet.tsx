@@ -3,8 +3,9 @@
 import { useAccount, useChainId, useConnect, useDisconnect } from 'wagmi'
 import { agentProtocol, CHAIN_NAME } from '../../services/AgentProtocol'
 import { primaryChain } from '../../services/web3Config'
-import { useState, useEffect } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { trackEvent } from '../../services/analytics'
+import { useGameStore } from '../../services/gameStore'
 
 // Wallet Icons as SVG components for better visuals
 const MetaMaskIcon = () => (
@@ -63,8 +64,10 @@ export function ConnectWallet({ buttonClassName, source = 'hud_top_right' }: Con
   const chainId = useChainId()
   const { connectors, connect, status } = useConnect()
   const { disconnect } = useDisconnect()
+  const setModalOpenGlobal = useGameStore(s => s.setModalOpen)
   const [isAutonomyActive, setIsAutonomyActive] = useState(agentProtocol.isAutonomyEnabled())
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [showMore, setShowMore] = useState(false)
   const isCorrectChain = chainId === primaryChain.id
 
   // Close modal when connected
@@ -72,8 +75,22 @@ export function ConnectWallet({ buttonClassName, source = 'hud_top_right' }: Con
     if (isConnected && isModalOpen) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsModalOpen(false)
+      setModalOpenGlobal('wallet', false)
     }
   }, [isConnected, isModalOpen])
+
+  // ESC closes the wallet modal.
+  useEffect(() => {
+    if (!isModalOpen) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsModalOpen(false)
+        setModalOpenGlobal('wallet', false)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [isModalOpen, setModalOpenGlobal])
 
   useEffect(() => {
     if (!isConnected || !address) return
@@ -93,6 +110,22 @@ export function ConnectWallet({ buttonClassName, source = 'hud_top_right' }: Con
   const handleConnect = (connector: typeof connectors[0]) => {
     connect({ connector })
   }
+
+  const { primaryConnectors, extraConnectors } = useMemo(() => {
+    const primaryNames = ['metamask', 'coinbase', 'walletconnect']
+    const primary: Array<(typeof connectors)[number]> = []
+    const extra: Array<(typeof connectors)[number]> = []
+    for (const c of connectors) {
+      const name = c.name.toLowerCase()
+      if (primaryNames.some(p => name.includes(p))) primary.push(c)
+      else extra.push(c)
+    }
+    // If wagmi returns nothing matching, just treat the first few as primary.
+    if (primary.length === 0) {
+      return { primaryConnectors: Array.from(connectors).slice(0, 4), extraConnectors: Array.from(connectors).slice(4) }
+    }
+    return { primaryConnectors: primary, extraConnectors: extra }
+  }, [connectors])
 
   const connectLabel = source === 'spectator_cta' ? 'CONNECT & DROP IN' : 'CONNECT WALLET'
 
@@ -145,6 +178,7 @@ export function ConnectWallet({ buttonClassName, source = 'hud_top_right' }: Con
             walletConnected: isConnected,
           })
           setIsModalOpen(true)
+          setModalOpenGlobal('wallet', true)
         }}
         className={buttonClassName || 'group px-6 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-black rounded-xl shadow-lg shadow-sky-900/20 transition-all active:scale-95 flex items-center gap-2'}
       >
@@ -159,10 +193,13 @@ export function ConnectWallet({ buttonClassName, source = 'hud_top_right' }: Con
         <div 
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           onClick={(e) => {
-            if (e.target === e.currentTarget) setIsModalOpen(false)
+            if (e.target === e.currentTarget) {
+              setIsModalOpen(false)
+              setModalOpenGlobal('wallet', false)
+            }
           }}
         >
-          <div className="bg-slate-900/95 border border-white/10 rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-slate-900/95 border border-white/10 rounded-2xl shadow-2xl max-w-sm w-full max-h-[85vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col">
             {/* Modal Header */}
             <div className="flex items-center justify-between p-4 border-b border-white/10 bg-white/5">
               <div className="flex items-center gap-3">
@@ -177,7 +214,10 @@ export function ConnectWallet({ buttonClassName, source = 'hud_top_right' }: Con
                 </div>
               </div>
               <button
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => {
+                  setIsModalOpen(false)
+                  setModalOpenGlobal('wallet', false)
+                }}
                 className="text-white/40 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -187,8 +227,8 @@ export function ConnectWallet({ buttonClassName, source = 'hud_top_right' }: Con
             </div>
 
             {/* Wallet Options */}
-            <div className="p-4 space-y-2">
-              {connectors.map((connector) => (
+            <div className="p-4 space-y-2 overflow-y-auto overscroll-contain">
+              {primaryConnectors.map((connector) => (
                 <button
                   key={connector.uid}
                   onClick={() => handleConnect(connector)}
@@ -207,6 +247,41 @@ export function ConnectWallet({ buttonClassName, source = 'hud_top_right' }: Con
                     </span>
                   </div>
 
+                  {status === 'pending' ? (
+                    <div className="w-5 h-5 border-2 border-sky-500/30 border-t-sky-500 rounded-full animate-spin" />
+                  ) : (
+                    <svg className="w-5 h-5 text-white/20 group-hover:text-sky-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  )}
+                </button>
+              ))}
+
+              {extraConnectors.length > 0 && (
+                <button
+                  onClick={() => setShowMore(v => !v)}
+                  className="w-full px-4 py-2 rounded-xl border border-white/10 bg-black/20 hover:bg-black/30 text-[10px] font-black uppercase tracking-wider text-white/70 transition"
+                >
+                  {showMore ? 'Hide wallets' : `More wallets (${extraConnectors.length})`}
+                </button>
+              )}
+
+              {showMore && extraConnectors.map((connector) => (
+                <button
+                  key={connector.uid}
+                  onClick={() => handleConnect(connector)}
+                  disabled={status === 'pending'}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-sky-500/50 transition-all group disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${getWalletColor(connector.name)} flex items-center justify-center border`}>
+                    {getWalletIcon(connector.name)}
+                  </div>
+                  <div className="flex-1 text-left">
+                    <span className="text-sm font-bold text-white block">{connector.name}</span>
+                    <span className="text-[10px] text-white/40">
+                      {status === 'pending' ? 'Connecting...' : 'Click to connect'}
+                    </span>
+                  </div>
                   {status === 'pending' ? (
                     <div className="w-5 h-5 border-2 border-sky-500/30 border-t-sky-500 rounded-full animate-spin" />
                   ) : (

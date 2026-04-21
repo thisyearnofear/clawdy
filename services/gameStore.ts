@@ -145,6 +145,13 @@ export interface UIState {
   isLoading: boolean
   error: string | null
   showHUD: boolean
+  hideSpectatorCta: boolean
+  modals: {
+    wallet: boolean
+    onboarding: boolean
+    recap: boolean
+    spectatorCta: boolean
+  }
 }
 
 // ── Transactions ─────────────────────────────────────────────────────
@@ -225,6 +232,7 @@ export interface GameStore {
   // UI
   ui: UIState
   setUI: (update: Partial<UIState>) => void
+  setModalOpen: (modal: keyof UIState['modals'], open: boolean) => void
 
   // Round
   round: RoundState
@@ -362,8 +370,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
     isLoading: false,
     error: null,
     showHUD: true,
+    hideSpectatorCta: false,
+    modals: { wallet: false, onboarding: false, recap: false, spectatorCta: false },
   },
   setUI: (update) => set((prev) => ({ ui: { ...prev.ui, ...update } })),
+  setModalOpen: (modal, open) =>
+    set((prev) => ({ ui: { ...prev.ui, modals: { ...prev.ui.modals, [modal]: open } } })),
 
   // Round
   round: createInitialRound(),
