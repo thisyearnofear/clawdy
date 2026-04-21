@@ -130,15 +130,14 @@ export function PuddleRipples({
     }
   })
 
-  if (!texture) return null
-
   const planeGeo = useMemo(() => new THREE.PlaneGeometry(1, 1, 1, 1), [])
+
+  if (!texture) return null
 
   return (
     <group>
       {new Array(RIPPLE_POOL).fill(0).map((_, i) => (
         <mesh
-          // eslint-disable-next-line react/no-array-index-key
           key={i}
           ref={(m) => { if (m) meshRefs.current[i] = m }}
           geometry={planeGeo}

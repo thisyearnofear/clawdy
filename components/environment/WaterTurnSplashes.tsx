@@ -141,14 +141,14 @@ export function WaterTurnSplashes({
     }
   })
 
-  if (!enabled || !texture) return null
   const plane = useMemo(() => new THREE.PlaneGeometry(1, 1, 1, 1), [])
+
+  if (!enabled || !texture) return null
 
   return (
     <group>
       {new Array(POOL).fill(0).map((_, i) => (
         <mesh
-          // eslint-disable-next-line react/no-array-index-key
           key={i}
           ref={(m) => { if (m) meshRefs.current[i] = m }}
           geometry={plane}

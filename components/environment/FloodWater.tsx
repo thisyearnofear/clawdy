@@ -122,7 +122,7 @@ export function FloodWater({ bounds }: { bounds: [number, number, number] }) {
     meshRef.current.renderOrder = 3
   }, [])
 
-  useFrame((state, delta) => {
+  useFrame((state) => {
     material.uniforms.uTime.value = state.clock.getElapsedTime()
 
     // Trigger recommendation:
