@@ -6,6 +6,7 @@ import * as THREE from 'three'
 import type { RapierRigidBody } from '@react-three/rapier'
 import { useGameStore } from '../../services/gameStore'
 import { playSound } from '../ui/SoundManager'
+import { makeRingTexture } from './waterDecalTextures'
 
 type Splash = {
   active: boolean
@@ -17,34 +18,6 @@ type Splash = {
   rotation: number
   maxRadius: number
   kind: 'ring' | 'foam'
-}
-
-function makeRingTexture(size = 256) {
-  const canvas = document.createElement('canvas')
-  canvas.width = size
-  canvas.height = size
-  const ctx = canvas.getContext('2d')!
-  const cx = size / 2
-  const cy = size / 2
-  const r = size * 0.48
-
-  ctx.clearRect(0, 0, size, size)
-  const g = ctx.createRadialGradient(cx, cy, r * 0.55, cx, cy, r)
-  g.addColorStop(0.0, 'rgba(255,255,255,0.0)')
-  g.addColorStop(0.65, 'rgba(255,255,255,0.0)')
-  g.addColorStop(0.78, 'rgba(255,255,255,0.85)')
-  g.addColorStop(0.88, 'rgba(255,255,255,0.25)')
-  g.addColorStop(1.0, 'rgba(255,255,255,0.0)')
-  ctx.fillStyle = g
-  ctx.beginPath()
-  ctx.arc(cx, cy, r, 0, Math.PI * 2)
-  ctx.fill()
-
-  const tex = new THREE.CanvasTexture(canvas)
-  tex.minFilter = THREE.LinearMipMapLinearFilter
-  tex.magFilter = THREE.LinearFilter
-  tex.needsUpdate = true
-  return tex
 }
 
 export function WaterTurnSplashes({
@@ -82,12 +55,14 @@ export function WaterTurnSplashes({
     }))
   }, [])
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     if (!enabled || !texture || !chassisRef.current) return
 
     const vPos = chassisRef.current.translation()
     const vVel = chassisRef.current.linvel()
     const speed = Math.sqrt(vVel.x * vVel.x + vVel.z * vVel.z)
+    // Perf scaling (reduce effect spam on low FPS)
+    const perfScale = THREE.MathUtils.clamp(0.5, 1, 0.033 / Math.max(0.001, delta))
 
     const submergeDepth = flood.active
       ? THREE.MathUtils.clamp((flood.level - (vPos.y - 0.35)) / 1.0, 0, 1)
@@ -99,7 +74,7 @@ export function WaterTurnSplashes({
 
     // Spawn conditions: in water + hard turn + some speed, with cooldown.
     const now = performance.now()
-    const cooldownMs = 220
+    const cooldownMs = 220 / perfScale
     if (inWater && hardTurn && speed > 6 && now - lastSpawnAt.current > cooldownMs) {
       lastSpawnAt.current = now
       // Place on water surface for readability
@@ -125,7 +100,7 @@ export function WaterTurnSplashes({
       }
 
       spawnOne('ring')
-      if (isDrifting) spawnOne('foam')
+      if (isDrifting && perfScale > 0.7) spawnOne('foam')
 
       // Splash audio (cooldown to avoid spam)
       if (now - lastSoundAt.current > 140) {

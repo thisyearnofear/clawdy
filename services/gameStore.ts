@@ -247,12 +247,22 @@ export interface GameStore {
   triggerCameraShake: (intensity?: number, durationMs?: number) => void
 
   // Flood (visual + light gameplay hooks)
-  flood: { active: boolean; intensity: number; level: number }
+  flood: { active: boolean; intensity: number; level: number; phase: 'idle' | 'rising' | 'peak' | 'draining'; phaseChangedAt: number }
   setFlood: (update: Partial<GameStore['flood']>) => void
+  floodControl: { drainStartedAt: number; drainUntil: number; drainStrength: number; drainCenter: [number, number, number] }
+  triggerFloodDrain: (strength?: number, durationMs?: number, center?: [number, number, number]) => void
 
   // Player water interaction (readable moment-to-moment feedback)
   playerWater: { inWater: boolean; depth: number }
   setPlayerWater: (update: Partial<GameStore['playerWater']>) => void
+
+  // Flood recap stats (per-round, player-only)
+  playerFloodStats: { waterTimeMs: number; bubbleSaves: number; boardSaves: number; drainUses: number }
+  addPlayerWaterTime: (deltaMs: number) => void
+  addPlayerBubbleSave: () => void
+  addPlayerBoardSave: () => void
+  addPlayerDrainUse: () => void
+  resetPlayerFloodStats: () => void
 
   // Gravity
   gravityMode: GravityMode
@@ -371,6 +381,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         winner: null,
         goalOKB: ROUND_GOAL_OKB,
       },
+      playerFloodStats: { waterTimeMs: 0, bubbleSaves: 0, boardSaves: 0, drainUses: 0 },
     }
   }),
   endRound: (winner) => set((prev) => {
@@ -440,15 +451,42 @@ export const useGameStore = create<GameStore>((set, get) => ({
   })),
 
   // Flood
-  flood: { active: false, intensity: 0, level: -2 },
+  flood: { active: false, intensity: 0, level: -2, phase: 'idle', phaseChangedAt: 0 },
   setFlood: (update) => set((prev) => ({
     flood: { ...prev.flood, ...update },
+  })),
+  floodControl: { drainStartedAt: 0, drainUntil: 0, drainStrength: 0, drainCenter: [0, 0, 0] },
+  triggerFloodDrain: (strength = 0.9, durationMs = 7000, center: [number, number, number] = [0, 0, 0]) => set(() => ({
+    floodControl: {
+      drainStartedAt: Date.now(),
+      drainUntil: Date.now() + durationMs,
+      drainStrength: Math.max(0, Math.min(1, strength)),
+      drainCenter: center,
+    },
   })),
 
   // Player water
   playerWater: { inWater: false, depth: 0 },
   setPlayerWater: (update) => set((prev) => ({
     playerWater: { ...prev.playerWater, ...update },
+  })),
+
+  // Flood stats
+  playerFloodStats: { waterTimeMs: 0, bubbleSaves: 0, boardSaves: 0, drainUses: 0 },
+  addPlayerWaterTime: (deltaMs) => set((prev) => ({
+    playerFloodStats: { ...prev.playerFloodStats, waterTimeMs: prev.playerFloodStats.waterTimeMs + deltaMs },
+  })),
+  addPlayerBubbleSave: () => set((prev) => ({
+    playerFloodStats: { ...prev.playerFloodStats, bubbleSaves: prev.playerFloodStats.bubbleSaves + 1 },
+  })),
+  addPlayerBoardSave: () => set((prev) => ({
+    playerFloodStats: { ...prev.playerFloodStats, boardSaves: prev.playerFloodStats.boardSaves + 1 },
+  })),
+  addPlayerDrainUse: () => set((prev) => ({
+    playerFloodStats: { ...prev.playerFloodStats, drainUses: prev.playerFloodStats.drainUses + 1 },
+  })),
+  resetPlayerFloodStats: () => set(() => ({
+    playerFloodStats: { waterTimeMs: 0, bubbleSaves: 0, boardSaves: 0, drainUses: 0 },
   })),
 
   // Gravity

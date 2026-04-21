@@ -95,6 +95,21 @@ function Experience({
 
   const handleCollect = (id: number, stats: FoodStats, collectorId?: string) => {
     const agentId = getAgentByVehicleId(collectorId)?.id || 'Player'
+    // Flood recap: track clutch pickups when actually submerged.
+    if (agentId === 'Player' && playerWater.inWater) {
+      if (stats.type === 'air_bubble') addPlayerBubbleSave()
+      if (stats.type === 'foam_board') addPlayerBoardSave()
+    }
+    if (agentId === 'Player' && stats.type === 'drain_plug') {
+      // Centralized control: FloodWater reads floodControl and handles the actual transition.
+      // Capture player position for a localized drain swirl decal.
+      const p = playerVehicleObj?.translation?.()
+      const center: [number, number, number] = p
+        ? [p.x, p.y, p.z]
+        : [playerVehiclePosition.x, playerVehiclePosition.y, playerVehiclePosition.z]
+      triggerFloodDrain(0.95, 8000, center)
+      addPlayerDrainUse()
+    }
     agentProtocol.collectFood(agentId, stats)
     handleDespawn(id)
   }
@@ -108,6 +123,11 @@ function Experience({
   const behindBy = Math.max(0, leaderEarned - playerEarned)
   const isPlayerBehind = behindBy > 0.008
   const flood = useGameStore(s => s.flood)
+  const playerWater = useGameStore(s => s.playerWater)
+  const addPlayerBubbleSave = useGameStore(s => s.addPlayerBubbleSave)
+  const addPlayerBoardSave = useGameStore(s => s.addPlayerBoardSave)
+  const triggerFloodDrain = useGameStore(s => s.triggerFloodDrain)
+  const addPlayerDrainUse = useGameStore(s => s.addPlayerDrainUse)
 
   const chooseAssistedFoodType = (): FoodType | undefined => {
     // Flood moment: gently bias toward mobility powerups so players feel the weather.
@@ -115,6 +135,14 @@ function Experience({
       // Rare flood-only pickup: Air Bubble (brief drag immunity + small speed boost).
       const pBubble = Math.min(0.12, 0.03 + flood.intensity * 0.06)
       if (Math.random() < pBubble) return 'air_bubble'
+
+      // Flood-only control pickup: Foam Board (better grip in water).
+      const pBoard = Math.min(0.10, 0.02 + flood.intensity * 0.05)
+      if (Math.random() < pBoard) return 'foam_board'
+
+      // Flood-only clutch: Drain Plug (forces water to recede for a moment)
+      const pPlug = Math.min(0.06, 0.01 + flood.intensity * 0.03)
+      if (Math.random() < pPlug) return 'drain_plug'
 
       const p = Math.min(0.22, 0.06 + flood.intensity * 0.12)
       if (Math.random() < p) {

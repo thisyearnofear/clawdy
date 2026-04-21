@@ -37,11 +37,14 @@ export function useVehiclePhysics(
   const handling = HANDLING_MATRIX[handlingMode]
   const flood = useGameStore(state => state.flood)
   const setPlayerWater = useGameStore(state => state.setPlayerWater)
+  const addPlayerWaterTime = useGameStore(state => state.addPlayerWaterTime)
   const [inputs, setInputs] = useState({ forward: 0, turn: 0, brake: false, aim: 0, action: false })
   
   // Smoothing for physics forces
   const smoothedForward = useRef(0)
   const smoothedTurn = useRef(0)
+  const waterTimeAccRef = useRef(0)
+  const lastWaterFlushRef = useRef(0)
 
   useEffect(() => {
     if (agentControlled) {
@@ -67,6 +70,7 @@ export function useVehiclePhysics(
     const vitalityFactor = session ? session.vitality / 100 : 1
     const burdenFactor = session ? session.burden / 100 : 0
     const isAirBubble = !!(session && session.airBubbleUntil && session.airBubbleUntil > Date.now())
+    const isFoamBoard = !!(session && session.foamBoardUntil && session.foamBoardUntil > Date.now())
 
     // Determine current raw input
     let rawForward = inputs.forward
@@ -128,19 +132,46 @@ export function useVehiclePhysics(
     // This is intentionally subtle (delight + readability without breaking balance).
     const waterSurfaceY = flood.level
     const chassisHalfHeight = 0.35
-    // Air Bubble temporarily negates water drag.
-    const submergeDepth = flood.active && !isAirBubble
+    // Physical submerge (for HUD/recap) vs. drag depth (affected by Air Bubble).
+    const physicalSubmergeDepth = flood.active
       ? THREE.MathUtils.clamp((waterSurfaceY - (vPos.y - chassisHalfHeight)) / 1.0, 0, 1)
       : 0
 
+    // Air Bubble temporarily negates water drag.
+    const dragDepthRaw = isAirBubble ? 0 : physicalSubmergeDepth
+
+    // Vehicle-profile tuning: speedsters suffer more from water, tanks less.
+    const profileFloodScale: Record<VehicleHandlingProfile, number> = {
+      speedster: 1.15,
+      vehicle: 1.0,
+      monster: 0.9,
+      tank: 0.8,
+    }
+    const dragDepth = THREE.MathUtils.clamp(dragDepthRaw * profileFloodScale[stats.profile], 0, 1)
+
     // Publish player-only water state for HUD clarity.
     if (!agentControlled && playerControlled) {
-      const inWater = submergeDepth > 0.18 && flood.active
-      setPlayerWater({ inWater, depth: submergeDepth })
+      const inWater = physicalSubmergeDepth > 0.18 && flood.active
+      setPlayerWater({ inWater, depth: physicalSubmergeDepth })
+      if (inWater) {
+        waterTimeAccRef.current += delta * 1000
+        const nowPerf = performance.now()
+        if (nowPerf - lastWaterFlushRef.current > 250) {
+          lastWaterFlushRef.current = nowPerf
+          if (waterTimeAccRef.current > 1) {
+            addPlayerWaterTime(waterTimeAccRef.current)
+            waterTimeAccRef.current = 0
+          }
+        }
+      } else if (waterTimeAccRef.current > 1) {
+        addPlayerWaterTime(waterTimeAccRef.current)
+        waterTimeAccRef.current = 0
+      }
     }
 
-    const floodLinearDrag = submergeDepth * (1.4 + flood.intensity * 1.6)
-    const floodAngularDrag = submergeDepth * (0.8 + flood.intensity * 1.4)
+    const boardDragCut = isFoamBoard ? 0.65 : 1.0
+    const floodLinearDrag = dragDepth * (1.4 + flood.intensity * 1.6) * boardDragCut
+    const floodAngularDrag = dragDepth * (0.8 + flood.intensity * 1.4) * (isFoamBoard ? 0.7 : 1.0)
 
     chassisRef.current.setLinearDamping(rawBrake ? handling.brakingDamping : baseDamping + floodLinearDrag)
     chassisRef.current.setAngularDamping(handling.angularDamping + floodAngularDrag)
@@ -156,7 +187,7 @@ export function useVehiclePhysics(
       tank: 0.82,
     }
     const boostFactor = isSpeedBoosted ? handling.speedBoostMultiplier : 1.0
-    const floodSlow = 1 - submergeDepth * 0.35
+    const floodSlow = 1 - dragDepth * 0.35
     const bubbleBoost = isAirBubble ? 1.18 : 1.0
     const modeSpeedScale = handling.speedScale * vehicleModeScale[stats.profile]
     const modeAccelScale = handling.accelerationScale * vehicleModeScale[stats.profile]
@@ -184,7 +215,7 @@ export function useVehiclePhysics(
     }
 
     // --- 4. IMPROVED STEERING ---
-    const steerBoost = isSpeedBoosted ? 1.5 : 1.0
+    const steerBoost = (isSpeedBoosted ? 1.5 : 1.0) * (isFoamBoard && physicalSubmergeDepth > 0.1 ? 1.15 : 1.0)
     if (Math.abs(smoothedTurn.current) > 0.01) {
       if (stats.steeringMode === 'car' && speed > 0.5) {
         const steerStrength = stats.steerStrength * handling.steerScale * handling.carSteerResponse * delta * steerBoost
@@ -216,7 +247,9 @@ export function useVehiclePhysics(
     // --- 6. DRIFT / LATERAL FRICTION ---
     if (speed > 1) {
       const sidewaysVelocity = velocity.x * rightDir.x + velocity.z * rightDir.z
-      const driftGrip = (surfaceType === 'road' ? stats.lateralGrip : stats.lateralGrip * 0.65) * handling.gripScale
+      const driftGripBase = (surfaceType === 'road' ? stats.lateralGrip : stats.lateralGrip * 0.65) * handling.gripScale
+      const boardGripBoost = isFoamBoard && physicalSubmergeDepth > 0.1 ? 1.25 : 1.0
+      const driftGrip = driftGripBase * boardGripBoost
       const gripImpulse = -sidewaysVelocity * driftGrip * stats.mass * delta * 15
       chassisRef.current.applyImpulse({ x: rightDir.x * gripImpulse, y: 0, z: rightDir.z * gripImpulse }, true)
     }

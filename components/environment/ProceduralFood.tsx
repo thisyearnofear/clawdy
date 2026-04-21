@@ -11,6 +11,8 @@ export type FoodType =
   | 'spicy_pepper' 
   | 'floaty_marshmallow'
   | 'air_bubble'
+  | 'foam_board'
+  | 'drain_plug'
   | 'burger' | 'donut' | 'icecream' | 'hotdog' | 'pizza' | 'sushi' | 'taco' | 'apple' | 'broccoli' | 'soda' | 'rotten_burger'
 
 export interface FoodStats {
@@ -26,6 +28,8 @@ export const FOOD_METADATA: Record<FoodType, Omit<FoodStats, 'type'>> = {
   spicy_pepper: { nutrition: 'powerup', mass: 0.4, isDestroyable: true },
   floaty_marshmallow: { nutrition: 'powerup', mass: 0.2, isDestroyable: true },
   air_bubble: { nutrition: 'powerup', mass: 0.15, isDestroyable: true },
+  foam_board: { nutrition: 'powerup', mass: 0.35, isDestroyable: true },
+  drain_plug: { nutrition: 'powerup', mass: 0.5, isDestroyable: true },
   apple: { nutrition: 'healthy', mass: 0.5, isDestroyable: true },
   sushi: { nutrition: 'healthy', mass: 0.4, isDestroyable: true },
   broccoli: { nutrition: 'healthy', mass: 0.3, isDestroyable: true },
@@ -45,6 +49,8 @@ export const FOOD_COLORS: Record<FoodType, string> = {
   spicy_pepper: '#ff0000',
   floaty_marshmallow: '#ffffff',
   air_bubble: '#7fd6ff',
+  foam_board: '#eaffff',
+  drain_plug: '#ffcc66',
   apple: '#e74c3c',
   sushi: '#ff7675',
   broccoli: '#228b22',
@@ -120,6 +126,10 @@ export function ProceduralFood({ id, itemType, onDespawn, onCollect, ...props }:
         return <cylinderGeometry args={[0.5, 0.5, 0.4, 16]} />
       case 'air_bubble':
         return <sphereGeometry args={[0.55, 16, 16]} />
+      case 'foam_board':
+        return <boxGeometry args={[1.2, 0.14, 0.7]} />
+      case 'drain_plug':
+        return <cylinderGeometry args={[0.35, 0.35, 0.5, 12]} />
       case 'golden_meatball':
       case 'meatball':
       case 'apple':

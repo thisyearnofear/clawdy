@@ -11,6 +11,7 @@ function shorten(id: string) {
 export function RoundRecap() {
   const round = useGameStore(s => s.round)
   const sessions = useGameStore(s => s.sessions)
+  const floodStats = useGameStore(s => s.playerFloodStats)
   const [now, setNow] = useState(() => Date.now())
   const [dismissedRound, setDismissedRound] = useState<number | null>(null)
 
@@ -115,10 +116,37 @@ export function RoundRecap() {
                     {(player.executedBidCount ?? 0) + (player.executedRentCount ?? 0)}
                   </div>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-white/5 p-3 col-span-2">
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                   <div className="text-[9px] font-black uppercase tracking-widest text-white/40">Air bubbles</div>
                   <div className="mt-1 text-sm font-mono font-black text-cyan-200">
                     {player.airBubbleCount ?? 0}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <div className="text-[9px] font-black uppercase tracking-widest text-white/40">Foam boards</div>
+                  <div className="mt-1 text-sm font-mono font-black text-white">
+                    {player.foamBoardCount ?? 0}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <div className="text-[9px] font-black uppercase tracking-widest text-white/40">Time in water</div>
+                  <div className="mt-1 text-sm font-mono font-black text-cyan-200">
+                    {(floodStats.waterTimeMs / 1000).toFixed(0)}s
+                  </div>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <div className="text-[9px] font-black uppercase tracking-widest text-white/40">Clutch saves</div>
+                  <div className="mt-1 text-sm font-mono font-black text-white">
+                    {floodStats.bubbleSaves + floodStats.boardSaves}{' '}
+                    <span className="text-[10px] text-white/50">
+                      (B {floodStats.bubbleSaves} • F {floodStats.boardSaves})
+                    </span>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3 col-span-2">
+                  <div className="text-[9px] font-black uppercase tracking-widest text-white/40">Drain plugs</div>
+                  <div className="mt-1 text-sm font-mono font-black text-yellow-200">
+                    {floodStats.drainUses}
                   </div>
                 </div>
               </div>

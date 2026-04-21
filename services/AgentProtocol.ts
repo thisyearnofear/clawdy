@@ -140,6 +140,9 @@ export interface AgentSession {
   antiGravityUntil?: number
   airBubbleUntil?: number
   airBubbleCount?: number
+  foamBoardUntil?: number
+  foamBoardCount?: number
+  drainPlugCount?: number
   isDead?: boolean
 }
 
@@ -400,6 +403,12 @@ class AgentProtocol {
     }
     if (stats.type === 'air_bubble') {
       this.gameEventListeners.forEach(l => l({ type: 'powerup', agentId, power: 'bubble' }))
+    }
+    if (stats.type === 'foam_board') {
+      this.gameEventListeners.forEach(l => l({ type: 'powerup', agentId, power: 'board' }))
+    }
+    if (stats.type === 'drain_plug') {
+      this.gameEventListeners.forEach(l => l({ type: 'powerup', agentId, power: 'drain' }))
     }
     
     // Milestone check

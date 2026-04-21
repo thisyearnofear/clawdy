@@ -4,17 +4,34 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useGameStore } from '../../services/gameStore'
+import { makeRingTexture } from './waterDecalTextures'
 
 export function FloodWater({ bounds }: { bounds: [number, number, number] }) {
   const preset = useGameStore(s => s.cloudConfig.preset) || 'custom'
   const lightning = useGameStore(s => s.activeWeatherEffects.lightning?.intensity ?? 0)
   const round = useGameStore(s => s.round)
   const setFlood = useGameStore(s => s.setFlood)
+  const floodControl = useGameStore(s => s.floodControl)
 
   const meshRef = useRef<THREE.Mesh>(null)
+  const drainMeshRef = useRef<THREE.Mesh>(null)
+  const drainMatRef = useRef<THREE.MeshBasicMaterial>(null)
   const levelRef = useRef(-2) // current water level
   const phaseRef = useRef<'idle' | 'rising' | 'peak' | 'draining'>('idle')
   const peakUntilRef = useRef(0)
+  const lastPublishRef = useRef<{
+    active: boolean
+    intensity: number
+    level: number
+    phase: 'idle' | 'rising' | 'peak' | 'draining'
+  }>({ active: false, intensity: 0, level: -2, phase: 'idle' })
+
+  const drainTexture = useMemo(() => {
+    if (typeof document === 'undefined') return null
+    return makeRingTexture(256)
+  }, [])
+
+  const drainGeo = useMemo(() => new THREE.PlaneGeometry(1, 1, 1, 1), [])
 
   const material = useMemo(() => {
     const mat = new THREE.ShaderMaterial({
@@ -119,6 +136,14 @@ export function FloodWater({ bounds }: { bounds: [number, number, number] }) {
     const remainingSec = Math.max(0, Math.ceil((round.endsAt - Date.now()) / 1000))
     const finalRushBoost = round.isActive && remainingSec > 0 && remainingSec <= 10 ? 1 : 0
 
+    // Drain plug control (decays over time)
+    const nowMs = Date.now()
+    const drainActive = nowMs < floodControl.drainUntil
+    const drainT = drainActive
+      ? Math.max(0, Math.min(1, (nowMs - floodControl.drainStartedAt) / Math.max(1, (floodControl.drainUntil - floodControl.drainStartedAt))))
+      : 1
+    const drainStrength = drainActive ? floodControl.drainStrength * (1 - drainT) : 0
+
     // Beat-based pacing: rise → peak → drain (with hysteresis)
     const riseOn = stormIntensity > 0.22
     const keepOn = stormIntensity > 0.12
@@ -143,7 +168,13 @@ export function FloodWater({ bounds }: { bounds: [number, number, number] }) {
       if (stormIntensity > 0.55) peakUntilRef.current = Math.max(peakUntilRef.current, now + 2500)
     } else if (phaseRef.current === 'draining') {
       if (riseOn) phaseRef.current = 'rising'
-      if (levelRef.current < -1.7) phaseRef.current = 'idle'
+      // Don't snap back too early; let it fully drain.
+      if (levelRef.current < -1.95) phaseRef.current = 'idle'
+    }
+
+    // Drain plug forces draining (even if storm continues)
+    if (drainStrength > 0.02 && phaseRef.current !== 'idle') {
+      phaseRef.current = 'draining'
     }
 
     const targetVisible = phaseRef.current !== 'idle'
@@ -157,7 +188,7 @@ export function FloodWater({ bounds }: { bounds: [number, number, number] }) {
         : phaseRef.current === 'peak'
           ? peakTargetLevel
           : phaseRef.current === 'draining'
-            ? drainTargetLevel
+            ? (drainTargetLevel - drainStrength * 0.8)
             : drainTargetLevel
 
     const lerpSpeed =
@@ -170,22 +201,88 @@ export function FloodWater({ bounds }: { bounds: [number, number, number] }) {
     levelRef.current = THREE.MathUtils.lerp(levelRef.current, targetLevel, lerpSpeed)
 
     // Opacity + foam ramp
-    const targetOpacity = targetVisible ? (0.06 + stormIntensity * 0.26 + finalRushBoost * 0.04) : 0
+    // While draining (esp. due to plug), fade faster to "normal".
+    const drainFade = phaseRef.current === 'draining' ? (0.85 - drainStrength * 0.35) : 1
+    const targetOpacity = targetVisible ? (0.06 + stormIntensity * 0.26 + finalRushBoost * 0.04) * drainFade : 0
     material.uniforms.uOpacity.value = THREE.MathUtils.lerp(material.uniforms.uOpacity.value, targetOpacity, 0.05)
-    material.uniforms.uFoam.value = THREE.MathUtils.lerp(material.uniforms.uFoam.value, stormIntensity, 0.04)
+    material.uniforms.uFoam.value = THREE.MathUtils.lerp(material.uniforms.uFoam.value, stormIntensity * drainFade, 0.04)
 
     if (meshRef.current) {
       meshRef.current.position.y = levelRef.current
       meshRef.current.visible = material.uniforms.uOpacity.value > 0.01
     }
 
+    // Drain swirl decal: localized visual telegraph when Drain Plug triggers.
+    if (drainMeshRef.current && drainMatRef.current) {
+      const drainAgeMs = Date.now() - floodControl.drainStartedAt
+      const show = floodControl.drainStartedAt > 0 && drainAgeMs >= 0 && drainAgeMs < 1400
+      if (!show || !drainTexture) {
+        drainMeshRef.current.visible = false
+      } else {
+        const t = THREE.MathUtils.clamp(drainAgeMs / 1400, 0, 1)
+        const ease = 1 - Math.pow(1 - t, 2)
+        const radius = 2.0 + ease * 9.0
+        const opacity = (1 - t) * (0.35 + floodControl.drainStrength * 0.35)
+
+        drainMeshRef.current.visible = true
+        drainMeshRef.current.position.set(floodControl.drainCenter[0], levelRef.current + 0.03, floodControl.drainCenter[2])
+        drainMeshRef.current.rotation.set(-Math.PI / 2, 0, state.clock.getElapsedTime() * 1.4)
+        drainMeshRef.current.scale.set(radius, radius, 1)
+        drainMatRef.current.opacity = opacity
+      }
+    }
+
     // Store update (lightweight; only when meaningful values change)
     const active = targetVisible
     const intensity = stormIntensity
-    setFlood({ active, intensity, level: levelRef.current })
+    const level = levelRef.current
+    const phase = phaseRef.current
+
+    const prev = lastPublishRef.current
+    const phaseChanged = prev.phase !== phase
+    const shouldPublish =
+      phaseChanged ||
+      prev.active !== active ||
+      Math.abs(prev.intensity - intensity) > 0.03 ||
+      Math.abs(prev.level - level) > 0.08
+
+    if (shouldPublish) {
+      lastPublishRef.current = { active, intensity, level, phase }
+      const update: Partial<{
+        active: boolean
+        intensity: number
+        level: number
+        phase: 'idle' | 'rising' | 'peak' | 'draining'
+        phaseChangedAt: number
+      }> = {
+        active,
+        intensity,
+        level,
+        phase,
+      }
+      if (phaseChanged) update.phaseChangedAt = Date.now()
+      setFlood(update)
+    }
   })
 
   return (
-    <mesh ref={meshRef} geometry={geometry} material={material} />
+    <>
+      <mesh ref={meshRef} geometry={geometry} material={material} />
+      {/* Localized drain swirl decal */}
+      {drainTexture && (
+        <mesh ref={drainMeshRef} geometry={drainGeo} frustumCulled={false} visible={false} renderOrder={4}>
+          <meshBasicMaterial
+            ref={drainMatRef}
+            map={drainTexture}
+            transparent
+            opacity={0}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+            color={new THREE.Color(0.9, 0.95, 1.0)}
+            toneMapped={false}
+          />
+        </mesh>
+      )}
+    </>
   )
 }

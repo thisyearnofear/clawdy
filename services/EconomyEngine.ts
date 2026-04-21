@@ -65,6 +65,19 @@ export class EconomyEngine {
         vitalityGain = 0
         burdenGain = -8
         break
+      case 'foam_board':
+        session.foamBoardUntil = Date.now() + 9000 // 9s better steering/grip in water
+        session.foamBoardCount = (session.foamBoardCount ?? 0) + 1
+        earned = 0.001
+        vitalityGain = 2
+        burdenGain = -10
+        break
+      case 'drain_plug':
+        session.drainPlugCount = (session.drainPlugCount ?? 0) + 1
+        earned = 0.001
+        vitalityGain = 0
+        burdenGain = -12
+        break
       case 'golden_meatball':
         earned = 0.01
         vitalityGain = 25

@@ -48,11 +48,13 @@ export function HUD({
   const isSpeedBoosted = !!(playerSession?.speedBoostUntil && playerSession.speedBoostUntil > now)
   const isAntiGravity = !!(playerSession?.antiGravityUntil && playerSession.antiGravityUntil > now)
   const isAirBubble = !!(playerSession?.airBubbleUntil && playerSession.airBubbleUntil > now)
+  const isFoamBoard = !!(playerSession?.foamBoardUntil && playerSession.foamBoardUntil > now)
   const comboCount = playerSession?.comboCount ?? 0
   const comboMultiplier = playerSession?.comboMultiplier ?? 1
   const comboExpiresAt = playerSession?.comboExpiresAt ?? 0
   const comboSecondsLeft = comboCount >= 2 ? Math.max(0, Math.ceil((comboExpiresAt - now) / 1000)) : 0
   const bubbleSecondsLeft = isAirBubble ? Math.max(0, Math.ceil(((playerSession?.airBubbleUntil ?? 0) - now) / 1000)) : 0
+  const boardSecondsLeft = isFoamBoard ? Math.max(0, Math.ceil(((playerSession?.foamBoardUntil ?? 0) - now) / 1000)) : 0
   const hasTrackedSpectatorCtaRef = useRef(false)
 
   useEffect(() => {
@@ -233,6 +235,19 @@ export function HUD({
                     </span>
                     <span className="rounded-full border border-cyan-300/20 bg-black/20 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-cyan-200/80 tabular-nums">
                       {bubbleSecondsLeft}s
+                    </span>
+                  </div>
+                </>
+              )}
+              {isFoamBoard && (
+                <>
+                  <div className="w-px h-6 bg-white/10" />
+                  <div className="flex items-center gap-1.5">
+                    <span className="rounded-full border border-slate-200/25 bg-white/10 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-slate-100">
+                      Board
+                    </span>
+                    <span className="rounded-full border border-slate-200/15 bg-black/20 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-slate-100/80 tabular-nums">
+                      {boardSecondsLeft}s
                     </span>
                   </div>
                 </>

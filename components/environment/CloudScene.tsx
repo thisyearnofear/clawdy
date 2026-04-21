@@ -154,6 +154,12 @@ export default function CloudScene() {
         } else if (power === 'bubble') {
           emitToast('milestone', 'Air Bubble!', 'Water drag cleared (briefly)')
           playSound('milestone')
+        } else if (power === 'board') {
+          emitToast('milestone', 'Foam Board!', 'Grip up in flood water')
+          playSound('milestone')
+        } else if (power === 'drain') {
+          emitToast('milestone', 'Drain Plug!', 'Flood drops temporarily')
+          playSound('milestone')
         }
       } else if (event.type === 'milestone') {
         emitToast('milestone', event.message as string)
