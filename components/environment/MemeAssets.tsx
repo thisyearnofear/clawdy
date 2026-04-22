@@ -77,7 +77,6 @@ interface MemeAssetProps extends RigidBodyProps {
 
 export function ProceduralMemeAsset({ id, itemType, onDespawn, onCollect, ...props }: MemeAssetProps) {
   const rigidBody = useRef<RapierRigidBody>(null)
-  const matRef = useRef<THREE.MeshStandardMaterial>(null)
 
   const stats = useMemo((): MemeAssetStats => {
     const specialTypes: MemeAssetType[] = ['golden_meatball', 'spicy_pepper', 'floaty_marshmallow']
@@ -97,7 +96,7 @@ export function ProceduralMemeAsset({ id, itemType, onDespawn, onCollect, ...pro
     return { type, ...MEME_ASSET_METADATA[type] }
   }, [itemType, id])
 
-  useFrame((state) => {
+  useFrame(() => {
     if (rigidBody.current) {
       const translation = rigidBody.current.translation()
       if (translation.y < -20 && onDespawn) onDespawn()
@@ -105,36 +104,7 @@ export function ProceduralMemeAsset({ id, itemType, onDespawn, onCollect, ...pro
       if (stats.type === 'floaty_marshmallow') rigidBody.current.applyImpulse({ x: 0, y: 0.1, z: 0 }, true)
       if (stats.type === 'air_bubble') rigidBody.current.applyImpulse({ x: 0, y: 0.14, z: 0 }, true)
     }
-    
-    if (matRef.current) {
-      const t = state.clock.getElapsedTime()
-      const pulseSpeed = stats.rarity !== 'common' ? 6 : 3
-      matRef.current.emissiveIntensity = 0.4 + Math.sin(t * pulseSpeed + id * 0.5) * 0.4
-    }
   })
-
-  const renderShape = () => {
-    switch (stats.type) {
-      case 'spicy_pepper': return <coneGeometry args={[0.3, 1, 8]} />
-      case 'floaty_marshmallow': return <cylinderGeometry args={[0.5, 0.5, 0.4, 16]} />
-      case 'air_bubble': return <sphereGeometry args={[0.55, 16, 16]} />
-      case 'foam_board': return <boxGeometry args={[1.2, 0.14, 0.7]} />
-      case 'drain_plug': return <cylinderGeometry args={[0.35, 0.35, 0.5, 12]} />
-      case 'golden_meatball':
-      case 'meatball':
-      case 'apple':
-      case 'broccoli':
-      case 'icecream': return <sphereGeometry args={[stats.type === 'golden_meatball' ? 0.7 : 0.5, 12, 12]} />
-      case 'soda':
-      case 'burger':
-      case 'rotten_burger':
-      case 'donut':
-      case 'sushi': return <cylinderGeometry args={[0.6, 0.6, 0.8, 12]} />
-      case 'pizza':
-      case 'taco': return <coneGeometry args={[0.7, 0.8, 4]} />
-      default: return <boxGeometry args={[0.8, 0.8, 0.8]} />
-    }
-  }
 
   return (
     <RigidBody
@@ -154,21 +124,6 @@ export function ProceduralMemeAsset({ id, itemType, onDespawn, onCollect, ...pro
         }
       }}
     >
-      <group rotation={stats.type === 'spicy_pepper' ? [Math.PI, 0, 0] : [0, 0, 0]}>
-        <mesh castShadow>
-          {renderShape()}
-          <meshStandardMaterial
-            ref={matRef}
-            roughness={stats.type === 'air_bubble' ? 0.05 : 0.2}
-            metalness={stats.type === 'golden_meatball' ? 0.9 : 0.2}
-            color={MEME_ASSET_COLORS[stats.type]}
-            emissive={MEME_ASSET_COLORS[stats.type]}
-            emissiveIntensity={0.5}
-            transparent={stats.type === 'air_bubble'}
-            opacity={stats.type === 'air_bubble' ? 0.35 : 1}
-          />
-        </mesh>
-      </group>
       <CuboidCollider args={[0.8, 0.8, 0.8]} sensor />
       <CuboidCollider args={[0.5, 0.5, 0.5]} />
     </RigidBody>

@@ -26,6 +26,7 @@ import { Speedster } from '../vehicles/Speedster'
 import { Vehicle } from '../vehicles/Vehicle'
 import { AgentVision } from './AgentVision'
 import { IntentionVisualizer } from './IntentionVisualizer'
+import { MemeAssetInstances } from './MemeAssetInstances'
 import { VehicleType, agentProtocol, VEHICLE_RENT_ADDRESS } from '../../services/AgentProtocol'
 import { vehicleQueue, QueueState } from '../../services/VehicleQueue'
 import { emitToast } from '../ui/GameToasts'
@@ -368,6 +369,7 @@ function Experience({
         <MemeAssetSpawner spawnRate={effectiveSpawnRate} bounds={cloudConfig.bounds} spawnHeight={18} maxItems={30} onSpawn={(item) => setMemeAssets((prev) => [...prev, { ...item, itemType: chooseAssistedAssetType() }])} />
         <AgentVision />
         <IntentionVisualizer />
+        <MemeAssetInstances assets={memeAssets} />
         {memeAssets.map((item) => (
           <ProceduralMemeAsset key={item.id} id={item.id} itemType={item.itemType} position={item.position} onDespawn={() => handleDespawn(item.id)} onCollect={(id, stats, collector) => handleCollect(id, stats, collector)} />
         ))}
