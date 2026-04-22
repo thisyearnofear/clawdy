@@ -21,11 +21,12 @@ const TANK_STATS: VehicleStats = {
   steeringMode: 'tank'
 }
 
-function TankArmorPulse() {
+function TankArmorPulse({ isGhost = false }: { isGhost?: boolean }) {
   const meshRef = useRef<THREE.Mesh>(null)
   const matRef = useRef<THREE.MeshStandardMaterial>(null)
 
   useFrame((state) => {
+    if (isGhost) return
     if (meshRef.current && matRef.current) {
       const t = state.clock.getElapsedTime()
       matRef.current.emissiveIntensity = 0.3 + Math.sin(t * 2) * 0.3
@@ -33,6 +34,8 @@ function TankArmorPulse() {
       meshRef.current.scale.setScalar(1.05 + Math.sin(t * 2) * 0.03)
     }
   })
+
+  if (isGhost) return null
 
   return (
     <mesh ref={meshRef} position={[0, 0.1, 0]}>
@@ -64,12 +67,14 @@ export function Tank({
   position = [0, 5, 0], 
   agentControlled = false, 
   playerControlled = true,
+  isGhost = false,
   onRef
 }: { 
   id: string, 
   position?: [number, number, number], 
   agentControlled?: boolean, 
   playerControlled?: boolean,
+  isGhost?: boolean,
   onRef?: (ref: RapierRigidBody | null) => void
 }) {
   const chassisRef = useRef<RapierRigidBody>(null)
@@ -77,7 +82,7 @@ export function Tank({
   const laserRef = useRef<THREE.Mesh>(null)
   const rapier = useRapier()
   
-  const { inputs } = useVehiclePhysics(id, chassisRef, TANK_STATS, agentControlled, playerControlled)
+  const { inputs } = useVehiclePhysics(id, chassisRef, TANK_STATS, agentControlled, playerControlled && !isGhost)
   
   const [muzzleFlash, setMuzzleFlash] = useState(false)
   const lastFireTime = useRef(0)
@@ -90,13 +95,10 @@ export function Tank({
   }, [onRef])
 
   useFrame((state) => {
-    if (!chassisRef.current) return
+    if (!chassisRef.current || isGhost) return
     const time = state.clock.getElapsedTime()
     const { action, aim } = inputs
 
-    // Physics (Acceleration and Steering) are handled by useVehiclePhysics
-
-    // Turret & Combat Logic
     const rotation = chassisRef.current.rotation()
     const quaternion = new THREE.Quaternion(rotation.x, rotation.y, rotation.z, rotation.w)
     const matrix = new THREE.Matrix4().makeRotationFromQuaternion(quaternion)
@@ -134,42 +136,54 @@ export function Tank({
     }
   })
 
+  const materialProps = isGhost ? {
+    transparent: true,
+    opacity: 0.3,
+    depthWrite: false,
+    color: "#ffffff"
+  } : {
+    color: "#4b5320"
+  }
+
   return (
     <group>
       <RigidBody 
         ref={chassisRef} 
         position={position} 
-        colliders="cuboid" 
+        colliders={isGhost ? false : "cuboid"} 
         mass={TANK_STATS.mass}
         restitution={0.1}
         friction={1.0}
         linearDamping={0.5}
         angularDamping={0.9}
-        userData={{ agentId: agentControlled ? id : undefined, isPlayer: !agentControlled }}
+        type={isGhost ? "fixed" : "dynamic"}
+        userData={{ agentId: agentControlled ? id : undefined, isPlayer: !agentControlled, isGhost }}
       >
-        <mesh castShadow>
+        <mesh castShadow={!isGhost} receiveShadow={!isGhost}>
           <boxGeometry args={[2.5, 1, 4]} />
-          <meshStandardMaterial color="#4b5320" />
+          <meshStandardMaterial {...materialProps} />
         </mesh>
         
         <group ref={turretRef} position={[0, 0.7, 0]}>
-          <mesh castShadow>
+          <mesh castShadow={!isGhost}>
             <boxGeometry args={[1.5, 0.6, 1.5]} />
-            <meshStandardMaterial color="#353c16" />
+            <meshStandardMaterial {...materialProps} color={isGhost ? "#ffffff" : "#353c16"} />
           </mesh>
-          <mesh position={[0, 0, -1.2]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+          <mesh position={[0, 0, -1.2]} rotation={[Math.PI / 2, 0, 0]} castShadow={!isGhost}>
             <cylinderGeometry args={[0.15, 0.15, 2, 8]} />
-            <meshStandardMaterial color="#1e210b" />
+            <meshStandardMaterial {...materialProps} color={isGhost ? "#ffffff" : "#1e210b"} />
           </mesh>
           
-          <TankArmorPulse />
+          <TankArmorPulse isGhost={isGhost} />
 
-          <mesh ref={laserRef} rotation={[Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[0.02, 0.02, 1, 8]} />
-            <primitive object={laserMaterial} />
-          </mesh>
+          {!isGhost && (
+            <mesh ref={laserRef} rotation={[Math.PI / 2, 0, 0]}>
+              <cylinderGeometry args={[0.02, 0.02, 1, 8]} />
+              <primitive object={laserMaterial} />
+            </mesh>
+          )}
 
-          {muzzleFlash && (
+          {muzzleFlash && !isGhost && (
             <mesh position={[0, 0, -2.2]}>
               <sphereGeometry args={[0.4, 8, 8]} />
               <meshBasicMaterial color="#f1c40f" transparent opacity={0.8} />
@@ -179,20 +193,22 @@ export function Tank({
 
         <mesh position={[-1.3, -0.2, 0]}>
           <boxGeometry args={[0.6, 0.8, 4.2]} />
-          <meshStandardMaterial color="#1a1a1a" />
+          <meshStandardMaterial {...materialProps} color={isGhost ? "#ffffff" : "#1a1a1a"} />
         </mesh>
         <mesh position={[1.3, -0.2, 0]}>
           <boxGeometry args={[0.6, 0.8, 4.2]} />
-          <meshStandardMaterial color="#1a1a1a" />
+          <meshStandardMaterial {...materialProps} color={isGhost ? "#ffffff" : "#1a1a1a"} />
         </mesh>
       </RigidBody>
 
-      <WaterTurnSplashes
-        chassisRef={chassisRef}
-        enabled={playerControlled && !agentControlled}
-        turnInput={inputs.turn}
-        brake={inputs.brake}
-      />
+      {!isGhost && (
+        <WaterTurnSplashes
+          chassisRef={chassisRef}
+          enabled={playerControlled && !agentControlled}
+          turnInput={inputs.turn}
+          brake={inputs.brake}
+        />
+      )}
     </group>
   )
 }

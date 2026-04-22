@@ -126,7 +126,12 @@ export function useVehiclePhysics(
     const vPos = chassisRef.current.translation()
     const surfaceType = getSurfaceType(vPos.x, vPos.z)
     const rollingFriction = SURFACE_FRICTION[surfaceType] || 0.98
-    const baseDamping = handling.baseLinearDamping + (1 - rollingFriction) * handling.surfaceDampingInfluence
+    
+    // Mud Trap logic: If on mud, massively increase damping/reduce drive torque
+    const isMud = surfaceType === 'mud'
+    const mudPenalty = isMud ? 2.5 : 1.0
+    
+    const baseDamping = handling.baseLinearDamping + (1 - rollingFriction) * handling.surfaceDampingInfluence * mudPenalty
 
     // Flood drag: if the vehicle is under the water surface, movement becomes heavier/slower.
     // This is intentionally subtle (delight + readability without breaking balance).
@@ -191,8 +196,8 @@ export function useVehiclePhysics(
     const bubbleBoost = isAirBubble ? 1.18 : 1.0
     const modeSpeedScale = handling.speedScale * vehicleModeScale[stats.profile]
     const modeAccelScale = handling.accelerationScale * vehicleModeScale[stats.profile]
-    const maxSpeed = stats.maxSpeed * modeSpeedScale * (0.55 + 0.45 * vitalityFactor) * boostFactor * floodSlow
-    const accelerationPower = stats.acceleration * modeAccelScale * boostFactor * floodSlow * bubbleBoost
+    const maxSpeed = stats.maxSpeed * modeSpeedScale * (0.55 + 0.45 * vitalityFactor) * boostFactor * floodSlow / mudPenalty
+    const accelerationPower = stats.acceleration * modeAccelScale * boostFactor * floodSlow * bubbleBoost / mudPenalty
 
     if (Math.abs(smoothedForward.current) > 0.01) {
       const forwardSpeed = velocity.x * forwardDir.x + velocity.z * forwardDir.z

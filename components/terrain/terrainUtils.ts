@@ -6,14 +6,14 @@ export const SURFACE_FRICTION: Record<SurfaceType, number> = {
   road: 0.995,
   grass: 0.98,
   sand: 0.93,
-  mud: 0.88,
+  mud: 0.5,
 }
 
 export const SURFACE_COLORS: Record<SurfaceType, [number, number, number]> = {
   road: [0.35, 0.35, 0.38],
   grass: [0.25, 0.6, 0.2],
   sand: [0.85, 0.75, 0.55],
-  mud: [0.4, 0.3, 0.15],
+  mud: [0.3, 0.2, 0.1],
 }
 
 export const TERRAIN_CONFIG = {
@@ -30,7 +30,6 @@ export const TERRAIN_CONFIG = {
   ]
 } as const
 
-// Road spline paths radiating from center
 const ROAD_PATHS: Array<{ angle: number; width: number; length: number }> = [
   { angle: 0, width: 6, length: 90 },
   { angle: Math.PI / 2, width: 6, length: 90 },
@@ -42,7 +41,6 @@ const ROAD_PATHS: Array<{ angle: number; width: number; length: number }> = [
   { angle: (7 * Math.PI) / 4, width: 4, length: 70 },
 ]
 
-// Ring road at radius ~40
 const RING_ROAD_RADIUS = 40
 const RING_ROAD_WIDTH = 5
 
@@ -62,11 +60,9 @@ const noise2D = createNoise2D(seededRandom(TERRAIN_CONFIG.SEED))
 const distToRoad = (x: number, z: number): number => {
   let minDist = Infinity
 
-  // Radial roads
   for (const road of ROAD_PATHS) {
     const dx = Math.cos(road.angle)
     const dz = Math.sin(road.angle)
-    // Project point onto road line
     const t = Math.max(0, Math.min(road.length, x * dx + z * dz))
     const px = dx * t
     const pz = dz * t
@@ -74,12 +70,9 @@ const distToRoad = (x: number, z: number): number => {
     minDist = Math.min(minDist, d - road.width / 2)
   }
 
-  // Ring road
   const dist = Math.sqrt(x * x + z * z)
   const ringDist = Math.abs(dist - RING_ROAD_RADIUS) - RING_ROAD_WIDTH / 2
   minDist = Math.min(minDist, ringDist)
-
-  // Center plaza (radius 12)
   minDist = Math.min(minDist, dist - 12)
 
   return minDist
@@ -91,8 +84,13 @@ export const getSurfaceType = (x: number, z: number): SurfaceType => {
 
   const dist = Math.sqrt(x * x + z * z)
   const height = getTerrainHeight(x, z)
+  // Slope calculation as in original: height diff relative to flat
   const slope = Math.abs(height) / Math.max(1, dist * 0.05)
 
+  // Mud Trap zones defined by noise
+  const mudNoise = noise2D(x * 0.15, z * 0.15)
+  if (mudNoise > 0.65) return 'mud'
+  
   if (slope > 2) return 'mud'
   if (dist > 60 && slope > 0.5) return 'sand'
   return 'grass'
@@ -102,7 +100,6 @@ export const getSurfaceColor = (x: number, z: number): [number, number, number] 
   const surface = getSurfaceType(x, z)
   const base = SURFACE_COLORS[surface]
 
-  // Road edge blend
   const d = distToRoad(x, z)
   if (d > 0 && d < 3) {
     const blend = d / 3
@@ -126,7 +123,6 @@ export const getTerrainHeight = (x: number, z: number) => {
   const dist = Math.sqrt(x * x + z * z)
   const flatFactor = Math.max(0, 1 - Math.min(1, dist / TERRAIN_CONFIG.FLAT_ZONE_RADIUS))
 
-  // Roads are flat
   const roadDist = distToRoad(x, z)
   const roadFlat = roadDist <= 0 ? 1 : roadDist < 4 ? 1 - roadDist / 4 : 0
 

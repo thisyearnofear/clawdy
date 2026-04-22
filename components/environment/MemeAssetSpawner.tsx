@@ -2,7 +2,7 @@
 
 import { useRef, useEffect } from 'react'
 
-interface FoodSpawnerProps {
+interface MemeAssetSpawnerProps {
   spawnRate?: number
   bounds?: [number, number, number]
   spawnHeight?: number
@@ -12,13 +12,13 @@ interface FoodSpawnerProps {
 
 let nextId = 1
 
-export function FoodSpawner({
+export function MemeAssetSpawner({
   spawnRate = 2,
   bounds = [20, 5, 20],
   spawnHeight = 18,
   maxItems = 30,
   onSpawn,
-}: FoodSpawnerProps) {
+}: MemeAssetSpawnerProps) {
   const countRef = useRef(0)
   const onSpawnRef = useRef(onSpawn)
   onSpawnRef.current = onSpawn
@@ -26,7 +26,6 @@ export function FoodSpawner({
   useEffect(() => {
     const interval = setInterval(() => {
       if (countRef.current >= maxItems) return
-      // Use full bounds for distribution
       const px = (Math.random() - 0.5) * bounds[0]
       const pz = (Math.random() - 0.5) * bounds[2]
       const id = nextId++

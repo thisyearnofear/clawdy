@@ -20,7 +20,7 @@ export interface SkillDecision {
   confidence: number
   createdAt: number
   metadata?: {
-    targetFoodId?: number | null
+    targetAssetId?: number | null
     recommendedBid?: number
     recommendedVehicle?: string
     preset?: NonNullable<CloudConfig['preset']>
@@ -91,7 +91,7 @@ async function callOnchainOsMcp(
         params: {
           role: input.session.role,
           agentId: input.session.agentId,
-          foodCount: input.worldState.food.length,
+          assetCount: input.worldState.assets.length,
           vehicleCount: input.worldState.vehicles.length,
           currentWeatherBid: input.currentWeatherBid.amount,
         },
@@ -112,27 +112,27 @@ async function callOnchainOsMcp(
 
 // ── Local policy helpers ──
 
-function findNearestFoodScore(session: AgentSession, worldState: WorldState) {
+function findNearestAssetScore(session: AgentSession, worldState: WorldState) {
   const vehicle = worldState.vehicles.find((entry) => entry.id === session.vehicleId)
-  if (!vehicle || worldState.food.length === 0) {
-    return { targetFoodId: null, distanceScore: 0 }
+  if (!vehicle || worldState.assets.length === 0) {
+    return { targetAssetId: null, distanceScore: 0 }
   }
 
   let minDistance = Infinity
-  let targetFoodId: number | null = null
+  let targetAssetId: number | null = null
 
-  for (const food of worldState.food) {
-    const dx = food.position[0] - vehicle.position[0]
-    const dz = food.position[2] - vehicle.position[2]
+  for (const asset of worldState.assets) {
+    const dx = asset.position[0] - vehicle.position[0]
+    const dz = asset.position[2] - vehicle.position[2]
     const distance = Math.sqrt(dx * dx + dz * dz)
     if (distance < minDistance) {
       minDistance = distance
-      targetFoodId = food.id
+      targetAssetId = asset.id
     }
   }
 
   return {
-    targetFoodId,
+    targetAssetId,
     distanceScore: Number.isFinite(minDistance) ? Math.max(0, 1 - minDistance / 30) : 0,
   }
 }
@@ -140,9 +140,9 @@ function findNearestFoodScore(session: AgentSession, worldState: WorldState) {
 function localPolicyDecision(input: SkillEvaluationInput): SkillDecision {
   const { session, worldState, currentWeatherBid } = input
   const createdAt = Date.now()
-  const { targetFoodId, distanceScore } = findNearestFoodScore(session, worldState)
-  const foodPressure = Math.min(worldState.food.length / 10, 1)
-  const weatherOpportunity = Number((foodPressure * 0.08 + distanceScore * 0.04).toFixed(3))
+  const { targetAssetId, distanceScore } = findNearestAssetScore(session, worldState)
+  const assetPressure = Math.min(worldState.assets.length / 10, 1)
+  const weatherOpportunity = Number((assetPressure * 0.08 + distanceScore * 0.04).toFixed(3))
   const sessionVehicle = worldState.vehicles.find((entry) => entry.id === session.vehicleId)
 
   if (session.role === 'weather' && weatherOpportunity > currentWeatherBid.amount) {
@@ -150,28 +150,28 @@ function localPolicyDecision(input: SkillEvaluationInput): SkillDecision {
       agentId: session.agentId,
       provider: 'local-policy',
       title: 'Treasury cleared a weather play',
-      summary: `Food density and route score justify a ${weatherOpportunity.toFixed(3)} ETH bid.`,
+      summary: `Asset density and route score justify a ${weatherOpportunity.toFixed(3)} ETH bid.`,
       action: 'bid',
-      confidence: Math.min(0.95, 0.5 + foodPressure * 0.25 + distanceScore * 0.2),
+      confidence: Math.min(0.95, 0.5 + assetPressure * 0.25 + distanceScore * 0.2),
       createdAt,
       metadata: {
-        targetFoodId,
+        targetAssetId,
         recommendedBid: weatherOpportunity,
-        preset: foodPressure > 0.6 ? 'stormy' : 'sunset',
+        preset: assetPressure > 0.6 ? 'stormy' : 'sunset',
       },
     }
   }
 
-  if (session.role === 'scout' && targetFoodId !== null) {
+  if (session.role === 'scout' && targetAssetId !== null) {
     return {
       agentId: session.agentId,
       provider: 'local-policy',
       title: 'Scout updated the route',
-      summary: `Nearest opportunity is food #${targetFoodId}. Autopilot can route there now.`,
+      summary: `Nearest opportunity is asset #${targetAssetId}. Autopilot can route there now.`,
       action: 'route',
       confidence: Math.min(0.92, 0.55 + distanceScore * 0.35),
       createdAt,
-      metadata: { targetFoodId },
+      metadata: { targetAssetId },
     }
   }
 
@@ -182,7 +182,7 @@ function localPolicyDecision(input: SkillEvaluationInput): SkillDecision {
       title: 'Mobility needs a vehicle lease',
       summary: `Vehicle ${session.vehicleId} is idle. Lease it before executing routes.`,
       action: 'rent',
-      confidence: Math.min(0.9, 0.55 + foodPressure * 0.2 + distanceScore * 0.15),
+      confidence: Math.min(0.9, 0.55 + assetPressure * 0.2 + distanceScore * 0.15),
       createdAt,
       metadata: { recommendedVehicle: sessionVehicle.type },
     }
@@ -196,7 +196,7 @@ function localPolicyDecision(input: SkillEvaluationInput): SkillDecision {
     action: 'observe',
     confidence: 0.64,
     createdAt,
-    metadata: { targetFoodId },
+    metadata: { targetAssetId },
   }
 }
 

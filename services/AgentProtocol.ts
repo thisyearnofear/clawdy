@@ -1,5 +1,5 @@
 import { CloudConfig } from '../components/environment/CloudManager'
-import { FoodStats } from '../components/environment/ProceduralFood'
+import { MemeAssetStats } from '../components/environment/MemeAssets'
 import { parseEther, encodeFunctionData } from 'viem'
 import { WEATHER_AUCTION_ABI } from './abis/WeatherAuction'
 import { VEHICLE_RENT_ABI } from './abis/VehicleRent'
@@ -21,7 +21,7 @@ export const AGENT_ROLE_CONFIG: Record<
   { label: string; permissions: string[] }
 > = {
   operator: { label: 'Operator', permissions: ['wallet_connect', 'autonomy_init', 'manual_override'] },
-  scout: { label: 'Scout Agent', permissions: ['food_control', 'route_planning'] },
+  scout: { label: 'Scout Agent', permissions: ['asset_control', 'route_planning'] },
   weather: { label: 'Weather Agent', permissions: ['weather_control', 'bid_execution'] },
   mobility: { label: 'Mobility Agent', permissions: ['vehicle_control', 'session_extend'] },
   treasury: { label: 'Treasury Agent', permissions: ['spend_policy', 'budget_control'] },
@@ -42,10 +42,10 @@ export interface WorldState {
     isRented: boolean
     rentExpiresAt: number
   }[]
-  food: {
+  assets: {
     id: number
     type: string
-    nutrition: string
+    rarity: string
     position: [number, number, number]
   }[]
   bounds: [number, number, number]
@@ -76,7 +76,7 @@ type WeatherConfigUpdate = Partial<CloudConfig> & { spawnRate?: number }
 
 interface CombatNotification {
   type: 'destroy'
-  foodId: number
+  assetId: number
   agentId: string
 }
 
@@ -108,8 +108,6 @@ declare global {
   }
 }
 
-export type FoodType = 'meatball' | 'golden_meatball' | 'spicy_pepper' | 'floaty_marshmallow'
-
 export interface AgentSession {
   agentId: string
   role: AgentRole
@@ -122,7 +120,7 @@ export interface AgentSession {
   vitality: number
   burden: number
   balance: number
-  targetFoodId: number | null
+  targetAssetId: number | null
   autoPilot: boolean
   decisionCount: number
   executedBidCount: number
@@ -130,12 +128,10 @@ export interface AgentSession {
   collectedCount: number
   lastSkillProvider?: string
   isRealOnChain?: boolean
-  // Combo / streak (session-scoped, not intended as long-term persistence)
   comboCount?: number
   comboMultiplier?: number
   comboExpiresAt?: number
   lastCollectAt?: number
-  // Power-ups
   speedBoostUntil?: number
   antiGravityUntil?: number
   airBubbleUntil?: number
@@ -166,7 +162,7 @@ class AgentProtocol {
   private worldState: WorldState = {
     timestamp: Date.now(),
     vehicles: [],
-    food: [],
+    assets: [],
     bounds: [0, 0, 0]
   }
 
@@ -177,7 +173,6 @@ class AgentProtocol {
     this.initAIAgents()
     this.initPublicApi()
     
-    // Sync with gameStore and restore persistence
     if (typeof window !== 'undefined') {
       persistenceService.restoreState((saved) => this.applyRestoredState(saved))
       setInterval(() => {
@@ -296,47 +291,34 @@ class AgentProtocol {
   private stateListeners: ((state: WorldState) => void)[] = []
 
   updateWorldState(update: Partial<WorldState>) {
-    // Merge updates
     const newState = { ...this.worldState, ...update, timestamp: Date.now() }
-    
-    // Check for agent death/decommissioning
     const now = Date.now()
     const activeSessions = Array.from(this.sessions.values())
     
     activeSessions.forEach(session => {
        if (session.agentId === 'Player') return
-       
-       // Tick degradation (assume ~100ms between world updates on average)
        economyEngine.tickDegradation(session, 0.1)
-
        if (session.isDead) {
-          console.log(`[AgentProtocol] Agent ${session.agentId} has died. Removing from world.`)
           this.gameEventListeners.forEach(l => l({ type: 'agent-died', agentId: session.agentId, totalEarned: session.totalEarned }))
           this.graveyard.push({ ...session })
-          if (this.graveyard.length > 20) this.graveyard.shift() // Keep last 20
+          if (this.graveyard.length > 20) this.graveyard.shift()
           this.sessions.delete(session.agentId)
           newState.vehicles = newState.vehicles.filter(v => v.id !== session.vehicleId)
        }
     })
 
-    // Quick shallow check for vehicle movement to avoid redundant work
     const vehiclesChanged = update.vehicles && JSON.stringify(update.vehicles) !== JSON.stringify(this.worldState.vehicles)
-    const foodChanged = update.food && JSON.stringify(update.food) !== JSON.stringify(this.worldState.food)
+    const assetsChanged = update.assets && JSON.stringify(update.assets) !== JSON.stringify(this.worldState.assets)
     
-    if (!vehiclesChanged && !foodChanged && !update.bounds) {
-       // Only timestamp changed? Skip heavy sync.
-       return
-    }
+    if (!vehiclesChanged && !assetsChanged && !update.bounds) return
 
     this.worldState = newState
     this.stateListeners.forEach(l => l(this.worldState))
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('clawdy:state', { detail: this.worldState }))
-      
-      // Throttle store sync to avoid React bottleneck during physics
       const now = Date.now()
-      if (now - this.lastStoreSyncAt > 100) { // 10Hz sync to UI store
+      if (now - this.lastStoreSyncAt > 100) {
         this.lastStoreSyncAt = now
         this.syncWithStore()
       }
@@ -352,15 +334,10 @@ class AgentProtocol {
 
   getWorldState(): WorldState { return this.worldState }
 
-  async collectFood(agentId: string, stats: FoodStats) {
+  async collectAsset(agentId: string, stats: MemeAssetStats) {
     const session = this.sessions.get(agentId)
     if (!session) return
 
-    // ── Combo / streak logic ─────────────────────────────────────────
-    // Design goals:
-    // - feel-good momentum (reward chaining)
-    // - readable (toasts + HUD)
-    // - bounded (cap multiplier)
     const COMBO_WINDOW_MS = 6_000
     const COMBO_MAX_MULTIPLIER = 2.0
     const COMBO_STEP = 0.12
@@ -380,10 +357,10 @@ class AgentProtocol {
     session.comboExpiresAt = now + COMBO_WINDOW_MS
     session.lastCollectAt = now
     
-    const { earned } = economyEngine.collectFood(session, stats)
+    const { earned } = economyEngine.collectAsset(session, stats)
     
     this.gameEventListeners.forEach(l => l({
-      type: 'food-collected',
+      type: 'asset-collected',
       agentId,
       amount: earned,
       comboCount: session.comboCount,
@@ -391,27 +368,13 @@ class AgentProtocol {
       comboExpiresAt: session.comboExpiresAt,
     }))
 
-    // Power-up callouts (for UI delight / clarity)
-    if (stats.type === 'spicy_pepper') {
-      this.gameEventListeners.forEach(l => l({ type: 'powerup', agentId, power: 'boost' }))
-    }
-    if (stats.type === 'floaty_marshmallow') {
-      this.gameEventListeners.forEach(l => l({ type: 'powerup', agentId, power: 'float' }))
-    }
-    if (stats.type === 'golden_meatball') {
-      this.gameEventListeners.forEach(l => l({ type: 'powerup', agentId, power: 'jackpot' }))
-    }
-    if (stats.type === 'air_bubble') {
-      this.gameEventListeners.forEach(l => l({ type: 'powerup', agentId, power: 'bubble' }))
-    }
-    if (stats.type === 'foam_board') {
-      this.gameEventListeners.forEach(l => l({ type: 'powerup', agentId, power: 'board' }))
-    }
-    if (stats.type === 'drain_plug') {
-      this.gameEventListeners.forEach(l => l({ type: 'powerup', agentId, power: 'drain' }))
-    }
+    if (stats.type === 'spicy_pepper') this.gameEventListeners.forEach(l => l({ type: 'powerup', agentId, power: 'boost' }))
+    if (stats.type === 'floaty_marshmallow') this.gameEventListeners.forEach(l => l({ type: 'powerup', agentId, power: 'float' }))
+    if (stats.type === 'golden_meatball') this.gameEventListeners.forEach(l => l({ type: 'powerup', agentId, power: 'jackpot' }))
+    if (stats.type === 'air_bubble') this.gameEventListeners.forEach(l => l({ type: 'powerup', agentId, power: 'bubble' }))
+    if (stats.type === 'foam_board') this.gameEventListeners.forEach(l => l({ type: 'powerup', agentId, power: 'board' }))
+    if (stats.type === 'drain_plug') this.gameEventListeners.forEach(l => l({ type: 'powerup', agentId, power: 'drain' }))
     
-    // Milestone check
     const milestones = [0.01, 0.03, 0.05]
     for (const m of milestones) {
       if (session.totalEarned >= m && session.totalEarned - earned < m) {
@@ -488,12 +451,12 @@ class AgentProtocol {
   }
 
   async processCombatEvent(event: { agentId: string, type: string, hitPoint: [number, number, number] }) {
-    this.worldState.food.forEach(f => {
+    this.worldState.assets.forEach(f => {
       const dx = f.position[0] - event.hitPoint[0]
       const dy = f.position[1] - event.hitPoint[1]
       const dz = f.position[2] - event.hitPoint[2]
       if (Math.sqrt(dx*dx + dy*dy + dz*dz) < 3.0) {
-        this.notifyCombatListeners({ type: 'destroy', foodId: f.id, agentId: event.agentId })
+        this.notifyCombatListeners({ type: 'destroy', assetId: f.id, agentId: event.agentId })
       }
     })
   }

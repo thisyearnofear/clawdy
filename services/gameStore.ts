@@ -139,7 +139,6 @@ export const HANDLING_MATRIX: Record<HandlingMode, HandlingTuning> = {
 export interface UIState {
   isSidebarOpen: boolean
   activeTab: 'weather' | 'vehicles' | 'stats'
-  showQuickControls: boolean
   showOnboarding: boolean
   bidWinPreset: string | null
   isLoading: boolean
@@ -294,7 +293,7 @@ const defaultCloudConfig: CloudConfig = {
 
 export const useGameStore = create<GameStore>((set, get) => ({
   // World
-  worldState: { timestamp: Date.now(), vehicles: [], food: [], bounds: [0, 0, 0] },
+  worldState: { timestamp: Date.now(), vehicles: [], assets: [], bounds: [0, 0, 0] },
   setWorldState: (state) => set((prev) => ({
     worldState: { ...prev.worldState, ...state, timestamp: Date.now() },
   })),
@@ -364,7 +363,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
   ui: {
     isSidebarOpen: false,
     activeTab: 'weather',
-    showQuickControls: false,
     showOnboarding: false,
     bidWinPreset: null,
     isLoading: false,

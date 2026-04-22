@@ -47,20 +47,20 @@ export function AgentVision() {
       const idx = sessions.findIndex(s => s.agentId === session.agentId)
       const mesh = lineRefs.current[idx] // Match by actual session index if possible, or just use agent index
       
-      if (!mesh || idx === -1 || !session.targetFoodId) {
+      if (!mesh || idx === -1 || !session.targetAssetId) {
         if (mesh) mesh.visible = false
         return
       }
 
       const agentVehicleId = getAgentVehicleId(session.agentId)
       const vehicle = worldState.vehicles.find(v => v.id === agentVehicleId)
-      const food = worldState.food.find(f => f.id === session.targetFoodId)
+      const asset = worldState.assets.find(f => f.id === session.targetAssetId)
 
-      if (vehicle && food) {
+      if (vehicle && asset) {
         mesh.visible = true
         
         const start = new THREE.Vector3(...vehicle.position)
-        const end = new THREE.Vector3(...food.position)
+        const end = new THREE.Vector3(...asset.position)
         const direction = new THREE.Vector3().subVectors(end, start)
         const len = direction.length()
         

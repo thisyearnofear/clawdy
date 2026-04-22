@@ -203,11 +203,7 @@ export default function CloudScene() {
     // Keyboard controls
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setUI({ isSidebarOpen: !ui.isSidebarOpen, showQuickControls: false })
-      }
-      if (e.key === 'Tab') {
-        e.preventDefault()
-        setUI({ showQuickControls: !ui.showQuickControls })
+        setUI({ isSidebarOpen: !ui.isSidebarOpen })
       }
       if (e.key.toLowerCase() === 'h') {
         setUI({ showHUD: !ui.showHUD })
@@ -230,7 +226,6 @@ export default function CloudScene() {
     setWeatherEffect,
     tickRound,
     ui.isSidebarOpen,
-    ui.showQuickControls,
   ])
 
   const updateConfig = <K extends keyof CloudConfig>(key: K, value: CloudConfig[K]) => {
@@ -239,7 +234,6 @@ export default function CloudScene() {
 
   const applyPreset = (preset: NonNullable<CloudConfig['preset']>) => {
     setCloudConfig({ preset })
-    setUI({ showQuickControls: false })
   }
 
   return (
@@ -265,8 +259,6 @@ export default function CloudScene() {
         playerId={playerId}
         isMounted={isMounted}
         onOpenSidebar={() => setUI({ isSidebarOpen: true })}
-        onToggleQuickControls={() => setUI({ showQuickControls: !ui.showQuickControls })}
-        showQuickControls={ui.showQuickControls}
         cloudConfig={config}
         onApplyPreset={applyPreset}
       />
@@ -302,7 +294,7 @@ function HelpHint() {
   return (
     <div className="absolute bottom-20 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-xl rounded-full px-4 py-2 border border-white/10 animate-in fade-in slide-in-from-bottom-4 z-10">
       <p className="text-[10px] text-white/70 font-medium">
-        Press <kbd className="px-2 py-0.5 bg-white/10 rounded text-white font-mono">ESC</kbd> for controls · <kbd className="px-2 py-0.5 bg-white/10 rounded text-white font-mono">Tab</kbd> for quick weather
+        Press <kbd className="px-2 py-0.5 bg-white/10 rounded text-white font-mono">ESC</kbd> for controls
       </p>
     </div>
   )
