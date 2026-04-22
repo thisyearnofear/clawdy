@@ -225,9 +225,8 @@ export function WaterTurnSplashes({
 
   const plane = useMemo(() => new THREE.PlaneGeometry(1, 1, 1, 1), [])
   const mudPlane = useMemo(() => new THREE.CircleGeometry(1, 8), [])
-
-  // Pre-generate random rotations for mud splatters to avoid impure function during render
-  const mudRotations = useMemo(() => new Array(MUD_POOL).fill(0).map(() => Math.random() * Math.PI * 2), [])
+  // Pre-defined rotations to avoid impure Math.random() during render
+  const mudRotations = [0.31, 1.89, 2.54, 4.02, 5.18, 0.97, 3.45, 4.76]
 
   if (!enabled || !texture) return null
 

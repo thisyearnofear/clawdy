@@ -7,7 +7,7 @@ import * as THREE from 'three'
 export function LaunchPad({ position, target }: { position: [number, number, number], target: [number, number, number] }) {
   const rigidBody = useRef<RapierRigidBody>(null)
 
-  const launch = (other: any) => {
+  const launch = (other: RapierRigidBody) => {
     if (other.userData?.isPlayer || other.userData?.agentId) {
       const body = other as RapierRigidBody
       const direction = new THREE.Vector3(...target).sub(new THREE.Vector3(...position)).normalize()

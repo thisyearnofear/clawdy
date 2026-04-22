@@ -185,7 +185,10 @@ function Experience({
     const timer = setInterval(update, 1000)
     return () => clearInterval(timer)
   }, [round.endsAt])
-  const endgameMultiplier = round.isActive && remainingSec > 0 && remainingSec <= 10 ? (remainingSec <= 5 ? 2.4 : 1.8) : 1
+  const ENDGAME_RAMP_START = 30 // seconds before round end when spawn rate starts ramping
+  const endgameMultiplier = round.isActive && remainingSec > 0 && remainingSec <= ENDGAME_RAMP_START
+    ? 1 + (1.4 * (1 - remainingSec / ENDGAME_RAMP_START)) // 1.0 at 30s → 2.4 at 0s
+    : 1
   const effectiveSpawnRate = Math.min(10, spawnRate * endgameMultiplier)
 
   useEffect(() => {
@@ -378,7 +381,7 @@ function Experience({
         <LaunchPads />
         <SkyIslands />
         <CloudManager config={cloudConfig} />
-        <MemeAssetSpawner spawnRate={effectiveSpawnRate} bounds={cloudConfig.bounds} spawnHeight={18} maxItems={30} onSpawn={(item) => setMemeAssets((prev) => [...prev, { ...item, itemType: chooseAssistedAssetType() }])} />
+        <MemeAssetSpawner spawnRate={effectiveSpawnRate} bounds={[50, 5, 50]} spawnHeight={18} maxItems={55} onSpawn={(item) => setMemeAssets((prev) => [...prev, { ...item, itemType: chooseAssistedAssetType() }])} />
         <AgentVision />
         <IntentionVisualizer />
         <MemeAssetInstances assets={memeAssets} />
