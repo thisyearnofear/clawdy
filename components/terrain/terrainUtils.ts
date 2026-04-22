@@ -13,7 +13,7 @@ export const SURFACE_COLORS: Record<SurfaceType, [number, number, number]> = {
   road: [0.35, 0.35, 0.38],
   grass: [0.25, 0.6, 0.2],
   sand: [0.85, 0.75, 0.55],
-  mud: [0.3, 0.2, 0.1],
+  mud: [0.15, 0.08, 0.02],
 }
 
 export const TERRAIN_CONFIG = {

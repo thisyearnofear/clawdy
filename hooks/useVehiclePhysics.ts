@@ -38,7 +38,9 @@ export function useVehiclePhysics(
   const handling = HANDLING_MATRIX[handlingMode]
   const flood = useGameStore(state => state.flood)
   const setPlayerWater = useGameStore(state => state.setPlayerWater)
+  const setNearMud = useGameStore(state => state.setNearMud)
   const addPlayerWaterTime = useGameStore(state => state.addPlayerWaterTime)
+  const nearMud = useGameStore(state => state.nearMud)
   const [inputs, setInputs] = useState({ forward: 0, turn: 0, brake: false, aim: 0, action: false })
   
   // Smoothing for physics forces
@@ -48,6 +50,7 @@ export function useVehiclePhysics(
   const lastWaterFlushRef = useRef(0)
   const lastPlayerWaterSyncRef = useRef(0)
   const lastPlayerWaterStateRef = useRef({ inWater: false, depth: 0 })
+  const lastMudWarningUpdate = useRef(0)
 
   useEffect(() => {
     if (agentControlled) {
@@ -221,6 +224,25 @@ export function useVehiclePhysics(
       const bounceStrength = (distFromCenter - BOUNDARY_RADIUS) * 0.5
       const towardCenter = new THREE.Vector3(-vPos.x, 0, -vPos.z).normalize()
       chassisRef.current.applyImpulse({ x: towardCenter.x * bounceStrength, y: 0, z: towardCenter.z * bounceStrength }, true)
+    }
+
+    // --- MUD AHEAD WARNING ---
+    // Check ahead for mud to give player warning before hitting it
+    if (playerControlled && Math.abs(smoothedForward.current) > 0.1) {
+      const lookAheadDistance = 12 // units ahead to check
+      const lookAheadX = vPos.x + forwardDir.x * lookAheadDistance
+      const lookAheadZ = vPos.z + forwardDir.z * lookAheadDistance
+      const aheadSurface = getSurfaceType(lookAheadX, lookAheadZ)
+      const nearMudAhead = aheadSurface === 'mud'
+      
+      // Only update store occasionally to avoid spam (every 200ms)
+      const now = performance.now()
+      if (nearMud !== nearMudAhead || now - lastMudWarningUpdate.current > 200) {
+        setNearMud(nearMudAhead)
+        lastMudWarningUpdate.current = now
+      }
+    } else if (playerControlled && nearMud) {
+      setNearMud(false)
     }
 
     if (Math.abs(smoothedForward.current) > 0.01) {

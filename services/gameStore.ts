@@ -264,6 +264,10 @@ export interface GameStore {
   playerWater: { inWater: boolean; depth: number }
   setPlayerWater: (update: Partial<GameStore['playerWater']>) => void
 
+  // Mud zone proximity warning
+  nearMud: boolean
+  setNearMud: (near: boolean) => void
+
   // Flood recap stats (per-round, player-only)
   playerFloodStats: { waterTimeMs: number; bubbleSaves: number; boardSaves: number; drainUses: number }
   addPlayerWaterTime: (deltaMs: number) => void
@@ -483,6 +487,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setPlayerWater: (update) => set((prev) => ({
     playerWater: { ...prev.playerWater, ...update },
   })),
+
+  // Mud proximity warning
+  nearMud: false,
+  setNearMud: (nearMud) => set({ nearMud }),
 
   // Flood stats
   playerFloodStats: { waterTimeMs: 0, bubbleSaves: 0, boardSaves: 0, drainUses: 0 },

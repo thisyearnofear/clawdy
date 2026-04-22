@@ -36,6 +36,7 @@ export function HUD(props: HUDProps) {
   const ui = useGameStore(s => s.ui)
   const worldState = useGameStore(s => s.worldState)
   const playerId = useGameStore(s => s.playerId)
+  const nearMud = useGameStore(s => s.nearMud)
   
   const playerSession = sessions['Player']
 
@@ -60,6 +61,17 @@ export function HUD(props: HUDProps) {
           <div className="bg-red-500/90 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-red-400/50 shadow-lg animate-pulse">
             <span className="text-[10px] font-bold text-white uppercase tracking-wider">
               ⚠ RIVAL NEARBY {Math.round(nearestDistance)}m
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* MUD WARNING: Above proximity alert */}
+      {nearMud && (
+        <div className={`absolute bottom-20 left-6 ${UI_Z_INDEX.HUD} pointer-events-none`}>
+          <div className="bg-amber-900/90 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-amber-500/50 shadow-lg">
+            <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">
+              ⚠ MUD AHEAD
             </span>
           </div>
         </div>
