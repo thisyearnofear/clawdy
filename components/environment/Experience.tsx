@@ -481,24 +481,15 @@ function InWorldQueueStatus({ playerId, queueState, isPlayerActive, playerVehicl
   )
 }
 
-const LAUNCH_PAD_POSITIONS: [number, number, number][] = [[25, 0.5, 0], [-25, 0.5, 0], [0, 0.5, 25], [0, 0.5, -25], [35, 0.5, 35], [-35, 0.5, -35]]
-function LaunchPads() { return <>{LAUNCH_PAD_POSITIONS.map((pos, i) => <LaunchPad key={`pad-${i}`} position={pos} />)}</> }
-function LaunchPad({ position }: { position: [number, number, number] }) {
-  const meshRef = useRef<THREE.Mesh>(null)
-  useFrame((state) => {
-    if (meshRef.current) {
-      const t = state.clock.getElapsedTime()
-      const mat = meshRef.current.material as THREE.MeshStandardMaterial
-      mat.emissiveIntensity = 0.5 + Math.sin(t * 3) * 0.3
-    }
-  })
+import { LaunchPad } from './LaunchPad'
+// ...
+function LaunchPads() { 
   return (
-    <RigidBody type="fixed" position={position} rotation={[-0.35, 0, 0]}>
-      <CuboidCollider args={[3, 0.15, 4]} />
-      <mesh ref={meshRef} castShadow receiveShadow><boxGeometry args={[6, 0.3, 8]} /><meshStandardMaterial color="#ff6600" emissive="#ff3300" emissiveIntensity={0.5} metalness={0.8} roughness={0.2} /></mesh>
-      <mesh position={[0, 0.2, -2]}><coneGeometry args={[0.5, 1.2, 4]} /><meshStandardMaterial color="#ffcc00" emissive="#ffcc00" emissiveIntensity={1} /></mesh>
-    </RigidBody>
-  )
+    <>
+      <LaunchPad position={[15, 0.25, 15]} target={[20, 30, 20]} />
+      <LaunchPad position={[-15, 0.25, -15]} target={[-20, 35, -15]} />
+    </>
+  ) 
 }
 
 const SKY_ISLAND_POSITIONS: { pos: [number, number, number]; size: [number, number, number]; color: string }[] = [{ pos: [20, 30, 20], size: [8, 1, 8], color: '#88ccff' }, { pos: [-20, 35, -15], size: [10, 1, 6], color: '#aaddff' }, { pos: [0, 40, -30], size: [12, 1, 12], color: '#ccddff' }, { pos: [-30, 45, 20], size: [6, 1, 10], color: '#99bbff' }, { pos: [35, 50, -10], size: [8, 1, 8], color: '#bbccff' }]

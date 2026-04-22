@@ -7,6 +7,7 @@ import type { RapierRigidBody } from '@react-three/rapier'
 import { useGameStore } from '../../services/gameStore'
 import { playSound } from '../ui/SoundManager'
 import { makeRingTexture } from './waterDecalTextures'
+import { getSurfaceType } from '../terrain/terrainUtils'
 
 type Splash = {
   active: boolean
@@ -18,6 +19,17 @@ type Splash = {
   rotation: number
   maxRadius: number
   kind: 'ring' | 'foam'
+}
+
+type MudSplash = {
+  active: boolean
+  startAt: number
+  durationMs: number
+  x: number
+  y: number
+  z: number
+  scale: number
+  opacity: number
 }
 
 export function WaterTurnSplashes({
@@ -35,11 +47,15 @@ export function WaterTurnSplashes({
   const texture = useMemo(() => (typeof document === 'undefined' ? null : makeRingTexture(256)), [])
 
   const POOL = 10
+  const MUD_POOL = 8
   const splashesRef = useRef<Splash[]>([])
   const meshRefs = useRef<THREE.Mesh[]>([])
   const matRefs = useRef<THREE.MeshBasicMaterial[]>([])
+  const mudSplashesRef = useRef<MudSplash[]>([])
+  const mudMeshRefs = useRef<THREE.Mesh[]>([])
   const lastSpawnAt = useRef(0)
   const lastSoundAt = useRef(0)
+  const lastMudSoundAt = useRef(0)
 
   useEffect(() => {
     splashesRef.current = new Array(POOL).fill(0).map(() => ({
@@ -52,6 +68,16 @@ export function WaterTurnSplashes({
       rotation: 0,
       maxRadius: 2.0,
       kind: 'ring',
+    }))
+    mudSplashesRef.current = new Array(MUD_POOL).fill(0).map(() => ({
+      active: false,
+      startAt: 0,
+      durationMs: 350,
+      x: 0,
+      y: 0,
+      z: 0,
+      scale: 1,
+      opacity: 0,
     }))
   }, [])
 
@@ -109,7 +135,37 @@ export function WaterTurnSplashes({
       }
     }
 
-    // Update
+    // --- MUD SPLASH EFFECTS ---
+    const surfaceType = getSurfaceType(vPos.x, vPos.z)
+    const onMud = surfaceType === 'mud'
+    const mudCooldownMs = 280 / perfScale
+    
+    if (onMud && speed > 4 && now - lastSpawnAt.current > mudCooldownMs) {
+      lastSpawnAt.current = now
+      
+      const mudIdx = mudSplashesRef.current.findIndex(s => !s.active)
+      if (mudIdx !== -1) {
+        const terrainHeight = 0 // Approximate ground level
+        mudSplashesRef.current[mudIdx] = {
+          active: true,
+          startAt: now,
+          durationMs: 350,
+          x: vPos.x + (Math.random() - 0.5) * 1.2,
+          y: terrainHeight + 0.05,
+          z: vPos.z + (Math.random() - 0.5) * 1.2,
+          scale: 0.8 + Math.min(1.5, speed * 0.05),
+          opacity: 0.45,
+        }
+        
+        // Mud splatter sound (cooldown)
+        if (now - lastMudSoundAt.current > 180) {
+          lastMudSoundAt.current = now
+          playSound('splash') // Reuse splash sound for now
+        }
+      }
+    }
+
+    // Update water splashes
     for (let i = 0; i < POOL; i++) {
       const splash = splashesRef.current[i]
       const mesh = meshRefs.current[i]
@@ -139,35 +195,91 @@ export function WaterTurnSplashes({
       mat.opacity = opacity
       mat.color.set(splash.kind === 'foam' ? new THREE.Color(0.92, 0.98, 1.0) : new THREE.Color(0.85, 0.93, 1.0))
     }
+
+    // Update mud splashes
+    for (let i = 0; i < MUD_POOL; i++) {
+      const mud = mudSplashesRef.current[i]
+      const mesh = mudMeshRefs.current[i]
+      if (!mesh) continue
+
+      if (!mud.active) {
+        mesh.visible = false
+        continue
+      }
+      const t = (now - mud.startAt) / mud.durationMs
+      if (t >= 1) {
+        mud.active = false
+        mesh.visible = false
+        continue
+      }
+
+      const opacity = (1 - t) * mud.opacity
+      const scale = mud.scale * t
+
+      mesh.visible = true
+      mesh.position.set(mud.x, mud.y, mud.z)
+      mesh.scale.set(scale, scale, 1)
+      ;(mesh.material as THREE.MeshStandardMaterial).opacity = opacity
+    }
   })
 
   const plane = useMemo(() => new THREE.PlaneGeometry(1, 1, 1, 1), [])
+  const mudPlane = useMemo(() => new THREE.CircleGeometry(1, 8), [])
+
+  // Pre-generate random rotations for mud splatters to avoid impure function during render
+  const mudRotations = useMemo(() => new Array(MUD_POOL).fill(0).map(() => Math.random() * Math.PI * 2), [])
 
   if (!enabled || !texture) return null
 
   return (
-    <group>
-      {new Array(POOL).fill(0).map((_, i) => (
-        <mesh
-          key={i}
-          ref={(m) => { if (m) meshRefs.current[i] = m }}
-          geometry={plane}
-          frustumCulled={false}
-          visible={false}
-          renderOrder={4}
-        >
-          <meshBasicMaterial
-            ref={(m) => { if (m) matRefs.current[i] = m }}
-            map={texture}
-            transparent
-            opacity={0}
-            depthWrite={false}
-            blending={THREE.AdditiveBlending}
-            color={new THREE.Color(0.85, 0.93, 1.0)}
-            toneMapped={false}
-          />
-        </mesh>
-      ))}
-    </group>
+    <>
+      {/* Water splashes */}
+      <group>
+        {new Array(POOL).fill(0).map((_, i) => (
+          <mesh
+            key={`water-${i}`}
+            ref={(m) => { if (m) meshRefs.current[i] = m }}
+            geometry={plane}
+            frustumCulled={false}
+            visible={false}
+            renderOrder={4}
+          >
+            <meshBasicMaterial
+              ref={(m) => { if (m) matRefs.current[i] = m }}
+              map={texture}
+              transparent
+              opacity={0}
+              depthWrite={false}
+              blending={THREE.AdditiveBlending}
+              color={new THREE.Color(0.85, 0.93, 1.0)}
+              toneMapped={false}
+            />
+          </mesh>
+        ))}
+      </group>
+
+      {/* Mud splatters */}
+      <group>
+        {new Array(MUD_POOL).fill(0).map((_, i) => (
+          <mesh
+            key={`mud-${i}`}
+            ref={(m) => { if (m) mudMeshRefs.current[i] = m }}
+            geometry={mudPlane}
+            frustumCulled={false}
+            visible={false}
+            rotation={[-Math.PI / 2, 0, mudRotations[i]]}
+            renderOrder={3}
+          >
+            <meshStandardMaterial
+              color={new THREE.Color(0.35, 0.22, 0.1)}
+              transparent
+              opacity={0}
+              depthWrite={false}
+              roughness={1}
+            />
+          </mesh>
+        ))}
+      </group>
+    </>
   )
 }

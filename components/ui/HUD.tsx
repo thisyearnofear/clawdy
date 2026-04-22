@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { WinConditionBar } from './WinConditionBar'
 import { AuctionTimer } from './AuctionTimer'
 import { AgentTerminal } from './AgentTerminal'
@@ -8,6 +8,12 @@ import { useGameStore } from '../../services/gameStore'
 import { QueueStatusBadge } from './QueueStatusBadge'
 import { CloudConfig } from '../environment/CloudManager'
 import { UI_Z_INDEX } from '../../services/uiConstants'
+
+const PROXIMITY_ALERT_DISTANCE = 40
+
+function getDistance(a: [number, number, number], b: [number, number, number]): number {
+  return Math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2)
+}
 
 const DOMAIN_LABELS = { wind: 'Wind', lightning: 'Light', dayNight: 'D/N' } as const
 
@@ -28,13 +34,37 @@ export function HUD(props: HUDProps) {
   const sessions = useGameStore(s => s.sessions)
   const activeWeatherEffects = useGameStore(s => s.activeWeatherEffects)
   const ui = useGameStore(s => s.ui)
+  const worldState = useGameStore(s => s.worldState)
+  const playerId = useGameStore(s => s.playerId)
   
   const playerSession = sessions['Player']
+
+  // Compute nearest player distance
+  const nearestDistance = useMemo(() => {
+    const myVehicle = worldState.vehicles.find(v => v.id === playerId)
+    if (!myVehicle) return null
+    const distances = worldState.vehicles
+      .filter(v => v.id !== playerId)
+      .map(v => getDistance(myVehicle.position, v.position))
+      .filter(d => d <= PROXIMITY_ALERT_DISTANCE)
+    return distances.length > 0 ? Math.min(...distances) : null
+  }, [worldState.vehicles, playerId])
 
   if (!ui.showHUD) return null
 
   return (
     <>
+      {/* PROXIMITY ALERT: Bottom Left */}
+      {nearestDistance !== null && (
+        <div className={`absolute bottom-6 left-6 ${UI_Z_INDEX.HUD} pointer-events-none`}>
+          <div className="bg-red-500/90 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-red-400/50 shadow-lg animate-pulse">
+            <span className="text-[10px] font-bold text-white uppercase tracking-wider">
+              ⚠ RIVAL NEARBY {Math.round(nearestDistance)}m
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* 1. TOP CENTER: Stacked UI */}
       <div className={`absolute top-6 left-1/2 -translate-x-1/2 ${UI_Z_INDEX.HUD} flex flex-col items-center gap-2 pointer-events-none`}>
         <div className="pointer-events-auto"><WinConditionBar playerId={props.playerId} /></div>
