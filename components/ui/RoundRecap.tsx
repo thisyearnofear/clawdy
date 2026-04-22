@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useGameStore } from '../../services/gameStore'
 
 function shorten(id: string) {
@@ -8,13 +8,19 @@ function shorten(id: string) {
   return id.length > 14 ? `${id.slice(0, 12)}…` : id
 }
 
-export function RoundRecap() {
+export const RoundRecap = React.memo(function RoundRecap() {
   const round = useGameStore(s => s.round)
   const sessions = useGameStore(s => s.sessions)
   const floodStats = useGameStore(s => s.playerFloodStats)
   const setModalOpen = useGameStore(s => s.setModalOpen)
   const [now, setNow] = useState(() => Date.now())
   const [dismissedRound, setDismissedRound] = useState<number | null>(null)
+
+  const leaderboard = useMemo(() => {
+    return Object.values(sessions).sort((a, b) => b.totalEarned - a.totalEarned)
+  }, [sessions])
+
+  const isVisible = !round.isActive && !!round.winner && dismissedRound !== round.roundNumber
 
   useEffect(() => {
     if (!isVisible) return
@@ -27,12 +33,6 @@ export function RoundRecap() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (round.isActive) setDismissedRound(null)
   }, [round.isActive, round.roundNumber])
-
-  const leaderboard = useMemo(() => {
-    return Object.values(sessions).sort((a, b) => b.totalEarned - a.totalEarned)
-  }, [sessions])
-
-  const isVisible = !round.isActive && !!round.winner && dismissedRound !== round.roundNumber
   
   // Expose recap as a blocking modal to the rest of the UI.
   useEffect(() => {
@@ -191,4 +191,4 @@ export function RoundRecap() {
       </div>
     </div>
   )
-}
+})

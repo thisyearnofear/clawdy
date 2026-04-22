@@ -1,9 +1,5 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { vehicleQueue, QueueState } from '../../services/VehicleQueue'
-import { useAccount } from 'wagmi'
-
 import React, { useState, useEffect } from 'react'
 import { vehicleQueue, QueueState } from '../../services/VehicleQueue'
 import { useAccount } from 'wagmi'
@@ -13,23 +9,23 @@ export const QueueStatusBadge = React.memo(function QueueStatusBadge({ playerId 
   const [queueState, setQueueState] = useState<QueueState | null>(null)
   const [now, setNow] = useState(() => Date.now())
 
+  // Subscribe to queue state changes (runs once)
   useEffect(() => {
-    const unsubscribeQueue = vehicleQueue.subscribe((state) => {
+    const unsubscribe = vehicleQueue.subscribe((state) => {
       setQueueState(state)
     })
-    
-    // Only tick now when user is waiting to minimize re-renders
-    let interval: NodeJS.Timeout | null = null
+    return () => unsubscribe()
+  }, [])
+
+  // Only tick the timer when the player is waiting or active
+  useEffect(() => {
     const player = queueState?.queue.find(p => p.id === playerId)
-    if (player?.status === 'waiting' || (queueState?.isPlayerActive(playerId))) {
-        interval = setInterval(() => setNow(Date.now()), 1000)
-    }
-    
-    return () => {
-      unsubscribeQueue()
-      if (interval) clearInterval(interval)
-    }
-  }, [playerId, queueState?.queue])
+    const needsTimer = player?.status === 'waiting' || (queueState?.isPlayerActive(playerId))
+    if (!needsTimer) return
+
+    const interval = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(interval)
+  }, [playerId, queueState])
 
   if (!queueState) return null
 
