@@ -114,6 +114,11 @@ export const getSurfaceColor = (x: number, z: number): [number, number, number] 
   return base
 }
 
+export const getMudIntensity = (x: number, z: number): number => {
+  const mudNoise = noise2D(x * 0.15, z * 0.15)
+  return mudNoise > 0.65 ? Math.min(1, (mudNoise - 0.65) / 0.2) : 0
+}
+
 export const getTerrainHeight = (x: number, z: number) => {
   let noise = 0
   for (const layer of TERRAIN_CONFIG.NOISE_LAYERS) {
@@ -127,7 +132,15 @@ export const getTerrainHeight = (x: number, z: number) => {
   const roadFlat = roadDist <= 0 ? 1 : roadDist < 4 ? 1 - roadDist / 4 : 0
 
   const totalFlat = Math.max(flatFactor, roadFlat)
-  return noise * (1 - totalFlat)
+  let height = noise * (1 - totalFlat)
+
+  // Depress mud zones slightly to create visible "pit" effect
+  const mudIntensity = getMudIntensity(x, z)
+  if (mudIntensity > 0) {
+    height -= mudIntensity * 0.4
+  }
+
+  return height
 }
 
 export const getTerrainNormal = (x: number, z: number): [number, number, number] => {

@@ -15,7 +15,7 @@ import {
 import { isMobile } from 'react-device-detect'
 import { Physics } from '@react-three/rapier'
 import { ProceduralMemeAsset, MemeAssetStats, type MemeAssetType } from './MemeAssets'
-import { MemeAssetSpawner } from './MemeAssetSpawner'
+import { MemeAssetSpawner, type SpawnTier } from './MemeAssetSpawner'
 import { CloudManager, CloudConfig } from './CloudManager'
 import { Terrain } from '../terrain/Terrain'
 import { Vegetation } from '../vegetation/Vegetation'
@@ -41,6 +41,7 @@ import { WeatherParticles } from './WeatherParticles'
 import { WeatherPostProcessing } from './WeatherPostProcessing'
 import { PuddleRipples } from './PuddleRipples'
 import { FloodWater } from './FloodWater'
+import { MudMarkers } from './MudMarkers'
 import { getAgentByVehicleId } from '../../services/agents'
 import type { RapierRigidBody } from '@react-three/rapier'
 import { useGameStore, GRAVITY_FOR_PRESET, type GravityMode } from '../../services/gameStore'
@@ -153,7 +154,7 @@ function Experience({
   const triggerFloodDrain = useGameStore(s => s.triggerFloodDrain)
   const addPlayerDrainUse = useGameStore(s => s.addPlayerDrainUse)
 
-  const chooseAssistedAssetType = (): MemeAssetType | undefined => {
+  const chooseAssistedAssetType = (tier: SpawnTier = 'ground'): MemeAssetType | undefined => {
     if (flood.active && flood.intensity > 0.25) {
       const pBubble = Math.min(0.12, 0.03 + flood.intensity * 0.06)
       if (Math.random() < pBubble) return 'air_bubble'
@@ -163,6 +164,23 @@ function Experience({
       if (Math.random() < pPlug) return 'drain_plug'
       const p = Math.min(0.22, 0.06 + flood.intensity * 0.12)
       if (Math.random() < p) return Math.random() < 0.6 ? 'floaty_marshmallow' : 'spicy_pepper'
+    }
+
+    // Elevated tier items tend to be more valuable/special
+    if (tier === 'elevated') {
+      if (Math.random() < 0.45) return 'golden_meatball'
+      if (Math.random() < 0.4) return 'spicy_pepper'
+      return 'floaty_marshmallow'
+    }
+
+    // Peak tier - moderate special chance
+    if (tier === 'peak' && Math.random() < 0.25) {
+      return 'spicy_pepper'
+    }
+
+    // Mud tier - more survival items due to hazard
+    if (tier === 'mud' && Math.random() < 0.3) {
+      return Math.random() < 0.6 ? 'air_bubble' : 'foam_board'
     }
 
     if (!isPlayerBehind) return undefined
@@ -381,7 +399,7 @@ function Experience({
         <LaunchPads />
         <SkyIslands />
         <CloudManager config={cloudConfig} />
-        <MemeAssetSpawner spawnRate={effectiveSpawnRate} bounds={[50, 5, 50]} spawnHeight={18} maxItems={55} onSpawn={(item) => setMemeAssets((prev) => [...prev, { ...item, itemType: chooseAssistedAssetType() }])} />
+        <MemeAssetSpawner spawnRate={effectiveSpawnRate} bounds={[50, 5, 50]} spawnHeight={18} maxItems={55} onSpawn={(item) => setMemeAssets((prev) => [...prev, { ...item, itemType: chooseAssistedAssetType(item.tier) }])} />
         <AgentVision />
         <IntentionVisualizer />
         <MemeAssetInstances assets={memeAssets} />
@@ -416,6 +434,7 @@ function Experience({
             </group>
           )
         })}
+        <MudMarkers />
         <Vegetation getHeightAt={useSphericalTerrain ? getSphericalTerrainHeight : terrainSampler} />
         {useSphericalTerrain ? <IntegratedSphericalTerrain playerPosition={playerVehiclePosition} onTerrainReady={setTerrainSampler} /> : <Terrain onSamplerReady={setTerrainSampler} />}
         <group position={[0, 20, -10]}>
@@ -491,6 +510,9 @@ function LaunchPads() {
     <>
       <LaunchPad position={[15, 0.25, 15]} target={[20, 30, 20]} />
       <LaunchPad position={[-15, 0.25, -15]} target={[-20, 35, -15]} />
+      <LaunchPad position={[0, 0.25, -20]} target={[0, 40, -30]} />
+      <LaunchPad position={[-22, 0.25, 15]} target={[-30, 45, 20]} />
+      <LaunchPad position={[25, 0.25, -8]} target={[35, 50, -10]} />
     </>
   ) 
 }
