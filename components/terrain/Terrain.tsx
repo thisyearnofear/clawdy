@@ -212,13 +212,7 @@ export function Terrain({
   const tempVehiclePos = useMemo(() => new THREE.Vector3(), [])
   const tempLocalPoint = useMemo(() => new THREE.Vector3(), [])
 
-  const [chunkKeys, setChunkKeys] = useState<string[]>(() => {
-    const slots: string[] = []
-    for (let gz = -GRID_RADIUS; gz <= GRID_RADIUS; gz += 1)
-      for (let gx = -GRID_RADIUS; gx <= GRID_RADIUS; gx += 1)
-        slots.push(`${gx},${gz}`)
-    return slots
-  })
+  const [, setTerrainVersion] = useState(0)
 
   const chunkSlots = useMemo(() => {
     const slots: ChunkState[] = []
@@ -310,7 +304,6 @@ export function Terrain({
     // wet: roughness 0.35 / metalness 0.25
     // eslint-disable-next-line react-hooks/immutability
     terrainMaterial.roughness = THREE.MathUtils.lerp(0.8, 0.35, wetnessRef.current)
-    // eslint-disable-next-line react-hooks/immutability
     terrainMaterial.metalness = THREE.MathUtils.lerp(0.1, 0.25, wetnessRef.current)
 
     const centerX = Math.floor(camera.position.x / CHUNK_SIZE)
@@ -363,8 +356,7 @@ export function Terrain({
           index += 1
         }
       }
-      // Update keys to trigger RigidBody remount with correct positions
-      setChunkKeys(chunkStateRef.current.map((c) => `${c.coordX},${c.coordZ}`))
+      setTerrainVersion((version) => version + 1)
     }
 
     if (vehiclesRef.current.length === 0) return
@@ -405,7 +397,7 @@ export function Terrain({
     <group>
       {chunkSlots.map((chunk, index) => (
         <RigidBody
-          key={chunkKeys[index]}
+          key={`terrain-slot-${index}`}
           type="fixed"
           colliders="trimesh"
           position={[chunk.coordX * CHUNK_SIZE, CHUNK_Y_OFFSET, chunk.coordZ * CHUNK_SIZE]}
