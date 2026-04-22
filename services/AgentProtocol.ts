@@ -11,10 +11,9 @@ import { useGameStore } from './gameStore'
 export type VehicleType = 'truck' | 'tank' | 'monster' | 'speedster'
 export type AgentRole = 'operator' | 'scout' | 'weather' | 'mobility' | 'treasury'
 
-export const CHAIN_NAME =
-  (process.env.NEXT_PUBLIC_USE_0G_TESTNET ?? process.env.NEXT_PUBLIC_USE_XLAYER_TESTNET) === 'true'
-    ? '0G Testnet (Galileo)'
-    : '0G Mainnet'
+import { primaryChain } from './web3Config'
+
+export const CHAIN_NAME = primaryChain.name
 
 export const AGENT_ROLE_CONFIG: Record<
   AgentRole,

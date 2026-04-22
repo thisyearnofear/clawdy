@@ -2,7 +2,9 @@ import { createConfig } from 'wagmi'
 import { injected, walletConnect, coinbaseWallet } from 'wagmi/connectors'
 import { http, fallback } from 'wagmi'
 import { defineChain } from 'viem'
+import { xLayer, xLayerTestnet, bsc, bscTestnet } from 'viem/chains'
 
+// ── 0G chains (not in viem/chains, defined manually) ─────────────────
 const zeroGMainnet = defineChain({
   id: 16661,
   name: '0G Mainnet',
@@ -27,47 +29,57 @@ const zeroGTestnet = defineChain({
   },
 })
 
-export const is0GTestnet =
-  (process.env.NEXT_PUBLIC_USE_0G_TESTNET ?? process.env.NEXT_PUBLIC_USE_XLAYER_TESTNET) === 'true'
+// ── Chain resolution ─────────────────────────────────────────────────
+export type ChainTarget = '0g' | 'xlayer' | 'bnb'
 
-export const primaryChain = is0GTestnet ? zeroGTestnet : zeroGMainnet
+const CHAIN_ENV = (process.env.NEXT_PUBLIC_CHAIN || '0g').toLowerCase() as ChainTarget
+const USE_TESTNET =
+  (process.env.NEXT_PUBLIC_USE_TESTNET ??
+    process.env.NEXT_PUBLIC_USE_0G_TESTNET ??
+    process.env.NEXT_PUBLIC_USE_XLAYER_TESTNET) === 'true'
+
+const CHAIN_MAP = {
+  '0g':     { mainnet: zeroGMainnet, testnet: zeroGTestnet },
+  xlayer:   { mainnet: xLayer,       testnet: xLayerTestnet },
+  bnb:      { mainnet: bsc,          testnet: bscTestnet },
+} as const
+
+const resolved = CHAIN_MAP[CHAIN_ENV] ?? CHAIN_MAP['0g']
+
+export const chainTarget: ChainTarget = CHAIN_ENV
+export const isTestnet = USE_TESTNET
+export const primaryChain = USE_TESTNET ? resolved.testnet : resolved.mainnet
 export const supportedChains = [primaryChain] as const
 
 // Poll every 12s (wagmi default is 4s) — sufficient for game event sync
 export const POLL_INTERVAL = 12_000
 
-// Use a no-op transport for the inactive chain to prevent 403 polling errors.
-// The inactive chain's transport points to the active RPC (never actually called).
-const testnetTransport = fallback([
-  http('https://evmrpc-testnet.0g.ai'),
-])
-const mainnetTransport = fallback([
-  http('https://evmrpc.0g.ai'),
+const transport = fallback([
+  http(primaryChain.rpcUrls.default.http[0]),
 ])
 
 export const config = createConfig({
   chains: supportedChains,
   pollingInterval: POLL_INTERVAL,
+  // @ts-expect-error -- wagmi wants a full Record keyed by all chain IDs but we resolve a single chain at build time
   transports: {
-    [zeroGMainnet.id]: mainnetTransport,
-    [zeroGTestnet.id]: testnetTransport,
+    [primaryChain.id]: transport,
   },
-  // Stop polling when the browser tab is hidden
   syncConnectedChain: true,
   connectors: [
     injected({ target: 'metaMask' }),
-    coinbaseWallet({ 
+    coinbaseWallet({
       appName: 'CLAWDY',
-      preference: 'smartWalletOnly'
+      preference: 'smartWalletOnly',
     }),
     walletConnect({
       projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID || 'demo-project',
       metadata: {
         name: 'CLAWDY',
-        description: 'Agentic sandbox on 0G',
+        description: `Agentic sandbox on ${primaryChain.name}`,
         url: process.env.NEXT_PUBLIC_APP_URL || 'https://clawdy.io',
-        icons: ['https://clawdy.io/icon.png']
-      }
+        icons: ['https://clawdy.io/icon.png'],
+      },
     }),
   ],
 })
