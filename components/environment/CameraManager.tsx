@@ -7,6 +7,7 @@ import { useGameStore } from '../../services/gameStore'
 
 interface CameraManagerProps {
   target?: RapierRigidBody | null
+  targetRef?: React.RefObject<RapierRigidBody | null>
   active: boolean
   mode?: 'spectator' | 'active'
   intensity?: number
@@ -16,6 +17,7 @@ interface CameraManagerProps {
 
 export function CameraManager({ 
   target, 
+  targetRef,
   active, 
   mode = 'spectator',
   intensity = 0,
@@ -51,10 +53,12 @@ export function CameraManager({
   useFrame((state, delta) => {
     if (!controlsRef.current) return
 
-    if (active && target) {
-      const translation = target.translation()
+    const activeTarget = targetRef?.current ?? target
+
+    if (active && activeTarget) {
+      const translation = activeTarget.translation()
       targetPos.current.set(translation.x, translation.y, translation.z)
-      const rotation = target.rotation()
+      const rotation = activeTarget.rotation()
       quaternion.current.set(rotation.x, rotation.y, rotation.z, rotation.w)
 
       backward.current.set(0, 0, 1).applyQuaternion(quaternion.current)

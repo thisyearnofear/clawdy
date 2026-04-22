@@ -8,6 +8,7 @@ import type { RapierRigidBody } from '@react-three/rapier'
 import { agentProtocol } from '../../services/AgentProtocol'
 import { useVehiclePhysics, VehicleStats } from '../../hooks/useVehiclePhysics'
 import { WaterTurnSplashes } from '../environment/WaterTurnSplashes'
+import { GhostVehicleShell } from './GhostVehicleShell'
 
 const TANK_STATS: VehicleStats = {
   profile: 'tank',
@@ -77,12 +78,42 @@ export function Tank({
   isGhost?: boolean,
   onRef?: (ref: RapierRigidBody | null) => void
 }) {
+  if (isGhost) {
+    return <GhostVehicleShell position={position} bodyColor="#d2e3c8" />
+  }
+
+  return (
+    <ActiveTank
+      id={id}
+      position={position}
+      agentControlled={agentControlled}
+      playerControlled={playerControlled}
+      onRef={onRef}
+    />
+  )
+}
+
+function ActiveTank({
+  id,
+  position,
+  agentControlled,
+  playerControlled,
+  isGhost = false,
+  onRef,
+}: {
+  id: string,
+  position: [number, number, number],
+  agentControlled: boolean,
+  playerControlled: boolean,
+  isGhost?: boolean,
+  onRef?: (ref: RapierRigidBody | null) => void
+}) {
   const chassisRef = useRef<RapierRigidBody>(null)
   const turretRef = useRef<THREE.Group>(null)
   const laserRef = useRef<THREE.Mesh>(null)
   const rapier = useRapier()
   
-  const { inputs } = useVehiclePhysics(id, chassisRef, TANK_STATS, agentControlled, playerControlled && !isGhost, !isGhost)
+  const { inputs } = useVehiclePhysics(id, chassisRef, TANK_STATS, agentControlled, playerControlled, true)
   
   const [muzzleFlash, setMuzzleFlash] = useState(false)
   const lastFireTime = useRef(0)
@@ -150,16 +181,16 @@ export function Tank({
       <RigidBody 
         ref={chassisRef} 
         position={position} 
-        colliders={isGhost ? false : "cuboid"} 
+        colliders="cuboid" 
         mass={TANK_STATS.mass}
         restitution={0.1}
         friction={1.0}
         linearDamping={0.5}
         angularDamping={0.9}
-        type={isGhost ? "fixed" : "dynamic"}
-        userData={{ agentId: agentControlled ? id : undefined, isPlayer: !agentControlled, isGhost }}
+        type="dynamic"
+        userData={{ agentId: agentControlled ? id : undefined, isPlayer: !agentControlled, isGhost: false }}
       >
-        <mesh castShadow={!isGhost} receiveShadow={!isGhost}>
+        <mesh castShadow receiveShadow>
           <boxGeometry args={[2.5, 1, 4]} />
           <meshStandardMaterial {...materialProps} />
         </mesh>
@@ -174,7 +205,7 @@ export function Tank({
             <meshStandardMaterial {...materialProps} color={isGhost ? "#ffffff" : "#1e210b"} />
           </mesh>
           
-          <TankArmorPulse isGhost={isGhost} />
+        <TankArmorPulse isGhost={isGhost} />
 
           {!isGhost && (
             <mesh ref={laserRef} rotation={[Math.PI / 2, 0, 0]}>
@@ -201,14 +232,12 @@ export function Tank({
         </mesh>
       </RigidBody>
 
-      {!isGhost && (
-        <WaterTurnSplashes
-          chassisRef={chassisRef}
-          enabled={playerControlled && !agentControlled}
-          turnInput={inputs.turn}
-          brake={inputs.brake}
-        />
-      )}
+      <WaterTurnSplashes
+        chassisRef={chassisRef}
+        enabled={playerControlled && !agentControlled}
+        turnInput={inputs.turn}
+        brake={inputs.brake}
+      />
     </group>
   )
 }

@@ -75,8 +75,8 @@ function Experience({
   const [terrainSampler, setTerrainSampler] = useState<((x: number, z: number) => number) | null>(null)
   const hasJoinedQueueRef = useRef(false)
   
-  const [playerVehicleObj, setPlayerVehicleObj] = useState<RapierRigidBody | null>(null)
-  const [spectatorVehicleObj, setSpectatorVehicleObj] = useState<RapierRigidBody | null>(null)
+  const playerVehicleObjRef = useRef<RapierRigidBody | null>(null)
+  const spectatorVehicleObjRef = useRef<RapierRigidBody | null>(null)
   const lastPriorityToastAtRef = useRef(0)
 
   const getVehiclePosition = useCallback((index: number, isGhost: boolean = false): [number, number, number] => {
@@ -122,7 +122,7 @@ function Experience({
       }
     }
     if (agentId === 'Player' && stats.type === 'drain_plug') {
-      const p = playerVehicleObj?.translation?.()
+      const p = playerVehicleObjRef.current?.translation?.()
       const center: [number, number, number] = p
         ? [p.x, p.y, p.z]
         : [playerVehiclePosition.x, playerVehiclePosition.y, playerVehiclePosition.z]
@@ -299,9 +299,8 @@ function Experience({
 
   const playerVehicle = queueState?.getPlayerVehicle(playerId)
   const isPlayerActive = queueState?.isPlayerActive(playerId) ?? false
-  const spectatorVehicle = useMemo(() => vehicles.find(v => v.agentControlled && !v.isGhost) || vehicles[0], [vehicles])
-  const cameraTarget = isPlayerActive ? playerVehicleObj : spectatorVehicleObj
-  const isCameraFollowingVehicle = Boolean(cameraTarget)
+  const spectatorVehicle = useMemo(() => vehicles.find(v => v.agentControlled && !v.isGhost), [vehicles])
+  const isCameraFollowingVehicle = Boolean(isPlayerActive ? playerVehicle : spectatorVehicle)
 
   const playerVehiclePosition = useMemo(() => {
     if (isPlayerActive && playerVehicle) {
@@ -316,7 +315,7 @@ function Experience({
   const lastWeatherPhaseUpdateRef = useRef(0)
   useFrame((state) => {
     const elapsedTime = state.clock.elapsedTime
-    if (elapsedTime - lastWeatherPhaseUpdateRef.current < 0.05) return
+    if (elapsedTime - lastWeatherPhaseUpdateRef.current < 0.25) return
     lastWeatherPhaseUpdateRef.current = elapsedTime
     setWeatherPhase(elapsedTime)
   })
@@ -360,7 +359,12 @@ function Experience({
       map={[{ name: 'forward', keys: ['ArrowUp', 'KeyW'] }, { name: 'backward', keys: ['ArrowDown', 'KeyS'] }, { name: 'left', keys: ['ArrowLeft', 'KeyA'] }, { name: 'right', keys: ['ArrowRight', 'KeyD'] }, { name: 'jump', keys: ['Space'] }]}
     >
       <PerspectiveCamera makeDefault position={[0, 15, 30]} />
-      <CameraManager target={cameraTarget} active={isCameraFollowingVehicle} mode={isPlayerActive ? 'active' : 'spectator'} intensity={cameraWeatherIntensity} />
+      <CameraManager
+        targetRef={isPlayerActive ? playerVehicleObjRef : spectatorVehicleObjRef}
+        active={isCameraFollowingVehicle}
+        mode={isPlayerActive ? 'active' : 'spectator'}
+        intensity={cameraWeatherIntensity}
+      />
       <Sky sunPosition={isNightMode ? [100, 1 + (activeWeatherEffects.dayNight?.intensity ?? 0) * 2, 90] : cloudConfig.preset === 'stormy' ? [100, 5, 100] : cloudConfig.preset === 'sunset' ? [100, 8, 50] : [100, 20, 100]} />
       <Environment preset="city" />
       <ambientLight intensity={(cloudConfig.preset === 'stormy' ? 0.3 : cloudConfig.preset === 'cosmic' ? 0.15 : cloudConfig.preset === 'sunset' ? 0.6 : 0.5) * (1 - (activeWeatherEffects.dayNight?.intensity ?? 0) * 0.55) + lightningPulse * 0.35} />
@@ -392,7 +396,11 @@ function Experience({
             agentControlled: v?.agentControlled ?? false, 
             isGhost: !v || v.isGhost,
             playerControlled: isPlayerVehicle,
-            onRef: isPlayerVehicle ? setPlayerVehicleObj : isSpectatorVehicle ? setSpectatorVehicleObj : undefined
+            onRef: isPlayerVehicle
+              ? (ref: RapierRigidBody | null) => { playerVehicleObjRef.current = ref }
+              : isSpectatorVehicle
+                ? (ref: RapierRigidBody | null) => { spectatorVehicleObjRef.current = ref }
+                : undefined
           }
 
           return (

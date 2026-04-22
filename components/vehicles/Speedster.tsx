@@ -7,6 +7,7 @@ import type { RapierRigidBody } from '@react-three/rapier'
 import { RigidBody } from '@react-three/rapier'
 import { useVehiclePhysics, VehicleStats } from '../../hooks/useVehiclePhysics'
 import { WaterTurnSplashes } from '../environment/WaterTurnSplashes'
+import { GhostVehicleShell } from './GhostVehicleShell'
 
 const SPEEDSTER_STATS: VehicleStats = {
   profile: 'speedster',
@@ -63,10 +64,40 @@ export function Speedster({
   isGhost?: boolean,
   onRef?: (ref: RapierRigidBody | null) => void
 }) {
+  if (isGhost) {
+    return <GhostVehicleShell position={position} bodyColor="#cfefff" />
+  }
+
+  return (
+    <ActiveSpeedster
+      id={id}
+      position={position}
+      agentControlled={agentControlled}
+      playerControlled={playerControlled}
+      onRef={onRef}
+    />
+  )
+}
+
+function ActiveSpeedster({
+  id,
+  position,
+  agentControlled,
+  playerControlled,
+  isGhost = false,
+  onRef,
+}: {
+  id: string
+  position: [number, number, number]
+  agentControlled: boolean
+  playerControlled: boolean
+  isGhost?: boolean
+  onRef?: (ref: RapierRigidBody | null) => void
+}) {
   const chassisRef = useRef<RapierRigidBody>(null)
   const wheelsRef = useRef<THREE.Group[]>([])
   
-  const { inputs } = useVehiclePhysics(id, chassisRef, SPEEDSTER_STATS, agentControlled, playerControlled && !isGhost, !isGhost)
+  const { inputs } = useVehiclePhysics(id, chassisRef, SPEEDSTER_STATS, agentControlled, playerControlled, true)
 
   useEffect(() => {
     if (!onRef) return
@@ -84,142 +115,129 @@ export function Speedster({
     })
   })
 
-  const materialProps = isGhost ? {
-    transparent: true,
-    opacity: 0.3,
-    depthWrite: false,
-    color: "#ffffff"
-  } : {}
-
   return (
     <group>
       <RigidBody 
         ref={chassisRef} 
         position={position} 
-        colliders={isGhost ? false : "cuboid"} 
+        colliders="cuboid" 
         mass={SPEEDSTER_STATS.mass}
         restitution={0.1}
         friction={0.9}
         linearDamping={0.4}
         angularDamping={0.8}
         ccd={true}
-        type={isGhost ? "fixed" : "dynamic"}
-        userData={{ agentId: agentControlled ? id : undefined, isPlayer: !agentControlled, isGhost }}
+        type="dynamic"
+        userData={{ agentId: agentControlled ? id : undefined, isPlayer: !agentControlled, isGhost: false }}
       >
         {/* Main Body */}
-        <mesh castShadow={!isGhost}>
+        <mesh castShadow>
           <boxGeometry args={[1.8, 0.35, 4.2]} />
-          <meshStandardMaterial color={isGhost ? "#ffffff" : "#0984e3"} metalness={isGhost ? 0 : 0.9} roughness={isGhost ? 1 : 0.1} {...materialProps} />
+          <meshStandardMaterial color="#0984e3" metalness={0.9} roughness={0.1} />
         </mesh>
         
         {/* Tapered front nose */}
-        <mesh position={[0, -0.05, -2.3]} rotation={[Math.PI / 2, 0, Math.PI / 4]} castShadow={!isGhost}>
+        <mesh position={[0, -0.05, -2.3]} rotation={[Math.PI / 2, 0, Math.PI / 4]} castShadow>
           <coneGeometry args={[0.9, 0.8, 4]} />
-          <meshStandardMaterial color={isGhost ? "#ffffff" : "#0984e3"} metalness={isGhost ? 0 : 0.9} roughness={isGhost ? 1 : 0.1} {...materialProps} />
+          <meshStandardMaterial color="#0984e3" metalness={0.9} roughness={0.1} />
         </mesh>
         
         {/* Cockpit canopy */}
-        <mesh position={[0, 0.5, 0.2]} castShadow={!isGhost}>
+        <mesh position={[0, 0.5, 0.2]} castShadow>
           <boxGeometry args={[1.4, 0.4, 1.8]} />
-          <meshStandardMaterial color={isGhost ? "#ffffff" : "#0984e3"} metalness={isGhost ? 0 : 0.7} {...materialProps} />
+          <meshStandardMaterial color="#0984e3" metalness={0.7} />
         </mesh>
         
         {/* Windshield */}
         <mesh position={[0, 0.45, -0.7]} rotation={[0.5, 0, 0]}>
           <boxGeometry args={[1.3, 0.5, 0.05]} />
-          <meshStandardMaterial color={isGhost ? "#ffffff" : "#2c3e50"} transparent opacity={isGhost ? 0.1 : 0.7} metalness={isGhost ? 0 : 0.95} roughness={isGhost ? 1 : 0.1} />
+          <meshStandardMaterial color="#2c3e50" transparent opacity={0.7} metalness={0.95} roughness={0.1} />
         </mesh>
         
         {/* Side windows */}
         <mesh position={[-0.71, 0.5, 0.2]}>
           <boxGeometry args={[0.02, 0.3, 1.4]} />
-          <meshStandardMaterial color={isGhost ? "#ffffff" : "#2c3e50"} transparent opacity={isGhost ? 0.1 : 0.6} metalness={isGhost ? 0 : 0.9} />
+          <meshStandardMaterial color="#2c3e50" transparent opacity={0.6} metalness={0.9} />
         </mesh>
         <mesh position={[0.71, 0.5, 0.2]}>
           <boxGeometry args={[0.02, 0.3, 1.4]} />
-          <meshStandardMaterial color={isGhost ? "#ffffff" : "#2c3e50"} transparent opacity={isGhost ? 0.1 : 0.6} metalness={isGhost ? 0 : 0.9} />
+          <meshStandardMaterial color="#2c3e50" transparent opacity={0.6} metalness={0.9} />
         </mesh>
         
         {/* Rear deck */}
-        <mesh position={[0, 0.25, 1.4]} rotation={[0.3, 0, 0]} castShadow={!isGhost}>
+        <mesh position={[0, 0.25, 1.4]} rotation={[0.3, 0, 0]} castShadow>
           <boxGeometry args={[1.6, 0.1, 1.2]} />
-          <meshStandardMaterial color={isGhost ? "#ffffff" : "#0984e3"} metalness={isGhost ? 0 : 0.9} {...materialProps} />
+          <meshStandardMaterial color="#0984e3" metalness={0.9} />
         </mesh>
         
         {/* LARGE REAR SPOILER */}
         <group position={[0, 0.9, 1.8]}>
-          <mesh castShadow={!isGhost}>
+          <mesh castShadow>
             <boxGeometry args={[2.2, 0.08, 0.5]} />
-            <meshStandardMaterial color={isGhost ? "#ffffff" : "#2c3e50"} {...materialProps} />
+            <meshStandardMaterial color="#2c3e50" />
           </mesh>
-          <mesh position={[-1.1, 0, 0]} castShadow={!isGhost}>
+          <mesh position={[-1.1, 0, 0]} castShadow>
             <boxGeometry args={[0.1, 0.4, 0.6]} />
-            <meshStandardMaterial color={isGhost ? "#ffffff" : "#2c3e50"} {...materialProps} />
+            <meshStandardMaterial color="#2c3e50" />
           </mesh>
-          <mesh position={[1.1, 0, 0]} castShadow={!isGhost}>
+          <mesh position={[1.1, 0, 0]} castShadow>
             <boxGeometry args={[0.1, 0.4, 0.6]} />
-            <meshStandardMaterial color={isGhost ? "#ffffff" : "#2c3e50"} {...materialProps} />
+            <meshStandardMaterial color="#2c3e50" />
           </mesh>
-          <mesh position={[-0.6, -0.35, 0]} castShadow={!isGhost}>
+          <mesh position={[-0.6, -0.35, 0]} castShadow>
             <cylinderGeometry args={[0.05, 0.05, 0.7, 8]} />
-            <meshStandardMaterial color={isGhost ? "#ffffff" : "#2c3e50"} metalness={isGhost ? 0 : 0.8} {...materialProps} />
+            <meshStandardMaterial color="#2c3e50" metalness={0.8} />
           </mesh>
-          <mesh position={[0.6, -0.35, 0]} castShadow={!isGhost}>
+          <mesh position={[0.6, -0.35, 0]} castShadow>
             <cylinderGeometry args={[0.05, 0.05, 0.7, 8]} />
-            <meshStandardMaterial color={isGhost ? "#ffffff" : "#2c3e50"} metalness={isGhost ? 0 : 0.8} {...materialProps} />
+            <meshStandardMaterial color="#2c3e50" metalness={0.8} />
           </mesh>
         </group>
         
-        {!isGhost && (
-          <>
-            <mesh position={[-0.6, 0.05, -2.05]}>
-              <boxGeometry args={[0.35, 0.12, 0.05]} />
-              <meshStandardMaterial color="#fff" emissive="#fff" emissiveIntensity={1} />
-            </mesh>
-            <mesh position={[0.6, 0.05, -2.05]}>
-              <boxGeometry args={[0.35, 0.12, 0.05]} />
-              <meshStandardMaterial color="#fff" emissive="#fff" emissiveIntensity={1} />
-            </mesh>
-            <mesh position={[0, 0.02, -2.06]}>
-              <boxGeometry args={[1.4, 0.04, 0.03]} />
-              <meshStandardMaterial color="#00d2d3" emissive="#00d2d3" emissiveIntensity={0.8} />
-            </mesh>
-          </>
-        )}
+        <>
+          <mesh position={[-0.6, 0.05, -2.05]}>
+            <boxGeometry args={[0.35, 0.12, 0.05]} />
+            <meshStandardMaterial color="#fff" emissive="#fff" emissiveIntensity={1} />
+          </mesh>
+          <mesh position={[0.6, 0.05, -2.05]}>
+            <boxGeometry args={[0.35, 0.12, 0.05]} />
+            <meshStandardMaterial color="#fff" emissive="#fff" emissiveIntensity={1} />
+          </mesh>
+          <mesh position={[0, 0.02, -2.06]}>
+            <boxGeometry args={[1.4, 0.04, 0.03]} />
+            <meshStandardMaterial color="#00d2d3" emissive="#00d2d3" emissiveIntensity={0.8} />
+          </mesh>
+        </>
         
-        <SpeedsterUnderglow isGhost={isGhost} />
+        <SpeedsterUnderglow />
         
-        <mesh position={[0, -0.15, 2.15]} castShadow={!isGhost}>
+        <mesh position={[0, -0.15, 2.15]} castShadow>
           <boxGeometry args={[1.4, 0.15, 0.3]} />
-          <meshStandardMaterial color={isGhost ? "#ffffff" : "#2c3e50"} {...materialProps} />
+          <meshStandardMaterial color="#2c3e50" />
         </mesh>
         
-        {!isGhost && (
-          <>
-            <mesh position={[-0.6, 0.15, 2.12]}>
-              <boxGeometry args={[0.4, 0.1, 0.05]} />
-              <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={0.8} />
-            </mesh>
-            <mesh position={[0.6, 0.15, 2.12]}>
-              <boxGeometry args={[0.4, 0.1, 0.05]} />
-              <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={0.8} />
-            </mesh>
-          </>
-        )}
+        <>
+          <mesh position={[-0.6, 0.15, 2.12]}>
+            <boxGeometry args={[0.4, 0.1, 0.05]} />
+            <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={0.8} />
+          </mesh>
+          <mesh position={[0.6, 0.15, 2.12]}>
+            <boxGeometry args={[0.4, 0.1, 0.05]} />
+            <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={0.8} />
+          </mesh>
+        </>
 
         {/* WHEELS */}
         {[[-1, -0.15, -1.4], [1, -0.15, -1.4]].map((pos, i) => (
-           <group key={i} position={pos as [number, number, number]} ref={el => { if (el) wheelsRef.current[i] = el }}>
+          <group key={i} position={pos as [number, number, number]} ref={el => { if (el) wheelsRef.current[i] = el }}>
              <mesh rotation={[0, 0, Math.PI / 2]} castShadow={!isGhost}>
                 <cylinderGeometry args={[0.35, 0.35, 0.35, 16]} />
-                <meshStandardMaterial color={isGhost ? "#ffffff" : "#111"} {...materialProps} />
+                <meshStandardMaterial color="#111" />
              </mesh>
-             {!isGhost && (
-               <mesh rotation={[0, 0, Math.PI / 2]}>
-                  <cylinderGeometry args={[0.22, 0.22, 0.36, 16]} />
-                  <meshStandardMaterial color="#bdc3c7" metalness={0.9} roughness={0.2} />
-               </mesh>
-             )}
+             <mesh rotation={[0, 0, Math.PI / 2]}>
+                <cylinderGeometry args={[0.22, 0.22, 0.36, 16]} />
+                <meshStandardMaterial color="#bdc3c7" metalness={0.9} roughness={0.2} />
+             </mesh>
            </group>
         ))}
         
@@ -227,26 +245,22 @@ export function Speedster({
            <group key={i} position={pos as [number, number, number]} ref={el => { if (el) wheelsRef.current[i + 2] = el }}>
              <mesh rotation={[0, 0, Math.PI / 2]} castShadow={!isGhost}>
                 <cylinderGeometry args={[0.38, 0.38, 0.45, 16]} />
-                <meshStandardMaterial color={isGhost ? "#ffffff" : "#111"} {...materialProps} />
+                <meshStandardMaterial color="#111" />
              </mesh>
-             {!isGhost && (
-               <mesh rotation={[0, 0, Math.PI / 2]}>
-                  <cylinderGeometry args={[0.24, 0.24, 0.46, 16]} />
-                  <meshStandardMaterial color="#bdc3c7" metalness={0.9} roughness={0.2} />
-               </mesh>
-             )}
+             <mesh rotation={[0, 0, Math.PI / 2]}>
+                <cylinderGeometry args={[0.24, 0.24, 0.46, 16]} />
+                <meshStandardMaterial color="#bdc3c7" metalness={0.9} roughness={0.2} />
+             </mesh>
            </group>
         ))}
       </RigidBody>
 
-      {!isGhost && (
-        <WaterTurnSplashes
-          chassisRef={chassisRef}
-          enabled={playerControlled && !agentControlled}
-          turnInput={inputs.turn}
-          brake={inputs.brake}
-        />
-      )}
+      <WaterTurnSplashes
+        chassisRef={chassisRef}
+        enabled={playerControlled && !agentControlled}
+        turnInput={inputs.turn}
+        brake={inputs.brake}
+      />
     </group>
   )
 }

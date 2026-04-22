@@ -46,6 +46,8 @@ export function useVehiclePhysics(
   const smoothedTurn = useRef(0)
   const waterTimeAccRef = useRef(0)
   const lastWaterFlushRef = useRef(0)
+  const lastPlayerWaterSyncRef = useRef(0)
+  const lastPlayerWaterStateRef = useRef({ inWater: false, depth: 0 })
 
   useEffect(() => {
     if (agentControlled) {
@@ -158,10 +160,16 @@ export function useVehiclePhysics(
     // Publish player-only water state for HUD clarity.
     if (!agentControlled && playerControlled) {
       const inWater = physicalSubmergeDepth > 0.18 && flood.active
-      setPlayerWater({ inWater, depth: physicalSubmergeDepth })
+      const nowPerf = performance.now()
+      const depthChanged = Math.abs(physicalSubmergeDepth - lastPlayerWaterStateRef.current.depth) > 0.03
+      const stateChanged = inWater !== lastPlayerWaterStateRef.current.inWater
+      if (stateChanged || depthChanged || nowPerf - lastPlayerWaterSyncRef.current > 250) {
+        lastPlayerWaterSyncRef.current = nowPerf
+        lastPlayerWaterStateRef.current = { inWater, depth: physicalSubmergeDepth }
+        setPlayerWater({ inWater, depth: physicalSubmergeDepth })
+      }
       if (inWater) {
         waterTimeAccRef.current += delta * 1000
-        const nowPerf = performance.now()
         if (nowPerf - lastWaterFlushRef.current > 250) {
           lastWaterFlushRef.current = nowPerf
           if (waterTimeAccRef.current > 1) {

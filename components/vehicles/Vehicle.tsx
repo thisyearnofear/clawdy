@@ -5,6 +5,7 @@ import type { RapierRigidBody } from '@react-three/rapier'
 import { RigidBody } from '@react-three/rapier'
 import { useVehiclePhysics, VehicleStats } from '../../hooks/useVehiclePhysics'
 import { WaterTurnSplashes } from '../environment/WaterTurnSplashes'
+import { GhostVehicleShell } from './GhostVehicleShell'
 
 const VEHICLE_STATS: VehicleStats = {
   profile: 'vehicle',
@@ -33,9 +34,37 @@ export function Vehicle({
   isGhost?: boolean,
   onRef?: (ref: RapierRigidBody | null) => void 
 }) {
+  if (isGhost) {
+    return <GhostVehicleShell position={position} />
+  }
+
+  return (
+    <ActiveVehicle
+      id={id}
+      position={position}
+      agentControlled={agentControlled}
+      playerControlled={playerControlled}
+      onRef={onRef}
+    />
+  )
+}
+
+function ActiveVehicle({
+  id,
+  position,
+  agentControlled,
+  playerControlled,
+  onRef,
+}: {
+  id: string
+  position: [number, number, number]
+  agentControlled: boolean
+  playerControlled: boolean
+  onRef?: (ref: RapierRigidBody | null) => void
+}) {
   const chassisRef = useRef<RapierRigidBody>(null)
-  
-  const { inputs } = useVehiclePhysics(id, chassisRef, VEHICLE_STATS, agentControlled, playerControlled && !isGhost, !isGhost)
+
+  const { inputs } = useVehiclePhysics(id, chassisRef, VEHICLE_STATS, agentControlled, playerControlled, true)
 
   useEffect(() => {
     if (!onRef) return
@@ -43,75 +72,64 @@ export function Vehicle({
     return () => onRef(null)
   }, [onRef])
 
-  const materialProps = isGhost ? {
-    transparent: true,
-    opacity: 0.3,
-    depthWrite: false,
-  } : {}
-
   return (
     <group>
       <RigidBody 
         ref={chassisRef} 
         position={position} 
-        colliders={isGhost ? false : "cuboid"} 
+        colliders="cuboid" 
         mass={VEHICLE_STATS.mass}
         restitution={0.1}
         friction={0.8}
         linearDamping={0.05}
         angularDamping={0.6}
         ccd={true}
-        type={isGhost ? "fixed" : "dynamic"}
-        userData={{ agentId: agentControlled ? id : undefined, isPlayer: playerControlled, isGhost }}
+        type="dynamic"
+        userData={{ agentId: agentControlled ? id : undefined, isPlayer: playerControlled, isGhost: false }}
       >
-        {/* Chassis - blue for player, red for agent, white for ghost */}
-        <mesh castShadow={!isGhost} receiveShadow={!isGhost}>
+        {/* Chassis - blue for player, red for agent */}
+        <mesh castShadow receiveShadow>
           <boxGeometry args={[2, 0.5, 4]} />
           <meshStandardMaterial 
-            color={isGhost ? "#ffffff" : agentControlled ? "#ff7675" : "#74b9ff"} 
-            metalness={isGhost ? 0 : 0.3}
-            roughness={isGhost ? 1 : 0.4}
-            {...materialProps}
+            color={agentControlled ? "#ff7675" : "#74b9ff"} 
+            metalness={0.3}
+            roughness={0.4}
           />
         </mesh>
         
         {/* Cabin */}
-        <mesh position={[0, 0.5, 0]} castShadow={!isGhost}>
+        <mesh position={[0, 0.5, 0]} castShadow>
           <boxGeometry args={[1.5, 0.6, 2]} />
-          <meshStandardMaterial color="#2d3436" transparent opacity={isGhost ? 0.1 : 0.7} />
+          <meshStandardMaterial color="#2d3436" transparent opacity={0.7} />
         </mesh>
         
         {/* Wheels */}
         {[[-1, -0.3, 1.5], [1, -0.3, 1.5], [-1, -0.3, -1.5], [1, -0.3, -1.5]].map((pos, i) => (
            <mesh key={i} position={pos as [number, number, number]} rotation={[0, 0, Math.PI / 2]}>
               <cylinderGeometry args={[0.5, 0.5, 0.4, 16]} />
-              <meshStandardMaterial color={isGhost ? "#ffffff" : "#1e1e1e"} {...materialProps} />
+              <meshStandardMaterial color="#1e1e1e" />
            </mesh>
         ))}
         
         {/* Headlights */}
-        {!isGhost && (
-          <>
-            <mesh position={[-0.6, 0, -2]}>
-              <boxGeometry args={[0.3, 0.2, 0.1]} />
-              <meshStandardMaterial color="#fff" emissive="#fff" emissiveIntensity={0.5} />
-            </mesh>
-            <mesh position={[0.6, 0, -2]}>
-              <boxGeometry args={[0.3, 0.2, 0.1]} />
-              <meshStandardMaterial color="#fff" emissive="#fff" emissiveIntensity={0.5} />
-            </mesh>
-          </>
-        )}
+        <>
+          <mesh position={[-0.6, 0, -2]}>
+            <boxGeometry args={[0.3, 0.2, 0.1]} />
+            <meshStandardMaterial color="#fff" emissive="#fff" emissiveIntensity={0.5} />
+          </mesh>
+          <mesh position={[0.6, 0, -2]}>
+            <boxGeometry args={[0.3, 0.2, 0.1]} />
+            <meshStandardMaterial color="#fff" emissive="#fff" emissiveIntensity={0.5} />
+          </mesh>
+        </>
       </RigidBody>
 
-      {!isGhost && (
-        <WaterTurnSplashes
-          chassisRef={chassisRef}
-          enabled={playerControlled && !agentControlled}
-          turnInput={inputs.turn}
-          brake={inputs.brake}
-        />
-      )}
+      <WaterTurnSplashes
+        chassisRef={chassisRef}
+        enabled={playerControlled && !agentControlled}
+        turnInput={inputs.turn}
+        brake={inputs.brake}
+      />
     </group>
   )
 }

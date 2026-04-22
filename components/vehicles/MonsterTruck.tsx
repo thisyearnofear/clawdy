@@ -7,6 +7,7 @@ import type { RapierRigidBody } from '@react-three/rapier'
 import { RigidBody } from '@react-three/rapier'
 import { useVehiclePhysics, VehicleStats } from '../../hooks/useVehiclePhysics'
 import { WaterTurnSplashes } from '../environment/WaterTurnSplashes'
+import { GhostVehicleShell } from './GhostVehicleShell'
 
 const TRUCK_STATS: VehicleStats = {
   profile: 'monster',
@@ -71,10 +72,40 @@ export function MonsterTruck({
   isGhost?: boolean,
   onRef?: (ref: RapierRigidBody | null) => void
 }) {
+  if (isGhost) {
+    return <GhostVehicleShell position={position} bodyColor="#f2d1c9" />
+  }
+
+  return (
+    <ActiveMonsterTruck
+      id={id}
+      position={position}
+      agentControlled={agentControlled}
+      playerControlled={playerControlled}
+      onRef={onRef}
+    />
+  )
+}
+
+function ActiveMonsterTruck({
+  id,
+  position,
+  agentControlled,
+  playerControlled,
+  isGhost = false,
+  onRef,
+}: {
+  id: string,
+  position: [number, number, number],
+  agentControlled: boolean,
+  playerControlled: boolean,
+  isGhost?: boolean,
+  onRef?: (ref: RapierRigidBody | null) => void
+}) {
   const chassisRef = useRef<RapierRigidBody>(null)
   const bodyRef = useRef<THREE.Group>(null)
   
-  const { inputs } = useVehiclePhysics(id, chassisRef, TRUCK_STATS, agentControlled, playerControlled && !isGhost, !isGhost)
+  const { inputs } = useVehiclePhysics(id, chassisRef, TRUCK_STATS, agentControlled, playerControlled, true)
 
   useEffect(() => {
     if (!onRef) return
@@ -103,30 +134,28 @@ export function MonsterTruck({
       <RigidBody 
         ref={chassisRef} 
         position={position} 
-        colliders={isGhost ? false : "cuboid"} 
+        colliders="cuboid" 
         mass={TRUCK_STATS.mass}
         restitution={0.2}
         friction={1.0}
         linearDamping={0.4}
         angularDamping={0.6}
         ccd={true}
-        type={isGhost ? "fixed" : "dynamic"}
-        userData={{ agentId: agentControlled ? id : undefined, isPlayer: !agentControlled, isGhost }}
+        type="dynamic"
+        userData={{ agentId: agentControlled ? id : undefined, isPlayer: !agentControlled, isGhost: false }}
       >
         {/* MASSIVE Wheels */}
         {[[-1.8, -0.3, 1.8], [1.8, -0.3, 1.8], [-1.8, -0.3, -1.8], [1.8, -0.3, -1.8]].map((pos, i) => (
            <group key={i} position={pos as [number, number, number]}>
-             <mesh rotation={[0, 0, Math.PI / 2]} castShadow={!isGhost}>
+             <mesh rotation={[0, 0, Math.PI / 2]} castShadow>
                 <cylinderGeometry args={[1.2, 1.2, 1, 16]} />
-                <meshStandardMaterial color={isGhost ? "#ffffff" : "#1a1a1a"} roughness={0.9} {...materialProps} />
+                <meshStandardMaterial color="#1a1a1a" roughness={0.9} {...materialProps} />
              </mesh>
-             {!isGhost && (
-               <mesh rotation={[0, 0, Math.PI / 2]}>
-                  <cylinderGeometry args={[0.6, 0.6, 1.05, 8]} />
-                  <meshStandardMaterial color="#c0392b" metalness={0.6} />
-               </mesh>
-             )}
-             {!isGhost && [0, 1, 2, 3].map((j) => (
+             <mesh rotation={[0, 0, Math.PI / 2]}>
+                <cylinderGeometry args={[0.6, 0.6, 1.05, 8]} />
+                <meshStandardMaterial color="#c0392b" metalness={0.6} />
+             </mesh>
+             {[0, 1, 2, 3].map((j) => (
                <mesh key={j} rotation={[0, 0, Math.PI / 2]} position={[0, Math.cos(j * Math.PI / 2) * 1.1, Math.sin(j * Math.PI / 2) * 1.1]}>
                   <boxGeometry args={[0.3, 1.1, 0.4]} />
                   <meshStandardMaterial color="#0a0a0a" />
@@ -137,88 +166,84 @@ export function MonsterTruck({
 
         {/* Suspension Struts */}
         {[[-1.8, 0.5, 1.8], [1.8, 0.5, 1.8], [-1.8, 0.5, -1.8], [1.8, 0.5, -1.8]].map((pos, i) => (
-           <mesh key={i} position={pos as [number, number, number]} castShadow={!isGhost}>
+           <mesh key={i} position={pos as [number, number, number]} castShadow>
               <cylinderGeometry args={[0.15, 0.15, 1.2, 8]} />
-              <meshStandardMaterial color={isGhost ? "#ffffff" : "#f39c12"} metalness={0.8} {...materialProps} />
+              <meshStandardMaterial color="#f39c12" metalness={0.8} {...materialProps} />
            </mesh>
         ))}
 
         {/* Main Body */}
         <group ref={bodyRef}>
-          <mesh position={[0, 1.2, 0]} castShadow={!isGhost}>
+          <mesh position={[0, 1.2, 0]} castShadow>
             <boxGeometry args={[2.5, 0.4, 4]} />
-            <meshStandardMaterial color={isGhost ? "#ffffff" : "#2c3e50"} metalness={0.4} {...materialProps} />
+            <meshStandardMaterial color="#2c3e50" metalness={0.4} {...materialProps} />
           </mesh>
-          <mesh position={[0, 1.8, 0]} castShadow={!isGhost}>
+          <mesh position={[0, 1.8, 0]} castShadow>
             <boxGeometry args={[2.2, 1.2, 3.5]} />
-            <meshStandardMaterial color={isGhost ? "#ffffff" : "#d63031"} metalness={0.3} roughness={0.4} {...materialProps} />
+            <meshStandardMaterial color="#d63031" metalness={0.3} roughness={0.4} {...materialProps} />
           </mesh>
-          <mesh position={[0, 2.4, -1.2]} castShadow={!isGhost}>
+          <mesh position={[0, 2.4, -1.2]} castShadow>
             <boxGeometry args={[1.2, 0.4, 0.8]} />
-            <meshStandardMaterial color={isGhost ? "#ffffff" : "#c0392b"} {...materialProps} />
+            <meshStandardMaterial color="#c0392b" {...materialProps} />
           </mesh>
           <TruckEngineGlow isGhost={isGhost} />
           <mesh position={[0, 2, -0.8]} rotation={[0.3, 0, 0]}>
             <boxGeometry args={[2, 0.8, 0.1]} />
-            <meshStandardMaterial color="#74b9ff" transparent opacity={isGhost ? 0.1 : 0.4} metalness={isGhost ? 0 : 0.9} />
+            <meshStandardMaterial color="#74b9ff" transparent opacity={0.4} metalness={0.9} />
           </mesh>
           <mesh position={[-1.11, 2, 0.2]}>
             <boxGeometry args={[0.05, 0.6, 1.5]} />
-            <meshStandardMaterial color="#74b9ff" transparent opacity={isGhost ? 0.1 : 0.4} />
+            <meshStandardMaterial color="#74b9ff" transparent opacity={0.4} />
           </mesh>
           <mesh position={[1.11, 2, 0.2]}>
             <boxGeometry args={[0.05, 0.6, 1.5]} />
-            <meshStandardMaterial color="#74b9ff" transparent opacity={isGhost ? 0.1 : 0.4} />
+            <meshStandardMaterial color="#74b9ff" transparent opacity={0.4} />
           </mesh>
           {[[-1, 2.8, 1], [1, 2.8, 1], [-1, 2.8, -1], [1, 2.8, -1]].map((pos, i) => (
-             <mesh key={i} position={pos as [number, number, number]} castShadow={!isGhost}>
+             <mesh key={i} position={pos as [number, number, number]} castShadow>
                 <cylinderGeometry args={[0.08, 0.08, 1.2, 8]} />
-                <meshStandardMaterial color={isGhost ? "#ffffff" : "#f39c12"} metalness={0.8} {...materialProps} />
+                <meshStandardMaterial color="#f39c12" metalness={0.8} {...materialProps} />
              </mesh>
           ))}
-          <mesh position={[0, 3.4, 0]} castShadow={!isGhost}>
+          <mesh position={[0, 3.4, 0]} castShadow>
             <boxGeometry args={[2, 0.1, 2.2]} />
-            <meshStandardMaterial color={isGhost ? "#ffffff" : "#d63031"} {...materialProps} />
+            <meshStandardMaterial color="#d63031" {...materialProps} />
           </mesh>
-          <mesh position={[0, 2.8, 1.8]} castShadow={!isGhost}>
+          <mesh position={[0, 2.8, 1.8]} castShadow>
             <boxGeometry args={[2.4, 0.1, 0.6]} />
-            <meshStandardMaterial color={isGhost ? "#ffffff" : "#c0392b"} {...materialProps} />
+            <meshStandardMaterial color="#c0392b" {...materialProps} />
           </mesh>
-          <mesh position={[-1, 2.4, 1.8]} castShadow={!isGhost}>
+          <mesh position={[-1, 2.4, 1.8]} castShadow>
             <cylinderGeometry args={[0.08, 0.08, 0.8, 8]} />
-            <meshStandardMaterial color={isGhost ? "#ffffff" : "#c0392b"} {...materialProps} />
+            <meshStandardMaterial color="#c0392b" {...materialProps} />
           </mesh>
-          <mesh position={[1, 2.4, 1.8]} castShadow={!isGhost}>
+          <mesh position={[1, 2.4, 1.8]} castShadow>
             <cylinderGeometry args={[0.08, 0.08, 0.8, 8]} />
-            <meshStandardMaterial color={isGhost ? "#ffffff" : "#c0392b"} {...materialProps} />
+            <meshStandardMaterial color="#c0392b" {...materialProps} />
           </mesh>
-          {!isGhost && (
-            <>
-              <mesh position={[-0.8, 1.6, -1.76]}>
-                <boxGeometry args={[0.4, 0.3, 0.1]} />
-                <meshStandardMaterial color="#fff" emissive="#fff" emissiveIntensity={0.8} />
-              </mesh>
-              <mesh position={[0.8, 1.6, -1.76]}>
-                <boxGeometry args={[0.4, 0.3, 0.1]} />
-                <meshStandardMaterial color="#fff" emissive="#fff" emissiveIntensity={0.8} />
-              </mesh>
-              <mesh position={[0, 1.4, -1.76]}>
-                <boxGeometry args={[1.6, 0.4, 0.05]} />
-                <meshStandardMaterial color="#2c3e50" />
-              </mesh>
-            </>
-          )}
+          <>
+            <mesh position={[-0.8, 1.6, -1.76]}>
+              <boxGeometry args={[0.4, 0.3, 0.1]} />
+              <meshStandardMaterial color="#fff" emissive="#fff" emissiveIntensity={0.8} />
+            </mesh>
+            <mesh position={[0.8, 1.6, -1.76]}>
+              <boxGeometry args={[0.4, 0.3, 0.1]} />
+              <meshStandardMaterial color="#fff" emissive="#fff" emissiveIntensity={0.8} />
+            </mesh>
+            <mesh position={[0, 1.4, -1.76]}>
+              <boxGeometry args={[1.6, 0.4, 0.05]} />
+              <meshStandardMaterial color="#2c3e50" />
+            </mesh>
+          </>
         </group>
       </RigidBody>
 
-      {!isGhost && (
-        <WaterTurnSplashes
-          chassisRef={chassisRef}
-          enabled={playerControlled && !agentControlled}
-          turnInput={inputs.turn}
-          brake={inputs.brake}
-        />
-      )}
+      <WaterTurnSplashes
+        chassisRef={chassisRef}
+        enabled={playerControlled && !agentControlled}
+        turnInput={inputs.turn}
+        brake={inputs.brake}
+      />
     </group>
   )
 }
