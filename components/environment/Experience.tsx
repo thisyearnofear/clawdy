@@ -371,21 +371,27 @@ function Experience({
         {memeAssets.map((item) => (
           <ProceduralMemeAsset key={item.id} id={item.id} itemType={item.itemType} position={item.position} onDespawn={() => handleDespawn(item.id)} onCollect={(id, stats, collector) => handleCollect(id, stats, collector)} />
         ))}
-        {vehicles.map((v) => {
-          const isPlayerVehicle = v.playerId === playerId && isPlayerActive
-          const isSpectatorVehicle = !isPlayerVehicle && spectatorVehicle?.id === v.id
+        {Array.from({ length: 8 }).map((_, i) => {
+          const v = vehicles[i]
+          const isPlayerVehicle = v?.playerId === playerId && isPlayerActive
+          const isSpectatorVehicle = !isPlayerVehicle && spectatorVehicle?.id === v?.id
+          
           const props = { 
-            id: v.id, position: v.position, agentControlled: v.agentControlled, isGhost: v.isGhost,
+            id: v?.id ?? `pool-${i}`, 
+            position: v?.position ?? [0, -100, 0], 
+            agentControlled: v?.agentControlled ?? false, 
+            isGhost: v?.isGhost ?? true,
             playerControlled: isPlayerVehicle,
             onRef: isPlayerVehicle ? setPlayerVehicleObj : isSpectatorVehicle ? setSpectatorVehicleObj : undefined
           }
+
           return (
-            <group key={v.id}>
-              {isPlayerVehicle && <PlayerVehicleIndicator position={v.position} />}
-              {v.type === 'tank' && <Tank key={v.id} {...props} />}
-              {v.type === 'monster' && <MonsterTruck key={v.id} {...props} />}
-              {v.type === 'speedster' && <Speedster key={v.id} {...props} />}
-              {v.type !== 'tank' && v.type !== 'monster' && v.type !== 'speedster' && <Vehicle key={v.id} {...props} />}
+            <group key={`pool-${i}`}>
+              {isPlayerVehicle && <PlayerVehicleIndicator position={props.position} />}
+              {v?.type === 'tank' && <Tank {...props} />}
+              {v?.type === 'monster' && <MonsterTruck {...props} />}
+              {v?.type === 'speedster' && <Speedster {...props} />}
+              {(!v || (v.type !== 'tank' && v.type !== 'monster' && v.type !== 'speedster')) && <Vehicle {...props} />}
             </group>
           )
         })}
