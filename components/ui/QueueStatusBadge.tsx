@@ -4,7 +4,11 @@ import { useState, useEffect } from 'react'
 import { vehicleQueue, QueueState } from '../../services/VehicleQueue'
 import { useAccount } from 'wagmi'
 
-export function QueueStatusBadge({ playerId }: { playerId: string }) {
+import React, { useState, useEffect } from 'react'
+import { vehicleQueue, QueueState } from '../../services/VehicleQueue'
+import { useAccount } from 'wagmi'
+
+export const QueueStatusBadge = React.memo(function QueueStatusBadge({ playerId }: { playerId: string }) {
   const { address } = useAccount()
   const [queueState, setQueueState] = useState<QueueState | null>(null)
   const [now, setNow] = useState(() => Date.now())
@@ -13,12 +17,19 @@ export function QueueStatusBadge({ playerId }: { playerId: string }) {
     const unsubscribeQueue = vehicleQueue.subscribe((state) => {
       setQueueState(state)
     })
-    const interval = setInterval(() => setNow(Date.now()), 1000)
+    
+    // Only tick now when user is waiting to minimize re-renders
+    let interval: NodeJS.Timeout | null = null
+    const player = queueState?.queue.find(p => p.id === playerId)
+    if (player?.status === 'waiting' || (queueState?.isPlayerActive(playerId))) {
+        interval = setInterval(() => setNow(Date.now()), 1000)
+    }
+    
     return () => {
       unsubscribeQueue()
-      clearInterval(interval)
+      if (interval) clearInterval(interval)
     }
-  }, [])
+  }, [playerId, queueState?.queue])
 
   if (!queueState) return null
 
@@ -27,7 +38,6 @@ export function QueueStatusBadge({ playerId }: { playerId: string }) {
   const player = queueState.queue.find(p => p.id === playerId)
   
   if (isActive && vehicle) {
-    // Show active vehicle info with controls hint
     const timeLeft = player?.sessionEndTime 
       ? Math.max(0, Math.floor((player.sessionEndTime - now) / 1000))
       : 0
@@ -36,7 +46,6 @@ export function QueueStatusBadge({ playerId }: { playerId: string }) {
     
     return (
       <div className="flex flex-col gap-1 items-end">
-        {/* Controls hint */}
         <div className="bg-black/60 backdrop-blur-xl rounded-lg border border-white/10 px-3 py-1.5 shadow-xl">
           <div className="flex items-center gap-3 text-[10px] text-white/70">
             <span className="flex items-center gap-1">
@@ -48,12 +57,7 @@ export function QueueStatusBadge({ playerId }: { playerId: string }) {
               <span>Brake/Action</span>
             </span>
           </div>
-          <div className="mt-1 text-[9px] text-white/60 md:hidden text-right">
-            Mobile: joystick to steer • tap A to act
-          </div>
         </div>
-        
-        {/* Active vehicle badge */}
         <div className="bg-green-500/20 backdrop-blur-xl rounded-xl border border-green-500/50 px-3 py-2 shadow-xl animate-in fade-in slide-in-from-right-4">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
@@ -67,7 +71,7 @@ export function QueueStatusBadge({ playerId }: { playerId: string }) {
   
   if (player?.status === 'waiting') {
     const position = queueState.queue.filter(p => p.status === 'waiting').findIndex(p => p.id === playerId) + 1
-    const estimatedWait = position * 30 // 30 seconds per player estimate
+    const estimatedWait = position * 30
     
     return (
       <div className="bg-yellow-500/20 backdrop-blur-xl rounded-xl border border-yellow-500/50 px-3 py-2 shadow-xl">
@@ -84,7 +88,6 @@ export function QueueStatusBadge({ playerId }: { playerId: string }) {
     )
   }
   
-  // Not in queue - show join button hint
   return (
     <div className="bg-white/10 backdrop-blur-xl rounded-xl border border-white/20 px-3 py-2 shadow-xl">
       <div className="flex items-center gap-2">
@@ -95,4 +98,4 @@ export function QueueStatusBadge({ playerId }: { playerId: string }) {
       )}
     </div>
   )
-}
+})

@@ -17,9 +17,10 @@ export function RoundRecap() {
   const [dismissedRound, setDismissedRound] = useState<number | null>(null)
 
   useEffect(() => {
+    if (!isVisible) return
     const t = setInterval(() => setNow(Date.now()), 250)
     return () => clearInterval(t)
-  }, [])
+  }, [isVisible])
 
   // When a new round starts, clear dismissal.
   useEffect(() => {

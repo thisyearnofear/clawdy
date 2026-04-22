@@ -10,9 +10,10 @@ export function FinalRushOverlay() {
   const lastSecondRef = useRef<number | null>(null)
 
   useEffect(() => {
+    if (!isFinalRush) return
     const t = setInterval(() => setNow(Date.now()), 100)
     return () => clearInterval(t)
-  }, [])
+  }, [isFinalRush])
 
   const remainingMs = round.endsAt - now
   const remainingSec = Math.max(0, Math.ceil(remainingMs / 1000))
