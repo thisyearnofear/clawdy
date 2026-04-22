@@ -74,12 +74,12 @@ export function MonsterTruck({
   const chassisRef = useRef<RapierRigidBody>(null)
   const bodyRef = useRef<THREE.Group>(null)
   
-  const { inputs } = useVehiclePhysics(id, chassisRef, TRUCK_STATS, agentControlled, playerControlled && !isGhost)
+  const { inputs } = useVehiclePhysics(id, chassisRef, TRUCK_STATS, agentControlled, playerControlled && !isGhost, !isGhost)
 
   useEffect(() => {
-    if (onRef && chassisRef.current) {
-      onRef(chassisRef.current)
-    }
+    if (!onRef) return
+    onRef(chassisRef.current)
+    return () => onRef(null)
   }, [onRef])
 
   useFrame((state) => {

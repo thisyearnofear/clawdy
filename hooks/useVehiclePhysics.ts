@@ -30,7 +30,8 @@ export function useVehiclePhysics(
   chassisRef: React.RefObject<RapierRigidBody | null>,
   stats: VehicleStats,
   agentControlled: boolean = false,
-  playerControlled: boolean = true
+  playerControlled: boolean = true,
+  enabled: boolean = true
 ) {
   const [, getKeys] = useKeyboardControls()
   const handlingMode = useGameStore(state => state.handlingMode)
@@ -64,7 +65,7 @@ export function useVehiclePhysics(
   }, [agentControlled, id])
 
   useFrame((_, delta) => {
-    if (!chassisRef.current) return
+    if (!enabled || !chassisRef.current) return
 
     const session = agentProtocol.getSession(agentControlled ? id : 'Player')
     const vitalityFactor = session ? session.vitality / 100 : 1

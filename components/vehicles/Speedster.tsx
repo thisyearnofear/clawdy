@@ -66,12 +66,12 @@ export function Speedster({
   const chassisRef = useRef<RapierRigidBody>(null)
   const wheelsRef = useRef<THREE.Group[]>([])
   
-  const { inputs } = useVehiclePhysics(id, chassisRef, SPEEDSTER_STATS, agentControlled, playerControlled && !isGhost)
+  const { inputs } = useVehiclePhysics(id, chassisRef, SPEEDSTER_STATS, agentControlled, playerControlled && !isGhost, !isGhost)
 
   useEffect(() => {
-    if (onRef && chassisRef.current) {
-      onRef(chassisRef.current)
-    }
+    if (!onRef) return
+    onRef(chassisRef.current)
+    return () => onRef(null)
   }, [onRef])
 
   useFrame(() => {

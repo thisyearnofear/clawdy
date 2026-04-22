@@ -82,16 +82,16 @@ export function Tank({
   const laserRef = useRef<THREE.Mesh>(null)
   const rapier = useRapier()
   
-  const { inputs } = useVehiclePhysics(id, chassisRef, TANK_STATS, agentControlled, playerControlled && !isGhost)
+  const { inputs } = useVehiclePhysics(id, chassisRef, TANK_STATS, agentControlled, playerControlled && !isGhost, !isGhost)
   
   const [muzzleFlash, setMuzzleFlash] = useState(false)
   const lastFireTime = useRef(0)
   const laserMaterial = useMemo(() => createLaserMaterial(), [])
 
   useEffect(() => {
-    if (onRef && chassisRef.current) {
-      onRef(chassisRef.current)
-    }
+    if (!onRef) return
+    onRef(chassisRef.current)
+    return () => onRef(null)
   }, [onRef])
 
   useFrame((state) => {

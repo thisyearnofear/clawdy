@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { CameraManager } from './CameraManager'
@@ -56,6 +56,8 @@ interface VehicleData {
   isGhost?: boolean
 }
 
+const EMPTY_VEHICLE_POSITION: [number, number, number] = [0, -100, 0]
+
 function Experience({
   cloudConfig,
   spawnRate = 2
@@ -77,7 +79,7 @@ function Experience({
   const [spectatorVehicleObj, setSpectatorVehicleObj] = useState<RapierRigidBody | null>(null)
   const lastPriorityToastAtRef = useRef(0)
 
-  const getVehiclePosition = (index: number, isGhost: boolean = false): [number, number, number] => {
+  const getVehiclePosition = useCallback((index: number, isGhost: boolean = false): [number, number, number] => {
     const angle = (index / 10) * Math.PI * 2
     const radius = cloudConfig.bounds[0] * (isGhost ? 0.9 : 0.8)
     return [
@@ -85,7 +87,7 @@ function Experience({
       isGhost ? 8 : 5,
       Math.sin(angle) * radius
     ]
-  }
+  }, [cloudConfig.bounds])
 
   const assetCountRef = useRef(0)
 
@@ -245,7 +247,7 @@ function Experience({
       });
     })
     return () => unsubscribe()
-  }, [playerId])
+  }, [playerId, getVehiclePosition])
 
   useEffect(() => {
     if (address && !hasJoinedQueueRef.current) {
@@ -311,7 +313,13 @@ function Experience({
 
   const [useSphericalTerrain, setUseSphericalTerrain] = useState(false);
   const [weatherPhase, setWeatherPhase] = useState(0)
-  useFrame((state) => setWeatherPhase(state.clock.elapsedTime))
+  const lastWeatherPhaseUpdateRef = useRef(0)
+  useFrame((state) => {
+    const elapsedTime = state.clock.elapsedTime
+    if (elapsedTime - lastWeatherPhaseUpdateRef.current < 0.05) return
+    lastWeatherPhaseUpdateRef.current = elapsedTime
+    setWeatherPhase(elapsedTime)
+  })
 
   const gravityVector = useGameStore(s => s.gravityVector)
   const setGravityMode = useGameStore(s => s.setGravityMode)
@@ -380,7 +388,7 @@ function Experience({
           
           const props = { 
             id: v?.id ?? `pool-${i}`, 
-            position: v?.position ?? [0, -100, 0], 
+            position: v?.position ?? EMPTY_VEHICLE_POSITION, 
             agentControlled: v?.agentControlled ?? false, 
             isGhost: !v || v.isGhost,
             playerControlled: isPlayerVehicle,
