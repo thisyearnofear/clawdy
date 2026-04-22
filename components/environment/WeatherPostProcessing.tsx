@@ -55,7 +55,11 @@ export function WeatherPostProcessing({ config }: { config: CloudConfig }) {
   }, [preset])
 
   const [settings, setSettings] = useState(() => target)
-  const lastRef = useRef(performance.now())
+  const lastRef = useRef(0)
+
+  useEffect(() => {
+    lastRef.current = performance.now()
+  }, [])
 
   // Smoothly blend effect parameters to avoid hard cuts between presets.
   useEffect(() => {

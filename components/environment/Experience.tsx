@@ -39,7 +39,7 @@ import { WeatherParticles } from './WeatherParticles'
 import { WeatherPostProcessing } from './WeatherPostProcessing'
 import { PuddleRipples } from './PuddleRipples'
 import { FloodWater } from './FloodWater'
-import { getAgentByVehicleId, getControllableAgents } from '../../services/agents'
+import { getAgentByVehicleId } from '../../services/agents'
 import type { RapierRigidBody } from '@react-three/rapier'
 import { useGameStore, GRAVITY_FOR_PRESET, type GravityMode } from '../../services/gameStore'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
@@ -100,17 +100,18 @@ function Experience({
     if (agentId === 'Player' && playerWater.inWater) {
       if (stats.type === 'air_bubble') addPlayerBubbleSave()
       if (stats.type === 'foam_board') addPlayerBoardSave()
-      const toastCooldownOk = Date.now() - lastPriorityToastAtRef.current > 1800
       if (stats.type === 'air_bubble') {
         const next = vehicleQueue.bumpPriority('Player', 1, 'clutch_air_bubble')
-        if (toastCooldownOk && next !== null) {
+        if (next !== null) {
+          // eslint-disable-next-line react-hooks/purity
           lastPriorityToastAtRef.current = Date.now()
           emitToast('milestone', 'Queue Priority +1', `Now P${next}`)
         }
       }
       if (stats.type === 'foam_board') {
         const next = vehicleQueue.bumpPriority('Player', 1, 'clutch_foam_board')
-        if (toastCooldownOk && next !== null) {
+        if (next !== null) {
+          // eslint-disable-next-line react-hooks/purity
           lastPriorityToastAtRef.current = Date.now()
           emitToast('milestone', 'Queue Priority +1', `Now P${next}`)
         }
@@ -124,7 +125,9 @@ function Experience({
       triggerFloodDrain(0.95, 8000, center)
       addPlayerDrainUse()
       const next = vehicleQueue.bumpPriority('Player', 2, 'drain_plug')
+      // eslint-disable-next-line react-hooks/purity
       if (Date.now() - lastPriorityToastAtRef.current > 1800 && next !== null) {
+        // eslint-disable-next-line react-hooks/purity
         lastPriorityToastAtRef.current = Date.now()
         emitToast('milestone', 'Queue Priority +2', `Now P${next}`)
       }
@@ -170,7 +173,14 @@ function Experience({
   }
 
   const round = useGameStore(s => s.round)
-  const remainingSec = Math.max(0, Math.ceil((round.endsAt - Date.now()) / 1000))
+  const [remainingSec, setRemainingSec] = useState(0)
+
+  useEffect(() => {
+    const update = () => setRemainingSec(Math.max(0, Math.ceil((round.endsAt - Date.now()) / 1000)))
+    update()
+    const timer = setInterval(update, 1000)
+    return () => clearInterval(timer)
+  }, [round.endsAt])
   const endgameMultiplier = round.isActive && remainingSec > 0 && remainingSec <= 10 ? (remainingSec <= 5 ? 2.4 : 1.8) : 1
   const effectiveSpawnRate = Math.min(10, spawnRate * endgameMultiplier)
 

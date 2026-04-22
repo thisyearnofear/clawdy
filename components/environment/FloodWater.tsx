@@ -123,6 +123,7 @@ export function FloodWater({ bounds }: { bounds: [number, number, number] }) {
   }, [])
 
   useFrame((state) => {
+    // eslint-disable-next-line react-hooks/immutability
     material.uniforms.uTime.value = state.clock.getElapsedTime()
 
     // Trigger recommendation:

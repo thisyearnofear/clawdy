@@ -145,6 +145,7 @@ export interface UIState {
   error: string | null
   showHUD: boolean
   hideSpectatorCta: boolean
+  showQuickControls: boolean
   modals: {
     wallet: boolean
     onboarding: boolean
@@ -369,6 +370,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     error: null,
     showHUD: true,
     hideSpectatorCta: false,
+    showQuickControls: false,
     modals: { wallet: false, onboarding: false, recap: false, spectatorCta: false },
   },
   setUI: (update) => set((prev) => ({ ui: { ...prev.ui, ...update } })),

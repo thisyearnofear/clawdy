@@ -308,7 +308,9 @@ export function Terrain({
     // Base values:
     // dry: roughness 0.8 / metalness 0.1
     // wet: roughness 0.35 / metalness 0.25
+    // eslint-disable-next-line react-hooks/immutability
     terrainMaterial.roughness = THREE.MathUtils.lerp(0.8, 0.35, wetnessRef.current)
+    // eslint-disable-next-line react-hooks/immutability
     terrainMaterial.metalness = THREE.MathUtils.lerp(0.1, 0.25, wetnessRef.current)
 
     const centerX = Math.floor(camera.position.x / CHUNK_SIZE)
