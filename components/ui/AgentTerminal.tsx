@@ -193,8 +193,22 @@ export function AgentTerminal() {
                       <div className="rounded-lg border border-white/10 bg-white/5 p-3">
                         <div className="text-[9px] font-black uppercase tracking-widest text-white/50">{AGENT_ROLE_CONFIG[activeSession.role].label}</div>
                         <div className="mt-1 text-[10px] text-white/65">{activeSession.mission}</div>
+                        <div className="mt-2 text-[9px] text-sky-300">Loyalty: {activeSession.agentLoyalty.toFixed(0)}</div>
                       </div>
-                      <div className="grid grid-cols-3 gap-2">
+
+                      {decisionFeed.length > 0 && decisionFeed[0].agentId === activeAgentId && (
+                        <div className="border border-white/10 bg-black/40 p-3 rounded-lg">
+                           <div className="text-[9px] text-white/50 mb-1">Pending Decision:</div>
+                           <div className="text-[11px] font-bold text-white mb-2">{decisionFeed[0].title}</div>
+                           <div className="flex gap-2">
+                             <button onClick={() => addLog("Approved.")} className="flex-1 bg-emerald-600/40 p-2 text-[10px] rounded">APPROVE</button>
+                             <button onClick={() => addLog("Rejected.")} className="flex-1 bg-red-600/40 p-2 text-[10px] rounded">REJECT</button>
+                           </div>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-4 gap-2">
+
                         <button onClick={() => triggerAgentAction('storm', 0.05)} className="bg-red-900/40 hover:bg-red-900/60 p-2 rounded-lg border border-red-500/20 text-[10px] font-bold transition-colors">STORM</button>
                         <button onClick={() => triggerAgentAction('candy', 0.02)} className="bg-pink-900/40 hover:bg-pink-900/60 p-2 rounded-lg border border-pink-500/20 text-[10px] font-bold transition-colors">CANDY</button>
                         <button onClick={() => triggerAgentAction('chaos', 0.1)} className="bg-orange-900/40 hover:bg-orange-900/60 p-2 rounded-lg border border-orange-500/20 text-[10px] font-bold transition-colors">CHAOS</button>

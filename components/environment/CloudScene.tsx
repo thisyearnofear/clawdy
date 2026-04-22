@@ -13,6 +13,9 @@ import { emitToast } from '../ui/GameToasts'
 import { playSound } from '../ui/SoundManager'
 import { emitEconomyFeedback } from '../ui/EconomyFeedback'
 import { AgentChatter, emitChatter } from '../ui/AgentChatter'
+import { AgentDecisionPanel } from '../ui/AgentDecisionPanel'
+import { PlayerStrategyPanel } from '../ui/PlayerStrategyPanel'
+import { RoundObjectives } from '../ui/RoundObjectives'
 import { HUD } from '../ui/HUD'
 import { ControlPanel } from '../ui/ControlPanel'
 import { Overlays } from '../ui/Overlays'
@@ -279,6 +282,11 @@ export default function CloudScene() {
       />
 
       <AgentChatter />
+
+      {/* New UI components for Product/Game Design improvements */}
+      <AgentDecisionPanel />
+      <PlayerStrategyPanel />
+      <RoundObjectives />
 
       {/* Help hint component */}
       <HelpHint />

@@ -29,6 +29,7 @@ export class EconomyEngine {
       balance: initialBalance,
       targetAssetId: null,
       autoPilot: false,
+      agentLoyalty: 100,
       decisionCount: 0,
       executedBidCount: 0,
       executedRentCount: 0,

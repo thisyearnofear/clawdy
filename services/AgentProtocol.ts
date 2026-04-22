@@ -138,6 +138,7 @@ export interface AgentSession {
   foamBoardUntil?: number
   foamBoardCount?: number
   drainPlugCount?: number
+  agentLoyalty: number
   isDead?: boolean
 }
 
