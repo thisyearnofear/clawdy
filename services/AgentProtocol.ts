@@ -431,15 +431,39 @@ class AgentProtocol {
     }
 
     const now = Date.now()
-    if (now < this.currentWeatherBid.expires && command.bid <= this.currentWeatherBid.amount) return false
     
-    session.balance -= command.bid
-    session.totalPaid += command.bid
+    // Optimistic UI update
+    const previousBid = { ...this.currentWeatherBid }
     this.currentWeatherBid = { agentId: command.agentId, amount: command.bid, expires: now + command.duration }
+    this.syncWithStore()
     
     this.notifyWeatherListeners(command.config)
     this.gameEventListeners.forEach(l => l({ type: 'bid-won', agentId: command.agentId, preset: command.config.preset || 'custom' }))
-    this.syncWithStore()
+    
+    if (this.isPermissioned && typeof window !== 'undefined' && window.ethereum) {
+      try {
+        await window.ethereum.request({
+          method: 'wallet_sendCalls',
+          params: [{
+            calls: [{
+              to: WEATHER_AUCTION_ADDRESS,
+              data: encodeFunctionData({
+                abi: WEATHER_AUCTION_ABI,
+                functionName: 'bid',
+                args: [BigInt(60), command.config.preset || 'custom', BigInt(command.config.volume || 10), BigInt(command.config.growth || 4), BigInt((command.config.speed || 0.2) * 100), 0]
+              }),
+              value: parseEther(command.bid.toString())
+            }]
+          }]
+        })
+        return true
+      } catch (e) {
+        // Rollback on failure
+        this.currentWeatherBid = previousBid
+        this.syncWithStore()
+        return false
+      }
+    }
     return true
   }
 
