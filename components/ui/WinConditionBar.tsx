@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useMemo } from 'react'
 import { useGameStore } from '../../services/gameStore'
 import { emitToast } from './GameToasts'
 import { playSound } from './SoundManager'
 
-export function WinConditionBar({ playerId }: { playerId: string }) {
+export const WinConditionBar = React.memo(function WinConditionBar({ playerId }: { playerId: string }) {
   const round = useGameStore(s => s.round)
   const sessions = useGameStore(s => s.sessions)
   const triggerCameraShake = useGameStore(s => s.triggerCameraShake)
@@ -32,7 +32,7 @@ export function WinConditionBar({ playerId }: { playerId: string }) {
     lastLeaderRef.current = leaderId
   }, [sessions, round.endsAt, round.isActive, triggerCameraShake])
 
-  const entries = Object.values(sessions).sort((a, b) => b.totalEarned - a.totalEarned)
+  const entries = useMemo(() => Object.values(sessions).sort((a, b) => b.totalEarned - a.totalEarned), [sessions])
   const WIN_TARGET = round.goal
   const leader = entries[0]
   const playerEntry = sessions[playerId] || entries.find(e => e.agentId.startsWith(playerId?.slice(0, 6) ?? ''))
@@ -83,4 +83,4 @@ export function WinConditionBar({ playerId }: { playerId: string }) {
       </div>
     </div>
   )
-}
+})
