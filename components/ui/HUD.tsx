@@ -101,6 +101,14 @@ export function HUD({
 
   return (
     <>
+      {/* Cross-Chain Sync - Bottom left */}
+      <div className="absolute bottom-6 left-6 z-20 flex items-center gap-2">
+        <div className={`w-2 h-2 rounded-full animate-pulse ${address ? 'bg-green-500' : 'bg-red-500'}`} />
+        <span className="text-[9px] font-black uppercase tracking-widest text-white/50">
+          BNB/X-LAYER SYNC
+        </span>
+      </div>
+
       {/* Win condition bar + auction timer */}
       {isMounted && (
         <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2 pointer-events-none">
