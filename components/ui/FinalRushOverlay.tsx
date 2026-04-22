@@ -57,5 +57,4 @@ export const FinalRushOverlay = React.memo(function FinalRushOverlay() {
     </div>
   )
 })
-}
 

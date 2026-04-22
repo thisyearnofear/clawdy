@@ -16,6 +16,7 @@ export interface CloudConfig {
   bounds: [number, number, number]
   preset?: 'custom' | 'stormy' | 'sunset' | 'candy' | 'cosmic'
   count?: number // Number of individual cloud clusters
+  clusterBounds?: [number, number, number] // Size of individual cloud clusters
 }
 
 export const CLOUD_PRESETS = {
@@ -29,7 +30,8 @@ export const CLOUD_PRESETS = {
     color: '#6a7588', // Lighter gray
     secondaryColor: '#2d3436', // Darker gray
     bounds: [100, 10, 100] as [number, number, number],
-    count: 15
+    count: 22,
+    clusterBounds: [12, 3, 12],
   },
   sunset: {
     seed: 20,
@@ -41,7 +43,8 @@ export const CLOUD_PRESETS = {
     color: '#ff9f43', // Orange
     secondaryColor: '#ff6b6b', // Pinkish red
     bounds: [120, 8, 120] as [number, number, number],
-    count: 12
+    count: 20,
+    clusterBounds: [12, 3, 12],
   },
   candy: {
     seed: 30,
@@ -53,7 +56,8 @@ export const CLOUD_PRESETS = {
     color: '#ff9ff3', // Pink
     secondaryColor: '#74b9ff', // Blue
     bounds: [100, 5, 100] as [number, number, number],
-    count: 18
+    count: 25,
+    clusterBounds: [10, 3, 10],
   },
   cosmic: {
     seed: 40,
@@ -65,7 +69,8 @@ export const CLOUD_PRESETS = {
     color: '#1a1a3e',
     secondaryColor: '#4a0080',
     bounds: [150, 15, 150] as [number, number, number],
-    count: 8
+    count: 15,
+    clusterBounds: [15, 5, 15],
   }
 }
 
@@ -101,15 +106,22 @@ export function CloudManager({ config }: { config: CloudConfig }) {
     const rangeX = activeConfig.bounds[0] * 2
     const rangeZ = activeConfig.bounds[2] * 2
     
+    // Support configurable cluster bounds (default: [12, 3, 12] for more dispersed clouds)
+    const clusterBounds = activeConfig.clusterBounds || [12, 3, 12]
+    const verticalRange = clusterBounds[1] // Use the Y component for vertical spread
+    
     // Always keep one center cloud
     items.push({ position: [0, 25, 0], color: activeConfig.color, speed: activeConfig.speed })
 
     for (let i = 1; i < count; i++) {
       const isSecondary = activeConfig.secondaryColor && random() > 0.5
+      // Spread clouds across wider vertical range (y=15-40)
+      const baseHeight = 25 + (random() - 0.5) * verticalRange * 2
+      const clampedHeight = Math.max(15, Math.min(40, baseHeight))
       items.push({
         position: [
           (random() - 0.5) * rangeX,
-          25 + (random() - 0.5) * 10, // Higher and more variance
+          clampedHeight,
           (random() - 0.5) * rangeZ
         ],
         color: isSecondary ? activeConfig.secondaryColor! : activeConfig.color,
@@ -117,16 +129,16 @@ export function CloudManager({ config }: { config: CloudConfig }) {
       })
     }
     return items
-  }, [activeConfig.bounds, activeConfig.color, activeConfig.count, activeConfig.secondaryColor, activeConfig.seed, activeConfig.speed])
+  }, [activeConfig.bounds, activeConfig.color, activeConfig.count, activeConfig.secondaryColor, activeConfig.seed, activeConfig.speed, activeConfig.clusterBounds])
 
   return (
     <Clouds material={cloudMaterial}>
       {clouds.map((item, index) => (
-         <Cloud
+        <Cloud
           key={index}
           seed={activeConfig.seed + index}
           segments={activeConfig.segments}
-          bounds={[20, 5, 20]} // Size of individual cluster
+          bounds={(activeConfig.clusterBounds || [12, 3, 12]) as [number, number, number]}
           volume={activeConfig.volume}
           growth={activeConfig.growth}
           opacity={activeConfig.opacity}

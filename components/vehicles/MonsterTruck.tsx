@@ -15,7 +15,7 @@ const TRUCK_STATS: VehicleStats = {
   acceleration: 1000,
   steerStrength: 150,
   mass: 4,
-  lateralGrip: 0.4,
+  lateralGrip: 0.7,
   frontOffset: 1.5,
   backOffset: -1.5,
   steeringMode: 'car'

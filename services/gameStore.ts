@@ -127,7 +127,7 @@ export const HANDLING_MATRIX: Record<HandlingMode, HandlingTuning> = {
     tankTurnResponse: 1.3,
     pitchTorqueMultiplier: 1.2,
     leanTorqueMultiplier: 1.0,
-    stabilizerStrength: 70,
+    stabilizerStrength: 95,
     stabilizerThreshold: 0.01,
     angularVelocityRetention: 0.93,
     speedBoostMultiplier: 2.6,
@@ -289,7 +289,8 @@ export interface GameStore {
 const defaultCloudConfig: CloudConfig = {
   seed: 1, segments: 40, volume: 10, growth: 4, opacity: 0.8,
   speed: 0.2, color: '#ffffff', secondaryColor: '#e0e0e0',
-  bounds: [80, 5, 80], count: 12,
+  bounds: [80, 5, 80], count: 20,
+  clusterBounds: [12, 3, 12],
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -326,7 +327,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     cloudConfig: { ...prev.cloudConfig, ...update, preset: update.preset ?? 'custom' },
     spawnRate: update.spawnRate ?? prev.spawnRate,
   })),
-  spawnRate: 2,
+  spawnRate: 4,
   setSpawnRate: (spawnRate) => set({ spawnRate }),
   activeWeatherEffects: {},
   setWeatherEffect: (effect, domain) => set((prev) => {

@@ -6,6 +6,7 @@ import { AuctionTimer } from './AuctionTimer'
 import { AgentTerminal } from './AgentTerminal'
 import { useGameStore } from '../../services/gameStore'
 import { QueueStatusBadge } from './QueueStatusBadge'
+import { CloudConfig } from '../environment/CloudManager'
 import { UI_Z_INDEX } from '../../services/uiConstants'
 
 const DOMAIN_LABELS = { wind: 'Wind', lightning: 'Light', dayNight: 'D/N' } as const
@@ -16,6 +17,8 @@ interface HUDProps {
   onOpenSidebar: () => void
   onToggleQuickControls: () => void
   showQuickControls: boolean
+  cloudConfig: CloudConfig
+  onApplyPreset: (preset: NonNullable<CloudConfig['preset']>) => void
 }
 
 export function HUD(props: HUDProps) {

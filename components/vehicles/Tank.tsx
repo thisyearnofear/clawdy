@@ -14,7 +14,7 @@ const TANK_STATS: VehicleStats = {
   profile: 'tank',
   maxSpeed: 35,
   acceleration: 400,
-  steerStrength: 2.5,
+  steerStrength: 12,
   mass: 6,
   lateralGrip: 1.0,
   frontOffset: 0,

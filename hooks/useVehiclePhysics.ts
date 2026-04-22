@@ -205,8 +205,23 @@ export function useVehiclePhysics(
     const bubbleBoost = isAirBubble ? 1.18 : 1.0
     const modeSpeedScale = handling.speedScale * vehicleModeScale[stats.profile]
     const modeAccelScale = handling.accelerationScale * vehicleModeScale[stats.profile]
-    const maxSpeed = stats.maxSpeed * modeSpeedScale * (0.55 + 0.45 * vitalityFactor) * boostFactor * floodSlow / mudPenalty
+    // Combine all penalty factors, then clamp to 0.4 min for driveability
+    const totalPenalty = Math.max(0.4, (0.55 + 0.45 * vitalityFactor) * boostFactor * floodSlow / mudPenalty)
+    const maxSpeed = stats.maxSpeed * modeSpeedScale * totalPenalty
     const accelerationPower = stats.acceleration * modeAccelScale * boostFactor * floodSlow * bubbleBoost / mudPenalty
+
+    // Boundary Enforcement: Soft boundary beyond 60 units with bounce back
+    const distFromCenter = Math.sqrt(vPos.x ** 2 + vPos.z ** 2)
+    const BOUNDARY_RADIUS = 60
+    const boundaryDrag = distFromCenter > BOUNDARY_RADIUS ? Math.pow(distFromCenter / BOUNDARY_RADIUS, 2) : 1.0
+    const finalAcceleration = accelerationPower / boundaryDrag
+    
+    // Hard boundary bounce at 60 units - push vehicle back toward center
+    if (distFromCenter > BOUNDARY_RADIUS) {
+      const bounceStrength = (distFromCenter - BOUNDARY_RADIUS) * 0.5
+      const towardCenter = new THREE.Vector3(-vPos.x, 0, -vPos.z).normalize()
+      chassisRef.current.applyImpulse({ x: towardCenter.x * bounceStrength, y: 0, z: towardCenter.z * bounceStrength }, true)
+    }
 
     if (Math.abs(smoothedForward.current) > 0.01) {
       const forwardSpeed = velocity.x * forwardDir.x + velocity.z * forwardDir.z
