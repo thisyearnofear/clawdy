@@ -11,7 +11,7 @@ interface ChatBubble {
 }
 
 const CHATTER_LINES: Record<string, { emoji: string; lines: string[] }> = {
-  'food-collected': {
+  'asset-collected': {
     emoji: '😋',
     lines: [
       'Yoink!',

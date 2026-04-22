@@ -12,11 +12,11 @@ export interface RoundState {
   durationMs: number
   isActive: boolean
   winner: string | null
-  goalOKB: number
+  goal: number
 }
 
 const ROUND_DURATION_MS = 120_000 // 2 minutes per round
-const ROUND_GOAL_OKB = 0.05
+const ROUND_GOAL = 0.05
 
 function createInitialRound(): RoundState {
   const now = Date.now()
@@ -29,7 +29,7 @@ function createInitialRound(): RoundState {
     durationMs: ROUND_DURATION_MS,
     isActive: true,
     winner: null,
-    goalOKB: ROUND_GOAL_OKB,
+    goal: ROUND_GOAL,
   }
 }
 
@@ -156,7 +156,7 @@ export interface UIState {
 // ── Transactions ─────────────────────────────────────────────────────
 export interface PendingTransaction {
   id: string
-  type: 'weather_bid' | 'vehicle_rent' | 'food_collect'
+  type: 'weather_bid' | 'vehicle_rent' | 'asset_collect'
   amount: number
   status: 'pending' | 'confirming' | 'confirmed' | 'failed'
   timestamp: number
@@ -389,7 +389,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         durationMs: ROUND_DURATION_MS,
         isActive: true,
         winner: null,
-        goalOKB: ROUND_GOAL_OKB,
+        goal: ROUND_GOAL,
       },
       playerFloodStats: { waterTimeMs: 0, bubbleSaves: 0, boardSaves: 0, drainUses: 0 },
     }
@@ -412,7 +412,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const now = Date.now()
     // Check if someone hit the goal
     for (const s of Object.values(sessions)) {
-      if (s.totalEarned >= round.goalOKB && round.winner === null) {
+      if (s.totalEarned >= round.goal && round.winner === null) {
         endRound(s.agentId)
         setTimeout(() => startNewRound(), 5000) // 5s celebration then new round
         return

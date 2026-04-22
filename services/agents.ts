@@ -46,6 +46,15 @@ export const AGENT_PROFILES: AgentProfile[] = [
     vehicleId: 'agent-3',
     accentColor: '#f59e0b',
   },
+  {
+    id: 'Agent-Three',
+    shortLabel: 'THREE',
+    role: 'treasury',
+    label: 'Treasury Agent',
+    mission: 'Enforces spend thresholds, approves bids and leases, and preserves the earn-pay-earn loop.',
+    vehicleId: 'agent-4',
+    accentColor: '#34d399',
+  },
 ]
 
 const AGENT_PROFILE_MAP = new Map(AGENT_PROFILES.map((profile) => [profile.id, profile]))

@@ -124,14 +124,14 @@ export default function CloudScene() {
             source: 'auction',
           })
         })
-      } else if (event.type === 'food-collected') {
+      } else if (event.type === 'asset-collected') {
         const amount = (event.amount as number ?? 0.1)
         const comboCount = Number(event.comboCount ?? 1)
         const comboMultiplier = Number(event.comboMultiplier ?? 1)
 
         emitToast('collect', `+${amount.toFixed(3)} 0G collected`, event.agentId as string)
         playSound('collect')
-        if (Math.random() < 0.3) emitChatter(event.agentId as string || 'Agent', 'food-collected')
+        if (Math.random() < 0.3) emitChatter(event.agentId as string || 'Agent', 'asset-collected')
         const session = agentProtocol.getSession('Player')
         if (session) emitEconomyFeedback(event.amount as number ?? 0.1, session.balance)
 
@@ -259,6 +259,8 @@ export default function CloudScene() {
         playerId={playerId}
         isMounted={isMounted}
         onOpenSidebar={() => setUI({ isSidebarOpen: true })}
+        onToggleQuickControls={() => setUI({ showQuickControls: !ui.showQuickControls })}
+        showQuickControls={ui.showQuickControls}
         cloudConfig={config}
         onApplyPreset={applyPreset}
       />

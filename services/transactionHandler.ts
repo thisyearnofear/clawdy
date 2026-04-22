@@ -5,7 +5,7 @@ const RETRY_DELAY_MS = 2000
 const TRANSACTION_TIMEOUT_MS = 30000
 
 export interface TransactionConfig {
-  type: 'weather_bid' | 'vehicle_rent' | 'food_collect'
+  type: 'weather_bid' | 'vehicle_rent' | 'asset_collect'
   amount: number
   onSuccess?: () => void
   onError?: (error: Error) => void
@@ -154,7 +154,7 @@ export const getEstimatedConfirmationTime = (type: TransactionConfig['type']): s
       return '~15-30 seconds'
     case 'vehicle_rent':
       return '~10-20 seconds'
-    case 'food_collect':
+    case 'asset_collect':
       return '~5-15 seconds'
     default:
       return '~30 seconds'

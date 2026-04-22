@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@0gfoundation/0g-ts-sdk@^1.2.1":
-  version "1.2.1"
-  resolved "https://registry.npmjs.org/@0gfoundation/0g-ts-sdk/-/0g-ts-sdk-1.2.1.tgz"
-  integrity sha512-1PBq+aug6p3OYh9UbEDxn+mroQ4XCjd7355wwStfd8ykyKMXHTdrSuNrfranr5TnF/uksKUWnN3HJ73gYKKDpw==
+"@0gfoundation/0g-ts-sdk@^1.2.2":
+  version "1.2.2"
+  resolved "https://registry.npmjs.org/@0gfoundation/0g-ts-sdk/-/0g-ts-sdk-1.2.2.tgz"
+  integrity sha512-aBmjVBD+xQnerqJdzLD+jPz6B2kDfw5NJHynB17sn2+7dEAN4AR/qqcC94HMoXuMOc6jVY9+JnqgWDAfhTIT3w==
   dependencies:
     "@ethersproject/bytes" "^5.7.0"
     "@ethersproject/keccak256" "^5.7.0"
@@ -350,6 +350,18 @@
   resolved "https://registry.npmjs.org/@img/colour/-/colour-1.0.0.tgz"
   integrity sha512-A5P/LfWGFSl6nsckYtjw9da+19jB8hkJ6ACTGcDfEJ0aE+l2n2El7dsVM7UVHZQ9s2lmYMWlrS21YLy2IR1LUw==
 
+"@img/sharp-darwin-x64@0.34.5":
+  version "0.34.5"
+  resolved "https://registry.npmjs.org/@img/sharp-darwin-x64/-/sharp-darwin-x64-0.34.5.tgz"
+  integrity sha512-YNEFAF/4KQ/PeW0N+r+aVVsoIY0/qxxikF2SWdp+NRkmMB7y9LBZAVqQ4yhGCm/H3H270OSykqmQMKLBhBJDEw==
+  optionalDependencies:
+    "@img/sharp-libvips-darwin-x64" "1.2.4"
+
+"@img/sharp-libvips-darwin-x64@1.2.4":
+  version "1.2.4"
+  resolved "https://registry.npmjs.org/@img/sharp-libvips-darwin-x64/-/sharp-libvips-darwin-x64-1.2.4.tgz"
+  integrity sha512-1IOd5xfVhlGwX+zXv2N93k0yMONvUlANylbJw1eTah8K/Jtpi15KC+WSiaX/nBmbm2HxRM1gZ0nSdjSsrZbGKg==
+
 "@img/sharp-libvips-linux-arm64@1.2.4":
   version "1.2.4"
   resolved "https://registry.npmjs.org/@img/sharp-libvips-linux-arm64/-/sharp-libvips-linux-arm64-1.2.4.tgz"
@@ -497,6 +509,11 @@
   integrity sha512-/Qq3PTagA6+nYVfryAtQ7/9FEr/6YVyvOtl6rZnGsbReGLf0jZU6gkpr1FuChAQpvV46a78p4cmHOVP8mbfSMQ==
   dependencies:
     fast-glob "3.3.1"
+
+"@next/swc-darwin-x64@16.1.6":
+  version "16.1.6"
+  resolved "https://registry.npmjs.org/@next/swc-darwin-x64/-/swc-darwin-x64-16.1.6.tgz"
+  integrity sha512-BLFPYPDO+MNJsiDWbeVzqvYd4NyuRrEYVB5k2N3JfWncuHAy2IVwMAOlVQDFjj+krkWzhY2apvmekMkfQR0CUQ==
 
 "@next/swc-linux-arm64-gnu@16.1.6":
   version "16.1.6"
@@ -726,6 +743,11 @@
     magic-string "^0.30.21"
     source-map-js "^1.2.1"
     tailwindcss "4.1.18"
+
+"@tailwindcss/oxide-darwin-x64@4.1.18":
+  version "4.1.18"
+  resolved "https://registry.npmjs.org/@tailwindcss/oxide-darwin-x64/-/oxide-darwin-x64-4.1.18.tgz"
+  integrity sha512-FL5oxr2xQsFrc3X9o1fjHKBYBMD1QZNyc1Xzw/h5Qu4XnEBi3dZn96HcHm41c/euGV+GRiXFfh2hUCyKi/e+yw==
 
 "@tailwindcss/oxide-linux-arm64-gnu@4.1.18":
   version "4.1.18"
@@ -979,6 +1001,11 @@
   dependencies:
     "@typescript-eslint/types" "8.54.0"
     eslint-visitor-keys "^4.2.1"
+
+"@unrs/resolver-binding-darwin-x64@1.11.1":
+  version "1.11.1"
+  resolved "https://registry.npmjs.org/@unrs/resolver-binding-darwin-x64/-/resolver-binding-darwin-x64-1.11.1.tgz"
+  integrity sha512-cFzP7rWKd3lZaCsDze07QX1SC24lO8mPty9vdP+YVa3MGdVgPmFc59317b2ioXtgCMKGiCLxJ4HQs62oz6GfRQ==
 
 "@unrs/resolver-binding-linux-arm64-gnu@1.11.1":
   version "1.11.1"
@@ -2618,6 +2645,11 @@ lie@^3.0.2:
   dependencies:
     immediate "~3.0.5"
 
+lightningcss-darwin-x64@1.30.2:
+  version "1.30.2"
+  resolved "https://registry.npmjs.org/lightningcss-darwin-x64/-/lightningcss-darwin-x64-1.30.2.tgz"
+  integrity sha512-oBZgKchomuDYxr7ilwLcyms6BCyLn0z8J0+ZZmfpjwg9fRVZIR5/GMXd7r9RH94iDhld3UmSjBM6nXWM2TfZTQ==
+
 lightningcss-linux-arm64-gnu@1.30.2:
   version "1.30.2"
   resolved "https://registry.npmjs.org/lightningcss-linux-arm64-gnu/-/lightningcss-linux-arm64-gnu-1.30.2.tgz"
@@ -2943,10 +2975,10 @@ own-keys@^1.0.1:
     object-keys "^1.1.1"
     safe-push-apply "^1.0.0"
 
-ox@>=0.11.1, ox@0.11.3:
-  version "0.11.3"
-  resolved "https://registry.npmjs.org/ox/-/ox-0.11.3.tgz"
-  integrity sha512-1bWYGk/xZel3xro3l8WGg6eq4YEKlaqvyMtVhfMFpbJzK2F6rj4EDRtqDCWVEJMkzcmEi9uW2QxsqELokOlarw==
+ox@>=0.11.1, ox@0.14.20:
+  version "0.14.20"
+  resolved "https://registry.npmjs.org/ox/-/ox-0.14.20.tgz"
+  integrity sha512-rby38C3nDn8eQkf29Zgw4hkCZJ64Qqi0zRPWL8ENUQ7JVuoITqrVtwWQgM/He19SCMUEc7hS/Sjw0jIOSLJhOw==
   dependencies:
     "@adraffy/ens-normalize" "^1.11.0"
     "@noble/ciphers" "^1.3.0"
@@ -3788,10 +3820,10 @@ uuid@^9.0.1:
   resolved "https://registry.npmjs.org/uuid/-/uuid-9.0.1.tgz"
   integrity sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==
 
-viem@^2.31.4, viem@^2.45.1, viem@2.x:
-  version "2.45.1"
-  resolved "https://registry.npmjs.org/viem/-/viem-2.45.1.tgz"
-  integrity sha512-LN6Pp7vSfv50LgwhkfSbIXftAM5J89lP9x8TeDa8QM7o41IxlHrDh0F9X+FfnCWtsz11pEVV5sn+yBUoOHNqYA==
+viem@^2.31.4, viem@^2.48.4, viem@2.x:
+  version "2.48.4"
+  resolved "https://registry.npmjs.org/viem/-/viem-2.48.4.tgz"
+  integrity sha512-mReP/rgY2P+WeeRSG4sUvccCLKfyAW1C73Y3KkobAqgzYmVna9qyUMNE44xIUkDtfvRuC33r24UhF4baBYovsg==
   dependencies:
     "@noble/curves" "1.9.1"
     "@noble/hashes" "1.8.0"
@@ -3799,7 +3831,7 @@ viem@^2.31.4, viem@^2.45.1, viem@2.x:
     "@scure/bip39" "1.6.0"
     abitype "1.2.3"
     isows "1.0.7"
-    ox "0.11.3"
+    ox "0.14.20"
     ws "8.18.3"
 
 wagmi@^3.4.1:

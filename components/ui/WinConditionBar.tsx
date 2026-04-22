@@ -11,7 +11,7 @@ export function WinConditionBar({ playerId }: { playerId: string }) {
   const triggerCameraShake = useGameStore(s => s.triggerCameraShake)
   const entries = Object.values(sessions).sort((a, b) => b.totalEarned - a.totalEarned)
   
-  const WIN_TARGET = round.goalOKB
+  const WIN_TARGET = round.goal
 
   const leader = entries[0]
   const playerEntry = sessions[playerId] || entries.find(e => e.agentId.startsWith(playerId?.slice(0, 6) ?? ''))
