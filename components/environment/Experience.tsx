@@ -380,18 +380,18 @@ function Experience({
             id: v?.id ?? `pool-${i}`, 
             position: v?.position ?? [0, -100, 0], 
             agentControlled: v?.agentControlled ?? false, 
-            isGhost: v?.isGhost ?? true,
+            isGhost: !v || v.isGhost,
             playerControlled: isPlayerVehicle,
             onRef: isPlayerVehicle ? setPlayerVehicleObj : isSpectatorVehicle ? setSpectatorVehicleObj : undefined
           }
 
           return (
-            <group key={`pool-${i}`}>
+            <group key={`pool-${i}`} visible={!!v}>
               {isPlayerVehicle && <PlayerVehicleIndicator position={props.position} />}
-              {v?.type === 'tank' && <Tank {...props} />}
-              {v?.type === 'monster' && <MonsterTruck {...props} />}
-              {v?.type === 'speedster' && <Speedster {...props} />}
-              {(!v || (v.type !== 'tank' && v.type !== 'monster' && v.type !== 'speedster')) && <Vehicle {...props} />}
+              {v?.type === 'tank' ? <Tank {...props} /> : 
+               v?.type === 'monster' ? <MonsterTruck {...props} /> : 
+               v?.type === 'speedster' ? <Speedster {...props} /> : 
+               <Vehicle {...props} />}
             </group>
           )
         })}
