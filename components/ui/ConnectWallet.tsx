@@ -77,7 +77,7 @@ export function ConnectWallet({ buttonClassName, source = 'hud_top_right' }: Con
       setIsModalOpen(false)
       setModalOpenGlobal('wallet', false)
     }
-  }, [isConnected, isModalOpen])
+  }, [isConnected, isModalOpen, setModalOpenGlobal])
 
   // ESC closes the wallet modal.
   useEffect(() => {
@@ -102,7 +102,7 @@ export function ConnectWallet({ buttonClassName, source = 'hud_top_right' }: Con
 
   const initAutonomy = async () => {
     if (address) {
-      const success = await agentProtocol.requestSessionPermissions(address)
+      const success = await agentProtocol.requestSessionPermissions()
       if (success) setIsAutonomyActive(true)
     }
   }

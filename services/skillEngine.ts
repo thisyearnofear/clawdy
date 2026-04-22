@@ -37,8 +37,15 @@ export interface SkillEvaluationInput {
 
 // ── Provider resolution ──
 
-const ONCHAIN_OS_MCP_ENDPOINT =
-  process.env.NEXT_PUBLIC_ONCHAIN_OS_MCP_URL || 'https://mcp.onchain-os.com/v1/skills'
+function resolveMcpEndpoint() {
+  const configuredEndpoint = process.env.NEXT_PUBLIC_ONCHAIN_OS_MCP_URL
+  if (configuredEndpoint) return configuredEndpoint
+  if (typeof window !== 'undefined') return '/api/mcp'
+  const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  return `${appBaseUrl.replace(/\/$/, '')}/api/mcp`
+}
+
+const ONCHAIN_OS_MCP_ENDPOINT = resolveMcpEndpoint()
 
 function resolveProviderId(): SkillProviderId {
   const env = process.env.NEXT_PUBLIC_SKILL_PROVIDER

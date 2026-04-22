@@ -1,5 +1,10 @@
-import { evaluateAgentDecision, SkillDecision } from './skillEngine'
-import { AgentSession, WorldState, agentProtocol, VehicleType } from './AgentProtocol'
+import {
+  evaluateAgentDecision,
+  evaluateAgentDecisionAsync,
+  getSkillProviderInfo,
+  SkillDecision,
+} from './skillEngine'
+import { AgentSession, WorldState, WeatherStatus, agentProtocol, VehicleType } from './AgentProtocol'
 import { getControllableAgents } from './agents'
 import { vehicleQueue } from './VehicleQueue'
 
@@ -7,10 +12,11 @@ export class AgentAI {
   private static readonly AUTO_BID_COOLDOWN_MS = 15000
   private static readonly AUTO_RENT_COOLDOWN_MS = 20000
   private static readonly AGENT_TICK_INTERVAL = 250
-  
+
   private lastAgentTickAt = 0
   private lastAutomatedBidAt: Map<string, number> = new Map()
   private lastAutomatedRentAt: Map<string, number> = new Map()
+  private pendingDecisionRequests = new Set<string>()
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -58,50 +64,70 @@ export class AgentAI {
 
     const sessions = agentProtocol.getSessions()
     const currentWeatherBid = agentProtocol.getWeatherStatus()
+    const providerId = getSkillProviderInfo().id
 
     sessions.forEach(session => {
       if (session.agentId === 'Player') return
-      
+
       const agentVehicle = worldState.vehicles.find(v => v.id === session.vehicleId)
-      
+
+      let nearestId: number | null = null
       if (agentVehicle && worldState.assets.length > 0) {
         let minDist = Infinity
-        let nearestId: number | null = null
         worldState.assets.forEach(f => {
           const dx = f.position[0] - agentVehicle.position[0]
           const dz = f.position[2] - agentVehicle.position[2]
           const dist = dx * dx + dz * dz
           if (dist < minDist) { minDist = dist; nearestId = f.id }
         })
-        session.targetAssetId = nearestId
-        
-        const decision = evaluateAgentDecision({
-          session,
-          worldState,
-          currentWeatherBid,
-        })
-        
-        this.publishDecision(session, decision)
-        void this.maybeExecuteAutomatedBid(session, decision)
-        void this.maybeExecuteAutomatedRent(session, worldState, decision)
+      }
 
-        if (session.autoPilot && nearestId !== null) {
+      session.targetAssetId = nearestId
+
+      if (session.autoPilot) {
+        if (agentVehicle && nearestId !== null) {
           this.executeAutoPilot(session, agentVehicle, worldState, nearestId)
-        } else if (session.autoPilot) {
+        } else {
           this.executeWander(session)
         }
-      } else if (session.autoPilot) {
-        this.executeWander(session)
-        session.targetAssetId = null
-      } else {
-        session.targetAssetId = null
-        this.publishDecision(session, evaluateAgentDecision({
-          session,
-          worldState,
-          currentWeatherBid,
-        }))
       }
+
+      if (providerId === 'onchain-os') {
+        void this.publishDecisionAsync(session, worldState, currentWeatherBid)
+        return
+      }
+
+      const decision = evaluateAgentDecision({
+        session,
+        worldState,
+        currentWeatherBid,
+      })
+      this.publishDecision(session, decision)
+      void this.maybeExecuteAutomatedBid(session, decision)
+      void this.maybeExecuteAutomatedRent(session, worldState, decision)
     })
+  }
+
+  private async publishDecisionAsync(
+    session: AgentSession,
+    worldState: WorldState,
+    currentWeatherBid: WeatherStatus,
+  ) {
+    if (this.pendingDecisionRequests.has(session.agentId)) return
+    this.pendingDecisionRequests.add(session.agentId)
+
+    try {
+      const decision = await evaluateAgentDecisionAsync({
+        session,
+        worldState,
+        currentWeatherBid,
+      })
+      this.publishDecision(session, decision)
+      void this.maybeExecuteAutomatedBid(session, decision)
+      void this.maybeExecuteAutomatedRent(session, worldState, decision)
+    } finally {
+      this.pendingDecisionRequests.delete(session.agentId)
+    }
   }
 
   private publishDecision(session: AgentSession, decision: SkillDecision) {

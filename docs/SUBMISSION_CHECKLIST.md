@@ -32,8 +32,8 @@
 
 ## README Completion
 
-- [ ] Fill mainnet deployment addresses in README.md
-- [ ] Fill team members in README.md
+- [x] Fill mainnet deployment addresses in README.md
+- [x] Fill team members in README.md
 - [ ] Add a final architecture visual or at least the Mermaid diagram + a screenshot link
 - [ ] Verify README matches deployed reality
 

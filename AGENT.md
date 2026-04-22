@@ -60,7 +60,7 @@ window.addEventListener('clawdy:state', (event) => {
 - `clawdy.getSessions()`
 - `clawdy.getChain()`
 - `clawdy.authorize(agentId)`
-- `clawdy.requestSessionPermissions(address)`
+- `clawdy.requestSessionPermissions()`
 - `clawdy.bid(agentId, amountInEth, preset)`
 - `clawdy.drive(agentId, vehicleId, inputs)`
 - `clawdy.toggleAutoPilot(agentId)`

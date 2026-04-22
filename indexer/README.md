@@ -53,9 +53,9 @@ Set the frontend env vars to the same deployed contracts:
 
 ```bash
 NEXT_PUBLIC_USE_XLAYER_TESTNET=true|false
-NEXT_PUBLIC_WEATHER_AUCTION_ADDRESS=0x...
-NEXT_PUBLIC_VEHICLE_RENT_ADDRESS=0x...
-NEXT_PUBLIC_INDEXER_GRAPHQL_URL=https://your-indexer-endpoint/graphql
+NEXT_PUBLIC_WEATHER_AUCTION_ADDRESS=0x723e444ee6d7da19fade372f85da06dd849bf1e0
+NEXT_PUBLIC_VEHICLE_RENT_ADDRESS=0xea88bd6121d181cfd6f60997b4bdd0297ca432fe
+NEXT_PUBLIC_INDEXER_GRAPHQL_URL=http://localhost:8080/v1/graphql
 ```
 
 Use `true` for X1 testnet and omit it or set `false` for X Layer mainnet.
@@ -63,5 +63,5 @@ Use `true` for X1 testnet and omit it or set `false` for X Layer mainnet.
 ## Before Submission
 
 - replace both zero addresses
-- point `NEXT_PUBLIC_INDEXER_GRAPHQL_URL` at the live indexer endpoint
+- point `NEXT_PUBLIC_INDEXER_GRAPHQL_URL` at the indexer endpoint you actually run
 - confirm the leaderboard is reading indexed data instead of fallback snapshots

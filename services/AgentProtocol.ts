@@ -26,10 +26,13 @@ export const AGENT_ROLE_CONFIG: Record<
   treasury: { label: 'Treasury Agent', permissions: ['spend_policy', 'budget_control'] },
 }
 
+const DEFAULT_WEATHER_AUCTION_ADDRESS = '0x723e444ee6d7da19fade372f85da06dd849bf1e0'
+const DEFAULT_VEHICLE_RENT_ADDRESS = '0xea88bd6121d181cfd6f60997b4bdd0297ca432fe'
+
 export const WEATHER_AUCTION_ADDRESS = (process.env.NEXT_PUBLIC_WEATHER_AUCTION_ADDRESS ||
-  '0x0000000000000000000000000000000000000000') as `0x${string}`
+  DEFAULT_WEATHER_AUCTION_ADDRESS) as `0x${string}`
 export const VEHICLE_RENT_ADDRESS = (process.env.NEXT_PUBLIC_VEHICLE_RENT_ADDRESS ||
-  '0x0000000000000000000000000000000000000000') as `0x${string}`
+  DEFAULT_VEHICLE_RENT_ADDRESS) as `0x${string}`
 
 export interface WorldState {
   timestamp: number
@@ -214,7 +217,7 @@ class AgentProtocol {
       getChain: () => CHAIN_NAME,
       authorize: (id: string) => this.authorizeAgent(id, 3600000),
       logout: () => this.logout(),
-      requestSessionPermissions: (addr: string) => this.requestSessionPermissions(addr),
+      requestSessionPermissions: () => this.requestSessionPermissions(),
       bid: (id: string, amount: number, preset: string) => 
         this.processCommand({ agentId: id, timestamp: Date.now(), bid: amount, config: { preset: preset as CloudConfig['preset'] }, duration: 60000 }),
       drive: (id: string, vehicleId: string, inputs: VehicleCommand['inputs']) =>
@@ -228,7 +231,7 @@ class AgentProtocol {
     }
   }
 
-  async requestSessionPermissions(address: string) {
+  async requestSessionPermissions() {
     if (typeof window === 'undefined' || !window.ethereum) return
     try {
       const ethereum = window.ethereum
@@ -292,7 +295,6 @@ class AgentProtocol {
 
   updateWorldState(update: Partial<WorldState>) {
     const newState = { ...this.worldState, ...update, timestamp: Date.now() }
-    const now = Date.now()
     const activeSessions = Array.from(this.sessions.values())
     
     activeSessions.forEach(session => {
@@ -457,7 +459,7 @@ class AgentProtocol {
           }]
         })
         return true
-      } catch (e) {
+      } catch {
         // Rollback on failure
         this.currentWeatherBid = previousBid
         this.syncWithStore()
