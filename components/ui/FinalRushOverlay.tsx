@@ -1,23 +1,23 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useGameStore } from '../../services/gameStore'
 import { playSound } from './SoundManager'
 
-export function FinalRushOverlay() {
+export const FinalRushOverlay = React.memo(function FinalRushOverlay() {
   const round = useGameStore(s => s.round)
   const [now, setNow] = useState(() => Date.now())
   const lastSecondRef = useRef<number | null>(null)
+
+  const remainingMs = round.endsAt - now
+  const remainingSec = Math.max(0, Math.ceil(remainingMs / 1000))
+  const isFinalRush = round.isActive && remainingSec > 0 && remainingSec <= 10
 
   useEffect(() => {
     if (!isFinalRush) return
     const t = setInterval(() => setNow(Date.now()), 100)
     return () => clearInterval(t)
   }, [isFinalRush])
-
-  const remainingMs = round.endsAt - now
-  const remainingSec = Math.max(0, Math.ceil(remainingMs / 1000))
-  const isFinalRush = round.isActive && remainingSec > 0 && remainingSec <= 10
 
   useEffect(() => {
     if (!isFinalRush) {
@@ -56,5 +56,6 @@ export function FinalRushOverlay() {
       </div>
     </div>
   )
+})
 }
 

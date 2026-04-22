@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useGameStore } from '../../services/gameStore'
 
-export function AuctionTimer() {
+export const AuctionTimer = React.memo(function AuctionTimer() {
   const round = useGameStore(s => s.round)
   const [timeLeft, setTimeLeft] = useState(0)
   const [flash, setFlash] = useState(false)
@@ -48,4 +48,4 @@ export function AuctionTimer() {
       </div>
     </div>
   )
-}
+})
