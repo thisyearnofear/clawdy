@@ -22,7 +22,9 @@ export function HUD(props: HUDProps) {
   const [weatherCollapsed, setWeatherCollapsed] = useState(false)
   const [statusCollapsed, setStatusCollapsed] = useState(false)
   
-  const { sessions, activeWeatherEffects, ui } = useGameStore()
+  const sessions = useGameStore(s => s.sessions)
+  const activeWeatherEffects = useGameStore(s => s.activeWeatherEffects)
+  const ui = useGameStore(s => s.ui)
   
   const playerSession = sessions['Player']
 

@@ -18,6 +18,7 @@ export function AgentTerminal() {
   const [isOpen, setIsOpen] = useState(false)
 
   useEffect(() => {
+    if (!isOpen) return
     const interval = setInterval(() => {
       setSessions(agentProtocol.getSessions())
       setWeatherStatus(agentProtocol.getWeatherStatus())
@@ -31,7 +32,7 @@ export function AgentTerminal() {
       clearInterval(interval)
       unsubscribeDecisions()
     }
-  }, [])
+  }, [isOpen])
 
   const addLog = (msg: string) => {
     setLogs(prev => [msg, ...prev].slice(0, 5))
