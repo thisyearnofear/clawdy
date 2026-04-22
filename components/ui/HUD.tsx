@@ -1,13 +1,10 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { useAccount } from 'wagmi'
-import { ConnectWallet } from './ConnectWallet'
+import { useState } from 'react'
 import { WinConditionBar } from './WinConditionBar'
 import { AuctionTimer } from './AuctionTimer'
 import { AgentTerminal } from './AgentTerminal'
 import { useGameStore } from '../../services/gameStore'
-import { CloudConfig } from '../environment/CloudManager'
 import { QueueStatusBadge } from './QueueStatusBadge'
 import { UI_Z_INDEX } from '../../services/uiConstants'
 
@@ -19,25 +16,15 @@ interface HUDProps {
   onOpenSidebar: () => void
   onToggleQuickControls: () => void
   showQuickControls: boolean
-  cloudConfig: CloudConfig
-  onApplyPreset: (preset: NonNullable<CloudConfig['preset']>) => void
 }
 
 export function HUD(props: HUDProps) {
-  const { address } = useAccount()
   const [weatherCollapsed, setWeatherCollapsed] = useState(false)
   const [statusCollapsed, setStatusCollapsed] = useState(false)
-  const [hudMode, setHudMode] = useState<'full' | 'minimal'>('full')
   
-  const { ui, sessions, activeWeatherEffects, flood, playerWater, setUI } = useGameStore()
+  const { sessions, activeWeatherEffects, ui } = useGameStore()
   
   const playerSession = sessions['Player']
-  const [now, setNow] = useState(Date.now())
-  
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(timer)
-  }, [])
 
   if (!ui.showHUD) return null
 
@@ -49,14 +36,19 @@ export function HUD(props: HUDProps) {
         <div className="pointer-events-auto"><AuctionTimer /></div>
         
         {/* Collapsible Weather */}
-        <div className="bg-black/45 backdrop-blur-xl border border-white/15 rounded-2xl p-3 shadow-xl pointer-events-auto">
+        <div className="bg-black/45 backdrop-blur-xl border border-white/15 rounded-2xl p-3 shadow-xl pointer-events-auto w-full max-w-[280px]">
           <div className="flex justify-between items-center mb-1">
-             <button onClick={() => setWeatherCollapsed(!weatherCollapsed)} className="text-[8px] font-black uppercase text-sky-300">
+             <button 
+              onClick={() => setWeatherCollapsed(!weatherCollapsed)} 
+              aria-label="Toggle weather domains"
+              aria-expanded={!weatherCollapsed}
+              className="text-[8px] font-black uppercase text-sky-300"
+            >
                {weatherCollapsed ? 'WEATHER (SHOW)' : 'WEATHER (HIDE)'}
              </button>
           </div>
           {!weatherCollapsed && (
-            <div className="flex flex-wrap gap-1 max-w-[200px]">
+            <div className="flex flex-wrap gap-1">
               {Object.values(activeWeatherEffects).map(e => (
                 <span key={e.domain} className="px-1.5 py-0.5 bg-white/10 rounded-lg text-[8px] text-white">
                   {DOMAIN_LABELS[e.domain]}: {Math.round(e.intensity * 100)}%
@@ -70,10 +62,15 @@ export function HUD(props: HUDProps) {
       {/* 2. BOTTOM RIGHT: Collapsible Status */}
       <div className={`absolute bottom-6 right-6 ${UI_Z_INDEX.HUD} flex flex-col gap-2 items-end`}>
         <QueueStatusBadge playerId={props.playerId} />
-        <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-3 shadow-xl">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-[9px] font-black text-white/50">STATUS</span>
-            <button onClick={() => setStatusCollapsed(!statusCollapsed)} className="text-white/30 text-[10px]">
+        <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-3 shadow-xl pointer-events-auto">
+          <div className="flex justify-between items-center mb-2 gap-4">
+            <span className="text-[9px] font-black text-white/50 uppercase">STATUS</span>
+            <button 
+              onClick={() => setStatusCollapsed(!statusCollapsed)} 
+              aria-label="Toggle status panel"
+              aria-expanded={!statusCollapsed}
+              className="text-white/30 text-[10px]"
+            >
               {statusCollapsed ? '▲' : '▼'}
             </button>
           </div>
@@ -93,7 +90,7 @@ export function HUD(props: HUDProps) {
       </div>
 
       {/* 3. RIGHT SIDE: FABs with Safe Spacing */}
-      <div className={`absolute top-1/3 right-6 ${UI_Z_INDEX.HUD} flex flex-col gap-3 pb-24`}>
+      <div className={`absolute top-1/3 right-6 ${UI_Z_INDEX.HUD} flex flex-col gap-3 pb-24 pointer-events-auto`}>
         <button onClick={props.onToggleQuickControls} className="w-10 h-10 bg-black/20 rounded-full border border-white/20 text-white">W</button>
         <button onClick={props.onOpenSidebar} className="w-10 h-10 bg-black/20 rounded-full border border-white/20 text-white">S</button>
         <AgentTerminal />
