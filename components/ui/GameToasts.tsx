@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { X } from 'lucide-react'
 
 export type ToastType = 'collect' | 'bid-win' | 'bid-lose' | 'rent' | 'milestone'
 
@@ -81,21 +82,27 @@ export function GameToasts() {
 // Big celebration overlay for bid wins
 export function BidWinCelebration({ preset, onDone }: { preset: string; onDone: () => void }) {
   useEffect(() => {
-    const t = setTimeout(onDone, 3500)
+    const t = setTimeout(onDone, 2200)
     return () => clearTimeout(t)
   }, [onDone])
 
   return (
-    <div className="fixed inset-0 z-[90] pointer-events-none flex items-center justify-center">
-      {/* Radial burst */}
-      <div className="absolute inset-0 bg-yellow-400/10 animate-ping rounded-full" style={{ animationDuration: '0.6s', animationIterationCount: 2 }} />
-      <div className="relative flex flex-col items-center gap-3 animate-in zoom-in-50 fade-in duration-300">
-        <div className="text-7xl animate-bounce">🏆</div>
-        <div className="bg-yellow-500/30 backdrop-blur-xl border border-yellow-400/50 rounded-3xl px-8 py-4 text-center shadow-2xl shadow-yellow-500/20">
-          <div className="text-xs font-black uppercase tracking-widest text-yellow-300/70 mb-1">Weather Auction Resolved</div>
-          <div className="text-2xl font-black text-white capitalize">{preset} weather</div>
-          <div className="text-xs text-yellow-200/60 mt-1">Winning bidder controls the environment</div>
+    <div className="fixed top-4 right-4 z-[90] pointer-events-none">
+      <div className="pointer-events-auto relative flex max-w-sm items-start gap-3 rounded-2xl border border-yellow-400/40 bg-yellow-500/20 px-4 py-3 shadow-2xl shadow-yellow-500/20 backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-300">
+        <div className="text-3xl leading-none">🏆</div>
+        <div className="min-w-0 pr-4">
+          <div className="text-[10px] font-black uppercase tracking-[0.22em] text-yellow-300/70 mb-1">Weather Auction Resolved</div>
+          <div className="text-base font-black text-white capitalize leading-tight">{preset} weather</div>
+          <div className="text-[11px] text-yellow-100/70 mt-1 leading-tight">Winning bidder controls the environment</div>
         </div>
+        <button
+          type="button"
+          onClick={onDone}
+          aria-label="Dismiss weather auction celebration"
+          className="ml-auto rounded-full border border-white/10 bg-black/20 p-1 text-white/70 transition hover:bg-black/35 hover:text-white"
+        >
+          <X className="h-4 w-4" />
+        </button>
       </div>
     </div>
   )

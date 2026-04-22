@@ -198,7 +198,7 @@ export function HUD({
       )}
 
       {isMounted && activeDomainEffects.length > 0 && (
-        <div className="hidden sm:block absolute top-6 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+        <div className="hidden sm:block absolute top-24 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
           <div className="bg-black/45 backdrop-blur-xl border border-white/15 rounded-2xl px-4 py-3 shadow-xl min-w-[280px]">
             <p className="text-[9px] uppercase tracking-[0.22em] text-sky-300 font-black">Active Weather Domains</p>
             <div className="mt-2 flex flex-wrap gap-1.5">
