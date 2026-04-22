@@ -5,6 +5,7 @@ export type AnalyticsEventName =
   | 'queue_joined'
   | 'queue_activated'
   | 'queue_left'
+  | 'queue_priority_changed'
   | 'weather_auction_effect_applied'
   | 'player_influence_window_started'
 

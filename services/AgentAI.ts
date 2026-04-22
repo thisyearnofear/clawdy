@@ -1,6 +1,7 @@
 import { evaluateAgentDecision, SkillDecision } from './skillEngine'
 import { AgentSession, WorldState, agentProtocol, VehicleType } from './AgentProtocol'
 import { getControllableAgents } from './agents'
+import { vehicleQueue } from './VehicleQueue'
 
 export class AgentAI {
   private static readonly AUTO_BID_COOLDOWN_MS = 15000
@@ -13,7 +14,6 @@ export class AgentAI {
 
   constructor() {
     if (typeof window !== 'undefined') {
-       // Defer to avoid circular initialization issues
        setTimeout(() => {
          agentProtocol.subscribeToState((state) => this.onWorldUpdate(state))
          this.startContinuousSpawning()
@@ -22,10 +22,8 @@ export class AgentAI {
   }
 
   private startContinuousSpawning() {
-    // Initial batch
     this.initAIAgents()
     
-    // Spawn a new agent every 15-30 seconds if population is below cap
     setInterval(() => {
       const activeCount = agentProtocol.getSessions().length
       if (activeCount < 8) {
@@ -34,6 +32,7 @@ export class AgentAI {
             if (success) {
                const session = agentProtocol.getSession(newId)
                if (session) session.autoPilot = true
+               vehicleQueue.joinQueue(newId, 'agent', 0)
             }
          })
       }
@@ -48,6 +47,7 @@ export class AgentAI {
       if (session) {
         session.autoPilot = true
       }
+      vehicleQueue.joinQueue(agent.id, 'agent', 0)
     }
   }
 
@@ -64,16 +64,16 @@ export class AgentAI {
       
       const agentVehicle = worldState.vehicles.find(v => v.id === session.vehicleId)
       
-      if (agentVehicle && worldState.food.length > 0) {
+      if (agentVehicle && worldState.assets.length > 0) {
         let minDist = Infinity
         let nearestId: number | null = null
-        worldState.food.forEach(f => {
+        worldState.assets.forEach(f => {
           const dx = f.position[0] - agentVehicle.position[0]
           const dz = f.position[2] - agentVehicle.position[2]
           const dist = dx * dx + dz * dz
           if (dist < minDist) { minDist = dist; nearestId = f.id }
         })
-        session.targetFoodId = nearestId
+        session.targetAssetId = nearestId
         
         const decision = evaluateAgentDecision({
           session,
@@ -92,9 +92,9 @@ export class AgentAI {
         }
       } else if (session.autoPilot) {
         this.executeWander(session)
-        session.targetFoodId = null
+        session.targetAssetId = null
       } else {
-        session.targetFoodId = null
+        session.targetAssetId = null
         this.publishDecision(session, evaluateAgentDecision({
           session,
           worldState,
@@ -111,7 +111,7 @@ export class AgentAI {
   }
 
   private executeAutoPilot(session: AgentSession, vehicle: WorldState['vehicles'][number], worldState: WorldState, targetId: number) {
-    const target = worldState.food.find(f => f.id === targetId)!
+    const target = worldState.assets.find(f => f.id === targetId)!
     const dx = target.position[0] - vehicle.position[0]
     const dz = target.position[2] - vehicle.position[2]
     const dist = Math.sqrt(dx * dx + dz * dz)

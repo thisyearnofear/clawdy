@@ -1,11 +1,14 @@
-import { VehicleType } from './AgentProtocol'
+import { VehicleType, agentProtocol } from './AgentProtocol'
 import { trackEvent } from './analytics'
 
 export interface QueuedPlayer {
   id: string
   address?: string
   joinedAt: number
-  status: 'waiting' | 'active' | 'finished'
+  status: 'waiting' | 'active'
+  type: 'human' | 'agent'
+  priority: number
+  isGhost: boolean
   vehicleId?: string
   sessionStartTime?: number
   sessionEndTime?: number
@@ -15,19 +18,23 @@ export interface VehicleSlot {
   id: string
   type: VehicleType
   isOccupied: boolean
+  allowedTypes: ('human' | 'agent')[]
   currentPlayerId?: string
   maxSessionDuration: number // in milliseconds
 }
 
 export class VehicleQueueManager {
   private queue: QueuedPlayer[] = []
+  // Separate caps (recommended): humans always have room even if agents fill up, and vice versa.
+  // We express caps via per-slot allowedTypes rather than a second queue system.
   private vehicles: VehicleSlot[] = [
-    { id: 'vehicle-1', type: 'speedster', isOccupied: false, maxSessionDuration: 5 * 60 * 1000 }, // 5 min
-    { id: 'vehicle-2', type: 'tank', isOccupied: false, maxSessionDuration: 5 * 60 * 1000 },
-    { id: 'vehicle-3', type: 'monster', isOccupied: false, maxSessionDuration: 5 * 60 * 1000 },
-    { id: 'vehicle-4', type: 'truck', isOccupied: false, maxSessionDuration: 5 * 60 * 1000 },
+    // Human slots
+    { id: 'vehicle-1', type: 'speedster', isOccupied: false, allowedTypes: ['human'], maxSessionDuration: 5 * 60 * 1000 },
+    { id: 'vehicle-2', type: 'truck', isOccupied: false, allowedTypes: ['human'], maxSessionDuration: 5 * 60 * 1000 },
+    // Agent slots
+    { id: 'vehicle-3', type: 'tank', isOccupied: false, allowedTypes: ['agent'], maxSessionDuration: 5 * 60 * 1000 },
+    { id: 'vehicle-4', type: 'monster', isOccupied: false, allowedTypes: ['agent'], maxSessionDuration: 5 * 60 * 1000 },
   ]
-  private activePlayerId: string | null = null
   private listeners: Set<(state: QueueState) => void> = new Set()
   private checkInterval: NodeJS.Timeout | null = null
 
@@ -36,7 +43,6 @@ export class VehicleQueueManager {
   }
 
   private startQueueProcessor() {
-    // Check queue every 2 seconds
     this.checkInterval = setInterval(() => {
       this.processQueue()
       this.checkExpiredSessions()
@@ -45,15 +51,19 @@ export class VehicleQueueManager {
   }
 
   private processQueue() {
-    // Find waiting players and available vehicles
-    const waitingPlayers = this.queue.filter(p => p.status === 'waiting')
-    const availableVehicles = this.vehicles.filter(v => !v.isOccupied)
+    // Sort waiting players by priority (desc) then by joinedAt (asc)
+    const waitingPlayers = this.queue
+      .filter(p => p.status === 'waiting')
+      .sort((a, b) => b.priority - a.priority || a.joinedAt - b.joinedAt)
 
     for (const player of waitingPlayers) {
-      if (availableVehicles.length === 0) break
+      const availableVehicle = this.vehicles.find(v => !v.isOccupied && v.allowedTypes.includes(player.type))
+      if (!availableVehicle) {
+        player.isGhost = true // If waiting, they are in ghost mode
+        continue
+      }
 
-      const vehicle = availableVehicles.shift()!
-      this.assignVehicle(player, vehicle)
+      this.assignVehicle(player, availableVehicle)
     }
   }
 
@@ -61,17 +71,27 @@ export class VehicleQueueManager {
     const now = Date.now()
     
     player.status = 'active'
+    player.isGhost = false
     player.vehicleId = vehicle.id
     player.sessionStartTime = now
     player.sessionEndTime = now + vehicle.maxSessionDuration
     
     vehicle.isOccupied = true
     vehicle.currentPlayerId = player.id
-    this.activePlayerId = player.id
 
-    console.log(`[VehicleQueue] Assigned ${vehicle.id} to player ${player.id}`)
+    // For AI agents, bind their active vehicle id to the slot id so agent commands apply.
+    // (Avoids introducing a parallel “agent vehicle registry”.)
+    if (player.type === 'agent') {
+      const session = agentProtocol.getSession(player.id)
+      if (session) {
+        session.vehicleId = vehicle.id
+      }
+    }
+
+    console.log(`[VehicleQueue] Assigned ${vehicle.id} to ${player.type} ${player.id}`)
     trackEvent('queue_activated', {
       playerId: player.id,
+      type: player.type,
       walletAddress: player.address,
       vehicleId: vehicle.id,
       vehicleType: vehicle.type,
@@ -82,7 +102,6 @@ export class VehicleQueueManager {
 
   private checkExpiredSessions() {
     const now = Date.now()
-    
     for (const vehicle of this.vehicles) {
       if (vehicle.isOccupied && vehicle.currentPlayerId) {
         const player = this.queue.find(p => p.id === vehicle.currentPlayerId)
@@ -94,19 +113,22 @@ export class VehicleQueueManager {
   }
 
   private releaseVehicle(player: QueuedPlayer, vehicle: VehicleSlot) {
-    player.status = 'finished'
-    player.sessionEndTime = Date.now()
+    // Rotation: after a session ends, immediately return the player to the waiting lane.
+    // This keeps the queue stable and prevents “stuck finished users”.
+    player.status = 'waiting'
+    player.isGhost = true
+    player.joinedAt = Date.now()
+    player.vehicleId = undefined
+    player.sessionStartTime = undefined
+    player.sessionEndTime = undefined
     
     vehicle.isOccupied = false
     vehicle.currentPlayerId = undefined
-    
-    if (this.activePlayerId === player.id) {
-      this.activePlayerId = null
-    }
 
-    console.log(`[VehicleQueue] Released ${vehicle.id} from player ${player.id}`)
+    console.log(`[VehicleQueue] Released ${vehicle.id} from ${player.type} ${player.id}`)
     trackEvent('queue_left', {
       playerId: player.id,
+      type: player.type,
       walletAddress: player.address,
       vehicleId: vehicle.id,
       vehicleType: vehicle.type,
@@ -116,31 +138,42 @@ export class VehicleQueueManager {
 
   // Public API
 
-  joinQueue(playerId: string, address?: string): { position: number; estimatedWait: number } {
-    // Check if already in queue
+  joinQueue(playerId: string, type: 'human' | 'agent' = 'human', priority: number = 0, address?: string): { position: number; estimatedWait: number } {
     const existing = this.queue.find(p => p.id === playerId)
     if (existing) {
-      if (existing.status === 'active') {
-        return { position: 0, estimatedWait: 0 }
+      if (existing.status === 'active') return { position: 0, estimatedWait: 0 }
+      // Ensure they are actually queued (defensive).
+      existing.status = 'waiting'
+      existing.isGhost = true
+      existing.type = type
+      existing.priority = Math.max(existing.priority, priority)
+      if (address) existing.address = address
+    }
+
+    if (!existing) {
+      const player: QueuedPlayer = {
+        id: playerId,
+        address,
+        joinedAt: Date.now(),
+        status: 'waiting',
+        type,
+        priority,
+        isGhost: true
       }
-      const position = this.queue.filter(p => p.status === 'waiting').indexOf(existing) + 1
-      return { position, estimatedWait: position * 30 } // 30 sec estimate per player
+      this.queue.push(player)
     }
-
-    const player: QueuedPlayer = {
-      id: playerId,
-      address,
-      joinedAt: Date.now(),
-      status: 'waiting'
-    }
-
-    this.queue.push(player)
-    
-    const position = this.queue.filter(p => p.status === 'waiting').length
     this.notifyListeners()
+    
+    const waitingCount = this.queue.filter(p => p.status === 'waiting' && p.type === type).length
+
+    const waiting = this.queue
+      .filter(p => p.status === 'waiting' && p.type === type)
+      .sort((a, b) => b.priority - a.priority || a.joinedAt - b.joinedAt)
+    const position = waiting.findIndex(p => p.id === playerId) + 1
 
     trackEvent('queue_joined', {
       playerId,
+      type,
       walletAddress: address,
       position,
       estimatedWait: position * 30,
@@ -154,15 +187,11 @@ export class VehicleQueueManager {
     if (index === -1) return false
 
     const player = this.queue[index]
-    
     const wasActive = player.status === 'active'
 
-    // If active, release vehicle
     if (wasActive && player.vehicleId) {
       const vehicle = this.vehicles.find(v => v.id === player.vehicleId)
-      if (vehicle) {
-        this.releaseVehicle(player, vehicle)
-      }
+      if (vehicle) this.releaseVehicle(player, vehicle)
     }
 
     this.queue.splice(index, 1)
@@ -171,12 +200,29 @@ export class VehicleQueueManager {
     if (!wasActive) {
       trackEvent('queue_left', {
         playerId,
+        type: player.type,
         walletAddress: player.address,
-        vehicleId: player.vehicleId,
         reason: 'manual_leave_waiting',
       })
     }
     return true
+  }
+
+  bumpPriority(playerId: string, delta: number, reason: string): number | null {
+    const player = this.queue.find(p => p.id === playerId)
+    if (!player) return null
+    const before = player.priority
+    player.priority = Math.max(0, Math.min(10, player.priority + delta))
+    this.notifyListeners()
+    trackEvent('queue_priority_changed', {
+      playerId,
+      type: player.type,
+      before,
+      after: player.priority,
+      delta,
+      reason,
+    })
+    return player.priority
   }
 
   getPlayerStatus(playerId: string): QueuedPlayer | undefined {
@@ -186,12 +232,25 @@ export class VehicleQueueManager {
   getQueueState(): QueueState {
     const waitingCount = this.queue.filter(p => p.status === 'waiting').length
     const activeCount = this.queue.filter(p => p.status === 'active').length
+    const waitingHumans = this.queue.filter(p => p.status === 'waiting' && p.type === 'human').length
+    const waitingAgents = this.queue.filter(p => p.status === 'waiting' && p.type === 'agent').length
+    const activeHumans = this.queue.filter(p => p.status === 'active' && p.type === 'human').length
+    const activeAgents = this.queue.filter(p => p.status === 'active' && p.type === 'agent').length
+
+    const humanSlots = this.vehicles.filter(v => v.allowedTypes.includes('human')).length
+    const agentSlots = this.vehicles.filter(v => v.allowedTypes.includes('agent')).length
     
     return {
       queue: this.queue,
       vehicles: this.vehicles,
       waitingCount,
       activeCount,
+      waitingHumans,
+      waitingAgents,
+      activeHumans,
+      activeAgents,
+      humanSlots,
+      agentSlots,
       totalPlayers: this.queue.length,
       isPlayerActive: (playerId: string) => {
         const player = this.queue.find(p => p.id === playerId)
@@ -209,12 +268,8 @@ export class VehicleQueueManager {
 
   subscribe(listener: (state: QueueState) => void): () => void {
     this.listeners.add(listener)
-    // Immediately notify with current state
     listener(this.getQueueState())
-    
-    return () => {
-      this.listeners.delete(listener)
-    }
+    return () => { this.listeners.delete(listener) }
   }
 
   private notifyListeners() {
@@ -232,9 +287,7 @@ export class VehicleQueueManager {
   }
 
   destroy() {
-    if (this.checkInterval) {
-      clearInterval(this.checkInterval)
-    }
+    if (this.checkInterval) clearInterval(this.checkInterval)
   }
 }
 
@@ -243,10 +296,15 @@ export interface QueueState {
   vehicles: VehicleSlot[]
   waitingCount: number
   activeCount: number
+  waitingHumans: number
+  waitingAgents: number
+  activeHumans: number
+  activeAgents: number
+  humanSlots: number
+  agentSlots: number
   totalPlayers: number
   isPlayerActive: (playerId: string) => boolean
   getPlayerVehicle: (playerId: string) => VehicleSlot | undefined
 }
 
-// Singleton instance
 export const vehicleQueue = new VehicleQueueManager()
