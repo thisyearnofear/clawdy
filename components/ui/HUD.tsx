@@ -1,9 +1,8 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { WinConditionBar } from './WinConditionBar'
 import { AuctionTimer } from './AuctionTimer'
-import { AgentTerminal } from './AgentTerminal'
 import { useAccount } from 'wagmi'
 import { useGameStore } from '../../services/gameStore'
 import { QueueStatusBadge } from './QueueStatusBadge'
@@ -12,6 +11,7 @@ import { FloodLevelGauge } from './FloodLevelGauge'
 import { HighGroundIndicator } from './HighGroundIndicator'
 import { CloudConfig } from '../environment/CloudManager'
 import { UI_Z_INDEX } from '../../services/uiConstants'
+import { getMemeMarketStrategy } from '../../services/AgentProtocol'
 
 const PROXIMITY_ALERT_DISTANCE = 40
 
@@ -34,6 +34,12 @@ interface HUDProps {
 export function HUD(props: HUDProps) {
   const [weatherCollapsed, setWeatherCollapsed] = useState(false)
   const [statusCollapsed, setStatusCollapsed] = useState(false)
+  const [nowMs, setNowMs] = useState(() => Date.now())
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [])
   
   const { address } = useAccount()
   const sessions = useGameStore(s => s.sessions)
@@ -44,6 +50,24 @@ export function HUD(props: HUDProps) {
   const nearMud = useGameStore(s => s.nearMud)
   
   const playerSession = sessions['Player']
+  const currentStrategy = getMemeMarketStrategy(playerSession?.strategyId)
+  const speedBoostRemaining = playerSession?.speedBoostUntil && playerSession.speedBoostUntil > nowMs
+    ? Math.ceil((playerSession.speedBoostUntil - nowMs) / 1000)
+    : 0
+  const antiGravityRemaining = playerSession?.antiGravityUntil && playerSession.antiGravityUntil > nowMs
+    ? Math.ceil((playerSession.antiGravityUntil - nowMs) / 1000)
+    : 0
+  const activeMemeEffects = [
+    speedBoostRemaining > 0
+      ? { label: 'Speed Boost', value: `${speedBoostRemaining}s` }
+      : null,
+    antiGravityRemaining > 0
+      ? { label: 'Anti-Gravity', value: `${antiGravityRemaining}s` }
+      : null,
+    playerSession?.drainPlugCount
+      ? { label: 'Drain Charges', value: `${playerSession.drainPlugCount}` }
+      : null,
+  ].filter(Boolean) as Array<{ label: string; value: string }>
 
   // Compute nearest player distance
   const nearestDistance = useMemo(() => {
@@ -142,6 +166,18 @@ export function HUD(props: HUDProps) {
               <div className="grid grid-cols-2 gap-1 text-[8px] text-white/70">
                 <span>Bal: {playerSession?.balance.toFixed(2)}</span>
                 <span>Combo: {playerSession?.comboCount}</span>
+              </div>
+            )}
+            <div className="text-[8px] font-bold uppercase tracking-widest text-sky-200/80">
+              Strategy: {currentStrategy ? `${currentStrategy.icon} ${currentStrategy.label}` : 'Unset'}
+            </div>
+            {activeMemeEffects.length > 0 && (
+              <div className="flex flex-wrap gap-1 text-[8px] text-sky-200/90">
+                {activeMemeEffects.map((effect) => (
+                  <span key={effect.label} className="rounded-full border border-sky-400/20 bg-sky-500/10 px-1.5 py-0.5 font-bold uppercase tracking-wider">
+                    {effect.label} {effect.value}
+                  </span>
+                ))}
               </div>
             )}
           </div>

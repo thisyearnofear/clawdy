@@ -1,0 +1,48 @@
+#!/usr/bin/env sh
+
+# Pre-commit hook: block commits that contain secrets or private keys.
+# Scans staged file diffs for common secret patterns.
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACM)
+
+if [ -z "$STAGED" ]; then
+  exit 0
+fi
+
+FOUND=0
+
+for file in $STAGED; do
+  if [ ! -f "$file" ]; then
+    continue
+  fi
+
+  DIFF=$(git diff --cached -- "$file")
+
+  # Private key assigned with 0x + 64 hex chars
+  if echo "$DIFF" | grep -qiE '(PRIVATE_KEY|SECRET_KEY|API_SECRET)[[:space:]]*=[[:space:]]*0x[0-9a-fA-F]{64}'; then
+    echo "🚨 SECRET DETECTED in staged file: $file (private key pattern)"
+    FOUND=1
+  fi
+
+  # Bare 64-char hex key after PRIVATE_KEY=
+  if echo "$DIFF" | grep -qiE 'PRIVATE_KEY[[:space:]]*=[[:space:]]*["\x27]?[0-9a-fA-F]{64}'; then
+    echo "🚨 SECRET DETECTED in staged file: $file (hex key pattern)"
+    FOUND=1
+  fi
+
+  # PEM private key block
+  if echo "$DIFF" | grep -qE '-----BEGIN .*(PRIVATE KEY)-----'; then
+    echo "🚨 SECRET DETECTED in staged file: $file (PEM private key)"
+    FOUND=1
+  fi
+done
+
+if [ "$FOUND" -eq 1 ]; then
+  echo ""
+  echo "❌ Commit blocked: secrets detected in staged changes."
+  echo "   Remove the secrets and try again."
+  echo "   To bypass (NOT recommended): git commit --no-verify"
+  exit 1
+fi
+
+exit 0

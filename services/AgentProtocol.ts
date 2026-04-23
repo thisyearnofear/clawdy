@@ -12,7 +12,7 @@ import { useGameStore } from './gameStore'
 export type VehicleType = 'truck' | 'tank' | 'monster' | 'speedster'
 export type AgentRole = 'operator' | 'scout' | 'weather' | 'mobility' | 'treasury'
 
-import { primaryChain } from './web3Config'
+import { primaryChain, supportedChains } from './web3Config'
 import { emitToast } from '../components/ui/GameToasts'
 
 export const CHAIN_NAME = primaryChain.name
@@ -28,16 +28,56 @@ export const AGENT_ROLE_CONFIG: Record<
   treasury: { label: 'Treasury Agent', permissions: ['spend_policy', 'budget_control'] },
 }
 
-export const DEFAULT_WEATHER_AUCTION_ADDRESS = '0x723e444ee6d7da19fade372f85da06dd849bf1e0'
-export const DEFAULT_VEHICLE_RENT_ADDRESS = '0xea88bd6121d181cfd6f60997b4bdd0297ca432fe'
-export const DEFAULT_MEME_MARKET_ADDRESS = '0x0000000000000000000000000000000000000000'
+// ── Per-chain contract address registry ──────────────────────────────
+// Update these after each deployment. The app resolves addresses dynamically
+// based on the connected wallet's chain ID — no rebuild required.
+interface ChainContracts {
+  weatherAuction: `0x${string}`
+  vehicleRent: `0x${string}`
+  memeMarket: `0x${string}`
+}
 
-export const WEATHER_AUCTION_ADDRESS = (process.env.NEXT_PUBLIC_WEATHER_AUCTION_ADDRESS ||
-  DEFAULT_WEATHER_AUCTION_ADDRESS) as `0x${string}`
-export const VEHICLE_RENT_ADDRESS = (process.env.NEXT_PUBLIC_VEHICLE_RENT_ADDRESS ||
-  DEFAULT_VEHICLE_RENT_ADDRESS) as `0x${string}`
-export const MEME_MARKET_ADDRESS = (process.env.NEXT_PUBLIC_MEME_MARKET_ADDRESS ||
-  DEFAULT_MEME_MARKET_ADDRESS) as `0x${string}`
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`
+
+export const CONTRACT_ADDRESSES: Record<number, ChainContracts> = {
+  // X-Layer Testnet (chainId 195)
+  195: {
+    weatherAuction: '0x3d183dc932ea183a8acb2aabb451a456892150ba',
+    vehicleRent: '0xf02f7bedb7cb6be02ee52f7f0286b4c3f1dbc0fb',
+    memeMarket: '0x7568d551495cfba8de11ad8af31100d58563fd1e',
+  },
+  // BNB Testnet (chainId 97)
+  97: {
+    weatherAuction: '0x0094ba23b76bb2802356d76e96ec067797d07009',
+    vehicleRent: '0x92e5425f9d2f113445097e5490e77cd234c0d3ca',
+    memeMarket: '0x2e8463a8a0355a3e601cc313bdcdbe6d77e46f9b',
+  },
+}
+
+/** Resolve contract addresses for a given chain ID. Falls back to env vars, then zero address. */
+export function getContractsForChain(chainId: number): ChainContracts {
+  if (CONTRACT_ADDRESSES[chainId]) return CONTRACT_ADDRESSES[chainId]
+  // Fallback: env-var overrides (for chains not yet in the registry)
+  return {
+    weatherAuction: (process.env.NEXT_PUBLIC_WEATHER_AUCTION_ADDRESS || ZERO_ADDRESS) as `0x${string}`,
+    vehicleRent: (process.env.NEXT_PUBLIC_VEHICLE_RENT_ADDRESS || ZERO_ADDRESS) as `0x${string}`,
+    memeMarket: (process.env.NEXT_PUBLIC_MEME_MARKET_ADDRESS || ZERO_ADDRESS) as `0x${string}`,
+  }
+}
+
+/** Check whether contracts are deployed on a given chain. */
+export function isChainSupported(chainId: number): boolean {
+  return chainId in CONTRACT_ADDRESSES
+}
+
+// Legacy single-address exports (resolve from primary chain for backward compat)
+const _primary = getContractsForChain(primaryChain.id)
+export const WEATHER_AUCTION_ADDRESS = _primary.weatherAuction
+export const VEHICLE_RENT_ADDRESS = _primary.vehicleRent
+export const MEME_MARKET_ADDRESS = _primary.memeMarket
+export const DEFAULT_WEATHER_AUCTION_ADDRESS = ZERO_ADDRESS
+export const DEFAULT_VEHICLE_RENT_ADDRESS = ZERO_ADDRESS
+export const DEFAULT_MEME_MARKET_ADDRESS = ZERO_ADDRESS
 
 export interface WorldState {
   timestamp: number
@@ -112,6 +152,56 @@ export type MemeMarketAbility = (typeof MEME_MARKET_ABILITIES)[number]
 export const getMemeMarketAbility = (abilityId: number) =>
   MEME_MARKET_ABILITIES.find((ability) => ability.id === abilityId)
 
+export const MEME_MARKET_STRATEGIES = [
+  { id: 'conservative', label: 'Defensive', aggressive: 0.2, weatherFocus: 0.3, icon: '🛡️' },
+  { id: 'balanced', label: 'Balanced', aggressive: 0.5, weatherFocus: 0.5, icon: '⚖️' },
+  { id: 'aggressive', label: 'Aggressive', aggressive: 0.85, weatherFocus: 0.85, icon: '⚔️' },
+  { id: 'hoarder', label: 'Collector', aggressive: 0.3, weatherFocus: 0.95, icon: '💎' },
+] as const
+
+export type MemeMarketStrategy = (typeof MEME_MARKET_STRATEGIES)[number]
+
+export const getMemeMarketStrategy = (strategyId?: string) =>
+  MEME_MARKET_STRATEGIES.find((strategy) => strategy.id === strategyId)
+
+export const getMemeMarketStrategyBidMultiplier = (strategyId?: string) => {
+  const strategy = getMemeMarketStrategy(strategyId)
+  if (!strategy) return 1
+  return Number((1 + strategy.aggressive * 0.35 + strategy.weatherFocus * 0.25).toFixed(2))
+}
+
+export const getMemeMarketStrategyVehicle = (strategyId?: string): VehicleType => {
+  const strategy = getMemeMarketStrategy(strategyId)
+  if (!strategy) return 'speedster'
+
+  switch (strategy.id) {
+    case 'conservative':
+      return 'truck'
+    case 'aggressive':
+      return 'monster'
+    case 'hoarder':
+      return 'tank'
+    default:
+      return 'speedster'
+  }
+}
+
+export const getMemeMarketStrategyPreset = (strategyId?: string): NonNullable<CloudConfig['preset']> => {
+  const strategy = getMemeMarketStrategy(strategyId)
+  if (!strategy) return 'custom'
+
+  switch (strategy.id) {
+    case 'conservative':
+      return 'sunset'
+    case 'aggressive':
+      return 'stormy'
+    case 'hoarder':
+      return 'candy'
+    default:
+      return 'custom'
+  }
+}
+
 declare global {
   interface Window {
     clawdy?: {
@@ -167,6 +257,9 @@ export interface AgentSession {
   foamBoardUntil?: number
   foamBoardCount?: number
   drainPlugCount?: number
+  strategyId?: MemeMarketStrategy['id']
+  strategyAggression?: number
+  strategyWeatherFocus?: number
   agentLoyalty: number
   isDead?: boolean
 }
@@ -279,6 +372,24 @@ class AgentProtocol {
     const txId = this.trackTransaction(params.type, params.amount)
     const store = useGameStore.getState()
     const typeLabel = params.type === 'weather_bid' ? 'Weather Bid' : params.type === 'vehicle_rent' ? 'Vehicle Rent' : 'Mint Ability'
+
+    // Chain guard: verify the wallet is on a chain with deployed contracts
+    try {
+      const ethereum = this.getEthereumProvider()
+      if (ethereum) {
+        const chainIdHex = (await ethereum.request({ method: 'eth_chainId' })) as string
+        const connectedChainId = parseInt(chainIdHex, 16)
+        if (!isChainSupported(connectedChainId)) {
+          const supportedNames = Object.keys(CONTRACT_ADDRESSES)
+            .map(id => supportedChains.find(c => c.id === Number(id))?.name ?? `Chain ${id}`)
+            .join(', ')
+          const msg = `No contracts deployed on this chain. Switch to: ${supportedNames}`
+          store.updateTransaction(txId, { status: 'failed', error: msg })
+          emitToast('bid-lose', `${typeLabel} Failed`, msg)
+          return null
+        }
+      }
+    } catch { /* non-blocking — proceed and let the tx itself fail if chain is wrong */ }
 
     try {
       store.updateTransaction(txId, { status: 'confirming' })
@@ -516,10 +627,13 @@ class AgentProtocol {
         amount: 0,
       })
       if (hash) {
+        const ability = this.applyMemeMarketAbility(abilityId, amount)
         this.gameEventListeners.forEach((listener) => listener({
           type: 'ability-minted',
           agentId: to,
           abilityId,
+          abilityKey: ability?.key,
+          abilityLabel: ability?.label,
           amount,
           hash,
         }))
@@ -527,6 +641,77 @@ class AgentProtocol {
       return Boolean(hash)
     }
     return false
+  }
+
+  private applyMemeMarketAbility(abilityId: number, amount: number = 1) {
+    const ability = getMemeMarketAbility(abilityId)
+    const session = this.sessions.get('Player')
+    if (!ability || !session) return ability
+
+    const now = Date.now()
+    const stackCount = Math.max(1, amount)
+
+    if (ability.key === 'speed_boost') {
+      session.speedBoostUntil = Math.max(session.speedBoostUntil ?? 0, now) + 10_000 * stackCount
+    } else if (ability.key === 'anti_gravity') {
+      session.antiGravityUntil = Math.max(session.antiGravityUntil ?? 0, now) + 8_000 * stackCount
+    } else if (ability.key === 'flood_drain') {
+      session.drainPlugCount = (session.drainPlugCount ?? 0) + stackCount
+    }
+
+    this.syncWithStore()
+    return ability
+  }
+
+  activateMemeMarketAbility(abilityId: number) {
+    const ability = getMemeMarketAbility(abilityId)
+    const session = this.sessions.get('Player')
+    if (!ability || !session) return false
+
+    if (ability.key !== 'flood_drain') return false
+
+    const availableCharges = session.drainPlugCount ?? 0
+    if (availableCharges <= 0) return false
+
+    session.drainPlugCount = availableCharges - 1
+    const store = useGameStore.getState()
+    const playerVehicle = session.vehicleId
+      ? store.worldState.vehicles.find((vehicle) => vehicle.id === session.vehicleId)
+      : undefined
+    const center = playerVehicle?.position ?? [0, 0, 0]
+
+    store.triggerFloodDrain(0.95, 7_000, center)
+    this.syncWithStore()
+    this.gameEventListeners.forEach((listener) => listener({
+      type: 'ability-used',
+      agentId: session.agentId,
+      abilityId,
+      abilityKey: ability.key,
+      abilityLabel: ability.label,
+      remainingCharges: session.drainPlugCount,
+    }))
+    return true
+  }
+
+  setPlayerStrategy(agentId: string, strategyId: MemeMarketStrategy['id']) {
+    const session = this.sessions.get(agentId)
+    const strategy = getMemeMarketStrategy(strategyId)
+    if (!session || !strategy) return false
+
+    session.strategyId = strategy.id
+    session.strategyAggression = strategy.aggressive
+    session.strategyWeatherFocus = strategy.weatherFocus
+    this.syncWithStore()
+    this.gameEventListeners.forEach((listener) => listener({
+      type: 'strategy-selected',
+      agentId,
+      strategyId: strategy.id,
+      strategyLabel: strategy.label,
+      strategyIcon: strategy.icon,
+      aggressive: strategy.aggressive,
+      weatherFocus: strategy.weatherFocus,
+    }))
+    return true
   }
 
   async rentVehicleOnChain(agentId: string, vehicleId: string, type: VehicleType, minutes: number) {

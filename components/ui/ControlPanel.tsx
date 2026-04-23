@@ -1,22 +1,23 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { useAccount, useReadContract, useReadContracts } from 'wagmi'
+import { useAccount, useChainId, useReadContract, useReadContracts } from 'wagmi'
 import { Leaderboard } from './Leaderboard'
 import { ConnectWallet } from './ConnectWallet'
 import { CloudConfig } from '../environment/CloudManager'
 import {
   VehicleType,
-  CHAIN_NAME,
-  WEATHER_AUCTION_ADDRESS,
-  VEHICLE_RENT_ADDRESS,
-  MEME_MARKET_ADDRESS,
-  DEFAULT_MEME_MARKET_ADDRESS,
   MEME_MARKET_ABILITIES,
   agentProtocol,
+  getContractsForChain,
+  isChainSupported,
+  CONTRACT_ADDRESSES,
+  getMemeMarketStrategy,
+  getMemeMarketStrategyPreset,
+  getMemeMarketStrategyVehicle,
 } from '../../services/AgentProtocol'
 import { useGameStore } from '../../services/gameStore'
-import { primaryChain } from '../../services/web3Config'
+import { primaryChain, supportedChains } from '../../services/web3Config'
 import { emitToast } from './GameToasts'
 import { formatTransactionStatus, getStatusColor } from '../../services/transactionHandler'
 import { MEME_MARKET_ABI } from '../../services/abis/MemeMarket'
@@ -47,6 +48,7 @@ export function ControlPanel({
   setPlayerVehicle
 }: ControlPanelProps) {
   const { address } = useAccount()
+  const chainId = useChainId()
   const handlingMode = useGameStore(s => s.handlingMode)
   const setHandlingMode = useGameStore(s => s.setHandlingMode)
   const zgStorage = useGameStore(s => s.zgStorage)
@@ -54,12 +56,21 @@ export function ControlPanel({
   const sessions = useGameStore(s => s.sessions)
   const pendingTransactions = useGameStore(s => s.pendingTransactions)
   const [isSavingSnapshot, setIsSavingSnapshot] = useState(false)
+  const playerSession = sessions['Player']
+  const playerStrategy = getMemeMarketStrategy(playerSession?.strategyId)
+  const recommendedWeatherPreset = getMemeMarketStrategyPreset(playerStrategy?.id)
+  const recommendedVehicle = getMemeMarketStrategyVehicle(playerStrategy?.id)
 
-  const explorerBase = primaryChain.blockExplorers?.default.url
-  const isMemeMarketConfigured = MEME_MARKET_ADDRESS !== DEFAULT_MEME_MARKET_ADDRESS
+  // Resolve contracts and explorer for the currently connected chain
+  const activeChain = supportedChains.find(c => c.id === chainId) ?? primaryChain
+  const contracts = getContractsForChain(chainId)
+  const chainHasContracts = isChainSupported(chainId)
+  const ZERO_ADDR = '0x0000000000000000000000000000000000000000' as const
+  const explorerBase = activeChain.blockExplorers?.default.url
+  const isMemeMarketConfigured = contracts.memeMarket !== ZERO_ADDR
 
   const { data: memeMarketOwner } = useReadContract({
-    address: MEME_MARKET_ADDRESS as `0x${string}`,
+    address: contracts.memeMarket as `0x${string}`,
     abi: MEME_MARKET_ABI,
     functionName: 'owner',
     query: {
@@ -70,7 +81,7 @@ export function ControlPanel({
 
   const { data: abilityBalances, refetch: refetchAbilityBalances } = useReadContracts({
     contracts: MEME_MARKET_ABILITIES.map((ability) => ({
-      address: MEME_MARKET_ADDRESS as `0x${string}`,
+      address: contracts.memeMarket as `0x${string}`,
       abi: MEME_MARKET_ABI,
       functionName: 'balanceOf' as const,
       args: [address ?? '0x0000000000000000000000000000000000000000', BigInt(ability.id)] as const,
@@ -291,9 +302,17 @@ export function ControlPanel({
         <div className="flex-1 p-4 overflow-y-auto scrollbar-hide">
           {activeTab === 'weather' && (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+              <div className="rounded-2xl border border-sky-400/15 bg-sky-500/5 px-3 py-2 text-[10px] text-sky-100/80">
+                {playerStrategy ? `${playerStrategy.icon} ${playerStrategy.label}` : 'No strategy set'} recommends <span className="font-black uppercase tracking-widest text-sky-200">{recommendedWeatherPreset}</span> for the current loadout.
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 {(['custom', 'stormy', 'sunset', 'candy', 'cosmic'] as const).map((p) => (
-                  <button key={p} onClick={() => updateConfig('preset', p)} className={`px-2 py-3 rounded-xl text-[10px] uppercase font-bold border transition-all ${cloudConfig.preset === p ? 'bg-white text-sky-900' : 'bg-white/5 border-white/10 text-white hover:bg-white/10'}`}>{p}</button>
+                  <button key={p} onClick={() => updateConfig('preset', p)} className={`px-2 py-3 rounded-xl text-[10px] uppercase font-bold border transition-all ${cloudConfig.preset === p ? 'bg-white text-sky-900' : p === recommendedWeatherPreset ? 'border-sky-400/40 bg-sky-500/10 text-sky-100 hover:bg-sky-500/20' : 'bg-white/5 border-white/10 text-white hover:bg-white/10'}`}>
+                    <span className="flex items-center justify-center gap-1">
+                      {p}
+                      {p === recommendedWeatherPreset && <span className="rounded-full border border-sky-300/25 bg-sky-400/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest text-sky-200">bias</span>}
+                    </span>
+                  </button>
                 ))}
               </div>
               
@@ -324,6 +343,9 @@ export function ControlPanel({
 
           {activeTab === 'vehicles' && (
             <div className="space-y-4 animate-in fade-in slide-in-from-right-4">
+              <div className="rounded-2xl border border-sky-400/15 bg-sky-500/5 px-3 py-2 text-[10px] text-sky-100/80">
+                {playerStrategy ? `${playerStrategy.icon} ${playerStrategy.label}` : 'No strategy set'} prefers <span className="font-black uppercase tracking-widest text-sky-200">{recommendedVehicle}</span> for this session.
+              </div>
               <div className="space-y-2">
                 <p className="text-[10px] font-black opacity-30 uppercase tracking-widest">Handling Mode</p>
                 <div className="grid grid-cols-3 gap-2">
@@ -357,7 +379,10 @@ export function ControlPanel({
                       playerVehicle === type ? 'bg-white text-sky-900 border-white' : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'
                     }`}
                   >
-                    <span>{type}</span>
+                    <span className="flex items-center gap-2">
+                      {type}
+                      {type === recommendedVehicle && <span className="rounded-full border border-sky-400/25 bg-sky-500/10 px-2 py-0.5 text-[8px] uppercase tracking-widest text-sky-200">bias</span>}
+                    </span>
                     {playerVehicle === type && <span className="text-[8px] bg-sky-900/10 px-2 py-0.5 rounded-full">Active</span>}
                   </button>
                 ))}
@@ -374,79 +399,60 @@ export function ControlPanel({
                 <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                   <div className="text-[9px] font-black uppercase tracking-[0.25em] text-white/50">Network</div>
                   <div className="mt-2 flex items-center justify-between gap-3">
-                    <div className="text-sm font-black text-white">{CHAIN_NAME}</div>
-                    <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-white/60">
-                      chainId {primaryChain.id}
-                    </span>
+                    <div className="text-sm font-black text-white">{activeChain.name}</div>
+                    <div className="flex items-center gap-2">
+                      <span className={`rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-wider ${
+                        chainHasContracts
+                          ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200'
+                          : 'border-amber-400/30 bg-amber-500/10 text-amber-200'
+                      }`}>
+                        {chainHasContracts ? 'Contracts Live' : 'No Contracts'}
+                      </span>
+                      <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-white/60">
+                        chainId {chainId}
+                      </span>
+                    </div>
                   </div>
 
+                  {!chainHasContracts && (
+                    <div className="mt-2 rounded-lg border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-[10px] text-amber-200">
+                      ⚠️ No contracts deployed on this chain. Switch to{' '}
+                      {Object.keys(CONTRACT_ADDRESSES).map(id => {
+                        const c = supportedChains.find(ch => ch.id === Number(id))
+                        return c?.name ?? `Chain ${id}`
+                      }).join(' or ')}.
+                    </div>
+                  )}
+
                   <div className="mt-3 space-y-2 text-[10px] text-white/70">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-white/45 font-black uppercase tracking-widest">WeatherAuction</span>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => copy('WeatherAuction address', WEATHER_AUCTION_ADDRESS)}
-                          className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 font-mono text-[10px] text-white/80 hover:bg-white/10"
-                          title="Copy"
-                        >
-                          {shorten(WEATHER_AUCTION_ADDRESS)}
-                        </button>
-                        {contractLink(WEATHER_AUCTION_ADDRESS) && (
-                          <a
-                            href={contractLink(WEATHER_AUCTION_ADDRESS)!}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="rounded-lg border border-sky-400/20 bg-sky-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-sky-200 hover:bg-sky-500/20"
+                    {([
+                      ['WeatherAuction', contracts.weatherAuction],
+                      ['VehicleRent', contracts.vehicleRent],
+                      ['MemeMarket', contracts.memeMarket],
+                    ] as const).map(([label, addr]) => (
+                      <div key={label} className="flex items-center justify-between gap-2">
+                        <span className="text-white/45 font-black uppercase tracking-widest">{label}</span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => copy(`${label} address`, addr)}
+                            className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 font-mono text-[10px] text-white/80 hover:bg-white/10"
+                            title="Copy"
                           >
-                            Explorer
-                          </a>
-                        )}
+                            {addr === ZERO_ADDR ? 'Not deployed' : shorten(addr)}
+                          </button>
+                          {contractLink(addr) && (
+                            <a
+                              href={contractLink(addr)!}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="rounded-lg border border-sky-400/20 bg-sky-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-sky-200 hover:bg-sky-500/20"
+                            >
+                              Explorer
+                            </a>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-white/45 font-black uppercase tracking-widest">VehicleRent</span>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => copy('VehicleRent address', VEHICLE_RENT_ADDRESS)}
-                          className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 font-mono text-[10px] text-white/80 hover:bg-white/10"
-                          title="Copy"
-                        >
-                          {shorten(VEHICLE_RENT_ADDRESS)}
-                        </button>
-                        {contractLink(VEHICLE_RENT_ADDRESS) && (
-                          <a
-                            href={contractLink(VEHICLE_RENT_ADDRESS)!}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="rounded-lg border border-sky-400/20 bg-sky-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-sky-200 hover:bg-sky-500/20"
-                          >
-                            Explorer
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-white/45 font-black uppercase tracking-widest">MemeMarket</span>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => copy('MemeMarket address', MEME_MARKET_ADDRESS)}
-                          className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 font-mono text-[10px] text-white/80 hover:bg-white/10"
-                          title="Copy"
-                        >
-                          {MEME_MARKET_ADDRESS === '0x0000000000000000000000000000000000000000' ? 'Not deployed' : shorten(MEME_MARKET_ADDRESS)}
-                        </button>
-                        {contractLink(MEME_MARKET_ADDRESS) && (
-                          <a
-                            href={contractLink(MEME_MARKET_ADDRESS)!}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="rounded-lg border border-sky-400/20 bg-sky-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-sky-200 hover:bg-sky-500/20"
-                          >
-                            Explorer
-                          </a>
-                        )}
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 </div>
 

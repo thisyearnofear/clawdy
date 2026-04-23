@@ -149,7 +149,10 @@ function localPolicyDecision(input: SkillEvaluationInput): SkillDecision {
   const createdAt = Date.now()
   const { targetAssetId, distanceScore } = findNearestAssetScore(session, worldState)
   const assetPressure = Math.min(worldState.assets.length / 10, 1)
-  const weatherOpportunity = Number((assetPressure * 0.08 + distanceScore * 0.04).toFixed(3))
+  const strategyAggression = session.strategyAggression ?? 0
+  const strategyWeatherFocus = session.strategyWeatherFocus ?? 0
+  const strategyBias = 1 + strategyWeatherFocus * 0.4 + strategyAggression * 0.15
+  const weatherOpportunity = Number(((assetPressure * 0.08 + distanceScore * 0.04) * strategyBias).toFixed(3))
   const sessionVehicle = worldState.vehicles.find((entry) => entry.id === session.vehicleId)
 
   if (session.role === 'weather' && weatherOpportunity > currentWeatherBid.amount) {
@@ -159,7 +162,7 @@ function localPolicyDecision(input: SkillEvaluationInput): SkillDecision {
       title: 'Treasury cleared a weather play',
       summary: `Asset density and route score justify a ${weatherOpportunity.toFixed(3)} ETH bid.`,
       action: 'bid',
-      confidence: Math.min(0.95, 0.5 + assetPressure * 0.25 + distanceScore * 0.2),
+      confidence: Math.min(0.95, 0.5 + assetPressure * 0.25 + distanceScore * 0.2 + strategyWeatherFocus * 0.1),
       createdAt,
       metadata: {
         targetAssetId,
@@ -176,7 +179,7 @@ function localPolicyDecision(input: SkillEvaluationInput): SkillDecision {
       title: 'Scout updated the route',
       summary: `Nearest opportunity is asset #${targetAssetId}. Autopilot can route there now.`,
       action: 'route',
-      confidence: Math.min(0.92, 0.55 + distanceScore * 0.35),
+      confidence: Math.min(0.92, 0.55 + distanceScore * 0.35 + strategyAggression * 0.08),
       createdAt,
       metadata: { targetAssetId },
     }
@@ -189,7 +192,7 @@ function localPolicyDecision(input: SkillEvaluationInput): SkillDecision {
       title: 'Mobility needs a vehicle lease',
       summary: `Vehicle ${session.vehicleId} is idle. Lease it before executing routes.`,
       action: 'rent',
-      confidence: Math.min(0.9, 0.55 + assetPressure * 0.2 + distanceScore * 0.15),
+      confidence: Math.min(0.9, 0.55 + assetPressure * 0.2 + distanceScore * 0.15 + strategyAggression * 0.05),
       createdAt,
       metadata: { recommendedVehicle: sessionVehicle.type },
     }

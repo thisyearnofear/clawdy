@@ -27,7 +27,7 @@ import { Vehicle } from '../vehicles/Vehicle'
 import { AgentVision } from './AgentVision'
 import { IntentionVisualizer } from './IntentionVisualizer'
 import { MemeAssetInstances } from './MemeAssetInstances'
-import { DEFAULT_VEHICLE_RENT_ADDRESS, VehicleType, agentProtocol, VEHICLE_RENT_ADDRESS } from '../../services/AgentProtocol'
+import { VehicleType, agentProtocol, VEHICLE_RENT_ADDRESS } from '../../services/AgentProtocol'
 import { vehicleQueue, QueueState } from '../../services/VehicleQueue'
 import { emitToast } from '../ui/GameToasts'
 import { useWatchContractEvent, useReadContract } from 'wagmi'
@@ -87,7 +87,7 @@ function Experience({
     functionName: 'getRentStatus',
     args: currentPlayerVehicleId ? ([currentPlayerVehicleId] as const) : undefined,
     query: {
-      enabled: Boolean(currentPlayerVehicleId) && VEHICLE_RENT_ADDRESS !== DEFAULT_VEHICLE_RENT_ADDRESS,
+      enabled: Boolean(currentPlayerVehicleId) && VEHICLE_RENT_ADDRESS !== '0x0000000000000000000000000000000000000000',
       refetchInterval: POLL_INTERVAL,
     },
   })

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { agentProtocol, AgentSession, VehicleType, AGENT_ROLE_CONFIG, CHAIN_NAME } from '../../services/AgentProtocol'
+import { agentProtocol, AgentSession, VehicleType, AGENT_ROLE_CONFIG, CHAIN_NAME, getMemeMarketStrategy, getMemeMarketStrategyBidMultiplier, getMemeMarketStrategyVehicle } from '../../services/AgentProtocol'
 import { CLOUD_PRESETS } from '../environment/CloudManager'
 import { GlassPanel } from './GlassPanel'
 import { getAgentProfile, getControllableAgents } from '../../services/agents'
@@ -14,7 +14,7 @@ export function AgentTerminal() {
   const [decisionFeed, setDecisionFeed] = useState<SkillDecision[]>(agentProtocol.getDecisionFeed())
   const [skillProvider, setSkillProvider] = useState<SkillProviderInfo>(agentProtocol.getSkillProvider())
   const [logs, setLogs] = useState<string[]>([])
-  const [selectedVehicle, setSelectedVehicle] = useState<VehicleType>('tank')
+  const [manualVehicleOverrides, setManualVehicleOverrides] = useState<Partial<Record<string, VehicleType>>>({})
   const [isOpen, setIsOpen] = useState(false)
 
   useEffect(() => {
@@ -38,6 +38,12 @@ export function AgentTerminal() {
     setLogs(prev => [msg, ...prev].slice(0, 5))
   }
 
+  const activeSession = sessions.find((entry) => entry.agentId === activeAgentId)
+  const activeStrategy = getMemeMarketStrategy(activeSession?.strategyId)
+  const strategyBidMultiplier = getMemeMarketStrategyBidMultiplier(activeStrategy?.id)
+  const strategyVehicle = getMemeMarketStrategyVehicle(activeStrategy?.id)
+  const selectedVehicle = manualVehicleOverrides[activeAgentId] ?? strategyVehicle
+
   const spawnAgent = async (name: string) => {
     await agentProtocol.authorizeAgent(name, 3600000)
     const created = agentProtocol.getSession(name)
@@ -59,15 +65,18 @@ export function AgentTerminal() {
     if (type === 'storm') config = { ...CLOUD_PRESETS.stormy, spawnRate: 0.5 }
     if (type === 'candy') config = { ...CLOUD_PRESETS.candy, spawnRate: 8 }
     if (type === 'chaos') config = { count: 20, volume: 20, speed: 2, spawnRate: 10, color: '#ff0000' }
+    const session = sessions.find((entry) => entry.agentId === activeAgentId)
+    const strategyMultiplier = getMemeMarketStrategyBidMultiplier(session?.strategyId)
+    const adjustedBid = Number((bid * strategyMultiplier).toFixed(3))
 
     agentProtocol.processCommand({
       agentId: activeAgentId,
       timestamp: Date.now(),
-      bid,
+      bid: adjustedBid,
       config,
       duration: 5000
     }).then(success => {
-      if (success) addLog(`${activeAgentId} WON bid for ${type} (${bid} ETH)`)
+      if (success) addLog(`${activeAgentId} WON bid for ${type} (${adjustedBid} ETH ×${strategyMultiplier.toFixed(2)})`)
       else addLog(`${activeAgentId} bid failed for ${type}`)
     })
   }
@@ -109,8 +118,6 @@ export function AgentTerminal() {
     })
     addLog(`${activeAgentId} weapon fired!`)
   }
-
-  const activeSession = sessions.find(s => s.agentId === activeAgentId)
 
   // Count active agents for badge
   const agentCount = sessions.filter(s => s.agentId !== 'Player').length
@@ -194,6 +201,7 @@ export function AgentTerminal() {
                       <div className="rounded-lg border border-white/10 bg-white/5 p-3">
                         <div className="text-[9px] font-black uppercase tracking-widest text-white/50">{AGENT_ROLE_CONFIG[activeSession.role].label}</div>
                         <div className="mt-1 text-[10px] text-white/65">{activeSession.mission}</div>
+                        <div className="mt-1 text-[9px] text-sky-300">Strategy: {getMemeMarketStrategy(activeSession.strategyId)?.label ?? 'Unset'}</div>
                         <div className="mt-2 text-[9px] text-sky-300">Loyalty: {activeSession.agentLoyalty.toFixed(0)}</div>
                       </div>
 
@@ -218,10 +226,13 @@ export function AgentTerminal() {
                       <div className="pt-2 border-t border-white/5">
                         <div className="flex gap-1 mb-2">
                           {(['truck', 'tank', 'monster', 'speedster'] as VehicleType[]).map(t => (
-                            <button key={t} onClick={() => setSelectedVehicle(t)} className={`flex-1 py-1.5 rounded-lg text-[8px] uppercase font-bold border transition-all ${selectedVehicle === t ? 'bg-sky-500 border-white' : 'bg-white/5 hover:bg-white/10'}`}>{t}</button>
+                            <button key={t} onClick={() => setManualVehicleOverrides((prev) => ({ ...prev, [activeAgentId]: t }))} className={`flex-1 py-1.5 rounded-lg text-[8px] uppercase font-bold border transition-all ${selectedVehicle === t ? 'bg-sky-500 border-white' : 'bg-white/5 hover:bg-white/10'}`}>{t}</button>
                           ))}
                         </div>
-                        <button onClick={deployAgentVehicle} className="w-full py-2 bg-white/10 hover:bg-white/20 rounded-lg text-[10px] font-bold mb-3 transition-colors">RENT & DEPLOY</button>
+                        <button onClick={deployAgentVehicle} className="w-full py-2 bg-white/10 hover:bg-white/20 rounded-lg text-[10px] font-bold mb-2 transition-colors">RENT & DEPLOY</button>
+                        <div className="mb-3 text-[8px] font-bold uppercase tracking-widest text-sky-300/70">
+                          Strategy bias: bid ×{strategyBidMultiplier.toFixed(2)} · vehicle {strategyVehicle}{manualVehicleOverrides[activeAgentId] ? ' (manual override)' : ''}
+                        </div>
                         
                         <div className="grid grid-cols-5 gap-1 mb-2">
                           <button onClick={() => drive('left')} className="bg-white/5 hover:bg-white/10 p-2 rounded-lg text-[10px] font-bold transition-colors">◀</button>

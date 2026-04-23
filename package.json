@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "prepare": "git config core.hooksPath .husky"
   },
   "dependencies": {
     "@0gfoundation/0g-ts-sdk": "^1.2.2",

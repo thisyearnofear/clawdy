@@ -5,7 +5,7 @@ import { Suspense, useState, useEffect } from 'react'
 import Experience from './Experience'
 import { Loader } from '@react-three/drei'
 import { CloudConfig } from './CloudManager'
-import { agentProtocol, DEFAULT_WEATHER_AUCTION_ADDRESS, WEATHER_AUCTION_ADDRESS, getMemeMarketAbility } from '../../services/AgentProtocol'
+import { agentProtocol, WEATHER_AUCTION_ADDRESS, getMemeMarketAbility } from '../../services/AgentProtocol'
 import { useWatchContractEvent, useAccount, useReadContract } from 'wagmi'
 import { WEATHER_AUCTION_ABI } from '../../services/abis/WeatherAuction'
 import { POLL_INTERVAL } from '../../services/web3Config'
@@ -52,7 +52,6 @@ export default function CloudScene() {
   const { address } = useAccount()
   const playerId = address || 'anonymous'
   const isWeatherAuctionConfigured =
-    WEATHER_AUCTION_ADDRESS !== DEFAULT_WEATHER_AUCTION_ADDRESS &&
     WEATHER_AUCTION_ADDRESS !== '0x0000000000000000000000000000000000000000'
   
   // State from GameStore
@@ -198,7 +197,23 @@ export default function CloudScene() {
         }
       } else if (event.type === 'ability-minted') {
         const ability = getMemeMarketAbility(Number(event.abilityId))
-        emitToast('collect', `${ability?.label ?? 'Ability'} minted`, `Token #${event.abilityId}`)
+        if (event.abilityKey === 'flood_drain') {
+          emitToast('milestone', 'Flood Drain Charge', 'Use it from Strategy')
+        } else {
+          emitToast('collect', `${ability?.label ?? 'Ability'} minted`, `Token #${event.abilityId}`)
+        }
+        playSound('milestone')
+        emitChatter(event.agentId as string || 'Agent', 'milestone')
+      } else if (event.type === 'ability-used') {
+        if (event.abilityKey === 'flood_drain') {
+          emitToast('milestone', 'Flood Drain Used', 'Water level dropping now')
+        } else {
+          emitToast('milestone', `${event.abilityLabel ?? 'Ability'} used`)
+        }
+        playSound('milestone')
+        emitChatter(event.agentId as string || 'Agent', 'milestone')
+      } else if (event.type === 'strategy-selected') {
+        emitToast('milestone', `${event.strategyLabel ?? 'Strategy'} selected`, `${event.strategyIcon ?? '🎯'} Session updated`)
         playSound('milestone')
         emitChatter(event.agentId as string || 'Agent', 'milestone')
       } else if (event.type === 'milestone') {
