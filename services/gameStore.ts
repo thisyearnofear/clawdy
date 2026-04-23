@@ -254,6 +254,10 @@ export interface GameStore {
   cameraShake: { until: number; intensity: number }
   triggerCameraShake: (intensity?: number, durationMs?: number) => void
 
+  // Camera tracking
+  cameraY: number
+  setCameraY: (y: number) => void
+
   // Flood (visual + light gameplay hooks)
   flood: { active: boolean; intensity: number; level: number; phase: 'idle' | 'rising' | 'peak' | 'draining'; phaseChangedAt: number }
   setFlood: (update: Partial<GameStore['flood']>) => void
@@ -466,6 +470,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
   triggerCameraShake: (intensity = 0.6, durationMs = 350) => set(() => ({
     cameraShake: { until: Date.now() + durationMs, intensity },
   })),
+
+  cameraY: 0,
+  setCameraY: (cameraY) => set({ cameraY }),
 
   // Flood
   flood: { active: false, intensity: 0, level: -2, phase: 'idle', phaseChangedAt: 0 },

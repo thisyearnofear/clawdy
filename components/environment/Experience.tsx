@@ -335,9 +335,11 @@ function Experience({
 
   const [useSphericalTerrain, setUseSphericalTerrain] = useState(false);
   const [weatherPhase, setWeatherPhase] = useState(0)
+  const setCameraY = useGameStore(s => s.setCameraY)
   const lastWeatherPhaseUpdateRef = useRef(0)
   useFrame((state) => {
     const elapsedTime = state.clock.elapsedTime
+    setCameraY(state.camera.position.y)
     if (elapsedTime - lastWeatherPhaseUpdateRef.current < 0.25) return
     lastWeatherPhaseUpdateRef.current = elapsedTime
     setWeatherPhase(elapsedTime)

@@ -258,7 +258,7 @@ export function FloodWater({ bounds }: { bounds: [number, number, number] }) {
     // Opacity + foam ramp
     // While draining (esp. due to plug), fade faster to "normal".
     const drainFade = phaseRef.current === 'draining' ? (0.85 - drainStrength * 0.35) : 1
-    const targetOpacity = targetVisible ? (0.06 + stormIntensity * 0.26 + finalRushBoost * 0.04) * drainFade : 0
+    const targetOpacity = targetVisible ? (0.15 + stormIntensity * 0.45 + finalRushBoost * 0.08) * drainFade : 0
     material.uniforms.uOpacity.value = THREE.MathUtils.lerp(material.uniforms.uOpacity.value, targetOpacity, 0.05)
     material.uniforms.uFoam.value = THREE.MathUtils.lerp(material.uniforms.uFoam.value, stormIntensity * drainFade, 0.04)
 

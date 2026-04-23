@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useGameStore } from '../../services/gameStore'
 import { OnboardingOverlay } from './OnboardingOverlay'
 import { GameToasts, BidWinCelebration } from './GameToasts'
@@ -102,6 +102,70 @@ export function Overlays({
 
       {/* Mobile touch controls */}
       <MobileTouchControls />
+
+      {/* Underwater screen overlay - uses submerged state to control visibility */}
+      {flood.active && (
+        <UnderwaterOverlay floodLevel={flood.level} />
+      )}
     </>
+  )
+}
+
+// Simple underwater overlay - shows when player is in water
+function UnderwaterOverlay({ floodLevel }: { floodLevel: number }) {
+  const playerWater = useGameStore(s => s.playerWater)
+  const inWater = playerWater.inWater && playerWater.depth > 0.15
+
+  const opacity = Math.min(0.55, Math.max(0, (floodLevel - 1) * 0.3))
+
+  // Memoize bubble positions to prevent flickering
+  const bubbles = useMemo(() => 
+    [...Array(12)].map((_, i) => ({
+      key: i,
+      size: 2 + (i * 0.3) % 4,
+      left: (i * 7.3) % 100,
+      duration: 2 + (i * 0.17) % 3,
+      delay: (i * 0.23) % 2,
+    })), [])
+  // Empty dependency array = memoized once at mount
+
+  return (
+    <div
+      className="fixed inset-0 pointer-events-none z-[9999]"
+      style={{
+        background: `linear-gradient(180deg, 
+          rgba(10, 25, 47, ${opacity * 0.8}) 0%, 
+          rgba(20, 60, 90, ${opacity}) 100%)`,
+        backdropFilter: 'blur(2px)',
+        transition: 'opacity 0.3s ease',
+      }}
+    >
+      {/* Animated bubble particles - memoized to prevent flickering */}
+      <div className="absolute inset-0 overflow-hidden">
+        {bubbles.map(b => (
+          <div
+            key={b.key}
+            className="absolute rounded-full bg-white/30 animate-pulse"
+            style={{
+              width: `${b.size}px`,
+              height: `${b.size}px`,
+              left: `${b.left}%`,
+              animationDuration: `${b.duration}s`,
+              animationDelay: `${b.delay}s`,
+            }}
+          />
+        ))}
+      </div>
+      
+      {/* Depth indicator text */}
+      <div className="absolute bottom-24 left-1/2 -translate-x-1/2 text-center">
+        <div className="text-white/70 text-sm font-medium tracking-wide">
+          UNDERWATER
+        </div>
+        <div className="text-blue-300/60 text-xs mt-1">
+          Rise to escape the flood
+        </div>
+      </div>
+    </div>
   )
 }
