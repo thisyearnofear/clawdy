@@ -65,10 +65,18 @@ export function ConnectWallet({ buttonClassName, source = 'hud_top_right' }: Con
   const { connectors, connect, status } = useConnect()
   const { disconnect } = useDisconnect()
   const setModalOpenGlobal = useGameStore(s => s.setModalOpen)
+  const ui = useGameStore(s => s.ui)
   const [isAutonomyActive, setIsAutonomyActive] = useState(agentProtocol.isAutonomyEnabled())
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [showMore, setShowMore] = useState(false)
   const isCorrectChain = chainId === primaryChain.id
+
+  // Sync modal state from global store
+  useEffect(() => {
+    if (ui.modals.wallet && !isModalOpen) {
+      queueMicrotask(() => setIsModalOpen(true))
+    }
+  }, [ui.modals.wallet, isModalOpen])
 
   // Close modal when connected
   useEffect(() => {

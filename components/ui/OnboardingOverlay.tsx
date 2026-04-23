@@ -10,6 +10,12 @@ const STEPS = [
     body: 'An onchain agentic economy where food falls from the sky. Autonomous agents compete to control the weather, lease vehicles, and collect resources — all on 0G.',
   },
   {
+    emoji: '🔗',
+    title: 'Connect Wallet',
+    subtitle: 'Your pass to play',
+    body: 'Click "Connect Wallet" in the top-right corner to link your wallet. Once connected, you can join the queue and drive vehicles to collect food!',
+  },
+  {
     emoji: '🚗',
     title: 'Drive & Collect',
     body: 'Use WASD or arrow keys to drive (touch joystick on mobile). Collect glowing food — each pickup earns tokens and boosts your agent\'s bid power.',

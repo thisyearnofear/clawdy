@@ -4,8 +4,10 @@ import { useState, useMemo } from 'react'
 import { WinConditionBar } from './WinConditionBar'
 import { AuctionTimer } from './AuctionTimer'
 import { AgentTerminal } from './AgentTerminal'
+import { useAccount } from 'wagmi'
 import { useGameStore } from '../../services/gameStore'
 import { QueueStatusBadge } from './QueueStatusBadge'
+import { ConnectWallet } from './ConnectWallet'
 import { CloudConfig } from '../environment/CloudManager'
 import { UI_Z_INDEX } from '../../services/uiConstants'
 
@@ -31,6 +33,7 @@ export function HUD(props: HUDProps) {
   const [weatherCollapsed, setWeatherCollapsed] = useState(false)
   const [statusCollapsed, setStatusCollapsed] = useState(false)
   
+  const { address } = useAccount()
   const sessions = useGameStore(s => s.sessions)
   const activeWeatherEffects = useGameStore(s => s.activeWeatherEffects)
   const ui = useGameStore(s => s.ui)
@@ -135,6 +138,15 @@ export function HUD(props: HUDProps) {
           </div>
         </div>
       </div>
+
+      {/* Spectator Banner */}
+      {!address && (
+        <div className="absolute top-24 left-1/2 -translate-x-1/2 z-20 pointer-events-none animate-pulse">
+          <div className="bg-black/60 backdrop-blur-xl border border-sky-400/50 rounded-full px-6 py-2 shadow-2xl text-[10px] font-black text-sky-300 tracking-widest uppercase">
+            Spectating Live
+          </div>
+        </div>
+      )}
 
       {/* Wallet - Top right */}
       <div className="absolute top-6 right-6 z-30">

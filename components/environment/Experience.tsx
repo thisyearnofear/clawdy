@@ -274,7 +274,9 @@ function Experience({
     if (address && !hasJoinedQueueRef.current) {
       hasJoinedQueueRef.current = true
       queueMicrotask(() => {
+        emitToast('bid-win', 'Joining Arena', 'Adding you to the queue...')
         vehicleQueue.joinQueue(playerId, 'human', 0, address)
+        setTimeout(() => emitToast('bid-win', 'Status Update', 'Spawning vehicle...'), 2000)
       })
     }
   }, [address, playerId])

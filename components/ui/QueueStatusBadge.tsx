@@ -3,11 +3,14 @@
 import React, { useState, useEffect } from 'react'
 import { vehicleQueue, QueueState } from '../../services/VehicleQueue'
 import { useAccount } from 'wagmi'
+import { useGameStore } from '../../services/gameStore'
 
 export const QueueStatusBadge = React.memo(function QueueStatusBadge({ playerId }: { playerId: string }) {
   const { address } = useAccount()
   const [queueState, setQueueState] = useState<QueueState | null>(null)
   const [now, setNow] = useState(() => Date.now())
+  
+  const setModalOpen = useGameStore(s => s.setModalOpen)
 
   // Subscribe to queue state changes (runs once)
   useEffect(() => {
@@ -86,9 +89,27 @@ export const QueueStatusBadge = React.memo(function QueueStatusBadge({ playerId 
   
   return (
     <div className="bg-white/10 backdrop-blur-xl rounded-xl border border-white/20 px-3 py-2 shadow-xl">
-      <div className="flex items-center gap-2">
-        <span className="text-[10px] font-black text-white/50 uppercase">{address ? 'Join Queue to Drive' : 'Connect wallet to drive'}</span>
-      </div>
+      {/* Connect Wallet button when disconnected */}
+      {!address ? (
+        <button
+          onClick={() => setModalOpen('wallet', true)}
+          className="flex items-center gap-2 cursor-pointer hover:bg-white/10 rounded-lg -mx-1 px-1 py-0.5 transition-colors"
+        >
+          <svg className="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+          <span className="text-[10px] font-black text-sky-400 uppercase">Connect wallet to drive</span>
+        </button>
+      ) : (
+        /* Join Queue button when connected */
+        <button
+          onClick={() => vehicleQueue.joinQueue(playerId, 'human', 0, address)}
+          className="flex items-center gap-2 cursor-pointer hover:bg-white/10 rounded-lg -mx-1 px-1 py-0.5 transition-colors"
+        >
+          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+          <span className="text-[10px] font-black text-green-400 uppercase">Join Queue to Drive</span>
+        </button>
+      )}
       {address && (
         <div className="text-[9px] text-white/50 mt-1">Drop-in slots rotate quickly during weather influence windows.</div>
       )}
