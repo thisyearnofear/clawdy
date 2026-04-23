@@ -9,6 +9,7 @@ import { useGameStore } from '../../services/gameStore'
 import { QueueStatusBadge } from './QueueStatusBadge'
 import { ConnectWallet } from './ConnectWallet'
 import { FloodLevelGauge } from './FloodLevelGauge'
+import { HighGroundIndicator } from './HighGroundIndicator'
 import { CloudConfig } from '../environment/CloudManager'
 import { UI_Z_INDEX } from '../../services/uiConstants'
 
@@ -111,11 +112,14 @@ export function HUD(props: HUDProps) {
       </div>
 
       {/* 2. BOTTOM RIGHT: Collapsible Status */}
+      {/* Flood Level Gauge — fixed left side, independent of other containers */}
+      <FloodLevelGauge />
+
+      {/* Higher ground indicator — shows during active floods */}
+      <HighGroundIndicator />
+
       <div className={`absolute bottom-6 right-6 ${UI_Z_INDEX.HUD} flex flex-col gap-2 items-end`}>
         <QueueStatusBadge playerId={props.playerId} />
-        
-        {/* 3. BOTTOM LEFT: Flood Level Gauge */}
-        <FloodLevelGauge />
         
         <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-3 shadow-xl pointer-events-auto">
           <div className="flex justify-between items-center mb-2 gap-4">

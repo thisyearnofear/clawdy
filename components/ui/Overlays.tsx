@@ -103,20 +103,22 @@ export function Overlays({
       {/* Mobile touch controls */}
       <MobileTouchControls />
 
-      {/* Underwater screen overlay - uses submerged state to control visibility */}
-      {flood.active && (
-        <UnderwaterOverlay floodLevel={flood.level} />
+      {/* Underwater screen overlay - only visible when player is actually submerged */}
+      {flood.active && flood.level > -1 && (
+        <UnderwaterOverlay />
       )}
     </>
   )
 }
 
-// Simple underwater overlay - shows when player is in water
-function UnderwaterOverlay({ floodLevel }: { floodLevel: number }) {
+// Simple underwater overlay - only visible when player is actually in water
+function UnderwaterOverlay() {
   const playerWater = useGameStore(s => s.playerWater)
-  const inWater = playerWater.inWater && playerWater.depth > 0.15
+  const flood = useGameStore(s => s.flood)
+  const inWater = playerWater.inWater && playerWater.depth > 0.1
 
-  const opacity = Math.min(0.55, Math.max(0, (floodLevel - 1) * 0.3))
+  // Depth-based opacity: deeper = more opaque, capped at 0.55
+  const depthOpacity = inWater ? Math.min(0.55, playerWater.depth * 0.4) : 0
 
   // Memoize bubble positions to prevent flickering
   const bubbles = useMemo(() => 
@@ -127,20 +129,21 @@ function UnderwaterOverlay({ floodLevel }: { floodLevel: number }) {
       duration: 2 + (i * 0.17) % 3,
       delay: (i * 0.23) % 2,
     })), [])
-  // Empty dependency array = memoized once at mount
+
+  if (!inWater) return null
 
   return (
     <div
       className="fixed inset-0 pointer-events-none z-[9999]"
       style={{
         background: `linear-gradient(180deg, 
-          rgba(10, 25, 47, ${opacity * 0.8}) 0%, 
-          rgba(20, 60, 90, ${opacity}) 100%)`,
-        backdropFilter: 'blur(2px)',
+          rgba(10, 25, 47, ${depthOpacity * 0.8}) 0%, 
+          rgba(20, 60, 90, ${depthOpacity}) 100%)`,
+        backdropFilter: `blur(${Math.min(3, playerWater.depth * 2)}px)`,
         transition: 'opacity 0.3s ease',
       }}
     >
-      {/* Animated bubble particles - memoized to prevent flickering */}
+      {/* Animated bubble particles */}
       <div className="absolute inset-0 overflow-hidden">
         {bubbles.map(b => (
           <div
@@ -160,10 +163,10 @@ function UnderwaterOverlay({ floodLevel }: { floodLevel: number }) {
       {/* Depth indicator text */}
       <div className="absolute bottom-24 left-1/2 -translate-x-1/2 text-center">
         <div className="text-white/70 text-sm font-medium tracking-wide">
-          UNDERWATER
+          🌊 UNDERWATER — {playerWater.depth.toFixed(1)}m deep
         </div>
         <div className="text-blue-300/60 text-xs mt-1">
-          Rise to escape the flood
+          Drive to higher ground to escape
         </div>
       </div>
     </div>

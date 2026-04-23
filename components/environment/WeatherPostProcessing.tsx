@@ -5,6 +5,7 @@ import { EffectComposer, Bloom, Vignette, ChromaticAberration } from '@react-thr
 import { BlendFunction } from 'postprocessing'
 import * as THREE from 'three'
 import type { CloudConfig } from './CloudManager'
+import { useGameStore } from '../../services/gameStore'
 
 function lerp(a: number, b: number, t: number) {
   return a + (b - a) * t
@@ -12,11 +13,15 @@ function lerp(a: number, b: number, t: number) {
 
 export function WeatherPostProcessing({ config }: { config: CloudConfig }) {
   const preset = config.preset || 'custom'
+  const flood = useGameStore(s => s.flood)
+  const playerWater = useGameStore(s => s.playerWater)
 
   const target = useMemo(() => {
+    // Base values from preset
+    let base
     switch (preset) {
       case 'stormy':
-        return {
+        base = {
           bloomIntensity: 0.6,
           bloomThreshold: 0.7,
           bloomRadius: 0.8,
@@ -24,8 +29,9 @@ export function WeatherPostProcessing({ config }: { config: CloudConfig }) {
           vignetteDarkness: 0.7,
           chromaticOffset: new THREE.Vector2(0.003, 0.003),
         }
+        break
       case 'sunset':
-        return {
+        base = {
           bloomIntensity: 1.2,
           bloomThreshold: 0.4,
           bloomRadius: 1.0,
@@ -33,8 +39,9 @@ export function WeatherPostProcessing({ config }: { config: CloudConfig }) {
           vignetteDarkness: 0.4,
           chromaticOffset: new THREE.Vector2(0.001, 0.001),
         }
+        break
       case 'candy':
-        return {
+        base = {
           bloomIntensity: 0.9,
           bloomThreshold: 0.5,
           bloomRadius: 0.9,
@@ -42,8 +49,9 @@ export function WeatherPostProcessing({ config }: { config: CloudConfig }) {
           vignetteDarkness: 0.3,
           chromaticOffset: new THREE.Vector2(0.002, 0.002),
         }
+        break
       default:
-        return {
+        base = {
           bloomIntensity: 0.3,
           bloomThreshold: 0.8,
           bloomRadius: 0.6,
@@ -52,7 +60,21 @@ export function WeatherPostProcessing({ config }: { config: CloudConfig }) {
           chromaticOffset: new THREE.Vector2(0.0005, 0.0005),
         }
     }
-  }, [preset])
+
+    // Flood-aware adjustments: blue vignette, chromatic aberration, bloom
+    if (flood.active && flood.intensity > 0.15) {
+      const fi = flood.intensity
+      const submergedBoost = playerWater.inWater ? playerWater.depth * 0.3 : 0
+      base.vignetteDarkness += fi * 0.3 + submergedBoost
+      base.chromaticOffset = new THREE.Vector2(
+        base.chromaticOffset.x + fi * 0.004 + submergedBoost * 0.003,
+        base.chromaticOffset.y + fi * 0.004 + submergedBoost * 0.003,
+      )
+      base.bloomIntensity += fi * 0.2
+    }
+
+    return base
+  }, [preset, flood.active, flood.intensity, playerWater.inWater, playerWater.depth])
 
   const [settings, setSettings] = useState(() => target)
   const lastRef = useRef(0)
