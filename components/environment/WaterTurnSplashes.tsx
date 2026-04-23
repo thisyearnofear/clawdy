@@ -32,6 +32,17 @@ type MudSplash = {
   opacity: number
 }
 
+type EntrySplash = {
+  active: boolean
+  startAt: number
+  durationMs: number
+  x: number
+  y: number
+  z: number
+  scale: number
+  kind: 'entry' | 'wake'
+}
+
 export function WaterTurnSplashes({
   chassisRef,
   enabled,
@@ -48,14 +59,20 @@ export function WaterTurnSplashes({
 
   const POOL = 10
   const MUD_POOL = 8
+  const ENTRY_POOL = 6
   const splashesRef = useRef<Splash[]>([])
   const meshRefs = useRef<THREE.Mesh[]>([])
   const matRefs = useRef<THREE.MeshBasicMaterial[]>([])
   const mudSplashesRef = useRef<MudSplash[]>([])
   const mudMeshRefs = useRef<THREE.Mesh[]>([])
+  const entrySplashesRef = useRef<EntrySplash[]>([])
+  const entryMeshRefs = useRef<THREE.Mesh[]>([])
+  const entryMatRefs = useRef<THREE.MeshBasicMaterial[]>([])
+  const wasInWaterRef = useRef(false)
   const lastSpawnAt = useRef(0)
   const lastSoundAt = useRef(0)
   const lastMudSoundAt = useRef(0)
+  const lastEntrySoundAt = useRef(0)
 
   useEffect(() => {
     splashesRef.current = new Array(POOL).fill(0).map(() => ({
@@ -78,6 +95,16 @@ export function WaterTurnSplashes({
       z: 0,
       scale: 1,
       opacity: 0,
+    }))
+    entrySplashesRef.current = new Array(ENTRY_POOL).fill(0).map(() => ({
+      active: false,
+      startAt: 0,
+      durationMs: 600,
+      x: 0,
+      y: 0,
+      z: 0,
+      scale: 1,
+      kind: 'entry',
     }))
   }, [])
 
@@ -132,6 +159,49 @@ export function WaterTurnSplashes({
       if (now - lastSoundAt.current > 140) {
         lastSoundAt.current = now
         playSound('splash')
+      }
+    }
+
+    // --- ENTRY/EXIT SPLASH - detect when entering or leaving water ---
+    if (inWater !== wasInWaterRef.current && flood.active) {
+      wasInWaterRef.current = inWater
+      if (inWater && speed > 2) {
+        // Entering water - big splash!
+        const entryIdx = entrySplashesRef.current.findIndex(s => !s.active)
+        if (entryIdx !== -1) {
+          const y = flood.level + 0.05
+          entrySplashesRef.current[entryIdx] = {
+            active: true,
+            startAt: now,
+            durationMs: 500 + Math.min(speed * 30, 400),
+            x: vPos.x,
+            y,
+            z: vPos.z,
+            scale: 1.5 + Math.min(speed * 0.15, 2),
+            kind: 'entry',
+          }
+          if (now - lastEntrySoundAt.current > 200) {
+            lastEntrySoundAt.current = now
+            playSound('splash')
+          }
+        }
+      }
+    }
+
+    // --- Wake trail when moving fast in water ---
+    if (inWater && speed > 10 && now - lastSpawnAt.current > 150) {
+      const entryIdx = entrySplashesRef.current.findIndex(s => !s.active)
+      if (entryIdx !== -1) {
+        entrySplashesRef.current[entryIdx] = {
+          active: true,
+          startAt: now,
+          durationMs: 350,
+          x: vPos.x + (Math.random() - 0.5) * 0.8,
+          y: flood.level + 0.03,
+          z: vPos.z + (Math.random() - 0.5) * 0.8,
+          scale: 0.5 + Math.min(speed * 0.05, 1),
+          kind: 'wake',
+        }
       }
     }
 
@@ -221,6 +291,36 @@ export function WaterTurnSplashes({
       mesh.scale.set(scale, scale, 1)
       ;(mesh.material as THREE.MeshStandardMaterial).opacity = opacity
     }
+
+    // Update entry/wake splashes
+    for (let i = 0; i < ENTRY_POOL; i++) {
+      const splash = entrySplashesRef.current[i]
+      const mesh = entryMeshRefs.current[i]
+      const mat = entryMatRefs.current[i]
+      if (!mesh || !mat) continue
+
+      if (!splash.active) {
+        mesh.visible = false
+        continue
+      }
+      const t = (now - splash.startAt) / splash.durationMs
+      if (t >= 1) {
+        splash.active = false
+        mesh.visible = false
+        continue
+      }
+
+      const ease = 1 - Math.pow(1 - t, 2)
+      const isEntry = splash.kind === 'entry'
+      const r = splash.scale * (isEntry ? ease * 1.5 : ease)
+      const opacity = isEntry ? (1 - t) * 0.35 : (1 - t) * 0.2
+
+      mesh.visible = true
+      mesh.position.set(splash.x, splash.y, splash.z)
+      mesh.scale.set(r, r, 1)
+      mat.opacity = opacity
+      mat.color.set(isEntry ? new THREE.Color(0.9, 0.95, 1.0) : new THREE.Color(0.7, 0.85, 1.0))
+    }
   })
 
   const plane = useMemo(() => new THREE.PlaneGeometry(1, 1, 1, 1), [])
@@ -275,6 +375,31 @@ export function WaterTurnSplashes({
               opacity={0}
               depthWrite={false}
               roughness={1}
+            />
+          </mesh>
+        ))}
+      </group>
+
+      {/* Entry/wake splashes */}
+      <group>
+        {new Array(ENTRY_POOL).fill(0).map((_, i) => (
+          <mesh
+            key={`entry-${i}`}
+            ref={(m) => { if (m) entryMeshRefs.current[i] = m }}
+            geometry={plane}
+            frustumCulled={false}
+            visible={false}
+            renderOrder={4}
+          >
+            <meshBasicMaterial
+              ref={(m) => { if (m) entryMatRefs.current[i] = m }}
+              map={texture}
+              transparent
+              opacity={0}
+              depthWrite={false}
+              blending={THREE.AdditiveBlending}
+              color={new THREE.Color(0.9, 0.95, 1.0)}
+              toneMapped={false}
             />
           </mesh>
         ))}

@@ -232,7 +232,7 @@ export function Terrain({
   const terrainMaterial = useMemo(() => {
     const material = new THREE.MeshStandardMaterial({
       vertexColors: true,
-      flatShading: true,
+      flatShading: false, // Smooth shading for better appearance
       roughness: 0.8,
       metalness: 0.1,
       wireframe: false

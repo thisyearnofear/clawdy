@@ -100,18 +100,30 @@ export const getSurfaceColor = (x: number, z: number): [number, number, number] 
   const surface = getSurfaceType(x, z)
   const base = SURFACE_COLORS[surface]
 
+  // Add noise variation ±15% to break up uniform color blocks
+  const noiseScale = 0.15
+  const rVar = (noise2D(x * 0.8, z * 0.9) - 0.5) * noiseScale
+  const gVar = (noise2D(x * 0.85, z * 0.75) - 0.5) * noiseScale
+  const bVar = (noise2D(x * 0.7, z * 0.95) - 0.5) * noiseScale
+
+  const varied = [
+    Math.max(0, Math.min(1, base[0] + rVar)),
+    Math.max(0, Math.min(1, base[1] + gVar)),
+    Math.max(0, Math.min(1, base[2] + bVar)),
+  ] as [number, number, number]
+
   const d = distToRoad(x, z)
   if (d > 0 && d < 3) {
     const blend = d / 3
     const grassColor = SURFACE_COLORS.grass
     return [
-      base[0] * (1 - blend) + grassColor[0] * blend,
-      base[1] * (1 - blend) + grassColor[1] * blend,
-      base[2] * (1 - blend) + grassColor[2] * blend,
+      varied[0] * (1 - blend) + grassColor[0] * blend,
+      varied[1] * (1 - blend) + grassColor[1] * blend,
+      varied[2] * (1 - blend) + grassColor[2] * blend,
     ]
   }
 
-  return base
+  return varied
 }
 
 export const getMudIntensity = (x: number, z: number): number => {

@@ -44,36 +44,44 @@ export function FloodWater({ bounds }: { bounds: [number, number, number] }) {
         uColorDeep: { value: new THREE.Color('#0b2a4a') },
         uColorShallow: { value: new THREE.Color('#2ea7d8') },
         uFoam: { value: 0.0 },
+        uCameraPos: { value: new THREE.Vector3() },
       },
       vertexShader: `
         varying vec2 vUv;
         varying vec3 vPos;
         varying vec3 vNormal;
         varying float vWaveHeight;
+        varying vec3 vWorldPos;
         uniform float uTime;
 
         void main() {
           vUv = uv;
           vec3 p = position;
           
-          // Enhanced wave displacement with multiple frequencies
-          float w1 = sin((p.x * 0.12) + uTime * 0.9) * 0.06;
-          float w2 = sin((p.z * 0.18) - uTime * 1.1) * 0.05;
-          float w3 = sin((p.x * 0.25 + p.z * 0.15) + uTime * 1.4) * 0.025;
-          float w4 = sin((p.x * 0.08 - p.z * 0.22) + uTime * 0.6) * 0.04;
-          p.y += w1 + w2 + w3 + w4;
-          vWaveHeight = w1 + w2 + w3 + w4;
+          // Gerstner-style wave displacement with increased amplitude
+          float w1 = sin((p.x * 0.12) + uTime * 0.9) * 0.25;
+          float w2 = sin((p.z * 0.18) - uTime * 1.1) * 0.20;
+          float w3 = sin((p.x * 0.25 + p.z * 0.15) + uTime * 1.4) * 0.12;
+          float w4 = sin((p.x * 0.08 - p.z * 0.22) + uTime * 0.6) * 0.15;
+          // Add Gerstner-style sharp crest
+          float w5 = sin((p.x * 0.05 + p.z * 0.07) + uTime * 0.5) * 0.08;
+          p.y += w1 + w2 + w3 + w4 + w5;
+          vWaveHeight = w1 + w2 + w3 + w4 + w5;
           
           // Calculate wave normal for lighting
-          float dx = 0.12 * cos((p.x * 0.12) + uTime * 0.9) * 0.06 
-                   + 0.25 * cos((p.x * 0.25 + p.z * 0.15) + uTime * 1.4) * 0.025;
-          float dz = -0.18 * cos((p.z * 0.18) - uTime * 1.1) * 0.05 
-                    + 0.15 * cos((p.x * 0.25 + p.z * 0.15) + uTime * 1.4) * 0.025
-                    - 0.22 * cos((p.x * 0.08 - p.z * 0.22) + uTime * 0.6) * 0.04;
+          float dx = 0.12 * cos((p.x * 0.12) + uTime * 0.9) * 0.25 
+                   + 0.25 * cos((p.x * 0.25 + p.z * 0.15) + uTime * 1.4) * 0.12
+                   + 0.08 * cos((p.x * 0.05 + p.z * 0.07) + uTime * 0.5) * 0.08;
+          float dz = -0.18 * cos((p.z * 0.18) - uTime * 1.1) * 0.20 
+                    + 0.15 * cos((p.x * 0.25 + p.z * 0.15) + uTime * 1.4) * 0.12
+                    - 0.22 * cos((p.x * 0.08 - p.z * 0.22) + uTime * 0.6) * 0.15
+                    + 0.07 * cos((p.x * 0.05 + p.z * 0.07) + uTime * 0.5) * 0.08;
           vNormal = normalize(vec3(-dx, 1.0, -dz));
           
+          vec4 worldPos = modelMatrix * vec4(p, 1.0);
+          vWorldPos = worldPos.xyz;
           vPos = p;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+          gl_Position = projectionMatrix * viewMatrix * worldPos;
         }
       `,
       fragmentShader: `
@@ -81,11 +89,13 @@ export function FloodWater({ bounds }: { bounds: [number, number, number] }) {
         varying vec3 vPos;
         varying vec3 vNormal;
         varying float vWaveHeight;
+        varying vec3 vWorldPos;
         uniform float uTime;
         uniform float uOpacity;
         uniform vec3 uColorDeep;
         uniform vec3 uColorShallow;
         uniform float uFoam;
+        uniform vec3 uCameraPos;
 
         float hash(vec2 p) {
           return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
@@ -140,7 +150,12 @@ export function FloodWater({ bounds }: { bounds: [number, number, number] }) {
           float foam = smoothstep(0.12, 0.0, edge) * (0.45 + waves * 0.25) * uFoam;
           col = mix(col, vec3(0.85, 0.92, 1.0), foam);
 
-          gl_FragColor = vec4(col, uOpacity);
+          // Fresnel-based opacity: more opaque at glancing angles, transparent when looking down
+          vec3 viewDir = normalize(uCameraPos - vWorldPos);
+          float fresnel = pow(1.0 - max(dot(viewDir, vNormal), 0.0), 3.0);
+          float finalOpacity = mix(0.25, 0.75, fresnel) * uOpacity;
+
+          gl_FragColor = vec4(col, finalOpacity);
         }
       `,
     })
@@ -163,6 +178,7 @@ export function FloodWater({ bounds }: { bounds: [number, number, number] }) {
   useFrame((state) => {
     // eslint-disable-next-line react-hooks/immutability
     material.uniforms.uTime.value = state.clock.getElapsedTime()
+    material.uniforms.uCameraPos.value.copy(state.camera.position)
 
     // Trigger recommendation:
     // - Flood is a "quirky differentiator", but shouldn’t be constant.

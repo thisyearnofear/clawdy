@@ -157,6 +157,7 @@ export function useVehiclePhysics(
       tank: 0.8,
     }
     const dragDepth = THREE.MathUtils.clamp(dragDepthRaw * profileFloodScale[stats.profile], 0, 1)
+    // CONSOLIDATED: Single floodSlow formula with airBubble modifier
     const floodSlow = 1 - dragDepth * (isAirBubble ? 0.05 : 0.35)
 
     // Add Buoyancy: Upward force proportional to submergence
@@ -206,7 +207,7 @@ export function useVehiclePhysics(
       tank: 0.82,
     }
     const boostFactor = isSpeedBoosted ? handling.speedBoostMultiplier : 1.0
-    const floodSlow = 1 - dragDepth * 0.35
+    // CONSOLIDATED: floodSlow already calculated in flood physics block above
     const bubbleBoost = isAirBubble ? 1.18 : 1.0
     const modeSpeedScale = handling.speedScale * vehicleModeScale[stats.profile]
     const modeAccelScale = handling.accelerationScale * vehicleModeScale[stats.profile]
