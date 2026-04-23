@@ -1,6 +1,6 @@
 'use client'
 
-import { useAccount, useChainId, useConnect, useDisconnect } from 'wagmi'
+import { useAccount, useChainId, useConnect, useDisconnect, useSwitchChain } from 'wagmi'
 import { agentProtocol, CHAIN_NAME } from '../../services/AgentProtocol'
 import { primaryChain } from '../../services/web3Config'
 import { useMemo, useState, useEffect } from 'react'
@@ -70,6 +70,7 @@ export function ConnectWallet({ buttonClassName, source = 'hud_top_right' }: Con
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [showMore, setShowMore] = useState(false)
   const isCorrectChain = chainId === primaryChain.id
+  const { switchChain, isPending: isSwitchingChain } = useSwitchChain()
 
   // Sync modal state from global store
   useEffect(() => {
@@ -140,8 +141,12 @@ export function ConnectWallet({ buttonClassName, source = 'hud_top_right' }: Con
   if (isConnected) {
     return (
       <div className="flex items-center gap-3 bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-2 pr-4">
-        <div className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border ${isCorrectChain ? 'bg-emerald-500/15 border-emerald-400/40 text-emerald-300' : 'bg-amber-500/15 border-amber-400/40 text-amber-200'}`}>
-          {isCorrectChain ? CHAIN_NAME : `Switch to ${CHAIN_NAME}`}
+        <div className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border ${isCorrectChain ? 'bg-emerald-500/15 border-emerald-400/40 text-emerald-300' : 'bg-amber-500/15 border-amber-400/40 text-amber-200 cursor-pointer hover:bg-amber-500/25'}`}>
+          {isCorrectChain ? CHAIN_NAME : (
+            <button onClick={() => switchChain({ chainId: primaryChain.id })} className="flex items-center gap-1">
+              {isSwitchingChain ? 'Switching...' : `Switch to ${CHAIN_NAME}`}
+            </button>
+          )}
         </div>
         <div className="flex flex-col items-end">
           <span className="text-[9px] opacity-50 uppercase font-black tracking-wider">Connected</span>

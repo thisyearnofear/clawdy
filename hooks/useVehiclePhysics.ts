@@ -100,12 +100,12 @@ export function useVehiclePhysics(
     }
 
     // --- 1. PRO INPUT SMOOTHING ---
-    const lerpSpeed = rawForward === 0 ? 3 : 10
+    const lerpSpeed = rawForward === 0 ? 6 : 20
     smoothedForward.current = THREE.MathUtils.lerp(smoothedForward.current, rawForward, delta * lerpSpeed)
-    smoothedTurn.current = THREE.MathUtils.lerp(smoothedTurn.current, rawTurn, delta * 12)
+    smoothedTurn.current = THREE.MathUtils.lerp(smoothedTurn.current, rawTurn, delta * 25)
 
     // Apply burden to mass
-    chassisRef.current.setAdditionalMass(burdenFactor * stats.mass * 2, true)
+    chassisRef.current.setAdditionalMass(burdenFactor * stats.mass * 1.2, true)
 
     const velocity = chassisRef.current.linvel()
     const speed = Math.sqrt(velocity.x ** 2 + velocity.z ** 2)
@@ -133,17 +133,15 @@ export function useVehiclePhysics(
     const surfaceType = getSurfaceType(vPos.x, vPos.z)
     const rollingFriction = SURFACE_FRICTION[surfaceType] || 0.98
     
-    // Mud Trap logic: If on mud, massively increase damping/reduce drive torque
+    // Mud Trap logic
     const isMud = surfaceType === 'mud'
-    const mudPenalty = isMud ? 2.5 : 1.0
+    const mudPenalty = isMud ? 2.0 : 1.0
     
-    const baseDamping = handling.baseLinearDamping + (1 - rollingFriction) * handling.surfaceDampingInfluence * mudPenalty
+    const baseDamping = handling.baseLinearDamping + (1 - rollingFriction) * handling.surfaceDampingInfluence * (isMud ? 1.5 : 1.0)
 
-    // Flood drag: if the vehicle is under the water surface, movement becomes heavier/slower.
-    // This is intentionally subtle (delight + readability without breaking balance).
+    // Flood drag
     const waterSurfaceY = flood.level
     const chassisHalfHeight = 0.35
-    // Physical submerge (for HUD/recap) vs. drag depth (affected by Air Bubble).
     const physicalSubmergeDepth = flood.active
       ? THREE.MathUtils.clamp((waterSurfaceY - (vPos.y - chassisHalfHeight)) / 1.0, 0, 1)
       : 0

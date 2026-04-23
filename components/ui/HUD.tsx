@@ -140,10 +140,17 @@ export function HUD(props: HUDProps) {
       </div>
 
       {/* Spectator Banner */}
-      {!address && (
-        <div className="absolute top-24 left-1/2 -translate-x-1/2 z-20 pointer-events-none animate-pulse">
-          <div className="bg-black/60 backdrop-blur-xl border border-sky-400/50 rounded-full px-6 py-2 shadow-2xl text-[10px] font-black text-sky-300 tracking-widest uppercase">
-            Spectating Live
+      {!address && ui.hideSpectatorCta && (
+        <div className="absolute top-48 left-1/2 -translate-x-1/2 z-20">
+          <div className="bg-black/60 backdrop-blur-xl border border-white/20 rounded-full px-4 py-1.5 pr-5 shadow-lg flex items-center gap-2">
+            <span className="text-[9px] font-black text-white/60 uppercase tracking-widest">Spectating</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
+            <button
+              onClick={() => useGameStore.getState().setModalOpen('spectatorCta', true)}
+              className="absolute -right-1 -top-1 w-5 h-5 rounded-full bg-sky-500 hover:bg-sky-400 text-white text-[10px] font-black flex items-center justify-center shadow transition-colors"
+            >
+              +
+            </button>
           </div>
         </div>
       )}
