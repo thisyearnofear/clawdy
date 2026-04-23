@@ -18,7 +18,7 @@ export const SURFACE_COLORS: Record<SurfaceType, [number, number, number]> = {
 
 export const TERRAIN_CONFIG = {
   SIZE: 100,
-  SEGMENTS: 80,
+  SEGMENTS: 128, // Increased from 80 for smoother surface
   DEFORMATION_RADIUS: 2.5,
   DEFORMATION_STRENGTH: 0.5,
   SEED: 1337,

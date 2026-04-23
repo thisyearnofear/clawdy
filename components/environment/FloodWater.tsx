@@ -37,6 +37,7 @@ export function FloodWater({ bounds }: { bounds: [number, number, number] }) {
     const mat = new THREE.ShaderMaterial({
       transparent: true,
       depthWrite: false,
+      side: THREE.DoubleSide,
       uniforms: {
         uTime: { value: 0 },
         uOpacity: { value: 0.0 },
@@ -47,15 +48,30 @@ export function FloodWater({ bounds }: { bounds: [number, number, number] }) {
       vertexShader: `
         varying vec2 vUv;
         varying vec3 vPos;
+        varying vec3 vNormal;
+        varying float vWaveHeight;
         uniform float uTime;
 
         void main() {
           vUv = uv;
           vec3 p = position;
-          // Tiny wave displacement (cheap; enough for shimmer)
+          
+          // Enhanced wave displacement with multiple frequencies
           float w1 = sin((p.x * 0.12) + uTime * 0.9) * 0.06;
           float w2 = sin((p.z * 0.18) - uTime * 1.1) * 0.05;
-          p.y += w1 + w2;
+          float w3 = sin((p.x * 0.25 + p.z * 0.15) + uTime * 1.4) * 0.025;
+          float w4 = sin((p.x * 0.08 - p.z * 0.22) + uTime * 0.6) * 0.04;
+          p.y += w1 + w2 + w3 + w4;
+          vWaveHeight = w1 + w2 + w3 + w4;
+          
+          // Calculate wave normal for lighting
+          float dx = 0.12 * cos((p.x * 0.12) + uTime * 0.9) * 0.06 
+                   + 0.25 * cos((p.x * 0.25 + p.z * 0.15) + uTime * 1.4) * 0.025;
+          float dz = -0.18 * cos((p.z * 0.18) - uTime * 1.1) * 0.05 
+                    + 0.15 * cos((p.x * 0.25 + p.z * 0.15) + uTime * 1.4) * 0.025
+                    - 0.22 * cos((p.x * 0.08 - p.z * 0.22) + uTime * 0.6) * 0.04;
+          vNormal = normalize(vec3(-dx, 1.0, -dz));
+          
           vPos = p;
           gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
         }
@@ -63,6 +79,8 @@ export function FloodWater({ bounds }: { bounds: [number, number, number] }) {
       fragmentShader: `
         varying vec2 vUv;
         varying vec3 vPos;
+        varying vec3 vNormal;
+        varying float vWaveHeight;
         uniform float uTime;
         uniform float uOpacity;
         uniform vec3 uColorDeep;
@@ -84,6 +102,14 @@ export function FloodWater({ bounds }: { bounds: [number, number, number] }) {
           return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
         }
 
+        // Simplex-like noise for caustics
+        float caustics(vec2 uv, float time) {
+          float n1 = noise(uv * 8.0 + vec2(time * 0.15, -time * 0.1));
+          float n2 = noise(uv * 12.0 - vec2(time * 0.2, time * 0.18));
+          float n3 = noise(uv * 6.0 + vec2(-time * 0.08, time * 0.12));
+          return (n1 * 0.5 + n2 * 0.3 + n3 * 0.2);
+        }
+
         void main() {
           // Moving surface pattern
           vec2 uv = vUv;
@@ -95,7 +121,19 @@ export function FloodWater({ bounds }: { bounds: [number, number, number] }) {
           // Depth-ish gradient (purely aesthetic)
           float depth = clamp(uv.y, 0.0, 1.0);
           vec3 col = mix(uColorShallow, uColorDeep, depth);
+          
+          // Add caustics effect when water is visible
+          float causticsIntensity = caustics(uv, uTime) * 0.15;
+          col += vec3(causticsIntensity * 0.8, causticsIntensity * 0.9, causticsIntensity);
+          
+          // Add subtle specular highlight from wave normals
+          vec3 lightDir = normalize(vec3(0.5, 1.0, 0.3));
+          float specular = pow(max(dot(vNormal, lightDir), 0.0), 32.0) * 0.4;
+          col += vec3(specular);
+          
+          // Add ripple shimmer
           col += waves * 0.10;
+          col += vWaveHeight * 0.15;
 
           // Foam near edges
           float edge = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));

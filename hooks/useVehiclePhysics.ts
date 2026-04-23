@@ -157,7 +157,11 @@ export function useVehiclePhysics(
       tank: 0.8,
     }
     const dragDepth = THREE.MathUtils.clamp(dragDepthRaw * profileFloodScale[stats.profile], 0, 1)
+    const floodSlow = 1 - dragDepth * (isAirBubble ? 0.05 : 0.35)
 
+    // Add Buoyancy: Upward force proportional to submergence
+    const buoyancy = physicalSubmergeDepth * stats.mass * 12.0 * delta
+    chassisRef.current.applyImpulse({ x: 0, y: buoyancy, z: 0 }, true)
     // Publish player-only water state for HUD clarity.
     if (!agentControlled && playerControlled) {
       const inWater = physicalSubmergeDepth > 0.18 && flood.active
