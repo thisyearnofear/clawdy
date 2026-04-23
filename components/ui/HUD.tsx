@@ -136,12 +136,26 @@ export function HUD(props: HUDProps) {
         </div>
       </div>
 
-      {/* 3. RIGHT SIDE: FABs with Safe Spacing */}
-      <div className={`absolute top-1/3 right-6 ${UI_Z_INDEX.HUD} flex flex-col gap-3 pb-24 pointer-events-auto`}>
-        <button onClick={props.onToggleQuickControls} className="w-10 h-10 bg-black/20 rounded-full border border-white/20 text-white">W</button>
-        <button onClick={props.onOpenSidebar} className="w-10 h-10 bg-black/20 rounded-full border border-white/20 text-white">S</button>
-        <AgentTerminal />
+      {/* Wallet - Top right */}
+      <div className="absolute top-6 right-6 z-30">
+        <ConnectWallet source="hud_top_right" />
       </div>
+
+      {/* Spectator CTA - Center */}
+      {props.isMounted && !address && !ui.hideSpectatorCta && (
+        <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center p-4">
+          <div className="relative w-full max-w-md rounded-2xl border border-white/20 bg-black/55 backdrop-blur-xl shadow-2xl p-5 text-center">
+            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-sky-300">Live Agent Arena</p>
+            <p className="mt-2 text-sm font-semibold text-white">Connect wallet to join the queue and drive vehicles.</p>
+            <div className="mt-4 flex justify-center">
+              <ConnectWallet
+                source="spectator_cta"
+                buttonClassName="group px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-black rounded-xl shadow-lg transition-all flex items-center gap-2"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
