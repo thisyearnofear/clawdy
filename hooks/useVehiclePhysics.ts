@@ -210,12 +210,13 @@ export function useVehiclePhysics(
     const totalPenalty = Math.max(0.4, (0.55 + 0.45 * vitalityFactor) * boostFactor * floodSlow / mudPenalty)
     const maxSpeed = stats.maxSpeed * modeSpeedScale * totalPenalty
     const accelerationPower = stats.acceleration * modeAccelScale * boostFactor * floodSlow * bubbleBoost / mudPenalty
-
+    
     // Boundary Enforcement: Soft boundary beyond 60 units with bounce back
     const distFromCenter = Math.sqrt(vPos.x ** 2 + vPos.z ** 2)
     const BOUNDARY_RADIUS = 60
     const boundaryDrag = distFromCenter > BOUNDARY_RADIUS ? Math.pow(distFromCenter / BOUNDARY_RADIUS, 2) : 1.0
-    const finalAcceleration = accelerationPower / boundaryDrag
+    // Ensure minimum acceleration floor so cars don't become bricks in mud/flood (apply before boundary drag)
+    const finalAcceleration = Math.max(stats.acceleration * 0.35, accelerationPower) / boundaryDrag
     
     // Hard boundary bounce at 60 units - push vehicle back toward center
     if (distFromCenter > BOUNDARY_RADIUS) {
@@ -266,7 +267,7 @@ export function useVehiclePhysics(
     // --- 4. IMPROVED STEERING ---
     const steerBoost = (isSpeedBoosted ? 1.5 : 1.0) * (isFoamBoard && physicalSubmergeDepth > 0.1 ? 1.15 : 1.0)
     if (Math.abs(smoothedTurn.current) > 0.01) {
-      if (stats.steeringMode === 'car' && speed > 0.5) {
+      if (stats.steeringMode === 'car' && speed > 0.05) {
         const steerStrength = stats.steerStrength * handling.steerScale * handling.carSteerResponse * delta * steerBoost
         const steerForce = rightDir.clone().multiplyScalar(smoothedTurn.current * steerStrength * Math.min(speed / 10, 1))
         const fOffset = forwardDir.clone().multiplyScalar(stats.frontOffset)
@@ -296,7 +297,7 @@ export function useVehiclePhysics(
     // --- 6. DRIFT / LATERAL FRICTION ---
     if (speed > 1) {
       const sidewaysVelocity = velocity.x * rightDir.x + velocity.z * rightDir.z
-      const driftGripBase = (surfaceType === 'road' ? stats.lateralGrip : stats.lateralGrip * 0.65) * handling.gripScale
+      const driftGripBase = (surfaceType === 'road' ? stats.lateralGrip : stats.lateralGrip * 0.80) * handling.gripScale
       const boardGripBoost = isFoamBoard && physicalSubmergeDepth > 0.1 ? 1.25 : 1.0
       const driftGrip = driftGripBase * boardGripBoost
       const gripImpulse = -sidewaysVelocity * driftGrip * stats.mass * delta * 15

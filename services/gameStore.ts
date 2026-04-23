@@ -78,7 +78,7 @@ export interface HandlingTuning {
 export const HANDLING_MATRIX: Record<HandlingMode, HandlingTuning> = {
   arcade: {
     speedScale: 0.85,
-    accelerationScale: 0.7,
+    accelerationScale: 0.9,
     steerScale: 0.9,
     gripScale: 1.15,
     baseLinearDamping: 0.18,
@@ -97,7 +97,7 @@ export const HANDLING_MATRIX: Record<HandlingMode, HandlingTuning> = {
   },
   offroad: {
     speedScale: 0.92,
-    accelerationScale: 0.85,
+    accelerationScale: 0.9,
     steerScale: 0.95,
     gripScale: 1.0,
     baseLinearDamping: 0.12,
