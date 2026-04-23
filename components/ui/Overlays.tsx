@@ -114,7 +114,6 @@ export function Overlays({
 // Simple underwater overlay - only visible when player is actually in water
 function UnderwaterOverlay() {
   const playerWater = useGameStore(s => s.playerWater)
-  const flood = useGameStore(s => s.flood)
   const inWater = playerWater.inWater && playerWater.depth > 0.1
 
   // Depth-based opacity: deeper = more opaque, capped at 0.55
