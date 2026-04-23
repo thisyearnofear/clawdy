@@ -53,6 +53,11 @@ const walletClient = createWalletClient({ account, chain, transport: http() });
 
 function compile(contractName) {
   const source = fs.readFileSync(path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'contracts', `${contractName}.sol`), 'utf8');
+  
+  const findImports = (pathStr) => {
+    return { contents: fs.readFileSync(path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'node_modules', pathStr), 'utf8') };
+  };
+
   const input = {
     language: 'Solidity',
     sources: { [`${contractName}.sol`]: { content: source } },
@@ -62,7 +67,7 @@ function compile(contractName) {
       outputSelection: { '*': { '*': ['abi', 'evm.bytecode.object'] } },
     },
   };
-  const output = JSON.parse(solc.compile(JSON.stringify(input)));
+  const output = JSON.parse(solc.compile(JSON.stringify(input), { import: findImports }));
   if (output.errors) {
     const errs = output.errors.filter(e => e.severity === 'error');
     if (errs.length) { console.error(errs); process.exit(1); }

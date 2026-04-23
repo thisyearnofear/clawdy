@@ -1,8 +1,9 @@
 import { CloudConfig } from '../components/environment/CloudManager'
 import { MemeAssetStats } from '../components/environment/MemeAssets'
-import { parseEther, encodeFunctionData } from 'viem'
+import { parseEther, encodeFunctionData, toHex } from 'viem'
 import { WEATHER_AUCTION_ABI } from './abis/WeatherAuction'
 import { VEHICLE_RENT_ABI } from './abis/VehicleRent'
+import { MEME_MARKET_ABI } from './abis/MemeMarket'
 import { getSkillProviderInfo, SkillDecision } from './skillEngine'
 import { persistenceService } from './PersistenceService'
 import { economyEngine } from './EconomyEngine'
@@ -12,6 +13,7 @@ export type VehicleType = 'truck' | 'tank' | 'monster' | 'speedster'
 export type AgentRole = 'operator' | 'scout' | 'weather' | 'mobility' | 'treasury'
 
 import { primaryChain } from './web3Config'
+import { emitToast } from '../components/ui/GameToasts'
 
 export const CHAIN_NAME = primaryChain.name
 
@@ -26,13 +28,16 @@ export const AGENT_ROLE_CONFIG: Record<
   treasury: { label: 'Treasury Agent', permissions: ['spend_policy', 'budget_control'] },
 }
 
-const DEFAULT_WEATHER_AUCTION_ADDRESS = '0x723e444ee6d7da19fade372f85da06dd849bf1e0'
-const DEFAULT_VEHICLE_RENT_ADDRESS = '0xea88bd6121d181cfd6f60997b4bdd0297ca432fe'
+export const DEFAULT_WEATHER_AUCTION_ADDRESS = '0x723e444ee6d7da19fade372f85da06dd849bf1e0'
+export const DEFAULT_VEHICLE_RENT_ADDRESS = '0xea88bd6121d181cfd6f60997b4bdd0297ca432fe'
+export const DEFAULT_MEME_MARKET_ADDRESS = '0x0000000000000000000000000000000000000000'
 
 export const WEATHER_AUCTION_ADDRESS = (process.env.NEXT_PUBLIC_WEATHER_AUCTION_ADDRESS ||
   DEFAULT_WEATHER_AUCTION_ADDRESS) as `0x${string}`
 export const VEHICLE_RENT_ADDRESS = (process.env.NEXT_PUBLIC_VEHICLE_RENT_ADDRESS ||
   DEFAULT_VEHICLE_RENT_ADDRESS) as `0x${string}`
+export const MEME_MARKET_ADDRESS = (process.env.NEXT_PUBLIC_MEME_MARKET_ADDRESS ||
+  DEFAULT_MEME_MARKET_ADDRESS) as `0x${string}`
 
 export interface WorldState {
   timestamp: number
@@ -85,6 +90,27 @@ interface CombatNotification {
 interface BlockchainProvider {
   request(args: { method: string; params?: unknown[] }): Promise<unknown>
 }
+
+export interface ContractWalletClient {
+  writeContract(args: {
+    address: `0x${string}`
+    abi: unknown
+    functionName: string
+    args: readonly unknown[]
+    value?: bigint
+  }): Promise<`0x${string}`>
+}
+
+export const MEME_MARKET_ABILITIES = [
+  { id: 1, key: 'speed_boost', label: 'Speed Boost', source: 'Spicy Pepper' },
+  { id: 2, key: 'anti_gravity', label: 'Anti-Gravity', source: 'Floaty Marshmallow' },
+  { id: 3, key: 'flood_drain', label: 'Flood Drain', source: 'Drain Plug' },
+] as const
+
+export type MemeMarketAbility = (typeof MEME_MARKET_ABILITIES)[number]
+
+export const getMemeMarketAbility = (abilityId: number) =>
+  MEME_MARKET_ABILITIES.find((ability) => ability.id === abilityId)
 
 declare global {
   interface Window {
@@ -160,6 +186,7 @@ class AgentProtocol {
   private decisionListeners: ((decision: SkillDecision) => void)[] = []
   private gameEventListeners: ((event: Record<string, unknown>) => void)[] = []
   private isPermissioned: boolean = false
+  private walletClient: ContractWalletClient | null = null
   private decisionFeed: SkillDecision[] = []
   
   private worldState: WorldState = {
@@ -197,6 +224,111 @@ class AgentProtocol {
     store.setWeatherStatus(this.currentWeatherBid)
   }
 
+  setWalletClient(walletClient: ContractWalletClient | null) {
+    this.walletClient = walletClient
+  }
+
+  private getEthereumProvider() {
+    if (typeof window === 'undefined') return null
+    return window.ethereum ?? null
+  }
+
+  private async getWalletAddress() {
+    const ethereum = this.getEthereumProvider()
+    if (!ethereum) return null
+
+    const accounts = (await ethereum.request({ method: 'eth_accounts' })) as string[]
+    if (accounts?.[0]) return accounts[0]
+
+    const requested = (await ethereum.request({ method: 'eth_requestAccounts' })) as string[]
+    return requested?.[0] ?? null
+  }
+
+  private trackTransaction(
+    type: 'weather_bid' | 'vehicle_rent' | 'mint_ability',
+    amount: number,
+    hash?: string,
+    error?: string,
+  ) {
+    const store = useGameStore.getState()
+    const txId = `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+
+    store.addTransaction({
+      id: txId,
+      type,
+      amount,
+      status: error ? 'failed' : hash ? 'confirmed' : 'pending',
+      timestamp: Date.now(),
+      retryCount: 0,
+      hash,
+      error,
+    })
+
+    return txId
+  }
+
+  private async sendContractTransaction(params: {
+    type: 'weather_bid' | 'vehicle_rent' | 'mint_ability'
+    to: `0x${string}`
+    abi: unknown
+    functionName: string
+    args: readonly unknown[]
+    amount: number
+    value?: bigint
+  }) {
+    const txId = this.trackTransaction(params.type, params.amount)
+    const store = useGameStore.getState()
+    const typeLabel = params.type === 'weather_bid' ? 'Weather Bid' : params.type === 'vehicle_rent' ? 'Vehicle Rent' : 'Mint Ability'
+
+    try {
+      store.updateTransaction(txId, { status: 'confirming' })
+      emitToast('milestone', `${typeLabel} Submitted`, 'Waiting for confirmation...')
+
+      if (this.walletClient) {
+        const hash = await this.walletClient.writeContract({
+          address: params.to,
+          abi: params.abi,
+          functionName: params.functionName,
+          args: params.args,
+          ...(params.value !== undefined ? { value: params.value } : {}),
+        }) as string
+
+        store.updateTransaction(txId, { status: 'confirmed', hash })
+        emitToast('collect', `${typeLabel} Confirmed`, `Tx: ${hash.slice(0, 10)}…`)
+        return hash
+      }
+
+      const ethereum = this.getEthereumProvider()
+      if (!ethereum) return null
+
+      const from = await this.getWalletAddress()
+      if (!from) return null
+
+      const hash = (await ethereum.request({
+        method: 'eth_sendTransaction',
+        params: [{
+          from,
+          to: params.to,
+          data: encodeFunctionData({
+            abi: params.abi,
+            functionName: params.functionName,
+            args: params.args,
+          } as Parameters<typeof encodeFunctionData>[0]),
+          ...(params.value !== undefined ? { value: toHex(params.value) } : {}),
+        }],
+      })) as string
+
+      store.updateTransaction(txId, { status: 'confirmed', hash })
+      emitToast('collect', `${typeLabel} Confirmed`, `Tx: ${hash.slice(0, 10)}…`)
+      return hash
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      store.updateTransaction(txId, { status: 'failed', error: message })
+      emitToast('bid-lose', `${typeLabel} Failed`, message.slice(0, 60))
+      return null
+    }
+  }
+
   private applyRestoredState(saved: Record<string, Record<string, number>>) {
     for (const [id, data] of Object.entries(saved)) {
       const session = this.sessions.get(id)
@@ -225,30 +357,17 @@ class AgentProtocol {
       toggleAutoPilot: (id: string) => this.toggleAutoPilot(id),
       help: () => ({
         network: CHAIN_NAME,
-        contracts: { weather: WEATHER_AUCTION_ADDRESS, rent: VEHICLE_RENT_ADDRESS },
+        contracts: { weather: WEATHER_AUCTION_ADDRESS, rent: VEHICLE_RENT_ADDRESS, memeMarket: MEME_MARKET_ADDRESS },
         methods: ["getState()", "getSessions()", "authorize(id)", "logout()", "bid(id, amount, preset)", "drive(id, vehicleId, inputs)"]
       })
     }
   }
 
   async requestSessionPermissions() {
-    if (typeof window === 'undefined' || !window.ethereum) return
+    const ethereum = this.getEthereumProvider()
+    if (!ethereum) return null
     try {
-      const ethereum = window.ethereum
-      const permissions = await ethereum.request({
-        method: 'wallet_requestExecutionPermissions',
-        params: [{
-          permission: {
-            calls: [
-              { to: WEATHER_AUCTION_ADDRESS, data: '0x' },
-              { to: VEHICLE_RENT_ADDRESS, data: '0x' }
-            ],
-            isAdjustmentAllowed: true,
-            rules: [{ type: 'allowance', limit: parseEther('0.5').toString(), period: 'session' }]
-          },
-          expiry: Math.floor(Date.now() / 1000) + 3600
-        }]
-      })
+      const permissions = await ethereum.request({ method: 'eth_requestAccounts' })
       this.isPermissioned = true
       return permissions
     } catch { return null }
@@ -386,25 +505,43 @@ class AgentProtocol {
     this.syncWithStore()
   }
 
+  async mintAbilityOnChain(to: `0x${string}`, abilityId: number, amount: number = 1) {
+    if (this.isPermissioned && MEME_MARKET_ADDRESS !== '0x0000000000000000000000000000000000000000') {
+      const hash = await this.sendContractTransaction({
+        type: 'mint_ability',
+        to: MEME_MARKET_ADDRESS,
+        abi: MEME_MARKET_ABI,
+        functionName: 'mintAbility',
+        args: [to, BigInt(abilityId), BigInt(amount)],
+        amount: 0,
+      })
+      if (hash) {
+        this.gameEventListeners.forEach((listener) => listener({
+          type: 'ability-minted',
+          agentId: to,
+          abilityId,
+          amount,
+          hash,
+        }))
+      }
+      return Boolean(hash)
+    }
+    return false
+  }
+
   async rentVehicleOnChain(agentId: string, vehicleId: string, type: VehicleType, minutes: number) {
-    if (this.isPermissioned && typeof window !== 'undefined' && window.ethereum) {
-      try {
-        await window.ethereum.request({
-          method: 'wallet_sendCalls',
-          params: [{
-            calls: [{
-              to: VEHICLE_RENT_ADDRESS,
-              data: encodeFunctionData({
-                abi: VEHICLE_RENT_ABI,
-                functionName: 'rent',
-                args: [vehicleId, type, BigInt(minutes)]
-              }),
-              value: parseEther((0.001 * minutes).toString())
-            }]
-          }]
-        })
-        return true
-      } catch { return false }
+    if (this.isPermissioned) {
+      const hash = await this.sendContractTransaction({
+        type: 'vehicle_rent',
+        to: VEHICLE_RENT_ADDRESS,
+        abi: VEHICLE_RENT_ABI,
+        functionName: 'rent',
+        args: [vehicleId, type, BigInt(minutes)],
+        value: parseEther((0.001 * minutes).toString()),
+        amount: 0.001 * minutes,
+      })
+
+      return Boolean(hash)
     }
     return true
   }
@@ -413,25 +550,6 @@ class AgentProtocol {
     const session = this.sessions.get(command.agentId)
     if (!session) return false
     
-    if (this.isPermissioned && typeof window !== 'undefined' && window.ethereum) {
-      try {
-        await window.ethereum.request({
-          method: 'wallet_sendCalls',
-          params: [{
-            calls: [{
-              to: WEATHER_AUCTION_ADDRESS,
-              data: encodeFunctionData({
-                abi: WEATHER_AUCTION_ABI,
-                functionName: 'bid',
-                args: [BigInt(60), command.config.preset || 'custom', BigInt(command.config.volume || 10), BigInt(command.config.growth || 4), BigInt((command.config.speed || 0.2) * 100), 0]
-              }),
-              value: parseEther(command.bid.toString())
-            }]
-          }]
-        })
-      } catch {}
-    }
-
     const now = Date.now()
     
     // Optimistic UI update
@@ -442,24 +560,25 @@ class AgentProtocol {
     this.notifyWeatherListeners(command.config)
     this.gameEventListeners.forEach(l => l({ type: 'bid-won', agentId: command.agentId, preset: command.config.preset || 'custom' }))
     
-    if (this.isPermissioned && typeof window !== 'undefined' && window.ethereum) {
-      try {
-        await window.ethereum.request({
-          method: 'wallet_sendCalls',
-          params: [{
-            calls: [{
-              to: WEATHER_AUCTION_ADDRESS,
-              data: encodeFunctionData({
-                abi: WEATHER_AUCTION_ABI,
-                functionName: 'bid',
-                args: [BigInt(60), command.config.preset || 'custom', BigInt(command.config.volume || 10), BigInt(command.config.growth || 4), BigInt((command.config.speed || 0.2) * 100), 0]
-              }),
-              value: parseEther(command.bid.toString())
-            }]
-          }]
-        })
-        return true
-      } catch {
+    if (this.isPermissioned) {
+      const hash = await this.sendContractTransaction({
+        type: 'weather_bid',
+        to: WEATHER_AUCTION_ADDRESS,
+        abi: WEATHER_AUCTION_ABI,
+        functionName: 'bid',
+        args: [
+          BigInt(60),
+          command.config.preset || 'custom',
+          BigInt(command.config.volume || 10),
+          BigInt(command.config.growth || 4),
+          BigInt((command.config.speed || 0.2) * 100),
+          0,
+        ],
+        value: parseEther(command.bid.toString()),
+        amount: command.bid,
+      })
+
+      if (!hash) {
         // Rollback on failure
         this.currentWeatherBid = previousBid
         this.syncWithStore()

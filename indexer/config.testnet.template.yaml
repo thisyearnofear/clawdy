@@ -1,6 +1,6 @@
 name: clawdy-indexer
 networks:
-  - id: 1952 # X Layer Testnet
+  - id: 195 # X Layer Testnet
     contracts:
       - name: WeatherAuction
         address: "0x723e444ee6d7da19fade372f85da06dd849bf1e0"

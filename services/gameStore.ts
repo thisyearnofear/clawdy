@@ -157,7 +157,7 @@ export interface UIState {
 // ── Transactions ─────────────────────────────────────────────────────
 export interface PendingTransaction {
   id: string
-  type: 'weather_bid' | 'vehicle_rent' | 'asset_collect'
+  type: 'weather_bid' | 'vehicle_rent' | 'asset_collect' | 'mint_ability'
   amount: number
   status: 'pending' | 'confirming' | 'confirmed' | 'failed'
   timestamp: number

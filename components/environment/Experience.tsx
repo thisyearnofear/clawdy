@@ -27,10 +27,10 @@ import { Vehicle } from '../vehicles/Vehicle'
 import { AgentVision } from './AgentVision'
 import { IntentionVisualizer } from './IntentionVisualizer'
 import { MemeAssetInstances } from './MemeAssetInstances'
-import { VehicleType, agentProtocol, VEHICLE_RENT_ADDRESS } from '../../services/AgentProtocol'
+import { DEFAULT_VEHICLE_RENT_ADDRESS, VehicleType, agentProtocol, VEHICLE_RENT_ADDRESS } from '../../services/AgentProtocol'
 import { vehicleQueue, QueueState } from '../../services/VehicleQueue'
 import { emitToast } from '../ui/GameToasts'
-import { useWatchContractEvent } from 'wagmi'
+import { useWatchContractEvent, useReadContract } from 'wagmi'
 import { VEHICLE_RENT_ABI } from '../../services/abis/VehicleRent'
 import { useAccount } from 'wagmi'
 import { POLL_INTERVAL } from '../../services/web3Config'
@@ -79,6 +79,31 @@ function Experience({
   const playerVehicleObjRef = useRef<RapierRigidBody | null>(null)
   const spectatorVehicleObjRef = useRef<RapierRigidBody | null>(null)
   const lastPriorityToastAtRef = useRef(0)
+  const currentPlayerVehicleId = queueState?.getPlayerVehicle(playerId)?.id
+
+  const { data: onChainVehicleRentStatus } = useReadContract({
+    address: VEHICLE_RENT_ADDRESS as `0x${string}`,
+    abi: VEHICLE_RENT_ABI,
+    functionName: 'getRentStatus',
+    args: currentPlayerVehicleId ? ([currentPlayerVehicleId] as const) : undefined,
+    query: {
+      enabled: Boolean(currentPlayerVehicleId) && VEHICLE_RENT_ADDRESS !== DEFAULT_VEHICLE_RENT_ADDRESS,
+      refetchInterval: POLL_INTERVAL,
+    },
+  })
+
+  useEffect(() => {
+    if (!currentPlayerVehicleId || !onChainVehicleRentStatus) return
+
+    const [, expiresAt, vehicleType] = onChainVehicleRentStatus as unknown as [string, bigint, string]
+    if (Number(expiresAt) * 1000 <= Date.now()) return
+
+    setVehicles((prev) => prev.map((vehicle) => (
+      vehicle.id === currentPlayerVehicleId
+        ? { ...vehicle, type: vehicleType as VehicleType, agentControlled: true }
+        : vehicle
+    )))
+  }, [currentPlayerVehicleId, onChainVehicleRentStatus])
 
   const getVehiclePosition = useCallback((index: number, isGhost: boolean = false): [number, number, number] => {
     const angle = (index / 10) * Math.PI * 2

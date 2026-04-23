@@ -1,14 +1,25 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { useAccount } from 'wagmi'
+import { useAccount, useReadContract, useReadContracts } from 'wagmi'
 import { Leaderboard } from './Leaderboard'
 import { ConnectWallet } from './ConnectWallet'
 import { CloudConfig } from '../environment/CloudManager'
-import { VehicleType, CHAIN_NAME, WEATHER_AUCTION_ADDRESS, VEHICLE_RENT_ADDRESS } from '../../services/AgentProtocol'
+import {
+  VehicleType,
+  CHAIN_NAME,
+  WEATHER_AUCTION_ADDRESS,
+  VEHICLE_RENT_ADDRESS,
+  MEME_MARKET_ADDRESS,
+  DEFAULT_MEME_MARKET_ADDRESS,
+  MEME_MARKET_ABILITIES,
+  agentProtocol,
+} from '../../services/AgentProtocol'
 import { useGameStore } from '../../services/gameStore'
 import { primaryChain } from '../../services/web3Config'
 import { emitToast } from './GameToasts'
+import { formatTransactionStatus, getStatusColor } from '../../services/transactionHandler'
+import { MEME_MARKET_ABI } from '../../services/abis/MemeMarket'
 
 interface ControlPanelProps {
   isOpen: boolean
@@ -41,9 +52,41 @@ export function ControlPanel({
   const zgStorage = useGameStore(s => s.zgStorage)
   const setZgStorage = useGameStore(s => s.setZgStorage)
   const sessions = useGameStore(s => s.sessions)
+  const pendingTransactions = useGameStore(s => s.pendingTransactions)
   const [isSavingSnapshot, setIsSavingSnapshot] = useState(false)
 
   const explorerBase = primaryChain.blockExplorers?.default.url
+  const isMemeMarketConfigured = MEME_MARKET_ADDRESS !== DEFAULT_MEME_MARKET_ADDRESS
+
+  const { data: memeMarketOwner } = useReadContract({
+    address: MEME_MARKET_ADDRESS as `0x${string}`,
+    abi: MEME_MARKET_ABI,
+    functionName: 'owner',
+    query: {
+      enabled: isMemeMarketConfigured,
+      refetchInterval: 12_000,
+    },
+  })
+
+  const { data: abilityBalances, refetch: refetchAbilityBalances } = useReadContracts({
+    contracts: MEME_MARKET_ABILITIES.map((ability) => ({
+      address: MEME_MARKET_ADDRESS as `0x${string}`,
+      abi: MEME_MARKET_ABI,
+      functionName: 'balanceOf' as const,
+      args: [address ?? '0x0000000000000000000000000000000000000000', BigInt(ability.id)] as const,
+    })),
+    query: {
+      enabled: isMemeMarketConfigured && Boolean(address),
+      refetchInterval: 12_000,
+    },
+  })
+
+  const canMintAbilities = Boolean(
+    isMemeMarketConfigured &&
+    address &&
+    memeMarketOwner &&
+    address.toLowerCase() === (memeMarketOwner as string).toLowerCase(),
+  )
 
   const shorten = (value: string, left = 6, right = 4) => {
     if (!value) return ''
@@ -65,6 +108,9 @@ export function ControlPanel({
     explorerBase && address && address !== '0x0000000000000000000000000000000000000000'
       ? `${explorerBase.replace(/\/$/, '')}/address/${address}`
       : null
+
+  const transactionLink = (hash?: string) =>
+    explorerBase && hash ? `${explorerBase.replace(/\/$/, '')}/tx/${hash}` : null
 
   const sessionSnapshot = useMemo(() => {
     const out: Record<string, {
@@ -93,6 +139,33 @@ export function ControlPanel({
     }
     return out
   }, [sessions])
+
+  const recentTransactions = useMemo(
+    () => [...pendingTransactions].sort((a, b) => b.timestamp - a.timestamp).slice(0, 3),
+    [pendingTransactions],
+  )
+
+  const marketBalances = useMemo(() => {
+    return MEME_MARKET_ABILITIES.map((ability, index) => {
+      const result = abilityBalances?.[index]
+      return {
+        ...ability,
+        balance: result?.status === 'success' ? Number(result.result ?? BigInt(0)) : 0,
+      }
+    })
+  }, [abilityBalances])
+
+  const mintAbility = async (abilityId: number, label: string) => {
+    if (!address) return
+
+    const success = await agentProtocol.mintAbilityOnChain(address as `0x${string}`, abilityId, 1)
+    if (success) {
+      emitToast('milestone', `${label} minted`, 'Check your wallet balance')
+      await refetchAbilityBalances()
+    } else {
+      emitToast('bid-lose', `${label} mint failed`, canMintAbilities ? 'Check wallet permissions' : 'Only the contract owner can mint')
+    }
+  }
 
   const saveSnapshotNow = async () => {
     if (isSavingSnapshot) return
@@ -352,6 +425,28 @@ export function ControlPanel({
                         )}
                       </div>
                     </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-white/45 font-black uppercase tracking-widest">MemeMarket</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => copy('MemeMarket address', MEME_MARKET_ADDRESS)}
+                          className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 font-mono text-[10px] text-white/80 hover:bg-white/10"
+                          title="Copy"
+                        >
+                          {MEME_MARKET_ADDRESS === '0x0000000000000000000000000000000000000000' ? 'Not deployed' : shorten(MEME_MARKET_ADDRESS)}
+                        </button>
+                        {contractLink(MEME_MARKET_ADDRESS) && (
+                          <a
+                            href={contractLink(MEME_MARKET_ADDRESS)!}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="rounded-lg border border-sky-400/20 bg-sky-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-sky-200 hover:bg-sky-500/20"
+                          >
+                            Explorer
+                          </a>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -431,6 +526,89 @@ export function ControlPanel({
                       </div>
                     )}
                   </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <div className="text-[9px] font-black uppercase tracking-[0.25em] text-white/50">Transactions</div>
+                  <div className="mt-3 space-y-2 text-[10px] text-white/70">
+                    {recentTransactions.length === 0 ? (
+                      <div className="text-white/45">No recent on-chain transactions yet.</div>
+                    ) : (
+                      recentTransactions.map((tx) => (
+                        <div key={tx.id} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-black uppercase tracking-widest text-white/80">{tx.type.replace('_', ' ')}</span>
+                            <span className={`text-[9px] font-black uppercase tracking-wider ${getStatusColor(tx.status)}`}>
+                              {formatTransactionStatus(tx.status)}
+                            </span>
+                          </div>
+                          <div className="mt-1 flex items-center justify-between gap-2 text-white/50">
+                            <span>{tx.amount.toFixed(3)} ETH</span>
+                            {tx.hash ? (
+                              transactionLink(tx.hash) ? (
+                                <a href={transactionLink(tx.hash)!} target="_blank" rel="noreferrer" className="text-sky-200 hover:text-sky-100">
+                                  View tx
+                                </a>
+                              ) : (
+                                <span className="font-mono">{shorten(tx.hash, 8, 6)}</span>
+                              )
+                            ) : (
+                              <span className="font-mono">pending</span>
+                            )}
+                          </div>
+                          {tx.error && <div className="mt-1 text-red-200">{tx.error}</div>}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <div className="text-[9px] font-black uppercase tracking-[0.25em] text-white/50">MemeMarket</div>
+                  {!isMemeMarketConfigured ? (
+                    <div className="mt-3 text-[10px] text-white/45">Configure `NEXT_PUBLIC_MEME_MARKET_ADDRESS` to enable ability minting.</div>
+                  ) : (
+                    <>
+                      <div className="mt-2 flex items-center justify-between gap-3 text-[10px] text-white/70">
+                        <span className="font-black uppercase tracking-widest text-white/80">Owner</span>
+                        <span className="font-mono text-white/55">{memeMarketOwner ? shorten(memeMarketOwner as string) : 'Checking…'}</span>
+                      </div>
+                      <div className="mt-3 space-y-2">
+                        {marketBalances.map((ability) => {
+                          const isReady = canMintAbilities && Boolean(address)
+                          return (
+                            <div key={ability.id} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                              <div className="flex items-center justify-between gap-3">
+                                <div>
+                                  <div className="text-[10px] font-black uppercase tracking-widest text-white/80">{ability.label}</div>
+                                  <div className="text-[9px] text-white/45">{ability.source} · Token #{ability.id}</div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="rounded-full border border-white/10 bg-black/30 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-white/70">
+                                    {ability.balance} owned
+                                  </span>
+                                  <button
+                                    onClick={() => mintAbility(ability.id, ability.label)}
+                                    disabled={!isReady}
+                                    className={`rounded-lg px-2 py-1 text-[9px] font-black uppercase tracking-wider transition-colors ${
+                                      isReady
+                                        ? 'border border-sky-400/25 bg-sky-500/10 text-sky-200 hover:bg-sky-500/20'
+                                        : 'border border-white/10 bg-white/5 text-white/30 cursor-not-allowed'
+                                    }`}
+                                  >
+                                    Mint
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                      <div className="mt-2 text-[10px] text-white/45">
+                        {canMintAbilities ? 'Connected wallet can mint abilities on-chain.' : 'Only the contract owner can mint abilities.'}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

@@ -49,22 +49,25 @@ const resolved = CHAIN_MAP[CHAIN_ENV] ?? CHAIN_MAP['0g']
 export const chainTarget: ChainTarget = CHAIN_ENV
 export const isTestnet = USE_TESTNET
 export const primaryChain = USE_TESTNET ? resolved.testnet : resolved.mainnet
-export const supportedChains = [primaryChain] as const
+
+// Expose all chains so users can switch at runtime
+const allChains = USE_TESTNET
+  ? [resolved.testnet, ...Object.values(CHAIN_MAP).map(c => c.testnet).filter(c => c.id !== resolved.testnet.id)]
+  : [resolved.mainnet, ...Object.values(CHAIN_MAP).map(c => c.mainnet).filter(c => c.id !== resolved.mainnet.id)]
+export const supportedChains = allChains as unknown as readonly [typeof primaryChain, ...typeof primaryChain[]]
 
 // Poll every 12s (wagmi default is 4s) — sufficient for game event sync
 export const POLL_INTERVAL = 12_000
 
-const transport = fallback([
-  http(primaryChain.rpcUrls.default.http[0]),
-])
+const transports: Record<number, ReturnType<typeof fallback>> = {}
+for (const chain of allChains) {
+  transports[chain.id] = fallback([http(chain.rpcUrls.default.http[0])])
+}
 
 export const config = createConfig({
   chains: supportedChains,
   pollingInterval: POLL_INTERVAL,
-  // @ts-expect-error -- wagmi wants a full Record keyed by all chain IDs but we resolve a single chain at build time
-  transports: {
-    [primaryChain.id]: transport,
-  },
+  transports,
   syncConnectedChain: true,
   connectors: [
     injected({ target: 'metaMask' }),

@@ -5,8 +5,8 @@ import { Suspense, useState, useEffect } from 'react'
 import Experience from './Experience'
 import { Loader } from '@react-three/drei'
 import { CloudConfig } from './CloudManager'
-import { agentProtocol, WEATHER_AUCTION_ADDRESS } from '../../services/AgentProtocol'
-import { useWatchContractEvent, useAccount } from 'wagmi'
+import { agentProtocol, DEFAULT_WEATHER_AUCTION_ADDRESS, WEATHER_AUCTION_ADDRESS, getMemeMarketAbility } from '../../services/AgentProtocol'
+import { useWatchContractEvent, useAccount, useReadContract } from 'wagmi'
 import { WEATHER_AUCTION_ABI } from '../../services/abis/WeatherAuction'
 import { POLL_INTERVAL } from '../../services/web3Config'
 import { emitToast } from '../ui/GameToasts'
@@ -52,6 +52,7 @@ export default function CloudScene() {
   const { address } = useAccount()
   const playerId = address || 'anonymous'
   const isWeatherAuctionConfigured =
+    WEATHER_AUCTION_ADDRESS !== DEFAULT_WEATHER_AUCTION_ADDRESS &&
     WEATHER_AUCTION_ADDRESS !== '0x0000000000000000000000000000000000000000'
   
   // State from GameStore
@@ -66,6 +67,36 @@ export default function CloudScene() {
   } = useGameStore()
 
   const [isMounted, setIsMounted] = useState(false)
+
+  const { data: onChainWeatherConfig } = useReadContract({
+    address: WEATHER_AUCTION_ADDRESS as `0x${string}`,
+    abi: WEATHER_AUCTION_ABI,
+    functionName: 'getCurrentConfig',
+    query: {
+      enabled: isWeatherAuctionConfigured,
+      refetchInterval: POLL_INTERVAL,
+    },
+  })
+
+  useEffect(() => {
+    if (!onChainWeatherConfig || !isWeatherAuctionConfigured) return
+
+    const [, , expiresAt, config] = onChainWeatherConfig as unknown as [
+      string,
+      bigint,
+      bigint,
+      { preset: string; volume: bigint; growth: bigint; speed: bigint; color: number }
+    ]
+
+    if (Number(expiresAt) * 1000 <= Date.now()) return
+
+    setCloudConfig({
+      preset: config.preset as CloudConfig['preset'],
+      volume: Number(config.volume),
+      growth: Number(config.growth),
+      speed: Number(config.speed) / 100,
+    })
+  }, [isWeatherAuctionConfigured, onChainWeatherConfig, setCloudConfig])
 
   // On-chain weather sync
   useWatchContractEvent({
@@ -165,6 +196,11 @@ export default function CloudScene() {
           emitToast('milestone', 'Drain Plug!', 'Flood drops temporarily')
           playSound('milestone')
         }
+      } else if (event.type === 'ability-minted') {
+        const ability = getMemeMarketAbility(Number(event.abilityId))
+        emitToast('collect', `${ability?.label ?? 'Ability'} minted`, `Token #${event.abilityId}`)
+        playSound('milestone')
+        emitChatter(event.agentId as string || 'Agent', 'milestone')
       } else if (event.type === 'milestone') {
         emitToast('milestone', event.message as string)
         playSound('milestone')
@@ -230,6 +266,7 @@ export default function CloudScene() {
     setWeatherEffect,
     tickRound,
     ui.isSidebarOpen,
+    ui.showHUD,
   ])
 
   const updateConfig = <K extends keyof CloudConfig>(key: K, value: CloudConfig[K]) => {
