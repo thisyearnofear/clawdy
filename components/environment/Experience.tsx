@@ -498,11 +498,8 @@ function InWorldQueueStatus({ playerId, queueState, isPlayerActive, playerVehicl
       </group>
     )
   }
-  return (
-    <group position={[0, 8, -15]}>
-      <Text fontSize={0.6} color="#60a5fa" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="#000000">Connect wallet to drive vehicles</Text>
-    </group>
-  )
+  // Connected but not in queue - let the HTML UI guide them
+  return null
 }
 
 import { LaunchPad } from './LaunchPad'

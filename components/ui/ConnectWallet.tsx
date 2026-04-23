@@ -56,7 +56,7 @@ const getWalletColor = (name: string) => {
 
 interface ConnectWalletProps {
   buttonClassName?: string
-  source?: 'hud_top_right' | 'spectator_cta'
+  source?: 'hud_top_right' | 'spectator_cta' | 'control_panel'
 }
 
 export function ConnectWallet({ buttonClassName, source = 'hud_top_right' }: ConnectWalletProps = {}) {

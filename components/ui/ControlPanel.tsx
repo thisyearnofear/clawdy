@@ -1,7 +1,9 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { useAccount } from 'wagmi'
 import { Leaderboard } from './Leaderboard'
+import { ConnectWallet } from './ConnectWallet'
 import { CloudConfig } from '../environment/CloudManager'
 import { VehicleType, CHAIN_NAME, WEATHER_AUCTION_ADDRESS, VEHICLE_RENT_ADDRESS } from '../../services/AgentProtocol'
 import { useGameStore } from '../../services/gameStore'
@@ -33,6 +35,7 @@ export function ControlPanel({
   playerVehicle,
   setPlayerVehicle
 }: ControlPanelProps) {
+  const { address } = useAccount()
   const handlingMode = useGameStore(s => s.handlingMode)
   const setHandlingMode = useGameStore(s => s.setHandlingMode)
   const zgStorage = useGameStore(s => s.zgStorage)
@@ -176,6 +179,25 @@ export function ControlPanel({
             </svg>
           </button>
         </div>
+
+        {/* Wallet Connect Section - When Disconnected */}
+        {!address && (
+          <div className="px-4 py-3 border-b border-white/10">
+            <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <svg className="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                <span className="text-[10px] font-black uppercase text-sky-300">Connect Wallet</span>
+              </div>
+              <p className="text-[9px] text-white/50 mb-2">Link your wallet to join the queue and drive vehicles.</p>
+              <ConnectWallet 
+                source="control_panel"
+                buttonClassName="w-full py-2 bg-sky-600 hover:bg-sky-500 text-white text-[10px] font-black rounded-lg shadow transition-all flex items-center justify-center gap-2"
+              />
+            </div>
+          </div>
+        )}
 
         {/* Tab Switcher */}
         <div className="px-4 pt-4">

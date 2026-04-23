@@ -19,6 +19,7 @@ import { RoundObjectives } from '../ui/RoundObjectives'
 import { HUD } from '../ui/HUD'
 import { ControlPanel } from '../ui/ControlPanel'
 import { Overlays } from '../ui/Overlays'
+import { MobileTouchControls } from '../ui/MobileTouchControls'
 import { useGameStore } from '../../services/gameStore'
 import { vehicleQueue } from '../../services/VehicleQueue'
 import { trackEvent } from '../../services/analytics'
@@ -288,7 +289,10 @@ export default function CloudScene() {
       <PlayerStrategyPanel />
       <RoundObjectives />
 
-      {/* Help hint component */}
+      {/* Mobile touch controls - always rendered, component handles internal mobile detection */}
+      <MobileTouchControls />
+
+      {/* Help hint component - persistent until first keypress */}
       <HelpHint />
     </div>
   )
@@ -296,11 +300,30 @@ export default function CloudScene() {
 
 function HelpHint() {
   const [visible, setVisible] = useState(true)
+  const [dismissed, setDismissed] = useState(false)
+  
   useEffect(() => {
-    const timer = setTimeout(() => setVisible(false), 5000)
-    return () => clearTimeout(timer)
-  }, [])
-  if (!visible) return null
+    if (dismissed) return
+    
+    // Show for 30 seconds instead of 5 - gives user time to find it
+    const timer = setTimeout(() => {
+      setVisible(false)
+    }, 30000)
+    
+    // Listen for any keypress to dismiss
+    const handleKeyDown = () => {
+      setDismissed(true)
+      setVisible(false)
+    }
+    window.addEventListener('keydown', handleKeyDown, { once: true })
+    
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [dismissed])
+  
+  if (!visible || dismissed) return null
   return (
     <div className="absolute bottom-20 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-xl rounded-full px-4 py-2 border border-white/10 animate-in fade-in slide-in-from-bottom-4 z-10">
       <p className="text-[10px] text-white/70 font-medium">
