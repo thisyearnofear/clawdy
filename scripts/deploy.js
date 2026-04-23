@@ -94,10 +94,12 @@ async function deploy(contractName) {
 
   const weatherAddr = await deploy('WeatherAuction');
   const vehicleAddr = await deploy('VehicleRent');
+  const marketAddr = await deploy('MemeMarket');
 
   console.log('\n=== DEPLOYMENT RESULTS ===');
   console.log(`NEXT_PUBLIC_CHAIN=${chainTarget}`);
   console.log(`NEXT_PUBLIC_USE_TESTNET=${useTestnet ? 'true' : 'false'}`);
   console.log(`NEXT_PUBLIC_WEATHER_AUCTION_ADDRESS=${weatherAddr}`);
   console.log(`NEXT_PUBLIC_VEHICLE_RENT_ADDRESS=${vehicleAddr}`);
+  console.log(`NEXT_PUBLIC_MEME_MARKET_ADDRESS=${marketAddr}`);
 })();
