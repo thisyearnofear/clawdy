@@ -250,7 +250,7 @@ export function useVehiclePhysics(
         const [nx, ny, nz] = getTerrainNormal(vPos.x, vPos.z)
         const surfaceNormal = new THREE.Vector3(nx, ny, nz)
         const surfaceForward = forwardDir.clone().sub(surfaceNormal.clone().multiplyScalar(forwardDir.dot(surfaceNormal))).normalize()
-        const force = surfaceForward.multiplyScalar(smoothedForward.current * accelerationPower * delta)
+        const force = surfaceForward.multiplyScalar(smoothedForward.current * finalAcceleration * delta)
         chassisRef.current.applyImpulse({ x: force.x, y: force.y, z: force.z }, true)
 
         if (handling.pitchTorqueMultiplier > 0) {
@@ -267,20 +267,25 @@ export function useVehiclePhysics(
     // --- 4. IMPROVED STEERING ---
     const steerBoost = (isSpeedBoosted ? 1.5 : 1.0) * (isFoamBoard && physicalSubmergeDepth > 0.1 ? 1.15 : 1.0)
     if (Math.abs(smoothedTurn.current) > 0.01) {
-      if (stats.steeringMode === 'car' && speed > 0.05) {
+      if (stats.steeringMode === 'car') {
         const steerStrength = stats.steerStrength * handling.steerScale * handling.carSteerResponse * delta * steerBoost
-        const steerForce = rightDir.clone().multiplyScalar(smoothedTurn.current * steerStrength * Math.min(speed / 10, 1))
-        const fOffset = forwardDir.clone().multiplyScalar(stats.frontOffset)
-        const steerPoint = { x: vPos.x + fOffset.x, y: vPos.y, z: vPos.z + fOffset.z }
-        chassisRef.current.applyImpulseAtPoint({ x: steerForce.x, y: 0, z: steerForce.z }, steerPoint, true)
+        if (speed > 0.05) {
+            const steerForce = rightDir.clone().multiplyScalar(smoothedTurn.current * steerStrength * Math.min(speed / 10, 1))
+            const fOffset = forwardDir.clone().multiplyScalar(stats.frontOffset)
+            const steerPoint = { x: vPos.x + fOffset.x, y: vPos.y, z: vPos.z + fOffset.z }
+            chassisRef.current.applyImpulseAtPoint({ x: steerForce.x, y: 0, z: steerForce.z }, steerPoint, true)
 
-        if (handling.leanTorqueMultiplier > 0) {
-          const leanForce = -smoothedTurn.current * stats.mass * handling.leanTorqueMultiplier * Math.min(speed / 20, 1)
-          chassisRef.current.applyTorqueImpulse({
-            x: forwardDir.x * leanForce,
-            y: forwardDir.y * leanForce,
-            z: forwardDir.z * leanForce,
-          }, true)
+            if (handling.leanTorqueMultiplier > 0) {
+              const leanForce = -smoothedTurn.current * stats.mass * handling.leanTorqueMultiplier * Math.min(speed / 20, 1)
+              chassisRef.current.applyTorqueImpulse({
+                x: forwardDir.x * leanForce,
+                y: forwardDir.y * leanForce,
+                z: forwardDir.z * leanForce,
+              }, true)
+            }
+        } else {
+             // Low-speed fallback yaw torque
+             chassisRef.current.applyTorqueImpulse({ x: 0, y: smoothedTurn.current * steerStrength * 0.5, z: 0 }, true)
         }
       } else if (stats.steeringMode === 'tank') {
         const turnRate = stats.steerStrength * handling.steerScale * handling.tankTurnResponse * delta * steerBoost
