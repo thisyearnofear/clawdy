@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useMemo } from 'react'
 import { useGameStore } from '../../services/gameStore'
 import { emitToast } from './GameToasts'
 import { playSound } from './SoundManager'
+import { AgentMetaBlock } from './AgentMetaBlock'
 
 export const WinConditionBar = React.memo(function WinConditionBar({ playerId }: { playerId: string }) {
   const round = useGameStore(s => s.round)
@@ -63,9 +64,12 @@ export const WinConditionBar = React.memo(function WinConditionBar({ playerId }:
         </div>
         <div className="flex-1 flex flex-col gap-1">
           <div className="flex justify-between items-center">
-            <span className={`text-[9px] font-bold truncate max-w-[100px] ${isLeading ? 'text-yellow-300' : 'text-white/60'}`}>
-              {isLeading ? '👑 ' : ''}{displayEntry.agentId.slice(0, 10)}
-            </span>
+            <AgentMetaBlock
+              variant="name"
+              agentLabel={displayEntry.agentId.slice(0, 10)}
+              prefix={isLeading ? <span>👑</span> : undefined}
+              agentLabelClassName={`text-[9px] font-bold truncate max-w-[100px] ${isLeading ? 'text-yellow-300' : 'text-white/60'}`}
+            />
             <span className="text-[9px] font-mono text-sky-300">{displayEntry.totalEarned.toFixed(3)} / {WIN_TARGET} 0G</span>
           </div>
           <div className="w-full bg-white/10 rounded-full h-1.5 overflow-hidden">

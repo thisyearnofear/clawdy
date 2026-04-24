@@ -11,6 +11,7 @@ import { FloodLevelGauge } from './FloodLevelGauge'
 import { HighGroundIndicator } from './HighGroundIndicator'
 import { CloudConfig } from '../environment/CloudManager'
 import { UI_Z_INDEX } from '../../services/uiConstants'
+import { AgentMetaBlock } from './AgentMetaBlock'
 import { getMemeMarketStrategy } from '../../services/AgentProtocol'
 
 const PROXIMITY_ALERT_DISTANCE = 40
@@ -169,7 +170,7 @@ export function HUD(props: HUDProps) {
               </div>
             )}
             <div className="text-[8px] font-bold uppercase tracking-widest text-sky-200/80">
-              Strategy: {currentStrategy ? `${currentStrategy.icon} ${currentStrategy.label}` : 'Unset'}
+              Strategy: <AgentMetaBlock variant="badge" strategyId={playerSession?.strategyId} prefix={currentStrategy?.icon ? <span>{currentStrategy.icon}</span> : undefined} badgeClassName="text-sky-200/80" />
             </div>
             {activeMemeEffects.length > 0 && (
               <div className="flex flex-wrap gap-1 text-[8px] text-sky-200/90">

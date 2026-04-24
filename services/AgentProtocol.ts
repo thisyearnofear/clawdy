@@ -164,6 +164,50 @@ export type MemeMarketStrategy = (typeof MEME_MARKET_STRATEGIES)[number]
 export const getMemeMarketStrategy = (strategyId?: string) =>
   MEME_MARKET_STRATEGIES.find((strategy) => strategy.id === strategyId)
 
+export interface MemeMarketStrategySummaryEntry {
+  strategyId?: string
+  executedBidCount: number
+  executedRentCount: number
+  totalEarned: number
+}
+
+export interface MemeMarketStrategySummary {
+  tone: string
+  moves: number
+  earnedText: string
+  compact: string
+}
+
+export const getMemeMarketStrategySummary = (entry: MemeMarketStrategySummaryEntry): MemeMarketStrategySummary => {
+  const strategy = getMemeMarketStrategy(entry.strategyId)
+  const moves = entry.executedBidCount + entry.executedRentCount
+  const earnedText = `${entry.totalEarned.toFixed(3)} 0G`
+
+  if (!strategy) {
+    return {
+      tone: 'Unclassified',
+      moves,
+      earnedText,
+      compact: `${moves} moves · ${earnedText}`,
+    }
+  }
+
+  const tone = strategy.aggressive >= 0.7
+    ? 'Aggressive'
+    : strategy.weatherFocus >= 0.7
+      ? 'Weather-led'
+      : strategy.id === 'hoarder'
+        ? 'Collector'
+        : 'Balanced'
+
+  return {
+    tone,
+    moves,
+    earnedText,
+    compact: `${tone} · ${moves} moves · ${earnedText}`,
+  }
+}
+
 export const getMemeMarketStrategyBidMultiplier = (strategyId?: string) => {
   const strategy = getMemeMarketStrategy(strategyId)
   if (!strategy) return 1

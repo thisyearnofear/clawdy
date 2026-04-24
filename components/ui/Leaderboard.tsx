@@ -1,12 +1,15 @@
 'use client'
 
+import React, { useMemo } from 'react'
 import { useGameStore } from '../../services/gameStore'
+import { getMemeMarketStrategySummary } from '../../services/AgentProtocol'
+import { AgentMetaBlock } from './AgentMetaBlock'
 
-export function Leaderboard() {
+export const Leaderboard = React.memo(function Leaderboard() {
   const sessions = useGameStore(state => state.sessions)
   const deadAgents = useGameStore(state => state.deadAgents)
   
-  const entries = Object.values(sessions).sort((a, b) => b.totalEarned - a.totalEarned)
+  const entries = useMemo(() => Object.values(sessions).sort((a, b) => b.totalEarned - a.totalEarned), [sessions])
 
   return (
     <div className="flex flex-col gap-6 max-h-[70vh] overflow-y-auto scrollbar-hide">
@@ -27,12 +30,15 @@ export function Leaderboard() {
           </thead>
           <tbody className="text-[10px] font-mono">
             {entries.map((agent, i) => (
-              <tr key={agent.agentId} className={`${i === 0 ? 'bg-yellow-500/5' : ''} border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors`}>
+              <tr key={agent.agentId} title={getMemeMarketStrategySummary(agent).compact} className={`${i === 0 ? 'bg-yellow-500/5' : ''} border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors`}>
                 <td className="px-2 py-2">
-                  <div className="flex items-center gap-2 font-bold">
-                  <span className={`w-1 h-1 rounded-full ${i === 0 ? 'bg-yellow-400 animate-pulse' : 'bg-white/20'}`} />
-                  {agent.agentId.slice(0, 10)}
-                  </div>
+                  <AgentMetaBlock
+                    agentLabel={agent.agentId.slice(0, 10)}
+                    strategyId={agent.strategyId}
+                    prefix={<span className={`mt-1 inline-block h-1 w-1 rounded-full ${i === 0 ? 'bg-yellow-400 animate-pulse' : 'bg-white/20'}`} />}
+                    agentLabelClassName="text-white font-bold"
+                    strategyClassName="text-[8px] uppercase tracking-widest text-white/35"
+                  />
                   <div className="mt-1 text-[8px] uppercase tracking-wider text-white/35">{agent.role} · {agent.vitality.toFixed(0)}% VIT</div>
                 </td>
                 <td className="px-2 py-2 text-right">
@@ -57,13 +63,16 @@ export function Leaderboard() {
           </div>
           <table className="w-full text-left border-collapse">
             <tbody className="text-[9px] font-mono grayscale">
-              {deadAgents.slice().reverse().map((agent) => (
-                <tr key={agent.agentId} className="border-b border-white/5 last:border-0">
+            {deadAgents.slice().reverse().map((agent) => (
+                <tr key={agent.agentId} title={getMemeMarketStrategySummary(agent).compact} className="border-b border-white/5 last:border-0">
                   <td className="px-2 py-2">
-                    <div className="flex items-center gap-2 font-bold text-white/50">
-                      <span>💀</span>
-                      {agent.agentId.slice(0, 10)}
-                    </div>
+                    <AgentMetaBlock
+                      agentLabel={agent.agentId.slice(0, 10)}
+                      strategyId={agent.strategyId}
+                      prefix={<span>💀</span>}
+                      agentLabelClassName="font-bold text-white/50"
+                      strategyClassName="text-[8px] uppercase tracking-widest text-white/30"
+                    />
                   </td>
                   <td className="px-2 py-2 text-right text-white/30">
                     {agent.totalEarned.toFixed(3)} 0G
@@ -76,4 +85,4 @@ export function Leaderboard() {
       )}
     </div>
   )
-}
+})

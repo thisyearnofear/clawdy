@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { agentProtocol, AgentSession, VehicleType, AGENT_ROLE_CONFIG, CHAIN_NAME, getMemeMarketStrategy, getMemeMarketStrategyBidMultiplier, getMemeMarketStrategyVehicle } from '../../services/AgentProtocol'
 import { CLOUD_PRESETS } from '../environment/CloudManager'
 import { GlassPanel } from './GlassPanel'
+import { AgentMetaBlock } from './AgentMetaBlock'
 import { getAgentProfile, getControllableAgents } from '../../services/agents'
 import type { SkillDecision, SkillProviderInfo } from '../../services/skillEngine'
 
@@ -201,7 +202,9 @@ export function AgentTerminal() {
                       <div className="rounded-lg border border-white/10 bg-white/5 p-3">
                         <div className="text-[9px] font-black uppercase tracking-widest text-white/50">{AGENT_ROLE_CONFIG[activeSession.role].label}</div>
                         <div className="mt-1 text-[10px] text-white/65">{activeSession.mission}</div>
-                        <div className="mt-1 text-[9px] text-sky-300">Strategy: {getMemeMarketStrategy(activeSession.strategyId)?.label ?? 'Unset'}</div>
+                        <div className="mt-1 text-[9px] text-sky-300">
+                          Strategy: <AgentMetaBlock variant="badge" strategyId={activeSession.strategyId} badgeClassName="text-sky-200" />
+                        </div>
                         <div className="mt-2 text-[9px] text-sky-300">Loyalty: {activeSession.agentLoyalty.toFixed(0)}</div>
                       </div>
 
