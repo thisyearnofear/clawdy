@@ -148,87 +148,151 @@ vec4 surfaceWeights(vec3 wp) {
 
 // ─── Per-surface texturing ───────────────────────────────────
 
+// Distance from camera for LOD detail blending
+float camDist(vec3 wp) {
+  return length(wp.xz - cameraPosition.xz);
+}
+
+// Close-range micro-detail that fades with distance
+float microDetail(vec2 uv, float dist) {
+  float near = 1.0 - smoothstep(5.0, 25.0, dist);
+  if (near < 0.01) return 0.0;
+  float fine = valueNoise(uv * 24.0) * 0.5 + valueNoise(uv * 48.0) * 0.25;
+  return fine * near;
+}
+
 vec3 grassColor(vec3 wp) {
   vec2 uv = wp.xz;
+  float dist = camDist(wp);
   float n = fbm(uv * 1.8);
   float tuft = fbm(uv * 6.0);
-  vec3 lo = vec3(0.18, 0.45, 0.12);
-  vec3 hi = vec3(0.30, 0.55, 0.18);
+  vec3 lo = vec3(0.14, 0.38, 0.08);
+  vec3 hi = vec3(0.32, 0.58, 0.20);
   vec3 col = mix(lo, hi, n);
   col *= 0.85 + 0.3 * tuft;
+  // Close-range: individual grass clump impression
+  float micro = microDetail(uv, dist);
+  col *= 0.9 + 0.2 * micro;
   // Height-based: lower = darker/wetter
-  col *= 0.9 + 0.1 * clamp(wp.y * 0.5 + 0.5, 0.0, 1.0);
+  col *= 0.88 + 0.12 * clamp(wp.y * 0.5 + 0.5, 0.0, 1.0);
   // AO in crevices
   float ao = smoothstep(0.2, 0.5, tuft);
-  col *= 0.8 + 0.2 * ao;
+  col *= 0.75 + 0.25 * ao;
+  // Scattered wildflower hints (tiny color spots at close range)
+  float flower = step(0.92, valueNoise(uv * 18.0));
+  float flowerDist = 1.0 - smoothstep(3.0, 12.0, dist);
+  vec3 flowerCol = mix(vec3(0.8, 0.7, 0.2), vec3(0.7, 0.3, 0.5), valueNoise(uv * 7.0));
+  col = mix(col, flowerCol, flower * 0.4 * flowerDist);
   return col;
 }
 
 float grassRoughness(vec3 wp) {
   float n = fbm(wp.xz * 3.0);
-  return mix(0.75, 0.9, n);
+  float micro = microDetail(wp.xz, camDist(wp));
+  return mix(0.72, 0.92, n) + micro * 0.05;
 }
 
 vec3 roadColor(vec3 wp) {
   vec2 uv = wp.xz;
-  vec3 base = vec3(0.25, 0.25, 0.28);
+  float dist = camDist(wp);
+  vec3 base = vec3(0.22, 0.22, 0.25);
+  // Asphalt grain – more visible up close
   float grain = valueNoise(uv * 12.0) * 0.06;
-  base += grain;
+  float fineGrain = microDetail(uv, dist) * 0.03;
+  base += grain + fineGrain;
   // Cracks
   vec2 vor = voronoiNoise(uv * 0.8);
   float crack = smoothstep(0.04, 0.02, vor.y - vor.x);
-  base -= crack * 0.12;
+  base -= crack * 0.14;
+  // Fine crack network at close range
+  vec2 vorFine = voronoiNoise(uv * 3.0);
+  float fineCrack = smoothstep(0.06, 0.03, vorFine.y - vorFine.x);
+  float nearMask = 1.0 - smoothstep(5.0, 20.0, dist);
+  base -= fineCrack * 0.06 * nearMask;
   // Tire marks – elongated in z
   float tire = valueNoise(vec2(uv.x * 6.0, uv.y * 0.4)) * 0.04;
   base -= tire * smoothstep(2.0, 0.5, abs(uv.x));
+  // Road edge weathering
+  float roadD = distToRoad(uv);
+  float edgeWear = smoothstep(-1.0, 0.0, roadD) * smoothstep(1.0, -0.5, roadD);
+  base = mix(base, base * 0.85 + vec3(0.03, 0.02, 0.01), edgeWear * 0.5);
   return base;
 }
 
 float roadRoughness(vec3 wp) {
   float n = valueNoise(wp.xz * 8.0);
-  return mix(0.5, 0.7, n);
+  float micro = microDetail(wp.xz, camDist(wp));
+  return mix(0.45, 0.65, n) + micro * 0.04;
 }
 
 vec3 sandColor(vec3 wp) {
   vec2 uv = wp.xz;
-  vec3 base = vec3(0.75, 0.65, 0.45);
+  float dist = camDist(wp);
+  vec3 base = vec3(0.76, 0.66, 0.46);
   // Ripple pattern – directional
   float ripple = sin(uv.x * 2.0 + uv.y * 0.5 + valueNoise(uv * 0.3) * 6.0) * 0.5 + 0.5;
   base += ripple * 0.06;
   base += valueNoise(uv * 4.0) * 0.04;
+  // Close-range grain
+  float micro = microDetail(uv, dist);
+  base += micro * 0.04;
+  // Scattered pebble darkening
+  float pebble = step(0.88, valueNoise(uv * 15.0));
+  float nearP = 1.0 - smoothstep(4.0, 15.0, dist);
+  base -= pebble * 0.1 * nearP;
   return base;
 }
 
 float sandRoughness(vec3 wp) {
   float n = valueNoise(wp.xz * 5.0);
-  return mix(0.85, 0.95, n);
+  return mix(0.82, 0.95, n);
 }
 
 vec3 mudColor(vec3 wp) {
   vec2 uv = wp.xz;
-  vec3 base = vec3(0.12, 0.06, 0.02);
+  float dist = camDist(wp);
+  vec3 base = vec3(0.10, 0.05, 0.02);
   float n = fbm(uv * 2.5);
-  base += n * 0.04;
+  base += n * 0.05;
+  // Wet sheen variation
+  float micro = microDetail(uv, dist);
+  base += micro * 0.02;
+  // Subtle standing water color shift
+  float puddle = valueNoise(uv * 1.5);
+  float puddleMask = smoothstep(0.55, 0.7, puddle);
+  base = mix(base, vec3(0.06, 0.05, 0.04), puddleMask * 0.6);
   return base;
 }
 
 float mudRoughness(vec3 wp) {
   float puddle = valueNoise(wp.xz * 1.5);
   float base = mix(0.2, 0.4, valueNoise(wp.xz * 3.0));
-  // Puddles: very low roughness
-  base = mix(base, 0.05, smoothstep(0.55, 0.7, puddle));
+  // Puddles: very low roughness (reflective)
+  base = mix(base, 0.02, smoothstep(0.55, 0.7, puddle));
   return base;
 }
 
 // ─── Procedural normal mapping ───────────────────────────────
 
 vec3 proceduralNormal(vec3 wp, vec3 geometryNormal) {
+  float dist = camDist(wp);
   float eps = 0.15;
+
+  // Macro normal from terrain FBM
   float hC = fbm(wp.xz * 2.0);
   float hR = fbm((wp.xz + vec2(eps, 0.0)) * 2.0);
   float hU = fbm((wp.xz + vec2(0.0, eps)) * 2.0);
   float dX = (hR - hC) / eps;
   float dZ = (hU - hC) / eps;
+
+  // Micro normal detail at close range (fine bumps)
+  float nearMask = 1.0 - smoothstep(5.0, 20.0, dist);
+  float epsF = 0.05;
+  float mC = valueNoise(wp.xz * 16.0);
+  float mR = valueNoise((wp.xz + vec2(epsF, 0.0)) * 16.0);
+  float mU = valueNoise((wp.xz + vec2(0.0, epsF)) * 16.0);
+  dX += ((mR - mC) / epsF) * 0.15 * nearMask;
+  dZ += ((mU - mC) / epsF) * 0.15 * nearMask;
 
   vec3 N = normalize(geometryNormal);
   vec3 T = normalize(cross(N, vec3(0.0, 0.0, 1.0)));
@@ -254,6 +318,13 @@ float rough = w.x * roadRoughness(vWorldPosition)
 // Wetness: darken color, lower roughness
 col *= mix(1.0, 0.7, uWetness);
 rough = mix(rough, rough * 0.3, uWetness);
+
+// Distance desaturation: fade to muted grey-green at horizon
+float distFromCam = length(vWorldPosition.xz - cameraPosition.xz);
+float desat = smoothstep(30.0, 80.0, distFromCam);
+float lum = dot(col, vec3(0.299, 0.587, 0.114));
+vec3 greyCol = vec3(lum) * vec3(0.85, 0.9, 0.82); // slightly tinted grey
+col = mix(col, greyCol, desat * 0.5);
 
 diffuseColor = vec4(col, 1.0);
 `
