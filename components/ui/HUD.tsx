@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { WinConditionBar } from './WinConditionBar'
 import { AuctionTimer } from './AuctionTimer'
 import { useAccount } from 'wagmi'
@@ -13,6 +13,7 @@ import { CloudConfig } from '../environment/CloudManager'
 import { UI_Z_INDEX } from '../../services/uiConstants'
 import { AgentMetaBlock } from './AgentMetaBlock'
 import { getMemeMarketStrategy } from '../../services/AgentProtocol'
+import { playSound } from './SoundManager'
 
 const PROXIMITY_ALERT_DISTANCE = 40
 
@@ -187,10 +188,7 @@ export function HUD(props: HUDProps) {
               </div>
             )}
             {round.isFinalRush && (
-              <div className="flex items-center gap-1.5 rounded-full border border-red-400/25 bg-red-500/10 px-2 py-0.5 animate-pulse">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
-                <span className="text-[8px] font-black uppercase tracking-widest text-red-200">Final Rush ×{round.finalRushMultiplier}</span>
-              </div>
+              <FinalRushBadge endsAt={round.endsAt} multiplier={round.finalRushMultiplier} />
             )}
             {activeOverrideCount > 0 && (
               <button
@@ -251,5 +249,32 @@ export function HUD(props: HUDProps) {
         </div>
       )}
     </>
+  )
+}
+
+function FinalRushBadge({ endsAt, multiplier }: { endsAt: number; multiplier: number }) {
+  const [remainingSec, setRemainingSec] = useState(() => Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)))
+  const lastSecondRef = useRef<number>(remainingSec)
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const next = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000))
+      if (next !== lastSecondRef.current) {
+        if (next === 30) playSound('milestone')
+        else if (next < 10 && next > 0) playSound('ui-click')
+        lastSecondRef.current = next
+        setRemainingSec(next)
+      }
+    }, 100)
+    return () => clearInterval(timer)
+  }, [endsAt])
+
+  return (
+    <div className="flex items-center gap-1.5 rounded-full border border-red-400/25 bg-red-500/10 px-2 py-0.5 animate-pulse">
+      <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+      <span className="text-[8px] font-black uppercase tracking-widest text-red-200">
+        Final Rush ×{multiplier} ({remainingSec}s)
+      </span>
+    </div>
   )
 }

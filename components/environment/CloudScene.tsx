@@ -15,7 +15,6 @@ import { emitEconomyFeedback } from '../ui/EconomyFeedback'
 import { AgentChatter, emitChatter } from '../ui/AgentChatter'
 import { AgentDecisionPanel } from '../ui/AgentDecisionPanel'
 import { RoundObjectives } from '../ui/RoundObjectives'
-import { FinalRushOverlay } from '../ui/FinalRushOverlay'
 import { HUD } from '../ui/HUD'
 import { ControlPanel } from '../ui/ControlPanel'
 import { Overlays } from '../ui/Overlays'
@@ -347,7 +346,6 @@ export default function CloudScene() {
 
       {/* New UI components for Product/Game Design improvements */}
       <AgentDecisionPanel />
-      <FinalRushOverlay />
       <RoundObjectives />
 
       {/* Mobile touch controls - always rendered, component handles internal mobile detection */}
