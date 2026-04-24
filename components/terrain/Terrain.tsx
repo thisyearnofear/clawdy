@@ -2,7 +2,8 @@ import { useMemo, useRef, useLayoutEffect, useCallback, useState } from 'react'
 import * as THREE from 'three'
 import { RigidBody } from '@react-three/rapier'
 import { useFrame, useThree } from '@react-three/fiber'
-import { TERRAIN_CONFIG, getTerrainHeight, getSurfaceColor } from './terrainUtils'
+import { TERRAIN_CONFIG, getTerrainHeight } from './terrainUtils'
+import { createTerrainMaterial, updateTerrainMaterial } from './terrainShader'
 import { useGameStore } from '../../services/gameStore'
 
 const GRID_RADIUS = 1
@@ -10,16 +11,11 @@ const CHUNK_SIZE = TERRAIN_CONFIG.SIZE
 const SEGMENTS = TERRAIN_CONFIG.SEGMENTS
 const CHUNK_Y_OFFSET = -0.1
 const DEFORMATION_CACHE_LIMIT = 12
-const CURVATURE = {
-  STRENGTH: 0.00018,
-  RADIUS: 120
-} as const
 
 type ChunkState = {
   coordX: number
   coordZ: number
   geometry: THREE.PlaneGeometry
-  colors: Float32Array
   deformer: TerrainDeformer
   dirty: boolean
 }
@@ -90,7 +86,6 @@ class TerrainDeformer {
 
 const applyBaseToGeometry = (
   geometry: THREE.PlaneGeometry,
-  colors: Float32Array,
   coordX: number,
   coordZ: number
 ) => {
@@ -108,53 +103,10 @@ const applyBaseToGeometry = (
 
     const height = getTerrainHeight(worldX, worldZ)
     positionAttr.setY(i, height)
-
-    const colorIndex = i * 3
-    const [r, g, b] = getSurfaceColor(worldX, worldZ)
-    colors[colorIndex] = r
-    colors[colorIndex + 1] = g
-    colors[colorIndex + 2] = b
   }
 
   positionAttr.needsUpdate = true
   geometry.computeVertexNormals()
-
-  let colorAttr = geometry.getAttribute('color') as THREE.BufferAttribute | null
-  if (!colorAttr) {
-    colorAttr = new THREE.BufferAttribute(colors, 3)
-    geometry.setAttribute('color', colorAttr)
-  } else {
-    colorAttr.array.set(colors)
-    colorAttr.needsUpdate = true
-  }
-}
-
-const applyColorsFromGeometry = (geometry: THREE.PlaneGeometry, colors: Float32Array, coordX: number, coordZ: number) => {
-  const positionAttr = geometry.attributes.position as THREE.BufferAttribute
-  const count = positionAttr.count
-  const offsetX = coordX * CHUNK_SIZE
-  const offsetZ = coordZ * CHUNK_SIZE
-
-  for (let i = 0; i < count; i++) {
-    const localX = positionAttr.getX(i)
-    const localZ = positionAttr.getZ(i)
-    const worldX = localX + offsetX
-    const worldZ = localZ + offsetZ
-    const colorIndex = i * 3
-    const [r, g, b] = getSurfaceColor(worldX, worldZ)
-    colors[colorIndex] = r
-    colors[colorIndex + 1] = g
-    colors[colorIndex + 2] = b
-  }
-
-  let colorAttr = geometry.getAttribute('color') as THREE.BufferAttribute | null
-  if (!colorAttr) {
-    colorAttr = new THREE.BufferAttribute(colors, 3)
-    geometry.setAttribute('color', colorAttr)
-  } else {
-    colorAttr.array.set(colors)
-    colorAttr.needsUpdate = true
-  }
 }
 
 const sampleHeightFromGeometry = (
@@ -220,40 +172,15 @@ export function Terrain({
       for (let gx = -GRID_RADIUS; gx <= GRID_RADIUS; gx += 1) {
         const geometry = new THREE.PlaneGeometry(CHUNK_SIZE, CHUNK_SIZE, SEGMENTS, SEGMENTS)
         geometry.rotateX(-Math.PI / 2)
-        const colors = new Float32Array(geometry.attributes.position.count * 3)
-        applyBaseToGeometry(geometry, colors, gx, gz)
+        applyBaseToGeometry(geometry, gx, gz)
         const deformer = new TerrainDeformer(geometry.attributes.position.array as Float32Array)
-        slots.push({ coordX: gx, coordZ: gz, geometry, colors, deformer, dirty: false })
+        slots.push({ coordX: gx, coordZ: gz, geometry, deformer, dirty: false })
       }
     }
     return slots
   }, [])
 
-  const terrainMaterial = useMemo(() => {
-    const material = new THREE.MeshStandardMaterial({
-      vertexColors: true,
-      flatShading: false, // Smooth shading for better appearance
-      roughness: 0.8,
-      metalness: 0.1,
-      wireframe: false
-    })
-    material.onBeforeCompile = (shader) => {
-      shader.uniforms.uCurvatureStrength = { value: CURVATURE.STRENGTH }
-      shader.uniforms.uCurvatureRadius = { value: CURVATURE.RADIUS }
-
-      shader.vertexShader = shader.vertexShader
-        .replace(
-          '#include <common>',
-          `#include <common>\n\nuniform float uCurvatureStrength;\nuniform float uCurvatureRadius;`
-        )
-        .replace(
-          '#include <project_vertex>',
-          `vec4 worldPos = modelMatrix * vec4(transformed, 1.0);\nfloat dist = length(worldPos.xz - cameraPosition.xz);\nfloat curveMask = smoothstep(0.0, uCurvatureRadius, dist);\nworldPos.y -= (dist * dist) * uCurvatureStrength * curveMask;\nvec4 mvPosition = viewMatrix * worldPos;\ngl_Position = projectionMatrix * mvPosition;`
-        )
-    }
-    material.customProgramCacheKey = () => 'terrain-material-v2'
-    return material
-  }, [])
+  const terrainMaterial = useMemo(() => createTerrainMaterial(), [])
 
   // Wetness ramp: storms lower roughness (shinier) and slightly increase metalness.
   const wetnessRef = useRef(0)
@@ -295,16 +222,11 @@ export function Terrain({
   useFrame(() => {
     if (!camera || !camera.position) return;
 
-    // Update wetness material properties (fast + cheap)
+    // Update wetness via shader uniform
     const targetWet =
       preset === 'stormy' || (preset === 'custom' && lightning > 0.35) ? 1 : 0
     wetnessRef.current = THREE.MathUtils.lerp(wetnessRef.current, targetWet, 0.04 + lightning * 0.06)
-    // Base values:
-    // dry: roughness 0.8 / metalness 0.1
-    // wet: roughness 0.35 / metalness 0.25
-    // eslint-disable-next-line react-hooks/immutability
-    terrainMaterial.roughness = THREE.MathUtils.lerp(0.8, 0.35, wetnessRef.current)
-    terrainMaterial.metalness = THREE.MathUtils.lerp(0.1, 0.25, wetnessRef.current)
+    updateTerrainMaterial(terrainMaterial, performance.now() * 0.001, wetnessRef.current)
 
     const centerX = Math.floor(camera.position.x / CHUNK_SIZE)
     const centerZ = Math.floor(camera.position.z / CHUNK_SIZE)
@@ -341,11 +263,10 @@ export function Terrain({
               positionAttr.array.set(cached.positions)
               positionAttr.needsUpdate = true
               chunk.geometry.computeVertexNormals()
-              applyColorsFromGeometry(chunk.geometry, chunk.colors, targetX, targetZ)
               deformationCacheRef.current.delete(newKey)
               deformationCacheRef.current.set(newKey, cached)
             } else {
-              applyBaseToGeometry(chunk.geometry, chunk.colors, targetX, targetZ)
+              applyBaseToGeometry(chunk.geometry, targetX, targetZ)
             }
 
             chunk.dirty = true
