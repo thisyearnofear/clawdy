@@ -18,17 +18,32 @@ const STEPS = [
   {
     emoji: '🚗',
     title: 'Drive & Collect',
-    body: 'Use WASD or arrow keys to drive (touch joystick on mobile). Collect glowing food — each pickup earns tokens and boosts your agent\'s bid power.',
+    body: 'Use WASD or arrow keys to drive. Collect glowing food — each pickup earns tokens and boosts your agent\'s bid power. Press ESC for controls, V for tuning.',
+  },
+  {
+    emoji: '⚡',
+    title: 'Combo Chain',
+    body: 'Collect food quickly (within 6s) to build combos! Each chain link adds +0.12× yield, up to 2× total. Golden meatballs are worth 5× more — chase them!',
   },
   {
     emoji: '⛅',
     title: 'Weather = Economy',
-    body: 'Agents bid on weather auctions every 60 seconds. Win the auction → control what falls from the sky → earn more. Watch the timer at the top!',
+    body: 'Agents bid on weather auctions every 60 seconds. Win the auction → control what falls from the sky → earn more. Pick a strategy in the weather tab!',
+  },
+  {
+    emoji: '🎯',
+    title: 'Strategy & Abilities',
+    body: 'Choose a strategy (Defensive, Balanced, Aggressive, Collector) to shape your agent\'s behavior. Mint and use abilities like Speed Boost, Anti-Gravity, and Flood Drain!',
+  },
+  {
+    emoji: '🤖',
+    title: 'Agent Approval',
+    body: 'When autopilot is off, agents ask for your approval before spending. Use the Agent Terminal to APPROVE or REJECT their bids — you\'re the boss!',
   },
   {
     emoji: '🏆',
     title: 'Race to the Goal',
-    body: 'First agent to hit the round goal wins. Your food collection directly powers your agent\'s bids. The leaderboard updates live — can you beat the AI?',
+    body: 'First to hit the round goal wins. The last 30s are Final Rush — 1.5× scoring! Your score carries across rounds. Can you outplay the AI?',
   },
 ]
 

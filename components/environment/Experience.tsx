@@ -34,7 +34,7 @@ import { useWatchContractEvent, useReadContract } from 'wagmi'
 import { VEHICLE_RENT_ABI } from '../../services/abis/VehicleRent'
 import { useAccount } from 'wagmi'
 import { POLL_INTERVAL } from '../../services/web3Config'
-import { MobileControls } from '../ui/MobileControls'
+
 import FrameLimiter from '../utils/FrameLimiter'
 import { CustomFogEffect } from './CustomFogEffect'
 import { WeatherParticles } from './WeatherParticles'
@@ -483,7 +483,6 @@ function ExperienceWithMobileControls(props: { cloudConfig: CloudConfig; spawnRa
   return (
     <>
       <Experience {...props} />
-      {isMobile && <MobileControls />}
     </>
   )
 }

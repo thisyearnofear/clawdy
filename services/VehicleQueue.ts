@@ -1,4 +1,5 @@
-import { VehicleType, agentProtocol } from './AgentProtocol'
+import { agentProtocol } from './AgentProtocol'
+import type { VehicleType } from './protocolTypes'
 import { trackEvent } from './analytics'
 
 export interface QueuedPlayer {

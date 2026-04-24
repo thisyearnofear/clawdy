@@ -1,4 +1,4 @@
-import { AgentSession, AgentRole, AGENT_ROLE_CONFIG } from './AgentProtocol'
+import { AgentSession, AgentRole, AGENT_ROLE_CONFIG } from './protocolTypes'
 import { getAgentMission, getAgentRole, getAgentVehicleId } from './agents'
 import { MemeAssetStats, MemeRarity } from '../components/environment/MemeAssets'
 
@@ -49,7 +49,7 @@ export class EconomyEngine {
     if (session.vitality <= 0) session.isDead = true
   }
 
-  collectAsset(session: AgentSession, stats: MemeAssetStats): { earned: number; vitalityGain: number; burdenGain: number } {
+  collectAsset(session: AgentSession, stats: MemeAssetStats, finalRushMultiplier: number = 1): { earned: number; vitalityGain: number; burdenGain: number } {
     session.collectedCount += 1
     let earned = 0.002
     let vitalityGain = 10
@@ -90,7 +90,7 @@ export class EconomyEngine {
 
     const multiplier = Math.max(1, session.comboMultiplier ?? 1)
     const rarityMult = RARITY_MULTIPLIER[stats.rarity]
-    const finalEarned = Number((earned * multiplier * rarityMult).toFixed(4))
+    const finalEarned = Number((earned * multiplier * rarityMult * finalRushMultiplier).toFixed(4))
 
     session.balance += finalEarned
     session.totalEarned += finalEarned

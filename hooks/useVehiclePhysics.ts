@@ -23,6 +23,7 @@ export interface VehicleStats {
   frontOffset: number
   backOffset: number
   steeringMode: 'car' | 'tank'
+  steerRetention: number
 }
 
 export function useVehiclePhysics(
@@ -36,6 +37,10 @@ export function useVehiclePhysics(
   const [, getKeys] = useKeyboardControls()
   const handlingMode = useGameStore(state => state.handlingMode)
   const handling = HANDLING_MATRIX[handlingMode]
+  const steerRetentionOverrides = useGameStore(state => state.steerRetentionOverrides)
+  const lateralGripOverrides = useGameStore(state => state.lateralGripOverrides)
+  const accelerationOverrides = useGameStore(state => state.accelerationOverrides)
+  const maxSpeedOverrides = useGameStore(state => state.maxSpeedOverrides)
   const flood = useGameStore(state => state.flood)
   const setPlayerWater = useGameStore(state => state.setPlayerWater)
   const setNearMud = useGameStore(state => state.setNearMud)
@@ -213,15 +218,18 @@ export function useVehiclePhysics(
     const modeAccelScale = handling.accelerationScale * vehicleModeScale[stats.profile]
     // Combine all penalty factors, then clamp to 0.4 min for driveability
     const totalPenalty = Math.max(0.4, (0.55 + 0.45 * vitalityFactor) * boostFactor * floodSlow / mudPenalty)
-    const maxSpeed = stats.maxSpeed * modeSpeedScale * totalPenalty
-    const accelerationPower = stats.acceleration * modeAccelScale * boostFactor * floodSlow * bubbleBoost / mudPenalty
+    // Runtime overrides from control panel take precedence if set
+    const effectiveMaxSpeed = maxSpeedOverrides[stats.profile] ?? stats.maxSpeed
+    const effectiveAcceleration = accelerationOverrides[stats.profile] ?? stats.acceleration
+    const maxSpeed = effectiveMaxSpeed * modeSpeedScale * totalPenalty
+    const accelerationPower = effectiveAcceleration * modeAccelScale * boostFactor * floodSlow * bubbleBoost / mudPenalty
     
     // Boundary Enforcement: Soft boundary beyond 60 units with bounce back
     const distFromCenter = Math.sqrt(vPos.x ** 2 + vPos.z ** 2)
     const BOUNDARY_RADIUS = 60
     const boundaryDrag = distFromCenter > BOUNDARY_RADIUS ? Math.pow(distFromCenter / BOUNDARY_RADIUS, 2) : 1.0
     // Ensure minimum acceleration floor so cars don't become bricks in mud/flood (apply before boundary drag)
-    const finalAcceleration = Math.max(stats.acceleration * 0.35, accelerationPower) / boundaryDrag
+    const finalAcceleration = Math.max(effectiveAcceleration * 0.35, accelerationPower) / boundaryDrag
     
     // Hard boundary bounce at 60 units - push vehicle back toward center
     if (distFromCenter > BOUNDARY_RADIUS) {
@@ -275,13 +283,20 @@ export function useVehiclePhysics(
       if (stats.steeringMode === 'car') {
         const steerStrength = stats.steerStrength * handling.steerScale * handling.carSteerResponse * delta * steerBoost
         if (speed > 0.05) {
-            const steerForce = rightDir.clone().multiplyScalar(smoothedTurn.current * steerStrength * Math.min(speed / 10, 1))
+            // Speed-proportional steering: authority DECREASES at high speed
+            // steerRetention scales the curve per-vehicle (higher = more authority at speed)
+            // steerRetention 1.0: full authority to ~10, ~67% at 20, ~33% at 50, ~21% at 85
+            // steerRetention 1.5: full authority to ~20, ~75% at 20, ~50% at 50, ~32% at 85
+            // Runtime override from control panel takes precedence if set
+            const effectiveSteerRetention = steerRetentionOverrides[stats.profile] ?? stats.steerRetention
+            const speedSteerFactor = Math.min((20 * effectiveSteerRetention) / (speed + 10), 1)
+            const steerForce = rightDir.clone().multiplyScalar(smoothedTurn.current * steerStrength * speedSteerFactor)
             const fOffset = forwardDir.clone().multiplyScalar(stats.frontOffset)
             const steerPoint = { x: vPos.x + fOffset.x, y: vPos.y, z: vPos.z + fOffset.z }
             chassisRef.current.applyImpulseAtPoint({ x: steerForce.x, y: 0, z: steerForce.z }, steerPoint, true)
 
             if (handling.leanTorqueMultiplier > 0) {
-              const leanForce = -smoothedTurn.current * stats.mass * handling.leanTorqueMultiplier * Math.min(speed / 20, 1)
+              const leanForce = -smoothedTurn.current * stats.mass * handling.leanTorqueMultiplier * speedSteerFactor
               chassisRef.current.applyTorqueImpulse({
                 x: forwardDir.x * leanForce,
                 y: forwardDir.y * leanForce,
@@ -293,7 +308,9 @@ export function useVehiclePhysics(
              chassisRef.current.applyTorqueImpulse({ x: 0, y: smoothedTurn.current * steerStrength * 0.5, z: 0 }, true)
         }
       } else if (stats.steeringMode === 'tank') {
-        const turnRate = stats.steerStrength * handling.steerScale * handling.tankTurnResponse * delta * steerBoost
+        // Tank uses steerRetention as a flat turn-rate scale (no speed curve — tanks turn in place)
+        const tankSteerRetention = steerRetentionOverrides[stats.profile] ?? stats.steerRetention
+        const turnRate = stats.steerStrength * handling.steerScale * handling.tankTurnResponse * delta * steerBoost * tankSteerRetention
         chassisRef.current.applyTorqueImpulse({ x: 0, y: smoothedTurn.current * turnRate, z: 0 }, true)
       }
     }
@@ -307,9 +324,14 @@ export function useVehiclePhysics(
     // --- 6. DRIFT / LATERAL FRICTION ---
     if (speed > 1) {
       const sidewaysVelocity = velocity.x * rightDir.x + velocity.z * rightDir.z
-      const driftGripBase = (surfaceType === 'road' ? stats.lateralGrip : stats.lateralGrip * 0.80) * handling.gripScale
+      // Runtime override from control panel takes precedence if set
+      const effectiveLateralGrip = lateralGripOverrides[stats.profile] ?? stats.lateralGrip
+      const driftGripBase = (surfaceType === 'road' ? effectiveLateralGrip : effectiveLateralGrip * 0.80) * handling.gripScale
       const boardGripBoost = isFoamBoard && physicalSubmergeDepth > 0.1 ? 1.25 : 1.0
-      const driftGrip = driftGripBase * boardGripBoost
+      // Speed-proportional grip: high-speed vehicles get more grip correction to prevent shooting off
+      // At low speed grip is baseline; at high speed grip correction is stronger to reel in lateral slide
+      const speedGripFactor = Math.min(1 + speed * 0.04, 2.5)
+      const driftGrip = driftGripBase * boardGripBoost * speedGripFactor
       const gripImpulse = -sidewaysVelocity * driftGrip * stats.mass * delta * 15
       chassisRef.current.applyImpulse({ x: rightDir.x * gripImpulse, y: 0, z: rightDir.z * gripImpulse }, true)
     }

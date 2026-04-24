@@ -14,8 +14,8 @@ import { playSound } from '../ui/SoundManager'
 import { emitEconomyFeedback } from '../ui/EconomyFeedback'
 import { AgentChatter, emitChatter } from '../ui/AgentChatter'
 import { AgentDecisionPanel } from '../ui/AgentDecisionPanel'
-import { PlayerStrategyPanel } from '../ui/PlayerStrategyPanel'
 import { RoundObjectives } from '../ui/RoundObjectives'
+import { FinalRushOverlay } from '../ui/FinalRushOverlay'
 import { HUD } from '../ui/HUD'
 import { ControlPanel } from '../ui/ControlPanel'
 import { Overlays } from '../ui/Overlays'
@@ -263,6 +263,14 @@ export default function CloudScene() {
       if (e.key.toLowerCase() === 'h') {
         setUI({ showHUD: !ui.showHUD })
       }
+      if (e.key.toLowerCase() === 'v') {
+        // Toggle vehicles tab: if already open on vehicles, close; otherwise open on vehicles with glow pulse
+        setUI(
+          ui.isSidebarOpen && ui.activeTab === 'vehicles'
+            ? { isSidebarOpen: false }
+            : { isSidebarOpen: true, activeTab: 'vehicles', vehiclesTabPulseAt: Date.now() }
+        )
+      }
     }
     window.addEventListener('keydown', handleKeyDown)
 
@@ -281,6 +289,7 @@ export default function CloudScene() {
     setWeatherEffect,
     tickRound,
     ui.isSidebarOpen,
+    ui.activeTab,
     ui.showHUD,
   ])
 
@@ -338,7 +347,7 @@ export default function CloudScene() {
 
       {/* New UI components for Product/Game Design improvements */}
       <AgentDecisionPanel />
-      <PlayerStrategyPanel />
+      <FinalRushOverlay />
       <RoundObjectives />
 
       {/* Mobile touch controls - always rendered, component handles internal mobile detection */}
@@ -379,7 +388,7 @@ function HelpHint() {
   return (
     <div className="absolute bottom-20 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-xl rounded-full px-4 py-2 border border-white/10 animate-in fade-in slide-in-from-bottom-4 z-10">
       <p className="text-[10px] text-white/70 font-medium">
-        Press <kbd className="px-2 py-0.5 bg-white/10 rounded text-white font-mono">ESC</kbd> for controls
+        Press <kbd className="px-2 py-0.5 bg-white/10 rounded text-white font-mono">ESC</kbd> controls · <kbd className="px-2 py-0.5 bg-white/10 rounded text-white font-mono">V</kbd> tuning
       </p>
     </div>
   )

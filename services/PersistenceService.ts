@@ -1,6 +1,6 @@
-import { AgentSession } from './AgentProtocol'
+import type { AgentSession } from './protocolTypes'
 import { ZgGameState } from './zgStorage'
-import { useGameStore } from './gameStore'
+import { useGameStore, type VehicleHandlingProfile } from './gameStore'
 
 export class PersistenceService {
   private zgSaveCounter = 0
@@ -66,6 +66,10 @@ export class PersistenceService {
         version: 1,
         timestamp: Date.now(),
         sessions: sessions as ZgGameState['sessions'],
+        steerRetentionOverrides: store.steerRetentionOverrides,
+        lateralGripOverrides: store.lateralGripOverrides,
+        accelerationOverrides: store.accelerationOverrides,
+        maxSpeedOverrides: store.maxSpeedOverrides,
       }
       const result = await zgSaveState('global', state)
       if (result.error) {
@@ -120,6 +124,31 @@ export class PersistenceService {
       if (result.state?.sessions) {
         console.log('[0G Storage] Restored state from 0G, timestamp:', result.state.timestamp)
         applyCallback(result.state.sessions as unknown as Record<string, Record<string, number>>)
+        // Restore handling overrides from 0G snapshot into both store and localStorage
+        if (result.state.steerRetentionOverrides) {
+          const steer = result.state.steerRetentionOverrides
+          for (const [profile, value] of Object.entries(steer)) {
+            store.setSteerRetentionOverride(profile as VehicleHandlingProfile, value)
+          }
+        }
+        if (result.state.lateralGripOverrides) {
+          const grip = result.state.lateralGripOverrides
+          for (const [profile, value] of Object.entries(grip)) {
+            store.setLateralGripOverride(profile as VehicleHandlingProfile, value)
+          }
+        }
+        if (result.state.accelerationOverrides) {
+          const accel = result.state.accelerationOverrides
+          for (const [profile, value] of Object.entries(accel)) {
+            store.setAccelerationOverride(profile as VehicleHandlingProfile, value)
+          }
+        }
+        if (result.state.maxSpeedOverrides) {
+          const speed = result.state.maxSpeedOverrides
+          for (const [profile, value] of Object.entries(speed)) {
+            store.setMaxSpeedOverride(profile as VehicleHandlingProfile, value)
+          }
+        }
         store.setZgStorage({
           checkedAt: Date.now(),
           available: true,

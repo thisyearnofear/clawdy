@@ -10,16 +10,17 @@ import { useVehiclePhysics, VehicleStats } from '../../hooks/useVehiclePhysics'
 import { WaterTurnSplashes } from '../environment/WaterTurnSplashes'
 import { GhostVehicleShell } from './GhostVehicleShell'
 
-const TANK_STATS: VehicleStats = {
+export const TANK_STATS: VehicleStats = {
   profile: 'tank',
   maxSpeed: 35,
-  acceleration: 400,
+  acceleration: 250,
   steerStrength: 12,
   mass: 6,
   lateralGrip: 1.0,
   frontOffset: 0,
   backOffset: 0,
-  steeringMode: 'tank'
+  steeringMode: 'tank',
+  steerRetention: 0.6
 }
 
 function TankArmorPulse({ isGhost = false }: { isGhost?: boolean }) {

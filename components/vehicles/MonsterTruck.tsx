@@ -9,16 +9,17 @@ import { useVehiclePhysics, VehicleStats } from '../../hooks/useVehiclePhysics'
 import { WaterTurnSplashes } from '../environment/WaterTurnSplashes'
 import { GhostVehicleShell } from './GhostVehicleShell'
 
-const TRUCK_STATS: VehicleStats = {
+export const TRUCK_STATS: VehicleStats = {
   profile: 'monster',
   maxSpeed: 50,
-  acceleration: 1000,
-  steerStrength: 150,
+  acceleration: 600,
+  steerStrength: 65,
   mass: 4,
   lateralGrip: 0.7,
   frontOffset: 1.5,
   backOffset: -1.5,
-  steeringMode: 'car'
+  steeringMode: 'car',
+  steerRetention: 0.85
 }
 
 function TruckEngineGlow({ isGhost = false }: { isGhost?: boolean }) {

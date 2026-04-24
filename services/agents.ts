@@ -1,4 +1,4 @@
-import type { AgentRole } from './AgentProtocol'
+import type { AgentRole } from './protocolTypes'
 
 export interface AgentProfile {
   id: string

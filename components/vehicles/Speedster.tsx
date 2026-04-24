@@ -9,16 +9,17 @@ import { useVehiclePhysics, VehicleStats } from '../../hooks/useVehiclePhysics'
 import { WaterTurnSplashes } from '../environment/WaterTurnSplashes'
 import { GhostVehicleShell } from './GhostVehicleShell'
 
-const SPEEDSTER_STATS: VehicleStats = {
+export const SPEEDSTER_STATS: VehicleStats = {
   profile: 'speedster',
   maxSpeed: 85,
-  acceleration: 800,
-  steerStrength: 120,
+  acceleration: 480,
+  steerStrength: 50,
   mass: 1.5,
   lateralGrip: 0.9,
   frontOffset: 1.8,
   backOffset: -1.8,
-  steeringMode: 'car'
+  steeringMode: 'car',
+  steerRetention: 1.5
 }
 
 function SpeedsterUnderglow({ isGhost = false }: { isGhost?: boolean }) {

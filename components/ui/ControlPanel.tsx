@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect, useCallback } from 'react'
 import { useAccount, useChainId, useReadContract, useReadContracts } from 'wagmi'
 import { Leaderboard } from './Leaderboard'
 import { ConnectWallet } from './ConnectWallet'
@@ -15,12 +15,24 @@ import {
   getMemeMarketStrategy,
   getMemeMarketStrategyPreset,
   getMemeMarketStrategyVehicle,
+  MEME_MARKET_STRATEGIES,
 } from '../../services/AgentProtocol'
-import { useGameStore } from '../../services/gameStore'
+import { useGameStore, type VehicleHandlingProfile } from '../../services/gameStore'
+import { VEHICLE_STATS } from '../vehicles/Vehicle'
+import { SPEEDSTER_STATS } from '../vehicles/Speedster'
+import { TRUCK_STATS } from '../vehicles/MonsterTruck'
+import { TANK_STATS } from '../vehicles/Tank'
 import { primaryChain, supportedChains } from '../../services/web3Config'
 import { emitToast } from './GameToasts'
 import { formatTransactionStatus, getStatusColor } from '../../services/transactionHandler'
 import { MEME_MARKET_ABI } from '../../services/abis/MemeMarket'
+
+const VEHICLE_PROFILES = [
+  { profile: 'speedster' as VehicleHandlingProfile, label: 'Speedster', icon: '🏎️', stats: SPEEDSTER_STATS },
+  { profile: 'vehicle' as VehicleHandlingProfile, label: 'Car', icon: '🚗', stats: VEHICLE_STATS },
+  { profile: 'monster' as VehicleHandlingProfile, label: 'Truck', icon: '🛻', stats: TRUCK_STATS },
+  { profile: 'tank' as VehicleHandlingProfile, label: 'Tank', icon: '🪖', stats: TANK_STATS },
+]
 
 interface ControlPanelProps {
   isOpen: boolean
@@ -51,15 +63,93 @@ export function ControlPanel({
   const chainId = useChainId()
   const handlingMode = useGameStore(s => s.handlingMode)
   const setHandlingMode = useGameStore(s => s.setHandlingMode)
+  const steerRetentionOverrides = useGameStore(s => s.steerRetentionOverrides)
+  const setSteerRetentionOverride = useGameStore(s => s.setSteerRetentionOverride)
+  const clearSteerRetentionOverride = useGameStore(s => s.clearSteerRetentionOverride)
+  const lateralGripOverrides = useGameStore(s => s.lateralGripOverrides)
+  const setLateralGripOverride = useGameStore(s => s.setLateralGripOverride)
+  const clearLateralGripOverride = useGameStore(s => s.clearLateralGripOverride)
+  const accelerationOverrides = useGameStore(s => s.accelerationOverrides)
+  const setAccelerationOverride = useGameStore(s => s.setAccelerationOverride)
+  const clearAccelerationOverride = useGameStore(s => s.clearAccelerationOverride)
+  const maxSpeedOverrides = useGameStore(s => s.maxSpeedOverrides)
+  const setMaxSpeedOverride = useGameStore(s => s.setMaxSpeedOverride)
+  const clearMaxSpeedOverride = useGameStore(s => s.clearMaxSpeedOverride)
+  const clearAllHandlingOverrides = useGameStore(s => s.clearAllHandlingOverrides)
   const zgStorage = useGameStore(s => s.zgStorage)
   const setZgStorage = useGameStore(s => s.setZgStorage)
   const sessions = useGameStore(s => s.sessions)
   const pendingTransactions = useGameStore(s => s.pendingTransactions)
-  const [isSavingSnapshot, setIsSavingSnapshot] = useState(false)
+  const playerId = useGameStore(s => s.playerId)
   const playerSession = sessions['Player']
   const playerStrategy = getMemeMarketStrategy(playerSession?.strategyId)
   const recommendedWeatherPreset = getMemeMarketStrategyPreset(playerStrategy?.id)
   const recommendedVehicle = getMemeMarketStrategyVehicle(playerStrategy?.id)
+  const [isSavingSnapshot, setIsSavingSnapshot] = useState(false)
+  const vehiclesTabPulseAt = useGameStore(s => s.ui.vehiclesTabPulseAt)
+  const [sliderGlow, setSliderGlow] = useState(false)
+  const [showAdvancedTuning, setShowAdvancedTuning] = useState(false)
+
+  useEffect(() => {
+    if (!vehiclesTabPulseAt || !isOpen || activeTab !== 'vehicles') {
+      setSliderGlow(false)
+      return
+    }
+    setSliderGlow(true)
+    setShowAdvancedTuning(true)
+    const timer = setTimeout(() => setSliderGlow(false), 2500)
+    return () => clearTimeout(timer)
+  }, [vehiclesTabPulseAt, isOpen, activeTab])
+
+  // ── PlayerStrategyPanel logic (CONSOLIDATION: merged into ControlPanel) ──
+  const [manualBidOverride, setManualBidOverride] = useState<number | null>(null)
+  const [nowMs, setNowMs] = useState(() => Date.now())
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  const floodDrainAbility = MEME_MARKET_ABILITIES.find((ability) => ability.key === 'flood_drain')
+
+  const abilityStatus = useMemo(() => {
+    return MEME_MARKET_ABILITIES.map((ability) => {
+      const activeUntil = ability.key === 'speed_boost'
+        ? playerSession?.speedBoostUntil
+        : ability.key === 'anti_gravity'
+          ? playerSession?.antiGravityUntil
+          : undefined
+      const remainingSeconds = activeUntil && activeUntil > nowMs
+        ? Math.ceil((activeUntil - nowMs) / 1000)
+        : 0
+      const charges = ability.key === 'flood_drain' ? (playerSession?.drainPlugCount ?? 0) : 0
+      return { ...ability, remainingSeconds, charges }
+    })
+  }, [nowMs, playerSession?.antiGravityUntil, playerSession?.drainPlugCount, playerSession?.speedBoostUntil])
+
+  const handleStrategySelect = useCallback((strategy: (typeof MEME_MARKET_STRATEGIES)[number]) => {
+    const success = agentProtocol.setPlayerStrategy(playerId, strategy.id)
+    if (success && strategy) {
+      emitToast('milestone', `Strategy: ${strategy.label}`, `${strategy.icon} Aggression: ${Math.round(strategy.aggressive * 100)}%`)
+    }
+  }, [playerId])
+
+  const handleManualBid = useCallback(() => {
+    if (manualBidOverride === null || manualBidOverride <= 0) {
+      emitToast('bid-lose', 'Enter bid amount', 'Must be greater than 0')
+      return
+    }
+    useGameStore.getState().setSession(playerId, { mission: 'manual' })
+    emitToast('milestone', 'Manual Bid', `Will bid ${manualBidOverride.toFixed(4)} 0G`)
+  }, [playerId, manualBidOverride])
+
+  const handleUseFloodDrain = useCallback(() => {
+    if (!floodDrainAbility) return
+    const success = agentProtocol.activateMemeMarketAbility(floodDrainAbility.id)
+    if (!success) {
+      emitToast('bid-lose', 'No Flood Drain Charges', 'Mint one before draining the flood')
+    }
+  }, [floodDrainAbility])
 
   // Resolve contracts and explorer for the currently connected chain
   const activeChain = supportedChains.find(c => c.id === chainId) ?? primaryChain
@@ -198,6 +288,10 @@ export function ControlPanel({
         version: 1,
         timestamp: Date.now(),
         sessions: sessionSnapshot,
+        steerRetentionOverrides: useGameStore.getState().steerRetentionOverrides,
+        lateralGripOverrides: useGameStore.getState().lateralGripOverrides,
+        accelerationOverrides: useGameStore.getState().accelerationOverrides,
+        maxSpeedOverrides: useGameStore.getState().maxSpeedOverrides,
       })
 
       if (result.error || !result.rootHash) {
@@ -316,6 +410,104 @@ export function ControlPanel({
                 ))}
               </div>
               
+              {/* Strategy & Abilities (CONSOLIDATION: merged from PlayerStrategyPanel) */}
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div className="text-[9px] font-black uppercase tracking-[0.25em] text-white/50">Strategy</div>
+                <div className="mt-2 mb-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-white/55">
+                  Current: {playerStrategy ? `${playerStrategy.icon} ${playerStrategy.label}` : 'Unset'}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {MEME_MARKET_STRATEGIES.map((preset) => (
+                    <button
+                      key={preset.id}
+                      onClick={() => handleStrategySelect(preset)}
+                      className={`px-3 py-2 rounded-lg border transition-all text-left ${
+                        playerSession?.strategyId === preset.id
+                          ? 'bg-sky-500/20 border-sky-400/40'
+                          : 'bg-white/5 border-white/10 hover:bg-white/10'
+                      }`}
+                    >
+                      <span className="text-sm">{preset.icon}</span>
+                      <div className="text-[9px] font-bold text-white">{preset.label}</div>
+                      <div className="text-[7px] text-white/40">Agg: {Math.round(preset.aggressive * 100)}%</div>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="border-t border-white/10 pt-3 mt-3">
+                  <div className="text-[8px] font-black uppercase tracking-widest text-white/30 mb-2">Manual Bid Override</div>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      step="0.001"
+                      min="0"
+                      value={manualBidOverride ?? ''}
+                      onChange={(e) => setManualBidOverride(Number(e.target.value))}
+                      placeholder="0.000"
+                      className="flex-1 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] text-white font-mono"
+                    />
+                    <button
+                      onClick={handleManualBid}
+                      className="px-3 py-1.5 rounded-lg bg-sky-500/20 border border-sky-400/30 text-sky-300 text-[9px] font-bold uppercase"
+                    >
+                      Bid
+                    </button>
+                  </div>
+                </div>
+
+                <div className="border-t border-white/10 pt-3 mt-3">
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <div className="text-[8px] font-black uppercase tracking-widest text-white/30">MemeMarket Loadout</div>
+                    <span className="text-[7px] font-bold uppercase tracking-widest text-white/25">Live abilities</span>
+                  </div>
+                  <div className="space-y-2">
+                    {abilityStatus.map((ability) => {
+                      const isFloodDrain = ability.key === 'flood_drain'
+                      const isActive = ability.remainingSeconds > 0
+                      const canUseDrain = isFloodDrain && ability.charges > 0
+                      return (
+                        <div key={ability.id} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <div className="text-[9px] font-bold text-white">{ability.label}</div>
+                              <div className="text-[7px] text-white/40">{ability.source} · Token #{ability.id}</div>
+                            </div>
+                            {isFloodDrain ? (
+                              <button
+                                onClick={handleUseFloodDrain}
+                                disabled={!canUseDrain}
+                                className={`rounded-md px-2 py-1 text-[8px] font-black uppercase tracking-wider transition-colors ${
+                                  canUseDrain
+                                    ? 'border border-sky-400/25 bg-sky-500/10 text-sky-200 hover:bg-sky-500/20'
+                                    : 'border border-white/10 bg-white/5 text-white/30 cursor-not-allowed'
+                                }`}
+                              >
+                                Use Drain
+                              </button>
+                            ) : (
+                              <span className={`rounded-md border px-2 py-1 text-[8px] font-black uppercase tracking-wider ${
+                                isActive
+                                  ? 'border-emerald-400/25 bg-emerald-500/10 text-emerald-200'
+                                  : 'border-white/10 bg-white/5 text-white/40'
+                              }`}>
+                                {isActive ? `${ability.remainingSeconds}s left` : 'Ready'}
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-1 text-[8px] text-white/45">
+                            {isFloodDrain
+                              ? `${ability.charges} charge${ability.charges === 1 ? '' : 's'} available`
+                              : isActive
+                                ? `${ability.remainingSeconds}s remaining`
+                                : 'Passive until minted'}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+
               <div className={`space-y-5 ${cloudConfig.preset !== 'custom' ? 'opacity-30 pointer-events-none' : ''}`}>
                 <div className="space-y-2">
                   <label className="flex justify-between text-[10px] font-black text-white/50 uppercase tracking-widest">Intensity <span className="text-sky-400">{spawnRate}</span></label>
@@ -367,6 +559,146 @@ export function ControlPanel({
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Advanced Tuning: collapsed by default, expands on V-key pulse or click */}
+              <div className="mt-2">
+                <button
+                  onClick={() => setShowAdvancedTuning(!showAdvancedTuning)}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all"
+                >
+                  <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/50">
+                    <span className="text-sky-400">⚙</span> Advanced Tuning
+                    {(() => {
+                      const count = Object.keys(steerRetentionOverrides).length + Object.keys(lateralGripOverrides).length + Object.keys(accelerationOverrides).length + Object.keys(maxSpeedOverrides).length
+                      return count > 0 && <span className="rounded-full border border-sky-400/25 bg-sky-500/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest text-sky-200">{count}</span>
+                    })()}
+                  </span>
+                  <span className={`text-white/30 transition-transform duration-200 ${showAdvancedTuning ? 'rotate-180' : ''}`}>▾</span>
+                </button>
+
+                {showAdvancedTuning && (
+                  <div className={`mt-2 space-y-3 transition-all duration-700 ${sliderGlow ? 'rounded-xl p-2 animate-glow-pulse' : ''}`}>
+                    {/* Steer Retention */}
+                    <div className="space-y-3">
+                      <p className="text-[10px] font-black opacity-30 uppercase tracking-widest">Steer Retention</p>
+                      <p className="text-[9px] text-white/40 -mt-2">Higher = more steering authority at high speed</p>
+                      {VEHICLE_PROFILES.map(({ profile, label, icon, stats: vehicleStats }) => {
+                        const def = vehicleStats.steerRetention
+                        const value = steerRetentionOverrides[profile] ?? def
+                        const isModified = steerRetentionOverrides[profile] !== undefined
+                        return (
+                          <div key={profile} className="space-y-1">
+                            <label className="flex justify-between text-[10px] font-black text-white/50 uppercase tracking-widest">
+                              <span className="flex items-center gap-1">
+                                {icon} {label}
+                                {isModified && <span className="rounded-full border border-sky-400/25 bg-sky-500/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest text-sky-200">custom</span>}
+                              </span>
+                              <span className="text-sky-400">{value.toFixed(2)}</span>
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <input type="range" min="0.2" max="3.0" step="0.05" value={value} onChange={(e) => setSteerRetentionOverride(profile, Number(e.target.value))} className="flex-1 accent-sky-400" />
+                              {isModified && <button onClick={() => clearSteerRetentionOverride(profile)} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-white/50 hover:bg-white/10 hover:text-white" title="Reset to default">Reset</button>}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    {/* Lateral Grip */}
+                    <div className="space-y-3">
+                      <p className="text-[10px] font-black opacity-30 uppercase tracking-widest">Lateral Grip</p>
+                      <p className="text-[9px] text-white/40 -mt-2">Higher = more traction, less drifting</p>
+                      {VEHICLE_PROFILES.map(({ profile, label, icon, stats: vehicleStats }) => {
+                        const def = vehicleStats.lateralGrip
+                        const value = lateralGripOverrides[profile] ?? def
+                        const isModified = lateralGripOverrides[profile] !== undefined
+                        return (
+                          <div key={profile} className="space-y-1">
+                            <label className="flex justify-between text-[10px] font-black text-white/50 uppercase tracking-widest">
+                              <span className="flex items-center gap-1">
+                                {icon} {label}
+                                {isModified && <span className="rounded-full border border-sky-400/25 bg-sky-500/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest text-sky-200">custom</span>}
+                              </span>
+                              <span className="text-sky-400">{value.toFixed(2)}</span>
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <input type="range" min="0.1" max="2.0" step="0.05" value={value} onChange={(e) => setLateralGripOverride(profile, Number(e.target.value))} className="flex-1 accent-sky-400" />
+                              {isModified && <button onClick={() => clearLateralGripOverride(profile)} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-white/50 hover:bg-white/10 hover:text-white" title="Reset to default">Reset</button>}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    {/* Max Speed */}
+                    <div className="space-y-3">
+                      <p className="text-[10px] font-black opacity-30 uppercase tracking-widest">Max Speed</p>
+                      <p className="text-[9px] text-white/40 -mt-2">Higher = faster top speed</p>
+                      {VEHICLE_PROFILES.map(({ profile, label, icon, stats: vehicleStats }) => {
+                        const def = vehicleStats.maxSpeed
+                        const value = maxSpeedOverrides[profile] ?? def
+                        const isModified = maxSpeedOverrides[profile] !== undefined
+                        return (
+                          <div key={profile} className="space-y-1">
+                            <label className="flex justify-between text-[10px] font-black text-white/50 uppercase tracking-widest">
+                              <span className="flex items-center gap-1">
+                                {icon} {label}
+                                {isModified && <span className="rounded-full border border-sky-400/25 bg-sky-500/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest text-sky-200">custom</span>}
+                              </span>
+                              <span className="text-sky-400">{value.toFixed(0)}</span>
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <input type="range" min="10" max="150" step="5" value={value} onChange={(e) => setMaxSpeedOverride(profile, Number(e.target.value))} className="flex-1 accent-sky-400" />
+                              {isModified && <button onClick={() => clearMaxSpeedOverride(profile)} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-white/50 hover:bg-white/10 hover:text-white" title="Reset to default">Reset</button>}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    {/* Acceleration */}
+                    <div className="space-y-3">
+                      <p className="text-[10px] font-black opacity-30 uppercase tracking-widest">Acceleration</p>
+                      <p className="text-[9px] text-white/40 -mt-2">Higher = faster pickup</p>
+                      {VEHICLE_PROFILES.map(({ profile, label, icon, stats: vehicleStats }) => {
+                        const def = vehicleStats.acceleration
+                        const value = accelerationOverrides[profile] ?? def
+                        const isModified = accelerationOverrides[profile] !== undefined
+                        return (
+                          <div key={profile} className="space-y-1">
+                            <label className="flex justify-between text-[10px] font-black text-white/50 uppercase tracking-widest">
+                              <span className="flex items-center gap-1">
+                                {icon} {label}
+                                {isModified && <span className="rounded-full border border-sky-400/25 bg-sky-500/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest text-sky-200">custom</span>}
+                              </span>
+                              <span className="text-sky-400">{value.toFixed(0)}</span>
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <input type="range" min="50" max="1500" step="25" value={value} onChange={(e) => setAccelerationOverride(profile, Number(e.target.value))} className="flex-1 accent-sky-400" />
+                              {isModified && <button onClick={() => clearAccelerationOverride(profile)} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-white/50 hover:bg-white/10 hover:text-white" title="Reset to default">Reset</button>}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    {(() => {
+                      const hasAnyOverride = Object.keys(steerRetentionOverrides).length > 0
+                        || Object.keys(lateralGripOverrides).length > 0
+                        || Object.keys(accelerationOverrides).length > 0
+                        || Object.keys(maxSpeedOverrides).length > 0
+                      return hasAnyOverride && (
+                        <button
+                          onClick={() => clearAllHandlingOverrides()}
+                          className="w-full rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-red-200 hover:bg-red-500/20 hover:text-red-100 transition-all"
+                        >
+                          Reset all tuning to defaults
+                        </button>
+                      )
+                    })()}
+                  </div>
+                )}
               </div>
 
               <p className="text-[10px] font-black opacity-30 uppercase tracking-widest">Select Platform</p>

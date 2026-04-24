@@ -11,7 +11,8 @@ export const FinalRushOverlay = React.memo(function FinalRushOverlay() {
 
   const remainingMs = round.endsAt - now
   const remainingSec = Math.max(0, Math.ceil(remainingMs / 1000))
-  const isFinalRush = round.isActive && remainingSec > 0 && remainingSec <= 10
+  // Use the store's isFinalRush flag (activates at FINAL_RUSH_SECONDS = 30)
+  const isFinalRush = round.isActive && round.isFinalRush
 
   useEffect(() => {
     if (!isFinalRush) return
@@ -28,9 +29,9 @@ export const FinalRushOverlay = React.memo(function FinalRushOverlay() {
     const prev = lastSecondRef.current
     lastSecondRef.current = remainingSec
 
-    if (remainingSec === 10) {
+    if (remainingSec === 30) {
       playSound('milestone')
-    } else if (prev !== null && remainingSec < prev) {
+    } else if (prev !== null && remainingSec < prev && remainingSec <= 10) {
       playSound('ui-click')
     }
   }, [isFinalRush, remainingSec])

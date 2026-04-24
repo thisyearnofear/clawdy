@@ -34,7 +34,7 @@ export const AuctionTimer = React.memo(function AuctionTimer() {
     }`}>
       <div className="flex items-center gap-2">
         <span className={`text-[9px] font-black uppercase tracking-widest ${isUrgent ? 'text-red-400 animate-pulse' : 'text-white/40'}`}>
-          ⚡ Next Auction
+          ⚡ Round Timer
         </span>
         <span className={`text-sm font-mono font-black tabular-nums ${isUrgent ? 'text-red-400' : 'text-white'}`}>
           {minutes}:{seconds.toString().padStart(2, '0')}

@@ -1,4 +1,5 @@
-import { agentProtocol, CHAIN_NAME } from './AgentProtocol'
+import { agentProtocol } from './AgentProtocol'
+import { CHAIN_NAME } from './protocolTypes'
 import { getAgentProfile } from './agents'
 
 export interface ActivityEntry {

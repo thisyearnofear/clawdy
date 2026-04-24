@@ -1,5 +1,5 @@
 import type { CloudConfig } from '../components/environment/CloudManager'
-import type { AgentSession, WorldState, WeatherStatus } from './AgentProtocol'
+import type { AgentSession, WorldState, WeatherStatus } from './protocolTypes'
 
 export type SkillProviderId = 'local-policy' | 'onchain-os'
 

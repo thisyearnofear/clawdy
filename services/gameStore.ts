@@ -1,6 +1,25 @@
 import { create } from 'zustand'
-import type { AgentSession, WorldState, WeatherStatus, VehicleType } from './AgentProtocol'
+import type { AgentSession, WorldState, WeatherStatus, VehicleType } from './protocolTypes'
 import type { CloudConfig } from '../components/environment/CloudManager'
+
+// ── Local-storage helpers (safe for SSR) ──────────────────────────────
+function loadFromStorage<T>(key: string, fallback: T): T {
+  if (typeof window === 'undefined') return fallback
+  try {
+    const raw = localStorage.getItem(key)
+    return raw ? (JSON.parse(raw) as T) : fallback
+  } catch { return fallback }
+}
+function saveToStorage(key: string, value: unknown): void {
+  if (typeof window === 'undefined') return
+  try {
+    if (value && typeof value === 'object' && Object.keys(value).length === 0) {
+      localStorage.removeItem(key)
+    } else {
+      localStorage.setItem(key, JSON.stringify(value))
+    }
+  } catch { /* quota exceeded or private browsing */ }
+}
 
 // ── Round Structure ──────────────────────────────────────────────────
 export interface RoundState {
@@ -13,13 +32,31 @@ export interface RoundState {
   isActive: boolean
   winner: string | null
   goal: number
+  isFinalRush: boolean
+  finalRushMultiplier: number
+  totalEarnedAtRoundStart: Record<string, number> // per-agent earnings snapshot at round start
 }
 
 const ROUND_DURATION_MS = 120_000 // 2 minutes per round
-const ROUND_GOAL = 0.05
+const BASE_ROUND_GOAL = 0.08 // base goal; scales with active agents
+const FINAL_RUSH_SECONDS = 30 // last 30s of round
+const FINAL_RUSH_MULTIPLIER = 1.5 // scoring boost in final rush
 
-function createInitialRound(): RoundState {
+function computeRoundGoal(activeSessionCount: number): number {
+  // Scale goal with active agents so rounds stay competitive
+  // 1 agent: 0.08, 4 agents: 0.11, 8 agents: 0.14
+  const scale = 1 + Math.max(0, activeSessionCount - 1) * 0.1
+  return Number((BASE_ROUND_GOAL * scale).toFixed(3))
+}
+
+function createInitialRound(activeSessionCount: number = 1, sessions?: Record<string, AgentSession>): RoundState {
   const now = Date.now()
+  const totalEarnedAtRoundStart: Record<string, number> = {}
+  if (sessions) {
+    for (const [id, s] of Object.entries(sessions)) {
+      totalEarnedAtRoundStart[id] = s.totalEarned ?? 0
+    }
+  }
   return {
     roundNumber: 1,
     startedAt: now,
@@ -29,7 +66,10 @@ function createInitialRound(): RoundState {
     durationMs: ROUND_DURATION_MS,
     isActive: true,
     winner: null,
-    goal: ROUND_GOAL,
+    goal: computeRoundGoal(activeSessionCount),
+    isFinalRush: false,
+    finalRushMultiplier: 1,
+    totalEarnedAtRoundStart,
   }
 }
 
@@ -81,7 +121,7 @@ export const HANDLING_MATRIX: Record<HandlingMode, HandlingTuning> = {
     accelerationScale: 0.9,
     steerScale: 0.9,
     gripScale: 1.15,
-    baseLinearDamping: 0.18,
+    baseLinearDamping: 0.5,
     surfaceDampingInfluence: 1.8,
     angularDamping: 2.8,
     brakingDamping: 5.5,
@@ -100,7 +140,7 @@ export const HANDLING_MATRIX: Record<HandlingMode, HandlingTuning> = {
     accelerationScale: 0.9,
     steerScale: 0.95,
     gripScale: 1.0,
-    baseLinearDamping: 0.12,
+    baseLinearDamping: 0.4,
     surfaceDampingInfluence: 1.4,
     angularDamping: 2.2,
     brakingDamping: 5.0,
@@ -119,7 +159,7 @@ export const HANDLING_MATRIX: Record<HandlingMode, HandlingTuning> = {
     accelerationScale: 1.35,
     steerScale: 1.35,
     gripScale: 0.78,
-    baseLinearDamping: 0.03,
+    baseLinearDamping: 0.12,
     surfaceDampingInfluence: 0.9,
     angularDamping: 1.2,
     brakingDamping: 4.0,
@@ -146,6 +186,7 @@ export interface UIState {
   showHUD: boolean
   hideSpectatorCta: boolean
   showQuickControls: boolean
+  vehiclesTabPulseAt: number
   modals: {
     wallet: boolean
     onboarding: boolean
@@ -240,6 +281,10 @@ export interface GameStore {
   endRound: (winner: string | null) => void
   tickRound: () => void
 
+  // Cross-round progression
+  cumulativeScore: number
+  addCumulativeScore: (amount: number) => void
+
   // Transactions
   pendingTransactions: PendingTransaction[]
   addTransaction: (tx: PendingTransaction) => void
@@ -288,6 +333,19 @@ export interface GameStore {
   // Handling
   handlingMode: HandlingMode
   setHandlingMode: (mode: HandlingMode) => void
+  steerRetentionOverrides: Partial<Record<VehicleHandlingProfile, number>>
+  setSteerRetentionOverride: (profile: VehicleHandlingProfile, value: number) => void
+  clearSteerRetentionOverride: (profile: VehicleHandlingProfile) => void
+  lateralGripOverrides: Partial<Record<VehicleHandlingProfile, number>>
+  setLateralGripOverride: (profile: VehicleHandlingProfile, value: number) => void
+  clearLateralGripOverride: (profile: VehicleHandlingProfile) => void
+  accelerationOverrides: Partial<Record<VehicleHandlingProfile, number>>
+  setAccelerationOverride: (profile: VehicleHandlingProfile, value: number) => void
+  clearAccelerationOverride: (profile: VehicleHandlingProfile) => void
+  maxSpeedOverrides: Partial<Record<VehicleHandlingProfile, number>>
+  setMaxSpeedOverride: (profile: VehicleHandlingProfile, value: number) => void
+  clearMaxSpeedOverride: (profile: VehicleHandlingProfile) => void
+  clearAllHandlingOverrides: () => void
 
   // Connection
   isConnected: boolean
@@ -380,6 +438,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     showHUD: true,
     hideSpectatorCta: false,
     showQuickControls: false,
+    vehiclesTabPulseAt: 0,
     modals: { wallet: false, onboarding: false, recap: false, spectatorCta: false },
   },
   setUI: (update) => set((prev) => ({ ui: { ...prev.ui, ...update } })),
@@ -390,6 +449,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
   round: createInitialRound(),
   startNewRound: () => set((prev) => {
     const now = Date.now()
+    const activeCount = Object.keys(prev.sessions).length
+    // Snapshot each agent's totalEarned at round start for per-round tracking
+    const totalEarnedAtRoundStart: Record<string, number> = {}
+    for (const [id, s] of Object.entries(prev.sessions)) {
+      totalEarnedAtRoundStart[id] = s.totalEarned ?? 0
+    }
     return {
       round: {
         roundNumber: prev.round.roundNumber + 1,
@@ -400,13 +465,23 @@ export const useGameStore = create<GameStore>((set, get) => ({
         durationMs: ROUND_DURATION_MS,
         isActive: true,
         winner: null,
-        goal: ROUND_GOAL,
+        goal: computeRoundGoal(activeCount),
+        isFinalRush: false,
+        finalRushMultiplier: 1,
+        totalEarnedAtRoundStart,
       },
       playerFloodStats: { waterTimeMs: 0, bubbleSaves: 0, boardSaves: 0, drainUses: 0 },
     }
   }),
   endRound: (winner) => set((prev) => {
     const now = Date.now()
+    // Calculate per-round earnings: current totalEarned minus what they had at round start
+    let roundEarned = 0
+    if (winner) {
+      const currentTotal = prev.sessions[winner]?.totalEarned ?? 0
+      const startTotal = prev.round.totalEarnedAtRoundStart[winner] ?? 0
+      roundEarned = currentTotal - startTotal
+    }
     return {
       round: {
         ...prev.round,
@@ -414,16 +489,34 @@ export const useGameStore = create<GameStore>((set, get) => ({
         winner,
         endedAt: now,
         nextRoundAt: now + 5000,
+        isFinalRush: false,
+        finalRushMultiplier: 1,
       },
+      cumulativeScore: prev.cumulativeScore + roundEarned,
     }
   }),
   tickRound: () => {
     const { round, sessions, endRound, startNewRound } = get()
     if (!round.isActive) return
     const now = Date.now()
-    // Check if someone hit the goal
+    const remainingSec = Math.max(0, (round.endsAt - now) / 1000)
+
+    // Update Final Rush state
+    const isFinalRush = remainingSec <= FINAL_RUSH_SECONDS && remainingSec > 0
+    if (isFinalRush !== round.isFinalRush) {
+      set((prev) => ({
+        round: {
+          ...prev.round,
+          isFinalRush,
+          finalRushMultiplier: isFinalRush ? FINAL_RUSH_MULTIPLIER : 1,
+        },
+      }))
+    }
+
+    // Check if someone hit the goal (per-round earnings, not lifetime)
     for (const s of Object.values(sessions)) {
-      if (s.totalEarned >= round.goal && round.winner === null) {
+      const roundEarned = s.totalEarned - (round.totalEarnedAtRoundStart[s.agentId] ?? 0)
+      if (roundEarned >= round.goal && round.winner === null) {
         endRound(s.agentId)
         setTimeout(() => startNewRound(), 5000) // 5s celebration then new round
         return
@@ -525,6 +618,72 @@ export const useGameStore = create<GameStore>((set, get) => ({
   // Handling
   handlingMode: 'arcade' as HandlingMode,
   setHandlingMode: (handlingMode) => set({ handlingMode }),
+  steerRetentionOverrides: loadFromStorage('clawdy:handling:steerRetention', {}),
+  setSteerRetentionOverride: (profile, value) => set((prev) => {
+    const next = { ...prev.steerRetentionOverrides, [profile]: value }
+    saveToStorage('clawdy:handling:steerRetention', next)
+    return { steerRetentionOverrides: next }
+  }),
+  clearSteerRetentionOverride: (profile) => set((prev) => {
+    const next = { ...prev.steerRetentionOverrides }
+    delete next[profile]
+    saveToStorage('clawdy:handling:steerRetention', next)
+    return { steerRetentionOverrides: next }
+  }),
+  lateralGripOverrides: loadFromStorage('clawdy:handling:lateralGrip', {}),
+  setLateralGripOverride: (profile, value) => set((prev) => {
+    const next = { ...prev.lateralGripOverrides, [profile]: value }
+    saveToStorage('clawdy:handling:lateralGrip', next)
+    return { lateralGripOverrides: next }
+  }),
+  clearLateralGripOverride: (profile) => set((prev) => {
+    const next = { ...prev.lateralGripOverrides }
+    delete next[profile]
+    saveToStorage('clawdy:handling:lateralGrip', next)
+    return { lateralGripOverrides: next }
+  }),
+  accelerationOverrides: loadFromStorage('clawdy:handling:acceleration', {}),
+  setAccelerationOverride: (profile, value) => set((prev) => {
+    const next = { ...prev.accelerationOverrides, [profile]: value }
+    saveToStorage('clawdy:handling:acceleration', next)
+    return { accelerationOverrides: next }
+  }),
+  clearAccelerationOverride: (profile) => set((prev) => {
+    const next = { ...prev.accelerationOverrides }
+    delete next[profile]
+    saveToStorage('clawdy:handling:acceleration', next)
+    return { accelerationOverrides: next }
+  }),
+  maxSpeedOverrides: loadFromStorage('clawdy:handling:maxSpeed', {}),
+  setMaxSpeedOverride: (profile, value) => set((prev) => {
+    const next = { ...prev.maxSpeedOverrides, [profile]: value }
+    saveToStorage('clawdy:handling:maxSpeed', next)
+    return { maxSpeedOverrides: next }
+  }),
+  clearMaxSpeedOverride: (profile) => set((prev) => {
+    const next = { ...prev.maxSpeedOverrides }
+    delete next[profile]
+    saveToStorage('clawdy:handling:maxSpeed', next)
+    return { maxSpeedOverrides: next }
+  }),
+  clearAllHandlingOverrides: () => set(() => {
+    saveToStorage('clawdy:handling:steerRetention', {})
+    saveToStorage('clawdy:handling:lateralGrip', {})
+    saveToStorage('clawdy:handling:acceleration', {})
+    saveToStorage('clawdy:handling:maxSpeed', {})
+    return {
+      steerRetentionOverrides: {},
+      lateralGripOverrides: {},
+      accelerationOverrides: {},
+      maxSpeedOverrides: {},
+    }
+  }),
+
+  // Cross-round progression
+  cumulativeScore: 0,
+  addCumulativeScore: (amount) => set((prev) => ({
+    cumulativeScore: prev.cumulativeScore + amount,
+  })),
 
   // Connection
   isConnected: false,

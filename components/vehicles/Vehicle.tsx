@@ -7,16 +7,17 @@ import { useVehiclePhysics, VehicleStats } from '../../hooks/useVehiclePhysics'
 import { WaterTurnSplashes } from '../environment/WaterTurnSplashes'
 import { GhostVehicleShell } from './GhostVehicleShell'
 
-const VEHICLE_STATS: VehicleStats = {
+export const VEHICLE_STATS: VehicleStats = {
   profile: 'vehicle',
   maxSpeed: 55,
-  acceleration: 600,
-  steerStrength: 100,
+  acceleration: 360,
+  steerStrength: 40,
   mass: 2,
   lateralGrip: 0.7,
   frontOffset: 1.5,
   backOffset: -1.5,
-  steeringMode: 'car'
+  steeringMode: 'car',
+  steerRetention: 1.0
 }
 
 export function Vehicle({ 

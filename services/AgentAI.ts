@@ -4,7 +4,8 @@ import {
   getSkillProviderInfo,
   SkillDecision,
 } from './skillEngine'
-import { AgentSession, WorldState, WeatherStatus, agentProtocol, VehicleType } from './AgentProtocol'
+import { agentProtocol } from './AgentProtocol'
+import type { AgentSession, WorldState, WeatherStatus, VehicleType } from './protocolTypes'
 import { getControllableAgents } from './agents'
 import { vehicleQueue } from './VehicleQueue'
 
@@ -137,9 +138,20 @@ export class AgentAI {
   }
 
   private executeAutoPilot(session: AgentSession, vehicle: WorldState['vehicles'][number], worldState: WorldState, targetId: number) {
-    const target = worldState.assets.find(f => f.id === targetId)!
-    const dx = target.position[0] - vehicle.position[0]
-    const dz = target.position[2] - vehicle.position[2]
+    const target = worldState.assets.find(f => f.id === targetId)
+    if (!target) { this.executeWander(session); return }
+
+    // Imperfection: occasionally pick a suboptimal target (20% chance)
+    // This gives players a chance to outplay the AI
+    const isSuboptimal = Math.random() < 0.2
+    let finalTarget = target
+    if (isSuboptimal && worldState.assets.length > 1) {
+      const alternatives = worldState.assets.filter(a => a.id !== targetId)
+      finalTarget = alternatives[Math.floor(Math.random() * alternatives.length)] ?? target
+    }
+
+    const dx = finalTarget.position[0] - vehicle.position[0]
+    const dz = finalTarget.position[2] - vehicle.position[2]
     const dist = Math.sqrt(dx * dx + dz * dz)
     const angleToTarget = Math.atan2(dx, -dz)
     const [, qy, , qw] = vehicle.rotation
@@ -147,8 +159,13 @@ export class AgentAI {
     let diff = angleToTarget - currentYaw
     while (diff > Math.PI) diff -= 2 * Math.PI
     while (diff < -Math.PI) diff += 2 * Math.PI
-    const turnStrength = Math.max(-1, Math.min(1, diff * 2))
-    const forwardStrength = dist > 2 ? 0.8 : 0.3
+
+    // Imperfection: wobble the turn strength (±15%)
+    const wobble = 1 + (Math.random() - 0.5) * 0.3
+    const turnStrength = Math.max(-1, Math.min(1, diff * 2 * wobble))
+    // Imperfection: slow down slightly when not heading straight at target
+    const headingPenalty = Math.abs(diff) > 0.5 ? 0.6 : 1.0
+    const forwardStrength = dist > 2 ? 0.7 * headingPenalty : 0.25
     
     agentProtocol.processVehicleCommand({
       agentId: session.agentId,
@@ -168,7 +185,7 @@ export class AgentAI {
   }
 
   private async maybeExecuteAutomatedBid(session: AgentSession, decision: SkillDecision) {
-    if (!session.autoPilot || decision.action !== 'bid') return
+    if (decision.action !== 'bid') return
 
     const recommendedBid = decision.metadata?.recommendedBid
     if (!recommendedBid || recommendedBid <= 0) return
@@ -188,6 +205,29 @@ export class AgentAI {
       return
     }
 
+    // When autopilot is off, request player approval instead of executing directly
+    if (!session.autoPilot) {
+      this.publishDecision(session, {
+        ...decision,
+        title: `Weather agent wants to bid ${recommendedBid.toFixed(3)} ETH`,
+        summary: `Proposed weather action: ${decision.metadata?.preset || 'sunset'} via ${decision.provider}. Requires your approval.`,
+        createdAt: now,
+      })
+      // Create a pending approval that the AgentTerminal can resolve
+      const approved = await agentProtocol.requestApproval(session.agentId, decision)
+      if (!approved) {
+        this.publishDecision(session, {
+          ...decision,
+          title: 'Bid rejected by operator',
+          summary: 'You blocked this weather bid.',
+          createdAt: Date.now(),
+        })
+        // Short cooldown on rejection so agent can retry sooner
+        this.lastAutomatedBidAt.set(session.agentId, Date.now() - AgentAI.AUTO_BID_COOLDOWN_MS + 2000)
+        return
+      }
+    }
+
     this.lastAutomatedBidAt.set(session.agentId, now)
     const success = await agentProtocol.processCommand({
       agentId: session.agentId,
@@ -201,7 +241,7 @@ export class AgentAI {
       ...decision,
       title: success ? 'Weather agent executed the bid' : 'Weather agent skipped execution',
       summary: success
-        ? `Autopilot submitted a ${recommendedBid.toFixed(3)} ETH weather action via ${decision.provider}.`
+        ? `${session.autoPilot ? 'Autopilot' : 'Operator-approved'} ${recommendedBid.toFixed(3)} ETH weather action via ${decision.provider}.`
         : 'The bid no longer cleared policy or market conditions at execution time.',
       createdAt: Date.now(),
     })
@@ -212,7 +252,7 @@ export class AgentAI {
   }
 
   private async maybeExecuteAutomatedRent(session: AgentSession, worldState: WorldState, decision: SkillDecision) {
-    if (!session.autoPilot || decision.action !== 'rent') return
+    if (decision.action !== 'rent') return
 
     const vehicle = worldState.vehicles.find((entry) => entry.id === session.vehicleId)
     if (!vehicle || vehicle.isRented) return
@@ -234,7 +274,30 @@ export class AgentAI {
       return
     }
 
+    // When autopilot is off, request player approval
+    if (!session.autoPilot) {
+      this.publishDecision(session, {
+        ...decision,
+        title: `Mobility agent wants to lease ${session.vehicleId}`,
+        summary: `Proposed vehicle: ${decision.metadata?.recommendedVehicle || vehicle.type}. Cost: ${estimatedCost.toFixed(3)} ETH. Requires your approval.`,
+        createdAt: now,
+      })
+      const approved = await agentProtocol.requestApproval(session.agentId, decision)
+      if (!approved) {
+        this.publishDecision(session, {
+          ...decision,
+          title: 'Lease rejected by operator',
+          summary: 'You blocked this vehicle lease.',
+          createdAt: Date.now(),
+        })
+        // Short cooldown on rejection so agent can retry sooner
+        this.lastAutomatedRentAt.set(session.agentId, Date.now() - AgentAI.AUTO_RENT_COOLDOWN_MS + 2000)
+        return
+      }
+    }
+
     this.lastAutomatedRentAt.set(session.agentId, now)
+
     const recommendedType = decision.metadata?.recommendedVehicle as VehicleType | undefined
     const vehicleType = vehicle.type as VehicleType
     const requestedType = recommendedType || vehicleType

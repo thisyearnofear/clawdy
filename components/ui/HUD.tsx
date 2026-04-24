@@ -49,6 +49,15 @@ export function HUD(props: HUDProps) {
   const worldState = useGameStore(s => s.worldState)
   const playerId = useGameStore(s => s.playerId)
   const nearMud = useGameStore(s => s.nearMud)
+  const setUI = useGameStore(s => s.setUI)
+  const cumulativeScore = useGameStore(s => s.cumulativeScore)
+  const round = useGameStore(s => s.round)
+  const activeOverrideCount = useGameStore(s =>
+    Object.keys(s.steerRetentionOverrides).length
+    + Object.keys(s.lateralGripOverrides).length
+    + Object.keys(s.accelerationOverrides).length
+    + Object.keys(s.maxSpeedOverrides).length
+  )
   
   const playerSession = sessions['Player']
   const currentStrategy = getMemeMarketStrategy(playerSession?.strategyId)
@@ -172,6 +181,26 @@ export function HUD(props: HUDProps) {
             <div className="text-[8px] font-bold uppercase tracking-widest text-sky-200/80">
               Strategy: <AgentMetaBlock variant="badge" strategyId={playerSession?.strategyId} prefix={currentStrategy?.icon ? <span>{currentStrategy.icon}</span> : undefined} badgeClassName="text-sky-200/80" />
             </div>
+            {cumulativeScore > 0 && (
+              <div className="text-[8px] font-bold uppercase tracking-widest text-emerald-200/80">
+                Career: {cumulativeScore.toFixed(3)} 0G
+              </div>
+            )}
+            {round.isFinalRush && (
+              <div className="flex items-center gap-1.5 rounded-full border border-red-400/25 bg-red-500/10 px-2 py-0.5 animate-pulse">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                <span className="text-[8px] font-black uppercase tracking-widest text-red-200">Final Rush ×{round.finalRushMultiplier}</span>
+              </div>
+            )}
+            {activeOverrideCount > 0 && (
+              <button
+                onClick={() => { setUI({ isSidebarOpen: true, activeTab: 'vehicles', vehiclesTabPulseAt: Date.now() }) }}
+                className="flex items-center gap-1.5 rounded-full border border-amber-400/25 bg-amber-500/10 px-2 py-0.5 cursor-pointer hover:bg-amber-500/20 hover:border-amber-400/40 transition-all"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                <span className="text-[8px] font-black uppercase tracking-widest text-amber-200/90">Custom Tuning ({activeOverrideCount})</span>
+              </button>
+            )}
             {activeMemeEffects.length > 0 && (
               <div className="flex flex-wrap gap-1 text-[8px] text-sky-200/90">
                 {activeMemeEffects.map((effect) => (

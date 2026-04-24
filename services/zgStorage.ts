@@ -26,6 +26,10 @@ export interface ZgGameState {
     burden: number
     decisionCount: number
   }>
+  steerRetentionOverrides?: Record<string, number>
+  lateralGripOverrides?: Record<string, number>
+  accelerationOverrides?: Record<string, number>
+  maxSpeedOverrides?: Record<string, number>
   weatherPreset?: string
   auctionRound?: number
 }

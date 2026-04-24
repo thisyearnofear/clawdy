@@ -17,6 +17,7 @@ export function AgentTerminal() {
   const [logs, setLogs] = useState<string[]>([])
   const [manualVehicleOverrides, setManualVehicleOverrides] = useState<Partial<Record<string, VehicleType>>>({})
   const [isOpen, setIsOpen] = useState(false)
+  const [pendingApprovals, setPendingApprovals] = useState<Array<{ agentId: string; decision: SkillDecision }>>([])
 
   useEffect(() => {
     if (!isOpen) return
@@ -25,7 +26,8 @@ export function AgentTerminal() {
       setWeatherStatus(agentProtocol.getWeatherStatus())
       setDecisionFeed(agentProtocol.getDecisionFeed())
       setSkillProvider(agentProtocol.getSkillProvider())
-    }, 500)
+      setPendingApprovals(agentProtocol.getPendingApprovals())
+    }, 250)
     const unsubscribeDecisions = agentProtocol.subscribeToDecisions((decision) => {
       setDecisionFeed((prev) => [decision, ...prev].slice(0, 6))
     })
@@ -37,6 +39,13 @@ export function AgentTerminal() {
 
   const addLog = (msg: string) => {
     setLogs(prev => [msg, ...prev].slice(0, 5))
+  }
+
+  const handleApproval = (agentId: string, approved: boolean) => {
+    const success = agentProtocol.resolveApproval(agentId, approved)
+    if (success) {
+      addLog(`${agentId}: ${approved ? 'APPROVED' : 'REJECTED'}`)
+    }
   }
 
   const activeSession = sessions.find((entry) => entry.agentId === activeAgentId)
@@ -208,14 +217,21 @@ export function AgentTerminal() {
                         <div className="mt-2 text-[9px] text-sky-300">Loyalty: {activeSession.agentLoyalty.toFixed(0)}</div>
                       </div>
 
-                      {decisionFeed.length > 0 && decisionFeed[0].agentId === activeAgentId && (
-                        <div className="border border-white/10 bg-black/40 p-3 rounded-lg">
-                           <div className="text-[9px] text-white/50 mb-1">Pending Decision:</div>
-                           <div className="text-[11px] font-bold text-white mb-2">{decisionFeed[0].title}</div>
-                           <div className="flex gap-2">
-                             <button onClick={() => addLog("Approved.")} className="flex-1 bg-emerald-600/40 p-2 text-[10px] rounded">APPROVE</button>
-                             <button onClick={() => addLog("Rejected.")} className="flex-1 bg-red-600/40 p-2 text-[10px] rounded">REJECT</button>
-                           </div>
+                      {/* Approval Gate: show when agent needs player consent */}
+                      {pendingApprovals.length > 0 && (
+                        <div className="space-y-2">
+                          <div className="text-[8px] font-black uppercase tracking-widest text-amber-300">⚠ Agent Approval Required</div>
+                          {pendingApprovals.map(({ agentId, decision }) => (
+                            <div key={agentId} className="border border-amber-400/30 bg-amber-500/10 p-3 rounded-lg">
+                              <div className="text-[9px] text-white/50 mb-1">{agentId} wants to:</div>
+                              <div className="text-[11px] font-bold text-white mb-1">{decision.title}</div>
+                              <div className="text-[9px] text-white/60 mb-2">{decision.summary}</div>
+                              <div className="flex gap-2">
+                                <button onClick={() => handleApproval(agentId, true)} className="flex-1 bg-emerald-600/40 hover:bg-emerald-600/60 p-2 text-[10px] font-bold rounded transition-colors">APPROVE</button>
+                                <button onClick={() => handleApproval(agentId, false)} className="flex-1 bg-red-600/40 hover:bg-red-600/60 p-2 text-[10px] font-bold rounded transition-colors">REJECT</button>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       )}
 
