@@ -1,19 +1,20 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame, useThree } from '@react-three/fiber'
-import { TERRAIN_CONFIG, getTerrainHeight } from '../terrain/terrainUtils'
+import { TERRAIN_CONFIG, getTerrainHeight, getTerrainNormal, getSurfaceType } from '../terrain/terrainUtils'
 
 const GRASS_CONFIG = {
-  PER_CHUNK_COUNT: 260,
+  PER_CHUNK_COUNT: 800,
   GRID_RADIUS: 1,
   BLADE_HEIGHT: 1.2,
   BLADE_WIDTH: 0.12,
-  LOD_NEAR: 14,
-  LOD_FAR: 34,
+  LOD_NEAR: 18,
+  LOD_FAR: 40,
   WIND_STRENGTH: 0.35,
   WIND_FREQUENCY: 2.2,
   SEED: 90210,
-  HEIGHT_UPDATE_INTERVAL: 0.8
+  HEIGHT_UPDATE_INTERVAL: 0.8,
+  BLADE_SEGMENTS: 5,
 } as const
 
 type GrassInstance = {
@@ -44,56 +45,144 @@ const chunkSeed = (x: number, z: number) => {
 
 const createGrassMaterial = () => {
   const material = new THREE.MeshStandardMaterial({
-    color: new THREE.Color(0.25, 0.6, 0.25),
-    roughness: 0.9,
+    color: new THREE.Color(0.3, 0.6, 0.25),
+    roughness: 0.85,
     metalness: 0.0,
     side: THREE.DoubleSide,
     transparent: true,
     depthWrite: false,
-    alphaTest: 0.08
+    alphaTest: 0.05
   })
 
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uTime = { value: 0 }
     shader.uniforms.uWindStrength = { value: GRASS_CONFIG.WIND_STRENGTH }
     shader.uniforms.uWindFrequency = { value: GRASS_CONFIG.WIND_FREQUENCY }
-    shader.uniforms.uTopColor = { value: new THREE.Color(0.45, 0.8, 0.35) }
-    shader.uniforms.uBottomColor = { value: new THREE.Color(0.12, 0.35, 0.12) }
+    shader.uniforms.uTopColor = { value: new THREE.Color(0.50, 0.82, 0.35) }
+    shader.uniforms.uMidColor = { value: new THREE.Color(0.28, 0.58, 0.22) }
+    shader.uniforms.uBottomColor = { value: new THREE.Color(0.08, 0.22, 0.06) }
     shader.uniforms.uLodNear = { value: GRASS_CONFIG.LOD_NEAR }
     shader.uniforms.uLodFar = { value: GRASS_CONFIG.LOD_FAR }
 
+    // ── Vertex shader: Bézier curve + multi-frequency wind ──
     shader.vertexShader = shader.vertexShader
       .replace(
         '#include <common>',
-        `#include <common>\n\nuniform float uTime;\nuniform float uWindStrength;\nuniform float uWindFrequency;\nvarying vec3 vWorldPos;\nvarying vec2 vUv;`
+        /* glsl */ `#include <common>
+
+uniform float uTime;
+uniform float uWindStrength;
+uniform float uWindFrequency;
+varying vec3 vWorldPos;
+varying vec2 vBladeUv;
+varying float vAO;
+
+float hash21(vec2 p) {
+  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+`
       )
       .replace(
         '#include <begin_vertex>',
-        `#include <begin_vertex>\nfloat sway = sin((position.x + position.y) * uWindFrequency + uTime) * uWindStrength;\ntransformed.x += sway * uv.y;\ntransformed.z += sway * uv.y * 0.6;\nvUv = uv;`
+        /* glsl */ `#include <begin_vertex>
+
+float t = uv.y; // 0 at root, 1 at tip
+
+// Per-instance variation from instance matrix translation
+#ifdef USE_INSTANCING
+vec3 iPos = vec3(instanceMatrix[3][0], instanceMatrix[3][1], instanceMatrix[3][2]);
+float iHash = hash21(iPos.xz);
+#else
+vec3 iPos = vec3(0.0);
+float iHash = 0.0;
+#endif
+
+// Quadratic Bézier bend: control point pushes tip sideways
+float bendAmount = 0.3 + iHash * 0.4;
+float bendDir = iHash * 6.2831;
+vec2 bendVec = vec2(cos(bendDir), sin(bendDir)) * bendAmount;
+transformed.x += bendVec.x * t * t;
+transformed.z += bendVec.y * t * t;
+
+// Width taper: wider at base, pointed at tip
+float widthTaper = 1.0 - t * t * 0.7;
+transformed.x *= widthTaper;
+
+// Multi-frequency wind
+float windPhase = iPos.x * 0.3 + iPos.z * 0.2 + iHash * 6.28;
+float windSlow = sin(windPhase + uTime * 0.8) * 0.6;
+float windFast = sin(windPhase * 2.3 + uTime * 2.4) * 0.25;
+float windGust = sin(windPhase * 0.4 + uTime * 0.3) * 0.15;
+float wind = (windSlow + windFast + windGust) * uWindStrength;
+
+// Wind only affects upper portion (smoothstep mask)
+float windMask = smoothstep(0.1, 0.8, t);
+transformed.x += wind * windMask;
+transformed.z += wind * windMask * 0.5;
+
+// AO: darker at the root
+vAO = smoothstep(0.0, 0.35, t);
+vBladeUv = uv;
+`
       )
       .replace(
         '#include <project_vertex>',
-        `#include <project_vertex>\n#ifdef USE_INSTANCING\nvWorldPos = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).xyz;\n#else\nvWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\n#endif`
+        /* glsl */ `#include <project_vertex>
+#ifdef USE_INSTANCING
+vWorldPos = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).xyz;
+#else
+vWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
+#endif
+`
       )
 
+    // ── Fragment shader: 3-stop gradient + AO + distance fade ──
     shader.fragmentShader = shader.fragmentShader
       .replace(
         '#include <common>',
-        `#include <common>\n\nuniform vec3 uTopColor;\nuniform vec3 uBottomColor;\nuniform float uLodNear;\nuniform float uLodFar;\nvarying vec3 vWorldPos;\nvarying vec2 vUv;`
+        /* glsl */ `#include <common>
+
+uniform vec3 uTopColor;
+uniform vec3 uMidColor;
+uniform vec3 uBottomColor;
+uniform float uLodNear;
+uniform float uLodFar;
+varying vec3 vWorldPos;
+varying vec2 vBladeUv;
+varying float vAO;
+`
       )
       .replace(
         '#include <color_fragment>',
-        `#include <color_fragment>\nvec3 bladeColor = mix(uBottomColor, uTopColor, vUv.y);\ndiffuseColor.rgb *= bladeColor;`
+        /* glsl */ `#include <color_fragment>
+// 3-stop height gradient: bottom → mid → top
+float t = vBladeUv.y;
+vec3 bladeColor = t < 0.5
+  ? mix(uBottomColor, uMidColor, t * 2.0)
+  : mix(uMidColor, uTopColor, (t - 0.5) * 2.0);
+
+// Apply AO darkening at root
+bladeColor *= 0.55 + 0.45 * vAO;
+
+diffuseColor.rgb = bladeColor;
+`
       )
       .replace(
         '#include <alphamap_fragment>',
-        `#include <alphamap_fragment>\nfloat alphaMask = smoothstep(0.0, 0.08, vUv.y) * smoothstep(1.0, 0.65, vUv.y);\nfloat distFade = 1.0 - smoothstep(uLodNear, uLodFar, distance(cameraPosition, vWorldPos));\ndiffuseColor.a *= alphaMask * distFade;`
+        /* glsl */ `#include <alphamap_fragment>
+// Soft tip and base alpha
+float tipAlpha = 1.0 - smoothstep(0.85, 1.0, vBladeUv.y);
+float baseAlpha = smoothstep(0.0, 0.05, vBladeUv.y);
+// Distance fade
+float distFade = 1.0 - smoothstep(uLodNear, uLodFar, distance(cameraPosition, vWorldPos));
+diffuseColor.a *= tipAlpha * baseAlpha * distFade;
+`
       )
 
     material.userData.uniforms = shader.uniforms
   }
 
-  material.customProgramCacheKey = () => 'grass-material-v2'
+  material.customProgramCacheKey = () => 'grass-material-v3'
   return material
 }
 
@@ -115,7 +204,7 @@ export function Vegetation({
       GRASS_CONFIG.BLADE_WIDTH,
       GRASS_CONFIG.BLADE_HEIGHT,
       1,
-      4
+      GRASS_CONFIG.BLADE_SEGMENTS
     )
     blade.translate(0, GRASS_CONFIG.BLADE_HEIGHT / 2, 0)
     return blade
@@ -152,8 +241,19 @@ export function Vegetation({
 
           if (height < -0.4) continue
 
+          // Skip road and mud surfaces — grass only on grass/sand
+          const surface = getSurfaceType(x, z)
+          if (surface === 'road' || surface === 'mud') continue
+
           const density = THREE.MathUtils.clamp((height + 1.5) / 5, 0.1, 1)
-          if (random() > density) continue
+          // Reduce density on sand
+          const surfaceDensity = surface === 'sand' ? density * 0.3 : density
+          if (random() > surfaceDensity) continue
+
+          // Slope-aware tilt from terrain normal
+          const [nx, , nz] = getTerrainNormal(x, z)
+          const slopeTiltX = Math.atan2(nx, 1) * 0.4
+          const slopeTiltZ = Math.atan2(nz, 1) * 0.4
 
           const scale = 0.6 + random() * 0.9
           instances.push({
@@ -161,7 +261,7 @@ export function Vegetation({
             z,
             scale,
             rotY: random() * Math.PI,
-            rotZ: (random() - 0.5) * 0.2
+            rotZ: slopeTiltX + (random() - 0.5) * 0.15
           })
           chunkCount += 1
 
