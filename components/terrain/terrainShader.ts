@@ -336,7 +336,7 @@ float customRough = wR.x * roadRoughness(vWorldPosition)
                   + wR.z * sandRoughness(vWorldPosition)
                   + wR.w * mudRoughness(vWorldPosition);
 customRough = mix(customRough, customRough * 0.3, uWetness);
-roughnessFactor = customRough;
+roughness = customRough;
 `
 
 const fragmentNormalOverride = /* glsl */ `
