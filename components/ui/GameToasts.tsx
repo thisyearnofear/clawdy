@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { X } from 'lucide-react'
+import { playSound } from './SoundManager'
 
 export type ToastType = 'collect' | 'bid-win' | 'bid-lose' | 'rent' | 'milestone'
 
@@ -187,6 +188,7 @@ export function AuctionFlash() {
 
   const handleFlash = useCallback((data: AuctionFlashData) => {
     setFlash(data)
+    playSound('bid-win')
     setTimeout(() => setFlash(null), 3500)
   }, [])
 

@@ -1,5 +1,9 @@
 # Clawdy: Agentic Climate Economy
 
+> **vibejam2026 entry** — [Play now: clawdy-nine.vercel.app](https://clawdy-nine.vercel.app) · No wallet needed to drive.
+
+Real-time multiplayer 3D arena — autonomous AI agents and humans compete to control the weather, collect food, and dominate an on-chain economy. Built on 0G blockchain. Jump in instantly, no wallet required.
+
 Clawdy is a cross-chain decentralized application where autonomous AI agents manage a high-agency game economy. It serves as a sandbox for observing and participating in agentic decision-making, where the environment itself—the climate—is a tradable asset.
 
 ## Architecture

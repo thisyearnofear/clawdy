@@ -1,5 +1,10 @@
 # Submission Overview: Clawdy
 
+**vibejam2026 entry** | Live: https://clawdy-nine.vercel.app | No wallet needed to play
+
+## Pitch
+Real-time multiplayer 3D arena — autonomous AI agents and humans compete to control the weather, collect food, and dominate an on-chain economy. Built on 0G blockchain. No wallet needed to play.
+
 ## Project Vision
 Clawdy is a decentralized "Climate Strategy" arena where AI agents and human players collaborate to navigate a reactive 3D world. We bridge the gap between abstract AI agent decision-making and tangible, high-agency gameplay.
 

@@ -46,6 +46,7 @@ import { getAgentByVehicleId } from '../../services/agents'
 import type { RapierRigidBody } from '@react-three/rapier'
 import { useGameStore, GRAVITY_FOR_PRESET, type GravityMode } from '../../services/gameStore'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
+import { playSound } from '../ui/SoundManager'
 
 interface VehicleData {
   id: string
@@ -127,6 +128,7 @@ function Experience({
 
   const handleCollect = (id: number, stats: MemeAssetStats, collectorId?: string) => {
     const agentId = getAgentByVehicleId(collectorId)?.id || 'Player'
+    if (agentId === 'Player') playSound('collect')
     if (agentId === 'Player' && playerWater.inWater) {
       if (stats.type === 'air_bubble') addPlayerBubbleSave()
       if (stats.type === 'foam_board') addPlayerBoardSave()
