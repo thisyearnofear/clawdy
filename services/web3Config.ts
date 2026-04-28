@@ -80,8 +80,8 @@ export const config = createConfig({
       metadata: {
         name: 'CLAWDY',
         description: `Agentic sandbox on ${primaryChain.name}`,
-        url: process.env.NEXT_PUBLIC_APP_URL || 'https://clawdy.io',
-        icons: ['https://clawdy.io/icon.png'],
+        url: process.env.NEXT_PUBLIC_APP_URL || 'https://clawdy-nine.vercel.app',
+        icons: [(process.env.NEXT_PUBLIC_APP_URL || 'https://clawdy-nine.vercel.app') + '/favicon.svg'],
       },
     }),
   ],
