@@ -218,9 +218,31 @@ function ActiveSpeedster({
         
         <SpeedsterUnderglow />
         
+        {/* Rear diffuser */}
         <mesh position={[0, -0.15, 2.15]} castShadow>
           <boxGeometry args={[1.4, 0.15, 0.3]} />
           <meshStandardMaterial color="#2c3e50" />
+        </mesh>
+        {/* Diffuser fins */}
+        {[-0.5, 0, 0.5].map((x, i) => (
+          <mesh key={i} position={[x, -0.22, 2.0]} rotation={[0.2, 0, 0]} castShadow>
+            <boxGeometry args={[0.06, 0.12, 0.5]} />
+            <meshStandardMaterial color="#1a252f" metalness={0.7} roughness={0.3} />
+          </mesh>
+        ))}
+        {/* Flat underbody floor */}
+        <mesh position={[0, -0.32, 0]}>
+          <boxGeometry args={[1.55, 0.04, 4.2]} />
+          <meshStandardMaterial color="#1a252f" metalness={0.5} roughness={0.5} />
+        </mesh>
+        {/* Exhaust tips */}
+        <mesh position={[-0.45, -0.18, 2.32]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.07, 0.09, 0.18, 12]} />
+          <meshPhysicalMaterial color="#636e72" metalness={0.95} roughness={0.1} clearcoat={0.5} />
+        </mesh>
+        <mesh position={[0.45, -0.18, 2.32]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.07, 0.09, 0.18, 12]} />
+          <meshPhysicalMaterial color="#636e72" metalness={0.95} roughness={0.1} clearcoat={0.5} />
         </mesh>
         
         <>

@@ -213,13 +213,56 @@ function ActiveMonsterTruck({
                 <meshStandardMaterial color="#f39c12" metalness={0.8} {...materialProps} />
              </mesh>
           ))}
+          {/* Roll cage top bars */}
           <mesh position={[0, 3.4, 0]} castShadow>
             <boxGeometry args={[2, 0.1, 2.2]} />
             <meshStandardMaterial color="#d63031" {...materialProps} />
           </mesh>
+          {/* Roll cage cross-bars front/rear */}
+          <mesh position={[0, 3.35, 1]} castShadow>
+            <boxGeometry args={[2, 0.08, 0.08]} />
+            <meshStandardMaterial color="#f39c12" metalness={0.8} {...materialProps} />
+          </mesh>
+          <mesh position={[0, 3.35, -1]} castShadow>
+            <boxGeometry args={[2, 0.08, 0.08]} />
+            <meshStandardMaterial color="#f39c12" metalness={0.8} {...materialProps} />
+          </mesh>
+          {/* X-brace on roof */}
+          <mesh position={[0, 3.42, 0]} rotation={[0, 0.42, 0]} castShadow>
+            <boxGeometry args={[2.6, 0.06, 0.06]} />
+            <meshStandardMaterial color="#e17055" metalness={0.7} {...materialProps} />
+          </mesh>
+          <mesh position={[0, 3.42, 0]} rotation={[0, -0.42, 0]} castShadow>
+            <boxGeometry args={[2.6, 0.06, 0.06]} />
+            <meshStandardMaterial color="#e17055" metalness={0.7} {...materialProps} />
+          </mesh>
+          {/* Rear spoiler bar */}
           <mesh position={[0, 2.8, 1.8]} castShadow>
             <boxGeometry args={[2.4, 0.1, 0.6]} />
             <meshStandardMaterial color="#c0392b" {...materialProps} />
+          </mesh>
+          {/* Rear window */}
+          <mesh position={[0, 2.1, 1.72]}>
+            <boxGeometry args={[1.8, 0.55, 0.05]} />
+            <meshStandardMaterial color="#74b9ff" transparent opacity={0.35} metalness={0.9} roughness={0.05} />
+          </mesh>
+          {/* Exhaust pipes (left side) */}
+          <mesh position={[-1.35, 1.5, 0.5]} rotation={[0, 0, 0]} castShadow>
+            <cylinderGeometry args={[0.1, 0.12, 2.2, 12]} />
+            <meshPhysicalMaterial color="#636e72" metalness={0.95} roughness={0.1} clearcoat={0.5} />
+          </mesh>
+          <mesh position={[-1.35, 2.6, 0.5]}>
+            <cylinderGeometry args={[0.12, 0.1, 0.15, 12]} />
+            <meshStandardMaterial color="#2d3436" metalness={0.9} emissive="#ff6b35" emissiveIntensity={0.3} />
+          </mesh>
+          {/* Exhaust pipes (right side) */}
+          <mesh position={[1.35, 1.5, 0.5]} rotation={[0, 0, 0]} castShadow>
+            <cylinderGeometry args={[0.1, 0.12, 2.2, 12]} />
+            <meshPhysicalMaterial color="#636e72" metalness={0.95} roughness={0.1} clearcoat={0.5} />
+          </mesh>
+          <mesh position={[1.35, 2.6, 0.5]}>
+            <cylinderGeometry args={[0.12, 0.1, 0.15, 12]} />
+            <meshStandardMaterial color="#2d3436" metalness={0.9} emissive="#ff6b35" emissiveIntensity={0.3} />
           </mesh>
           <mesh position={[-1, 2.4, 1.8]} castShadow>
             <cylinderGeometry args={[0.08, 0.08, 0.8, 8]} />

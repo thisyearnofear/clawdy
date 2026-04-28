@@ -299,7 +299,19 @@ function Experience({
       <Sky sunPosition={isNightMode ? [100, 1 + (activeWeatherEffects.dayNight?.intensity ?? 0) * 2, 90] : cloudConfig.preset === 'stormy' ? [100, 5, 100] : cloudConfig.preset === 'sunset' ? [100, 8, 50] : [100, 20, 100]} />
       <Environment preset="city" />
       <ambientLight intensity={(cloudConfig.preset === 'stormy' ? 0.3 : cloudConfig.preset === 'cosmic' ? 0.15 : cloudConfig.preset === 'sunset' ? 0.6 : 0.5) * (1 - (activeWeatherEffects.dayNight?.intensity ?? 0) * 0.55) + lightningPulse * 0.35} />
-      <directionalLight position={[10, 10, 5]} intensity={(cloudConfig.preset === 'stormy' ? 0.5 : cloudConfig.preset === 'cosmic' ? 0.3 : 1) * (1 - (activeWeatherEffects.dayNight?.intensity ?? 0) * 0.5) + lightningPulse} castShadow />
+      <directionalLight
+        position={[10, 10, 5]}
+        intensity={(cloudConfig.preset === 'stormy' ? 0.5 : cloudConfig.preset === 'cosmic' ? 0.3 : 1) * (1 - (activeWeatherEffects.dayNight?.intensity ?? 0) * 0.5) + lightningPulse}
+        castShadow
+        shadow-mapSize={[2048, 2048]}
+        shadow-camera-near={0.5}
+        shadow-camera-far={200}
+        shadow-camera-left={-60}
+        shadow-camera-right={60}
+        shadow-camera-top={60}
+        shadow-camera-bottom={-60}
+        shadow-bias={-0.0005}
+      />
       <fog attach="fog" args={[isNightMode ? '#0a0a2e' : cloudConfig.preset === 'stormy' ? '#4a5568' : cloudConfig.preset === 'sunset' ? '#ffccaa' : cloudConfig.preset === 'candy' ? '#ffe0f0' : '#c9d5ff', cloudConfig.preset === 'stormy' ? 10 : cloudConfig.preset === 'cosmic' ? 20 : 18, (cloudConfig.preset === 'stormy' ? 60 : cloudConfig.preset === 'cosmic' ? 120 : 90) - (activeWeatherEffects.lightning?.intensity ?? 0) * 18]} />
       <WeatherParticles config={cloudConfig} />
       <PuddleRipples bounds={cloudConfig.bounds} getHeightAt={terrainSampler ?? undefined} />
