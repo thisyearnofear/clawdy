@@ -58,7 +58,14 @@ After deploying contracts, set these in **Vercel → Settings → Environment Va
 | `NEXT_PUBLIC_VEHICLE_RENT_ADDRESS` | From deploy output | ✅ Yes |
 | `NEXT_PUBLIC_MEME_MARKET_ADDRESS` | From deploy output | ✅ Yes |
 | `NEXT_PUBLIC_APP_URL` | `https://clawdy-nine.vercel.app` | ✅ Yes |
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://muxhhklostmbmljumurx.supabase.co` | ✅ Yes |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | From Supabase dashboard → Settings → API | ✅ Yes |
 | `NEXT_PUBLIC_WC_PROJECT_ID` | From cloud.walletconnect.com (free) | 🟡 Recommended |
+| `NEXT_PUBLIC_SENTRY_DSN` | From Sentry project settings | 🟡 Recommended |
+| `SENTRY_ORG` | Sentry org slug | 🟡 Recommended |
+| `SENTRY_PROJECT` | Sentry project slug | 🟡 Recommended |
+| `API_SECRET` | Random string for /api/0g-storage auth | 🟡 Recommended |
+| `NEXT_PUBLIC_API_SECRET` | Same as API_SECRET (client-side) | 🟡 Recommended |
 | `NEXT_PUBLIC_USE_TESTNET` | `true` if using testnet | Optional |
 | `NEXT_PUBLIC_CHAIN` | `0g` / `xlayer` / `bnb` (default: `0g`) | Optional |
 
@@ -74,6 +81,43 @@ Without a real project ID, WalletConnect modal fails for non-MetaMask users (mos
 2. Create a free account → New Project → name it "CLAWDY"
 3. Copy the Project ID
 4. Set `NEXT_PUBLIC_WC_PROJECT_ID=<your-id>` in Vercel env vars
+
+---
+
+## Supabase Setup
+
+The project uses Supabase for real-time player presence, leaderboard, and weather sync.
+
+**Project:** `muxhhklostmbmljumurx` (West EU)
+
+1. Go to https://supabase.com/dashboard/project/muxhhklostmbmljumurx/settings/api
+2. Copy the **Project URL** and **anon/public key**
+3. Set in Vercel:
+   - `NEXT_PUBLIC_SUPABASE_URL=https://muxhhklostmbmljumurx.supabase.co`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>`
+
+The database schema is in `supabase/schema.sql`. To apply:
+```bash
+supabase db query --linked -f supabase/schema.sql
+```
+
+Features powered by Supabase:
+- **Presence channels** — real-time player count (replaces polling)
+- **Leaderboard** — persistent scores with live updates
+- **Weather sync** — instant weather state changes across clients
+
+---
+
+## Sentry Setup
+
+Error monitoring via Sentry (optional but recommended for production).
+
+1. Create a project at https://sentry.io
+2. Copy the **DSN** from project settings
+3. Set in Vercel:
+   - `NEXT_PUBLIC_SENTRY_DSN=<your-dsn>`
+   - `SENTRY_ORG=<your-org-slug>`
+   - `SENTRY_PROJECT=<your-project-slug>`
 
 ---
 
