@@ -261,10 +261,20 @@ function Experience({
     : 1
   const effectiveSpawnRate = Math.min(10, spawnRate * endgameMultiplier)
 
+  const wasActiveRef = useRef(false)
+
   useEffect(() => {
     const unsubscribe = vehicleQueue.subscribe((state) => {
       setQueueState(state)
       useGameStore.getState().setActiveHumans(state.activeHumans + state.waitingHumans)
+
+      // Respawn feedback: detect active → waiting transition
+      const isNowActive = state.vehicles.some(v => v.currentPlayerId === playerId && v.isOccupied)
+      if (wasActiveRef.current && !isNowActive) {
+        emitToast('milestone', '💨 Session Ended', 'Back in queue — you\'ll respawn shortly!')
+        playSound('collect')
+      }
+      wasActiveRef.current = isNowActive
       
       const activeVehicles: VehicleData[] = state.vehicles
         .filter(v => v.isOccupied && v.currentPlayerId)
@@ -574,8 +584,12 @@ function InWorldQueueStatus({ playerId, queueState, isPlayerActive, playerVehicl
       </group>
     )
   }
-  // Connected but not in queue - let the HTML UI guide them
-  return null
+  // Pure spectator — show controls hint so they know what to expect
+  return (
+    <group position={[0, 6, 0]}>
+      <Text fontSize={0.6} color="#94a3b8" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="#000000">WASD / Arrows to drive · Space to brake</Text>
+    </group>
+  )
 }
 
 import { LaunchPad } from './LaunchPad'

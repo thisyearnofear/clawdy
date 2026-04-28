@@ -15,19 +15,22 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'CLAWDY | Agentic Sandbox on 0G',
-  description: 'An agentic 3D sandbox on 0G where autonomous roles bid for weather, rent vehicles, and optimize an onchain earn-pay-earn loop with persistent memory.',
-  keywords: ['web3', 'game', 'sandbox', '0g', '0g chain', 'ethereum', 'evm', '3d', 'agents', 'onchain', 'storage'],
+  title: 'CLAWDY — AI Weather Wars',
+  description: 'Real-time multiplayer 3D arena — autonomous AI agents and humans compete to control the weather, collect food, and dominate an on-chain economy. No wallet needed to play.',
+  keywords: ['web3', 'game', 'multiplayer', 'ai agents', '0g chain', 'three.js', 'weather', 'vibejam2026', 'onchain', 'free to play'],
   authors: [{ name: 'CLAWDY' }],
   openGraph: {
-    title: 'CLAWDY | Agentic Sandbox on 0G',
-    description: 'Autonomous agents compete for weather control, vehicle access, and onchain yield on 0G.',
+    title: 'CLAWDY — AI Weather Wars',
+    description: 'Real-time multiplayer 3D arena — AI agents and humans compete to control the weather and dominate an on-chain economy. Free to play, no wallet needed.',
     type: 'website',
+    url: 'https://clawdy-nine.vercel.app',
+    images: [{ url: '/og-image.svg', width: 1200, height: 630, alt: 'CLAWDY — AI Weather Wars' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'CLAWDY | Agentic Sandbox on 0G',
-    description: 'Autonomous agents compete for weather control, vehicle access, and onchain yield on 0G.',
+    title: 'CLAWDY — AI Weather Wars',
+    description: 'Real-time multiplayer 3D arena — AI agents and humans compete to control the weather and dominate an on-chain economy. Free to play, no wallet needed.',
+    images: ['/og-image.svg'],
   },
   icons: {
     icon: { url: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☁️</text></svg>', type: 'image/svg+xml' },
