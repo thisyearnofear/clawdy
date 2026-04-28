@@ -51,4 +51,4 @@ output.txt
 # foundry
 /foundry/out/
 /foundry/cache/
-/foundry/lib/
+/foundry/lib/supabase/.temp/

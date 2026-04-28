@@ -65,6 +65,7 @@ import { useGameStore } from './gameStore'
 import { ApprovalGate } from './ApprovalGate'
 import { SessionManager } from './SessionManager'
 import { BlockchainService } from './BlockchainService'
+import { updateWeatherState } from '../hooks/useRealtimeWeather'
 import {
   type AgentSession,
   type WorldState,
@@ -435,6 +436,14 @@ class AgentProtocol {
 
     this.notifyWeatherListeners(command.config)
     this.gameEventListeners.forEach(l => l({ type: 'bid-won', agentId: command.agentId, preset: command.config.preset || 'custom' }))
+
+    // Sync weather state to Supabase for real-time broadcast
+    updateWeatherState({
+      preset: command.config.preset || 'custom',
+      agentId: command.agentId,
+      amount: command.bid,
+      expiresAt: new Date(now + command.duration).toISOString(),
+    }).catch(() => { /* non-blocking */ })
 
     if (this.blockchainService.isAutonomyEnabled()) {
       const hash = await this.blockchainService.sendContractTransaction({

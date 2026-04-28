@@ -22,6 +22,7 @@ import { MobileTouchControls } from '../ui/MobileTouchControls'
 import { useGameStore } from '../../services/gameStore'
 import { vehicleQueue } from '../../services/VehicleQueue'
 import { trackEvent } from '../../services/analytics'
+import { upsertLeaderboardEntry } from '../../hooks/useRealtimeLeaderboard'
 
 const WEATHER_DOMAINS_BY_PRESET = {
   stormy: [
@@ -67,9 +68,29 @@ export default function CloudScene() {
   const [isMounted, setIsMounted] = useState(false)
   const flood = useGameStore(s => s.flood)
   const cumulativeScore = useGameStore(s => s.cumulativeScore)
+  const round = useGameStore(s => s.round)
+  const sessions = useGameStore(s => s.sessions)
   const lastFloodNudgeRef = useRef(0)
   const lastScoreNudgeRef = useRef(0)
   const scoreNudgeFired = cumulativeScore >= 1.0
+
+  // Sync leaderboard to Supabase when a round ends
+  useEffect(() => {
+    if (!round.isActive && round.winner && round.endedAt) {
+      const playerSession = sessions['Player']
+      if (playerSession) {
+        upsertLeaderboardEntry({
+          playerId: playerId || 'anonymous',
+          walletAddress: undefined,
+          totalEarned: playerSession.totalEarned,
+          totalCollected: playerSession.collectedCount,
+          roundsPlayed: round.roundNumber,
+          roundsWon: round.winner === 'Player' ? 1 : 0,
+          bestComboMultiplier: playerSession.comboMultiplier,
+        }).catch(() => { /* non-blocking */ })
+      }
+    }
+  }, [round.isActive, round.winner, round.endedAt, round.roundNumber, sessions, playerId])
 
   const { data: onChainWeatherConfig } = useReadContract({
     address: WEATHER_AUCTION_ADDRESS as `0x${string}`,

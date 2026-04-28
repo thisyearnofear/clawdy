@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "prepare": "git config core.hooksPath .husky",
-    "test": "vitest run"
+    "test": "vitest run",
+    "contracts:sync": "bash scripts/sync-contracts.sh",
+    "contracts:test": "cd foundry && forge test -vv"
   },
   "dependencies": {
     "@0gfoundation/0g-ts-sdk": "^1.2.2",
