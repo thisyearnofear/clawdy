@@ -129,7 +129,7 @@ export function HUD(props: HUDProps) {
             </span>
           </div>
           <a
-            href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('🌩️ Just playing CLAWDY — AI agents & humans battle to control the weather in a real-time 3D arena! #vibejam2026 #web3gaming')}&url=${encodeURIComponent('https://clawdy.xyz')}`}
+            href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(cumulativeScore > 0 ? `🌩️ I just earned ${cumulativeScore.toFixed(3)} 0G in CLAWDY — AI agents & humans battle to control the weather in a real-time 3D arena! #vibejam2026 #web3gaming` : '🌩️ Just playing CLAWDY — AI agents & humans battle to control the weather in a real-time 3D arena! #vibejam2026 #web3gaming')}&url=${encodeURIComponent('https://clawdy.xyz')}`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 bg-sky-500/80 hover:bg-sky-400/90 backdrop-blur-xl border border-sky-400/40 rounded-full px-3 py-1.5 shadow transition-all pointer-events-auto"
@@ -242,8 +242,8 @@ export function HUD(props: HUDProps) {
         <ConnectWallet source="hud_top_right" />
       </div>
 
-      {/* Objective overlay — dismisses after 8s */}
-      <ObjectiveOverlay />
+      {/* Objective overlay — dismisses after 8s, then collapses to mini bar */}
+      <ObjectiveOverlay score={cumulativeScore} />
 
       {/* Discovery nudges — contextual onchain feature hints */}
       <DiscoveryNudges onOpen={(tab) => {
@@ -278,24 +278,35 @@ export function HUD(props: HUDProps) {
   )
 }
 
-function ObjectiveOverlay() {
-  const [visible, setVisible] = useState(true)
+function ObjectiveOverlay({ score }: { score: number }) {
+  const [expanded, setExpanded] = useState(true)
 
   useEffect(() => {
-    const t = setTimeout(() => setVisible(false), 8000)
+    const t = setTimeout(() => setExpanded(false), 8000)
     return () => clearTimeout(t)
   }, [])
 
-  if (!visible) return null
+  if (expanded) {
+    return (
+      <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-40 pointer-events-none animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="flex items-center gap-3 px-5 py-3 rounded-2xl border border-white/15 bg-black/60 backdrop-blur-xl shadow-2xl">
+          <span className="text-2xl">🎯</span>
+          <div>
+            <div className="text-[11px] font-black text-white uppercase tracking-widest">Collect food · Earn 0G · Beat the AI</div>
+            <div className="text-[9px] text-white/50 mt-0.5">WASD / Arrows to drive · Space to brake · Win the weather auction for an edge</div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-40 pointer-events-none animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex items-center gap-3 px-5 py-3 rounded-2xl border border-white/15 bg-black/60 backdrop-blur-xl shadow-2xl">
-        <span className="text-2xl">🎯</span>
-        <div>
-          <div className="text-[11px] font-black text-white uppercase tracking-widest">Collect food · Earn 0G · Beat the AI</div>
-          <div className="text-[9px] text-white/50 mt-0.5">WASD / Arrows to drive · Space to brake · Win the weather auction for an edge</div>
-        </div>
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-none animate-in fade-in duration-700">
+      <div className="flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-black/40 backdrop-blur-md shadow">
+        <span className="text-[9px] font-black text-white/50 uppercase tracking-widest">🎯 Collect food · Earn 0G · Beat the AI</span>
+        {score > 0 && (
+          <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">· {score.toFixed(3)} 0G earned</span>
+        )}
       </div>
     </div>
   )

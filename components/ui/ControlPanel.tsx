@@ -164,7 +164,7 @@ export function ControlPanel({
     abi: MEME_MARKET_ABI,
     functionName: 'owner',
     query: {
-      enabled: isMemeMarketConfigured,
+      enabled: isMemeMarketConfigured && activeTab === 'stats',
       refetchInterval: 12_000,
     },
   })
@@ -177,7 +177,7 @@ export function ControlPanel({
       args: [address ?? '0x0000000000000000000000000000000000000000', BigInt(ability.id)] as const,
     })),
     query: {
-      enabled: isMemeMarketConfigured && Boolean(address),
+      enabled: isMemeMarketConfigured && Boolean(address) && activeTab === 'stats',
       refetchInterval: 12_000,
     },
   })

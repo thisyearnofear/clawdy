@@ -77,6 +77,7 @@ function Experience({
   const preferredVehicle = useGameStore(s => s.ui.preferredVehicleType)
   const [terrainSampler, setTerrainSampler] = useState<((x: number, z: number) => number) | null>(null)
   const hasJoinedQueueRef = useRef(false)
+  const freeAirBubbleUsedRef = useRef(false)
   
   const playerVehicleObjRef = useRef<RapierRigidBody | null>(null)
   const spectatorVehicleObjRef = useRef<RapierRigidBody | null>(null)
@@ -123,7 +124,8 @@ function Experience({
     // Shield check: if the player has an active Force Field, block destroy events on their assets
     const playerSess = agentProtocol.getSession('Player')
     if (playerSess?.shieldUntil && playerSess.shieldUntil > Date.now()) {
-      emitToast('milestone', '🛡️ Force Field', 'Your food is protected!')
+      emitToast('milestone', '🛡️ BLOCKED', 'Force Field absorbed the attack!')
+      playSound('collect')
       return
     }
     setMemeAssets((prev) => {
@@ -136,6 +138,16 @@ function Experience({
   const handleCollect = (id: number, stats: MemeAssetStats, collectorId?: string) => {
     const agentId = getAgentByVehicleId(collectorId)?.id || 'Player'
     if (agentId === 'Player') playSound('collect')
+    // Grant 1 free Air Bubble per session on first collect (no wallet needed)
+    if (agentId === 'Player' && !freeAirBubbleUsedRef.current) {
+      freeAirBubbleUsedRef.current = true
+      const sess = agentProtocol.getSession('Player')
+      if (sess) {
+        sess.airBubbleUntil = Date.now() + 8_000
+        sess.airBubbleCount = (sess.airBubbleCount ?? 0) + 1
+      }
+      emitToast('milestone', '🫧 Free Air Bubble!', '8s flood immunity — collect more to earn abilities')
+    }
     // Grant Force Field when player collects a shield asset
     if (agentId === 'Player' && (stats.type as string) === 'shield') {
       const sess = agentProtocol.getSession('Player')
