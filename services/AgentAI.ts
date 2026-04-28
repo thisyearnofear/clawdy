@@ -8,6 +8,7 @@ import { agentProtocol } from './AgentProtocol'
 import type { AgentSession, WorldState, WeatherStatus, VehicleType } from './protocolTypes'
 import { getControllableAgents } from './agents'
 import { vehicleQueue } from './VehicleQueue'
+import { logger } from './logger'
 
 export class AgentAI {
   private static readonly AUTO_BID_COOLDOWN_MS = 15000
@@ -69,43 +70,46 @@ export class AgentAI {
 
     sessions.forEach(session => {
       if (session.agentId === 'Player') return
+      try {
+        const agentVehicle = worldState.vehicles.find(v => v.id === session.vehicleId)
 
-      const agentVehicle = worldState.vehicles.find(v => v.id === session.vehicleId)
-
-      let nearestId: number | null = null
-      if (agentVehicle && worldState.assets.length > 0) {
-        let minDist = Infinity
-        worldState.assets.forEach(f => {
-          const dx = f.position[0] - agentVehicle.position[0]
-          const dz = f.position[2] - agentVehicle.position[2]
-          const dist = dx * dx + dz * dz
-          if (dist < minDist) { minDist = dist; nearestId = f.id }
-        })
-      }
-
-      session.targetAssetId = nearestId
-
-      if (session.autoPilot) {
-        if (agentVehicle && nearestId !== null) {
-          this.executeAutoPilot(session, agentVehicle, worldState, nearestId)
-        } else {
-          this.executeWander(session)
+        let nearestId: number | null = null
+        if (agentVehicle && worldState.assets.length > 0) {
+          let minDist = Infinity
+          worldState.assets.forEach(f => {
+            const dx = f.position[0] - agentVehicle.position[0]
+            const dz = f.position[2] - agentVehicle.position[2]
+            const dist = dx * dx + dz * dz
+            if (dist < minDist) { minDist = dist; nearestId = f.id }
+          })
         }
-      }
 
-      if (providerId === 'onchain-os') {
-        void this.publishDecisionAsync(session, worldState, currentWeatherBid)
-        return
-      }
+        session.targetAssetId = nearestId
 
-      const decision = evaluateAgentDecision({
-        session,
-        worldState,
-        currentWeatherBid,
-      })
-      this.publishDecision(session, decision)
-      void this.maybeExecuteAutomatedBid(session, decision)
-      void this.maybeExecuteAutomatedRent(session, worldState, decision)
+        if (session.autoPilot) {
+          if (agentVehicle && nearestId !== null) {
+            this.executeAutoPilot(session, agentVehicle, worldState, nearestId)
+          } else {
+            this.executeWander(session)
+          }
+        }
+
+        if (providerId === 'onchain-os') {
+          void this.publishDecisionAsync(session, worldState, currentWeatherBid)
+          return
+        }
+
+        const decision = evaluateAgentDecision({
+          session,
+          worldState,
+          currentWeatherBid,
+        })
+        this.publishDecision(session, decision)
+        void this.maybeExecuteAutomatedBid(session, decision)
+        void this.maybeExecuteAutomatedRent(session, worldState, decision)
+      } catch (err) {
+        logger.error(`[AgentAI] Agent ${session.agentId} tick failed:`, err)
+      }
     })
   }
 

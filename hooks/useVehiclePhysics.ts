@@ -26,6 +26,20 @@ export interface VehicleStats {
   steerRetention: number
 }
 
+const PROFILE_FLOOD_SCALE: Record<VehicleHandlingProfile, number> = {
+  speedster: 1.15,
+  vehicle: 1.0,
+  monster: 0.9,
+  tank: 0.8,
+}
+
+const VEHICLE_MODE_SCALE: Record<VehicleHandlingProfile, number> = {
+  speedster: 1.08,
+  vehicle: 1.0,
+  monster: 0.94,
+  tank: 0.82,
+}
+
 export function useVehiclePhysics(
   id: string,
   chassisRef: React.RefObject<RapierRigidBody | null>,
@@ -158,13 +172,7 @@ export function useVehiclePhysics(
     const dragDepthRaw = isAirBubble ? 0 : physicalSubmergeDepth
 
     // Vehicle-profile tuning: speedsters suffer more from water, tanks less.
-    const profileFloodScale: Record<VehicleHandlingProfile, number> = {
-      speedster: 1.15,
-      vehicle: 1.0,
-      monster: 0.9,
-      tank: 0.8,
-    }
-    const dragDepth = THREE.MathUtils.clamp(dragDepthRaw * profileFloodScale[stats.profile], 0, 1)
+    const dragDepth = THREE.MathUtils.clamp(dragDepthRaw * PROFILE_FLOOD_SCALE[stats.profile], 0, 1)
     // CONSOLIDATED: Single floodSlow formula with airBubble modifier
     const floodSlow = 1 - dragDepth * (isAirBubble ? 0.05 : 0.35)
 
@@ -208,17 +216,11 @@ export function useVehiclePhysics(
     const isSpeedBoosted = session && session.speedBoostUntil && session.speedBoostUntil > Date.now()
     const isAntiGravity = session && session.antiGravityUntil && session.antiGravityUntil > Date.now()
 
-    const vehicleModeScale: Record<VehicleHandlingProfile, number> = {
-      speedster: 1.08,
-      vehicle: 1.0,
-      monster: 0.94,
-      tank: 0.82,
-    }
     const boostFactor = isSpeedBoosted ? handling.speedBoostMultiplier : 1.0
     // CONSOLIDATED: floodSlow already calculated in flood physics block above
     const bubbleBoost = isAirBubble ? 1.18 : 1.0
-    const modeSpeedScale = handling.speedScale * vehicleModeScale[stats.profile]
-    const modeAccelScale = handling.accelerationScale * vehicleModeScale[stats.profile]
+    const modeSpeedScale = handling.speedScale * VEHICLE_MODE_SCALE[stats.profile]
+    const modeAccelScale = handling.accelerationScale * VEHICLE_MODE_SCALE[stats.profile]
     // Combine all penalty factors, then clamp to 0.4 min for driveability
     const totalPenalty = Math.max(0.4, (0.55 + 0.45 * vitalityFactor) * boostFactor * floodSlow / mudPenalty)
     // Runtime overrides from control panel take precedence if set

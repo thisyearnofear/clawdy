@@ -221,8 +221,8 @@ class AgentProtocol {
        }
     })
 
-    const vehiclesChanged = update.vehicles && JSON.stringify(update.vehicles) !== JSON.stringify(this.worldState.vehicles)
-    const assetsChanged = update.assets && JSON.stringify(update.assets) !== JSON.stringify(this.worldState.assets)
+    const vehiclesChanged = update.vehicles && update.vehicles !== this.worldState.vehicles
+    const assetsChanged = update.assets && update.assets !== this.worldState.assets
 
     if (!vehiclesChanged && !assetsChanged && !update.bounds) return
 

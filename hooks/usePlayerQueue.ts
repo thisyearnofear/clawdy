@@ -89,7 +89,10 @@ export function usePlayerQueue(
 
       setVehicles(prevVehicles => {
         const newVehicles = [...activeVehicles, ...ghostVehicles]
-        if (JSON.stringify(prevVehicles) === JSON.stringify(newVehicles)) return prevVehicles
+        if (prevVehicles.length === newVehicles.length &&
+            prevVehicles.every((v, i) => v.id === newVehicles[i].id && v.isGhost === newVehicles[i].isGhost)) {
+          return prevVehicles
+        }
 
         const currentWorldVehicles = agentProtocol.getWorldState().vehicles
         const worldVehicleIds = new Set(currentWorldVehicles.map(v => v.id))

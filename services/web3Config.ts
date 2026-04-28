@@ -76,7 +76,10 @@ export const config = createConfig({
       preference: 'smartWalletOnly',
     }),
     walletConnect({
-      projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID || 'demo-project',
+      projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID || (() => {
+        if (typeof console !== 'undefined') console.warn('[web3Config] NEXT_PUBLIC_WC_PROJECT_ID not set — WalletConnect may not work')
+        return 'demo-project'
+      })(),
       metadata: {
         name: 'CLAWDY',
         description: `Agentic sandbox on ${primaryChain.name}`,

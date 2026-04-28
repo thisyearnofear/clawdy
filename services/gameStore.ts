@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { AgentSession, WorldState, WeatherStatus, VehicleType } from './protocolTypes'
 import type { CloudConfig } from '../components/environment/CloudManager'
+import { logger } from './logger'
 
 // ── Local-storage helpers (safe for SSR) ──────────────────────────────
 function loadFromStorage<T>(key: string, fallback: T): T {
@@ -8,7 +9,7 @@ function loadFromStorage<T>(key: string, fallback: T): T {
   try {
     const raw = localStorage.getItem(key)
     return raw ? (JSON.parse(raw) as T) : fallback
-  } catch { return fallback }
+  } catch (err) { logger.debug('[gameStore] loadFromStorage failed for', key, err); return fallback }
 }
 function saveToStorage(key: string, value: unknown): void {
   if (typeof window === 'undefined') return
@@ -18,7 +19,7 @@ function saveToStorage(key: string, value: unknown): void {
     } else {
       localStorage.setItem(key, JSON.stringify(value))
     }
-  } catch { /* quota exceeded or private browsing */ }
+  } catch (err) { logger.debug('[gameStore] saveToStorage failed for', key, err) }
 }
 
 // ── Round Structure ──────────────────────────────────────────────────

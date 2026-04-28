@@ -299,16 +299,16 @@ export default function CloudScene() {
 
     // Keyboard controls
     const handleKeyDown = (e: KeyboardEvent) => {
+      const store = useGameStore.getState()
       if (e.key === 'Escape') {
-        setUI({ isSidebarOpen: !ui.isSidebarOpen })
+        setUI({ isSidebarOpen: !store.ui.isSidebarOpen })
       }
       if (e.key.toLowerCase() === 'h') {
-        setUI({ showHUD: !ui.showHUD })
+        setUI({ showHUD: !store.ui.showHUD })
       }
       if (e.key.toLowerCase() === 'v') {
-        // Toggle vehicles tab: if already open on vehicles, close; otherwise open on vehicles with glow pulse
         setUI(
-          ui.isSidebarOpen && ui.activeTab === 'vehicles'
+          store.ui.isSidebarOpen && store.ui.activeTab === 'vehicles'
             ? { isSidebarOpen: false }
             : { isSidebarOpen: true, activeTab: 'vehicles', vehiclesTabPulseAt: Date.now() }
         )
@@ -330,9 +330,6 @@ export default function CloudScene() {
     setUI,
     setWeatherEffect,
     tickRound,
-    ui.isSidebarOpen,
-    ui.activeTab,
-    ui.showHUD,
   ])
 
   const updateConfig = <K extends keyof CloudConfig>(key: K, value: CloudConfig[K]) => {

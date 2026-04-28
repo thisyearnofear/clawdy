@@ -1,6 +1,7 @@
 import type { AgentSession } from './protocolTypes'
 import { ZgGameState } from './zgStorage'
 import { useGameStore, type VehicleHandlingProfile } from './gameStore'
+import { logger } from './logger'
 
 export class PersistenceService {
   private zgSaveCounter = 0
@@ -35,7 +36,7 @@ export class PersistenceService {
         this.zgSaveCounter = 0
         this.persistTo0G(savedSessions)
       }
-    } catch { /* localStorage may be unavailable */ }
+    } catch (err) { logger.debug('[Persistence] localStorage write failed:', err) }
   }
 
   private async persistTo0G(sessions: Record<string, unknown>) {
@@ -97,7 +98,7 @@ export class PersistenceService {
           },
         })
       }
-      } catch { /* Silent fail */ }
+      } catch (err) { logger.debug('[Persistence] 0G save failed:', err) }
 
   }
 
@@ -114,7 +115,7 @@ export class PersistenceService {
           return
         }
       }
-    } catch { /* ignore */ }
+    } catch (err) { logger.debug('[Persistence] localStorage restore failed:', err) }
 
     // Fall back to 0G Storage
     try {
@@ -122,7 +123,7 @@ export class PersistenceService {
       const { zgLoadState } = await import('./zgStorage')
       const result = await zgLoadState('global')
       if (result.state?.sessions) {
-        console.log('[0G Storage] Restored state from 0G, timestamp:', result.state.timestamp)
+        logger.info('[Persistence] Restored state from 0G, timestamp:', result.state.timestamp)
         applyCallback(result.state.sessions as unknown as Record<string, Record<string, number>>)
         // Restore handling overrides from 0G snapshot into both store and localStorage
         if (result.state.steerRetentionOverrides) {
@@ -158,7 +159,7 @@ export class PersistenceService {
           },
         })
       }
-    } catch { /* 0G unavailable */ }
+    } catch (err) { logger.debug('[Persistence] 0G restore failed:', err) }
   }
 }
 

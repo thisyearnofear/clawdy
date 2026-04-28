@@ -150,7 +150,11 @@ export function getContractsForChain(chainId: number): ChainContracts {
 
 /** Check whether contracts are deployed on a given chain. */
 export function isChainSupported(chainId: number): boolean {
-  return chainId in CONTRACT_ADDRESSES
+  if (chainId in CONTRACT_ADDRESSES) return true
+  const contracts = getContractsForChain(chainId)
+  return contracts.weatherAuction !== ZERO_ADDRESS ||
+         contracts.vehicleRent !== ZERO_ADDRESS ||
+         contracts.memeMarket !== ZERO_ADDRESS
 }
 
 // Legacy single-address exports (resolve from primary chain for backward compat)

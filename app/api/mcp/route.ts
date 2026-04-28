@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { skill, params } = body
@@ -9,21 +9,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unknown skill' }, { status: 400 })
     }
 
+    if (!params || typeof params !== 'object') {
+      return NextResponse.json({ error: 'params object required' }, { status: 400 })
+    }
+
     const { role, agentId, assetCount, vehicleCount, currentWeatherBid } = params
 
-    // Generate a deterministically random-feeling response based on inputs
-    // This serves as our MCP simulation for the hackathon demo.
-    
-    // Simulate some "AI" processing latency (200-500ms)
+    if (typeof role !== 'string' || !role) {
+      return NextResponse.json({ error: 'role required' }, { status: 400 })
+    }
+    if (typeof agentId !== 'string' || !agentId) {
+      return NextResponse.json({ error: 'agentId required' }, { status: 400 })
+    }
+    const assets = typeof assetCount === 'number' && assetCount >= 0 ? assetCount : 0
+    const vehicles = typeof vehicleCount === 'number' && vehicleCount >= 0 ? vehicleCount : 0
+    const weatherBid = typeof currentWeatherBid === 'number' ? currentWeatherBid : 0
+
     await new Promise(resolve => setTimeout(resolve, 200 + Math.random() * 300))
 
-    const assetPressure = Math.min(assetCount / 10, 1)
+    const assetPressure = Math.min(assets / 10, 1)
     const requestId = `req_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
 
     if (role === 'weather') {
       const weatherOpportunity = Number((assetPressure * 0.12).toFixed(3))
-      
-      if (weatherOpportunity > currentWeatherBid) {
+      if (weatherOpportunity > weatherBid) {
         return NextResponse.json({
           requestId,
           action: 'bid',
@@ -38,21 +47,21 @@ export async function POST(request: Request) {
     }
 
     if (role === 'scout') {
-      if (assetCount > 0) {
+      if (assets > 0) {
         return NextResponse.json({
           requestId,
           action: 'route',
           confidence: 0.88,
-          reasoning: `Identified ${assetCount} active yield opportunities. Routing execution payload to nearest cluster.`,
+          reasoning: `Identified ${assets} active yield opportunities. Routing execution payload to nearest cluster.`,
           metadata: {
-            targetAssetId: Math.floor(Math.random() * assetCount) // Mocking an ID
+            targetAssetId: Math.floor(Math.random() * assets)
           }
         })
       }
     }
 
     if (role === 'mobility') {
-      if (assetCount > 3) {
+      if (assets > 3) {
         return NextResponse.json({
           requestId,
           action: 'rent',
@@ -66,25 +75,21 @@ export async function POST(request: Request) {
     }
 
     if (role === 'treasury') {
-       // Treasury checks logic if needed, otherwise default to observe
-       return NextResponse.json({
-          requestId,
-          action: 'observe',
-          confidence: 0.85,
-          reasoning: 'Current market conditions do not justify treasury disbursement. Holding assets.',
-       })
+      return NextResponse.json({
+        requestId,
+        action: 'observe',
+        confidence: 0.85,
+        reasoning: 'Current market conditions do not justify treasury disbursement. Holding assets.',
+      })
     }
 
-    // Default fallback
     return NextResponse.json({
       requestId,
       action: 'observe',
       confidence: 0.75,
       reasoning: 'Conditions stable. Monitoring world state for anomalies.',
     })
-
-  } catch (error) {
-    console.error('[MCP Endpoint] Error:', error)
+  } catch {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

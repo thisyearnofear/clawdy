@@ -1,6 +1,7 @@
 import { agentProtocol } from './AgentProtocol'
 import type { VehicleType } from './protocolTypes'
 import { trackEvent } from './analytics'
+import { logger } from './logger'
 
 export interface QueuedPlayer {
   id: string
@@ -92,7 +93,7 @@ export class VehicleQueueManager {
       }
     }
 
-    console.log(`[VehicleQueue] Assigned ${vehicle.id} to ${player.type} ${player.id}`)
+    logger.info(`[VehicleQueue] Assigned ${vehicle.id} to ${player.type} ${player.id}`)
     trackEvent('queue_activated', {
       playerId: player.id,
       type: player.type,
@@ -129,7 +130,7 @@ export class VehicleQueueManager {
     vehicle.isOccupied = false
     vehicle.currentPlayerId = undefined
 
-    console.log(`[VehicleQueue] Released ${vehicle.id} from ${player.type} ${player.id}`)
+    logger.info(`[VehicleQueue] Released ${vehicle.id} from ${player.type} ${player.id}`)
     trackEvent('queue_left', {
       playerId: player.id,
       type: player.type,
@@ -237,12 +238,18 @@ export class VehicleQueueManager {
   }
 
   getQueueState(): QueueState {
-    const waitingCount = this.queue.filter(p => p.status === 'waiting').length
-    const activeCount = this.queue.filter(p => p.status === 'active').length
-    const waitingHumans = this.queue.filter(p => p.status === 'waiting' && p.type === 'human').length
-    const waitingAgents = this.queue.filter(p => p.status === 'waiting' && p.type === 'agent').length
-    const activeHumans = this.queue.filter(p => p.status === 'active' && p.type === 'human').length
-    const activeAgents = this.queue.filter(p => p.status === 'active' && p.type === 'agent').length
+    let waitingCount = 0, activeCount = 0
+    let waitingHumans = 0, waitingAgents = 0
+    let activeHumans = 0, activeAgents = 0
+    for (const p of this.queue) {
+      if (p.status === 'waiting') {
+        waitingCount++
+        if (p.type === 'human') waitingHumans++; else waitingAgents++
+      } else {
+        activeCount++
+        if (p.type === 'human') activeHumans++; else activeAgents++
+      }
+    }
 
     const humanSlots = this.vehicles.filter(v => v.allowedTypes.includes('human')).length
     const agentSlots = this.vehicles.filter(v => v.allowedTypes.includes('agent')).length

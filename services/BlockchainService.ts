@@ -3,6 +3,7 @@ import { CONTRACT_ADDRESSES, isChainSupported } from './protocolTypes'
 import { supportedChains } from './web3Config'
 import { useGameStore } from './gameStore'
 import { emitToast } from '../components/ui/GameToasts'
+import { logger } from './logger'
 
 import type { ContractWalletClient, BlockchainProvider } from './protocolTypes'
 export type { ContractWalletClient }
@@ -69,6 +70,7 @@ export class BlockchainService {
       this.isPermissioned = true
       return permissions
     } catch {
+      logger.debug('[BlockchainService] Permission request failed')
       return null
     }
   }
@@ -121,7 +123,9 @@ export class BlockchainService {
           return null
         }
       }
-    } catch { /* non-blocking — proceed and let the tx itself fail if chain is wrong */ }
+    } catch (chainErr) {
+      logger.warn('[BlockchainService] Chain check failed, proceeding with tx:', chainErr)
+    }
 
     try {
       store.updateTransaction(txId, { status: 'confirming' })

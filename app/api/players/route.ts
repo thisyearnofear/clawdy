@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-// In-memory heartbeat store: playerId → lastSeenMs
-// Players ping every 30s; entries expire after 90s
 const heartbeats = new Map<string, number>()
 const TTL_MS = 90_000
+const MAX_PLAYERS = 1000
+const MAX_PLAYER_ID_LENGTH = 128
 
 function pruneExpired() {
   const cutoff = Date.now() - TTL_MS
@@ -12,20 +12,24 @@ function pruneExpired() {
   }
 }
 
-// GET /api/players — returns { count: number }
 export async function GET() {
   pruneExpired()
   return NextResponse.json({ count: heartbeats.size })
 }
 
-// POST /api/players — body: { playerId: string } — registers/refreshes heartbeat
 export async function POST(req: NextRequest) {
   try {
     const { playerId } = await req.json()
     if (typeof playerId !== 'string' || !playerId) {
       return NextResponse.json({ error: 'playerId required' }, { status: 400 })
     }
+    if (playerId.length > MAX_PLAYER_ID_LENGTH) {
+      return NextResponse.json({ error: `playerId must be <= ${MAX_PLAYER_ID_LENGTH} chars` }, { status: 400 })
+    }
     pruneExpired()
+    if (heartbeats.size >= MAX_PLAYERS && !heartbeats.has(playerId)) {
+      return NextResponse.json({ error: 'Player limit reached' }, { status: 429 })
+    }
     heartbeats.set(playerId, Date.now())
     return NextResponse.json({ count: heartbeats.size })
   } catch {

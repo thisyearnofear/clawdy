@@ -1,3 +1,5 @@
+import { logger } from './logger'
+
 export type AnalyticsEventName =
   | 'spectator_cta_viewed'
   | 'connect_wallet_clicked'
@@ -72,7 +74,7 @@ function pushToDataLayer(evt: AnalyticsEvent) {
 
 function emitToConsole(evt: AnalyticsEvent) {
   if (process.env.NODE_ENV !== 'production') {
-    console.info('[analytics]', evt.event, evt)
+    logger.info('[analytics]', evt.event, evt)
   }
 }
 

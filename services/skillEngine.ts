@@ -1,5 +1,6 @@
 import type { CloudConfig } from '../components/environment/CloudManager'
 import type { AgentSession, WorldState, WeatherStatus } from './protocolTypes'
+import { logger } from './logger'
 
 export type SkillProviderId = 'local-policy' | 'onchain-os'
 
@@ -112,7 +113,8 @@ async function callOnchainOsMcp(
       ...data,
       metadata: { ...data.metadata, mcpRequestId: data.requestId, mcpLatencyMs: latency },
     }
-  } catch {
+  } catch (err) {
+    logger.warn('[skillEngine] MCP call failed, falling back to local policy:', err)
     return null
   }
 }

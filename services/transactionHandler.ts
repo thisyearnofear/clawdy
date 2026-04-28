@@ -87,7 +87,7 @@ export async function executeTransactionWithRetry(
       // Check if we should retry
       if (attempt < MAX_RETRY_COUNT && isRetryableError(error)) {
         onProgress?.('pending', `Retry ${attempt + 1}/${MAX_RETRY_COUNT}`)
-        await sleep(RETRY_DELAY_MS * (attempt + 1)) // Exponential backoff
+        await sleep(RETRY_DELAY_MS * Math.pow(2, attempt)) // Exponential backoff
         continue
       }
       
