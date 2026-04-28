@@ -69,14 +69,16 @@ export default function CloudScene() {
   const flood = useGameStore(s => s.flood)
   const cumulativeScore = useGameStore(s => s.cumulativeScore)
   const round = useGameStore(s => s.round)
-  const sessions = useGameStore(s => s.sessions)
   const lastFloodNudgeRef = useRef(0)
   const lastScoreNudgeRef = useRef(0)
   const scoreNudgeFired = cumulativeScore >= 1.0
 
   // Sync leaderboard to Supabase when a round ends
+  const lastSyncedRoundRef = useRef(0)
   useEffect(() => {
-    if (!round.isActive && round.winner && round.endedAt) {
+    if (!round.isActive && round.winner && round.endedAt && round.roundNumber !== lastSyncedRoundRef.current) {
+      lastSyncedRoundRef.current = round.roundNumber
+      const sessions = useGameStore.getState().sessions
       const playerSession = sessions['Player']
       if (playerSession) {
         upsertLeaderboardEntry({
@@ -90,7 +92,7 @@ export default function CloudScene() {
         }).catch(() => { /* non-blocking */ })
       }
     }
-  }, [round.isActive, round.winner, round.endedAt, round.roundNumber, sessions, playerId])
+  }, [round.isActive, round.winner, round.endedAt, round.roundNumber, playerId])
 
   const { data: onChainWeatherConfig } = useReadContract({
     address: WEATHER_AUCTION_ADDRESS as `0x${string}`,

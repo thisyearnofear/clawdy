@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { supabase } from '../services/supabase'
+import { getSupabase } from '../services/supabase'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 
 /**
@@ -14,7 +14,9 @@ export function useRealtimePresence(playerId: string) {
   const channelRef = useRef<RealtimeChannel | null>(null)
 
   useEffect(() => {
-    if (!supabase || !playerId) return
+    if (!playerId) return
+    const supabase = getSupabase()
+    if (!supabase) return
 
     const channel = supabase.channel('game-presence', {
       config: { presence: { key: playerId } },

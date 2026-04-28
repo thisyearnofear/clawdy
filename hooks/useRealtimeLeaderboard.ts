@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '../services/supabase'
+import { getSupabase } from '../services/supabase'
 
 export interface LeaderboardEntry {
   player_id: string
@@ -25,11 +25,12 @@ export function useRealtimeLeaderboard(limit = 10) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    const supabase = getSupabase()
     if (!supabase) { setLoading(false); return }
 
     // Initial fetch
     const fetchLeaderboard = async () => {
-      const { data } = await supabase!
+      const { data } = await supabase
         .from('leaderboard')
         .select('*')
         .order('total_earned', { ascending: false })
@@ -70,6 +71,7 @@ export async function upsertLeaderboardEntry(entry: {
   roundsPlayed?: number
   roundsWon?: number
 }) {
+  const supabase = getSupabase()
   if (!supabase) return
 
   await supabase.from('leaderboard').upsert(

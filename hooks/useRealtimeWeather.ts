@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '../services/supabase'
+import { getSupabase } from '../services/supabase'
 
 export interface RealtimeWeatherState {
   preset: string
@@ -19,11 +19,12 @@ export function useRealtimeWeather() {
   const [weather, setWeather] = useState<RealtimeWeatherState | null>(null)
 
   useEffect(() => {
+    const supabase = getSupabase()
     if (!supabase) return
 
     // Initial fetch
     const fetchWeather = async () => {
-      const { data } = await supabase!
+      const { data } = await supabase
         .from('weather_state')
         .select('*')
         .eq('id', 1)
@@ -59,6 +60,7 @@ export async function updateWeatherState(state: {
   amount?: number
   expiresAt?: string
 }) {
+  const supabase = getSupabase()
   if (!supabase) return
 
   await supabase.from('weather_state').update({
