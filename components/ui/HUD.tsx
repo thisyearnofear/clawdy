@@ -15,6 +15,7 @@ import { AgentMetaBlock } from './AgentMetaBlock'
 import { getMemeMarketStrategy } from '../../services/AgentProtocol'
 import { playSound } from './SoundManager'
 import { DiscoveryNudges } from './GameToasts'
+import { useRealtimePresence } from '../../hooks/useRealtimePresence'
 
 const PROXIMITY_ALERT_DISTANCE = 40
 
@@ -93,8 +94,17 @@ export function HUD(props: HUDProps) {
   const activeHumans = useGameStore(s => s.activeHumans)
   const setActiveHumans = useGameStore(s => s.setActiveHumans)
 
-  // Server-synced player count: ping /api/players every 30s
+  // Real-time player count via Supabase Presence (falls back to polling)
+  const realtimeCount = useRealtimePresence(playerId || 'anonymous')
   useEffect(() => {
+    if (realtimeCount > 0) {
+      setActiveHumans(realtimeCount)
+    }
+  }, [realtimeCount, setActiveHumans])
+
+  // Fallback: poll /api/players if Supabase is not configured
+  useEffect(() => {
+    if (realtimeCount > 0) return // Supabase is working, skip polling
     const ping = async () => {
       try {
         const res = await fetch('/api/players', {
@@ -111,7 +121,7 @@ export function HUD(props: HUDProps) {
     ping()
     const interval = window.setInterval(ping, 30_000)
     return () => window.clearInterval(interval)
-  }, [playerId, setActiveHumans])
+  }, [playerId, setActiveHumans, realtimeCount])
   
   const playerSession = sessions['Player']
   const currentStrategy = getMemeMarketStrategy(playerSession?.strategyId)
