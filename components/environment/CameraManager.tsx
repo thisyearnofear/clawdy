@@ -28,15 +28,17 @@ export function CameraManager({
   const cameraTarget = useRef(new THREE.Vector3())
   const targetPos = useRef(new THREE.Vector3())
   const backward = useRef(new THREE.Vector3())
+  const smoothedBackward = useRef(new THREE.Vector3(0, 0, 1))
   const quaternion = useRef(new THREE.Quaternion())
   const upOffset = useRef(new THREE.Vector3())
   const shakeVec = useRef(new THREE.Vector3())
 
   const cameraShake = useGameStore(s => s.cameraShake)
 
-  const followSpeed = mode === 'active' ? 3.2 : 1.9
-  const targetLerpSpeed = mode === 'active' ? 6 : 3.6
-  const weatherBoost = 1 + Math.min(0.5, Math.max(0, intensity) * 0.4)
+  const followSpeed = mode === 'active' ? 4.5 : 2.2
+  const targetLerpSpeed = mode === 'active' ? 7 : 4
+  // Cap weatherBoost so stormy weather doesn't make camera hyper-reactive
+  const weatherBoost = 1 + Math.min(0.2, Math.max(0, intensity) * 0.15)
 
   useEffect(() => {
     if (controlsRef.current) {
@@ -61,14 +63,20 @@ export function CameraManager({
       const rotation = activeTarget.rotation()
       quaternion.current.set(rotation.x, rotation.y, rotation.z, rotation.w)
 
+      // Raw backward direction from vehicle rotation
       backward.current.set(0, 0, 1).applyQuaternion(quaternion.current)
       backward.current.y = 0
       backward.current.normalize()
+      // Smooth the yaw direction to prevent camera snapping from physics jitter
+      const yawLerpSpeed = mode === 'active' ? 4.5 : 2.5
+      smoothedBackward.current.lerp(backward.current, delta * yawLerpSpeed)
+      smoothedBackward.current.y = 0
+      smoothedBackward.current.normalize()
 
       const trailingDistance = mode === 'active' ? offset[2] : offset[2] + 4
       const followHeight = mode === 'active' ? offset[1] : offset[1] + 2
       const idealPos = targetPos.current.clone()
-        .add(backward.current.multiplyScalar(trailingDistance))
+        .add(smoothedBackward.current.clone().multiplyScalar(trailingDistance))
         .add(upOffset.current.set(0, followHeight, 0))
 
       controlsRef.current.getPosition(cameraPos.current)

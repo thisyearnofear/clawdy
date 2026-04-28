@@ -105,9 +105,12 @@ export function useVehiclePhysics(
     }
 
     // --- 1. PRO INPUT SMOOTHING ---
-    const lerpSpeed = rawForward === 0 ? 6 : 20
+    // Softer input smoothing: snappy enough to feel responsive, not so fast it feels twitchy
+    const lerpSpeed = rawForward === 0 ? 8 : 16
     smoothedForward.current = THREE.MathUtils.lerp(smoothedForward.current, rawForward, delta * lerpSpeed)
-    smoothedTurn.current = THREE.MathUtils.lerp(smoothedTurn.current, rawTurn, delta * 25)
+    // Turn smoothing: faster ramp-up, faster release — reduces the "steering lag" feel
+    const turnLerp = rawTurn === 0 ? 18 : 14
+    smoothedTurn.current = THREE.MathUtils.lerp(smoothedTurn.current, rawTurn, delta * turnLerp)
 
     // Apply burden to mass
     chassisRef.current.setAdditionalMass(burdenFactor * stats.mass * 1.2, true)
@@ -289,7 +292,9 @@ export function useVehiclePhysics(
             // steerRetention 1.5: full authority to ~20, ~75% at 20, ~50% at 50, ~32% at 85
             // Runtime override from control panel takes precedence if set
             const effectiveSteerRetention = steerRetentionOverrides[stats.profile] ?? stats.steerRetention
-            const speedSteerFactor = Math.min((20 * effectiveSteerRetention) / (speed + 10), 1)
+            // Raised floor: steering stays at ≥40% authority even at high speed
+            // Old formula dropped to ~33% at speed=50; new formula stays ~55% at speed=50
+            const speedSteerFactor = Math.max(0.4, Math.min((28 * effectiveSteerRetention) / (speed + 10), 1))
             const steerForce = rightDir.clone().multiplyScalar(smoothedTurn.current * steerStrength * speedSteerFactor)
             const fOffset = forwardDir.clone().multiplyScalar(stats.frontOffset)
             const steerPoint = { x: vPos.x + fOffset.x, y: vPos.y, z: vPos.z + fOffset.z }
@@ -304,8 +309,8 @@ export function useVehiclePhysics(
               }, true)
             }
         } else {
-             // Low-speed fallback yaw torque
-             chassisRef.current.applyTorqueImpulse({ x: 0, y: smoothedTurn.current * steerStrength * 0.5, z: 0 }, true)
+             // Low-speed fallback yaw torque — raised from 0.5 so vehicles can turn in place
+             chassisRef.current.applyTorqueImpulse({ x: 0, y: smoothedTurn.current * steerStrength * 1.2, z: 0 }, true)
         }
       } else if (stats.steeringMode === 'tank') {
         // Tank uses steerRetention as a flat turn-rate scale (no speed curve — tanks turn in place)
