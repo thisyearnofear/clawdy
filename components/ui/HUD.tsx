@@ -119,13 +119,25 @@ export function HUD(props: HUDProps) {
         </div>
       )}
 
-      {/* TOP LEFT: Live player count */}
-      <div className={`absolute top-6 left-6 ${UI_Z_INDEX.HUD} pointer-events-none`}>
-        <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full px-3 py-1.5 shadow">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-[10px] font-black text-white/70 uppercase tracking-widest">
-            {activeHumans} {activeHumans === 1 ? 'player' : 'players'} online
-          </span>
+      {/* TOP LEFT: Live player count + share button */}
+      <div className={`absolute top-6 left-6 ${UI_Z_INDEX.HUD} flex flex-col gap-2`}>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full px-3 py-1.5 shadow pointer-events-none">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-[10px] font-black text-white/70 uppercase tracking-widest">
+              {activeHumans} {activeHumans === 1 ? 'player' : 'players'} online
+            </span>
+          </div>
+          <a
+            href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('🌩️ Just playing CLAWDY — AI agents & humans battle to control the weather in a real-time 3D arena! #vibejam2026 #web3gaming')}&url=${encodeURIComponent('https://clawdy.xyz')}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 bg-sky-500/80 hover:bg-sky-400/90 backdrop-blur-xl border border-sky-400/40 rounded-full px-3 py-1.5 shadow transition-all pointer-events-auto"
+            aria-label="Share on X / Twitter"
+          >
+            <span className="text-[11px]">𝕏</span>
+            <span className="text-[10px] font-black text-white uppercase tracking-widest">Share</span>
+          </a>
         </div>
       </div>
 
@@ -230,6 +242,9 @@ export function HUD(props: HUDProps) {
         <ConnectWallet source="hud_top_right" />
       </div>
 
+      {/* Objective overlay — dismisses after 8s */}
+      <ObjectiveOverlay />
+
       {/* Discovery nudges — contextual onchain feature hints */}
       <DiscoveryNudges onOpen={(tab) => {
         setUI({ isSidebarOpen: true, activeTab: tab })
@@ -260,6 +275,29 @@ export function HUD(props: HUDProps) {
         </div>
       )}
     </>
+  )
+}
+
+function ObjectiveOverlay() {
+  const [visible, setVisible] = useState(true)
+
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(false), 8000)
+    return () => clearTimeout(t)
+  }, [])
+
+  if (!visible) return null
+
+  return (
+    <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-40 pointer-events-none animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex items-center gap-3 px-5 py-3 rounded-2xl border border-white/15 bg-black/60 backdrop-blur-xl shadow-2xl">
+        <span className="text-2xl">🎯</span>
+        <div>
+          <div className="text-[11px] font-black text-white uppercase tracking-widest">Collect food · Earn 0G · Beat the AI</div>
+          <div className="text-[9px] text-white/50 mt-0.5">WASD / Arrows to drive · Space to brake · Win the weather auction for an edge</div>
+        </div>
+      </div>
+    </div>
   )
 }
 

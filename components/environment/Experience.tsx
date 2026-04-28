@@ -454,6 +454,9 @@ function Experience({
                 : undefined
           }
 
+          const agentProfile = v?.agentControlled && v?.playerId ? getAgentByVehicleId(v.playerId) : null
+          const labelText = isPlayerVehicle ? '▶ YOU' : agentProfile ? agentProfile.id : null
+
           return (
             <group key={`pool-${i}`} visible={!!v}>
               {isPlayerVehicle && <PlayerVehicleIndicator position={props.position} />}
@@ -461,6 +464,21 @@ function Experience({
                v?.type === 'monster' ? <MonsterTruck {...props} /> : 
                v?.type === 'speedster' ? <Speedster {...props} /> : 
                <Vehicle {...props} />}
+              {labelText && v && !v.isGhost && (
+                <group position={[v.position[0], v.position[1] + 5, v.position[2]]}>
+                  <Text
+                    fontSize={0.55}
+                    color={isPlayerVehicle ? '#00ff88' : '#fbbf24'}
+                    anchorX="center"
+                    anchorY="middle"
+                    outlineWidth={0.06}
+                    outlineColor="#000000"
+                    renderOrder={999}
+                  >
+                    {labelText}
+                  </Text>
+                </group>
+              )}
             </group>
           )
         })}

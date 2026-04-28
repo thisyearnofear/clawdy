@@ -158,6 +158,72 @@ export function GameToasts() {
   )
 }
 
+// ── Auction Flash ─────────────────────────────────────────────────────────────
+// Full-screen dramatic announcement when an agent wins a weather auction.
+
+export interface AuctionFlashData {
+  agentId: string
+  preset: string
+}
+
+type AuctionFlashListener = (data: AuctionFlashData) => void
+const auctionFlashListeners: AuctionFlashListener[] = []
+
+export function emitAuctionFlash(data: AuctionFlashData) {
+  auctionFlashListeners.forEach(l => l(data))
+}
+
+const PRESET_EMOJI: Record<string, string> = {
+  stormy: '⛈️',
+  cosmic: '🌌',
+  sunset: '🌅',
+  candy: '🍭',
+  blizzard: '❄️',
+  custom: '🌀',
+}
+
+export function AuctionFlash() {
+  const [flash, setFlash] = useState<AuctionFlashData | null>(null)
+
+  const handleFlash = useCallback((data: AuctionFlashData) => {
+    setFlash(data)
+    setTimeout(() => setFlash(null), 3500)
+  }, [])
+
+  useEffect(() => {
+    auctionFlashListeners.push(handleFlash)
+    return () => {
+      const idx = auctionFlashListeners.indexOf(handleFlash)
+      if (idx !== -1) auctionFlashListeners.splice(idx, 1)
+    }
+  }, [handleFlash])
+
+  if (!flash) return null
+
+  const emoji = PRESET_EMOJI[flash.preset] ?? '🌩️'
+  const agentShort = flash.agentId.length > 12 ? flash.agentId.slice(0, 10) + '…' : flash.agentId
+
+  return (
+    <div className="fixed inset-0 z-[200] pointer-events-none flex items-center justify-center animate-in fade-in duration-200">
+      {/* Vignette flash */}
+      <div className="absolute inset-0 bg-yellow-400/10 animate-pulse" style={{ animationDuration: '0.4s' }} />
+      {/* Border flash */}
+      <div className="absolute inset-0 border-4 border-yellow-400/60 rounded-none animate-in fade-in duration-100" />
+      {/* Center card */}
+      <div className="relative flex flex-col items-center gap-3 px-10 py-8 rounded-3xl border-2 border-yellow-400/50 bg-black/75 backdrop-blur-2xl shadow-2xl shadow-yellow-500/30 animate-in zoom-in-75 duration-300">
+        <div className="text-6xl leading-none">{emoji}</div>
+        <div className="text-[10px] font-black uppercase tracking-[0.3em] text-yellow-300/70">Weather Auction Won</div>
+        <div className="text-3xl font-black text-white capitalize text-center leading-tight">
+          {flash.preset} Weather
+        </div>
+        <div className="text-[13px] text-yellow-100/70 font-semibold">
+          ⚡ <span className="text-yellow-300">{agentShort}</span> controls the skies
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // Big celebration overlay for bid wins
 export function BidWinCelebration({ preset, onDone }: { preset: string; onDone: () => void }) {
   useEffect(() => {

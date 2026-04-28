@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useGameStore } from '../../services/gameStore'
 import { OnboardingOverlay } from './OnboardingOverlay'
-import { GameToasts, BidWinCelebration } from './GameToasts'
+import { GameToasts, BidWinCelebration, AuctionFlash } from './GameToasts'
 import { SoundManager } from './SoundManager'
 import { EconomyFeedback } from './EconomyFeedback'
 import { MobileTouchControls } from './MobileTouchControls'
@@ -90,6 +90,9 @@ export function Overlays({
       {bidWinPreset && (
         <BidWinCelebration preset={bidWinPreset} onDone={onDoneBidWin} />
       )}
+
+      {/* Auction flash — full-screen dramatic announcement */}
+      <AuctionFlash />
 
       {/* Toast notifications */}
       <GameToasts />

@@ -9,7 +9,7 @@ import { agentProtocol, WEATHER_AUCTION_ADDRESS, getMemeMarketAbility } from '..
 import { useWatchContractEvent, useAccount, useReadContract } from 'wagmi'
 import { WEATHER_AUCTION_ABI } from '../../services/abis/WeatherAuction'
 import { POLL_INTERVAL } from '../../services/web3Config'
-import { emitToast, emitDiscoveryNudge } from '../ui/GameToasts'
+import { emitToast, emitDiscoveryNudge, emitAuctionFlash } from '../ui/GameToasts'
 import { playSound } from '../ui/SoundManager'
 import { emitEconomyFeedback } from '../ui/EconomyFeedback'
 import { AgentChatter, emitChatter } from '../ui/AgentChatter'
@@ -173,6 +173,7 @@ export default function CloudScene() {
         setUI({ bidWinPreset: event.preset as string })
         emitToast('bid-win', 'Weather Auction Won!', `${event.preset} weather activated`)
         playSound('bid-win')
+        emitAuctionFlash({ agentId: (event.agentId as string) || 'Agent', preset: event.preset as string })
         emitChatter(event.agentId as string || 'Agent', 'bid-won')
         emitDiscoveryNudge({
           emoji: '⛅',
