@@ -1,3 +1,5 @@
+Command finished with exit code 0.
+Command output:
 'use client'
 
 import * as THREE from 'three'
@@ -149,20 +151,13 @@ function ActiveMonsterTruck({
         {[[-1.8, -0.3, 1.8], [1.8, -0.3, 1.8], [-1.8, -0.3, -1.8], [1.8, -0.3, -1.8]].map((pos, i) => (
            <group key={i} position={pos as [number, number, number]}>
              <mesh rotation={[0, 0, Math.PI / 2]} castShadow>
-                <cylinderGeometry args={[1.2, 1.2, 1, 32]} />
+                <cylinderGeometry args={[1.2, 1.2, 1, 16]} />
                 <meshStandardMaterial color="#1a1a1a" roughness={0.9} {...materialProps} />
              </mesh>
-             {/* Hub with spokes */}
              <mesh rotation={[0, 0, Math.PI / 2]}>
-                <cylinderGeometry args={[0.55, 0.55, 1.06, 32]} />
-                <meshPhysicalMaterial color="#c0392b" metalness={0.8} roughness={0.15} clearcoat={1} clearcoatRoughness={0.05} />
+                <cylinderGeometry args={[0.6, 0.6, 1.05, 8]} />
+                <meshStandardMaterial color="#c0392b" metalness={0.6} />
              </mesh>
-             {[0,1,2,3,4].map(j => (
-               <mesh key={j} rotation={[j * Math.PI / 2.5, 0, Math.PI / 2]}>
-                 <boxGeometry args={[0.08, 0.9, 0.12]} />
-                 <meshPhysicalMaterial color="#c0c0c0" metalness={0.95} roughness={0.1} />
-               </mesh>
-             ))}
              {[0, 1, 2, 3].map((j) => (
                <mesh key={j} rotation={[0, 0, Math.PI / 2]} position={[0, Math.cos(j * Math.PI / 2) * 1.1, Math.sin(j * Math.PI / 2) * 1.1]}>
                   <boxGeometry args={[0.3, 1.1, 0.4]} />
@@ -184,15 +179,15 @@ function ActiveMonsterTruck({
         <group ref={bodyRef}>
           <mesh position={[0, 1.2, 0]} castShadow>
             <boxGeometry args={[2.5, 0.4, 4]} />
-            <meshPhysicalMaterial color="#2c3e50" metalness={0.7} roughness={0.2} clearcoat={0.6} clearcoatRoughness={0.1} {...materialProps} />
+            <meshStandardMaterial color="#2c3e50" metalness={0.4} {...materialProps} />
           </mesh>
           <mesh position={[0, 1.8, 0]} castShadow>
             <boxGeometry args={[2.2, 1.2, 3.5]} />
-            <meshPhysicalMaterial color="#d63031" metalness={0.5} roughness={0.25} clearcoat={1.0} clearcoatRoughness={0.05} reflectivity={1.0} {...materialProps} />
+            <meshStandardMaterial color="#d63031" metalness={0.3} roughness={0.4} {...materialProps} />
           </mesh>
           <mesh position={[0, 2.4, -1.2]} castShadow>
             <boxGeometry args={[1.2, 0.4, 0.8]} />
-            <meshPhysicalMaterial color="#c0392b" metalness={0.5} roughness={0.2} clearcoat={0.8} {...materialProps} />
+            <meshStandardMaterial color="#c0392b" {...materialProps} />
           </mesh>
           <TruckEngineGlow isGhost={isGhost} />
           <mesh position={[0, 2, -0.8]} rotation={[0.3, 0, 0]}>
