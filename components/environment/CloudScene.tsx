@@ -1,7 +1,7 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { Suspense, useState, useEffect } from 'react'
+import { Suspense, useState, useEffect, useRef } from 'react'
 import Experience from './Experience'
 import { Loader } from '@react-three/drei'
 import { CloudConfig } from './CloudManager'
@@ -9,7 +9,7 @@ import { agentProtocol, WEATHER_AUCTION_ADDRESS, getMemeMarketAbility } from '..
 import { useWatchContractEvent, useAccount, useReadContract } from 'wagmi'
 import { WEATHER_AUCTION_ABI } from '../../services/abis/WeatherAuction'
 import { POLL_INTERVAL } from '../../services/web3Config'
-import { emitToast } from '../ui/GameToasts'
+import { emitToast, emitDiscoveryNudge } from '../ui/GameToasts'
 import { playSound } from '../ui/SoundManager'
 import { emitEconomyFeedback } from '../ui/EconomyFeedback'
 import { AgentChatter, emitChatter } from '../ui/AgentChatter'
@@ -65,6 +65,11 @@ export default function CloudScene() {
   } = useGameStore()
 
   const [isMounted, setIsMounted] = useState(false)
+  const flood = useGameStore(s => s.flood)
+  const cumulativeScore = useGameStore(s => s.cumulativeScore)
+  const lastFloodNudgeRef = useRef(0)
+  const lastScoreNudgeRef = useRef(0)
+  const scoreNudgeFired = cumulativeScore >= 1.0
 
   const { data: onChainWeatherConfig } = useReadContract({
     address: WEATHER_AUCTION_ADDRESS as `0x${string}`,
@@ -95,6 +100,36 @@ export default function CloudScene() {
       speed: Number(config.speed) / 100,
     })
   }, [isWeatherAuctionConfigured, onChainWeatherConfig, setCloudConfig])
+
+  // Flood peak nudge — fires once per flood peak, not more than every 2 min
+  useEffect(() => {
+    if (flood.phase !== 'peak') return
+    const now = Date.now()
+    if (now - lastFloodNudgeRef.current < 120_000) return
+    lastFloodNudgeRef.current = now
+    emitDiscoveryNudge({
+      emoji: '🌊',
+      title: 'Flood Drain ability can clear this',
+      body: 'Mint a Flood Drain charge in the Control Panel to drop the water level instantly.',
+      cta: 'See abilities →',
+      tab: 'weather',
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flood.phase])
+
+  // Score milestone nudge — fires once when cumulative score crosses 1.0 0G
+  useEffect(() => {
+    if (!scoreNudgeFired) return
+    if (lastScoreNudgeRef.current > 0) return
+    lastScoreNudgeRef.current = Date.now()
+    emitDiscoveryNudge({
+      emoji: '🏆',
+      title: 'Save this score on-chain',
+      body: 'Connect a wallet to persist your career score to 0G Storage and appear on the leaderboard.',
+      cta: 'View stats →',
+      tab: 'stats',
+    })
+  }, [scoreNudgeFired])
 
   // On-chain weather sync
   useWatchContractEvent({
@@ -139,6 +174,13 @@ export default function CloudScene() {
         emitToast('bid-win', 'Weather Auction Won!', `${event.preset} weather activated`)
         playSound('bid-win')
         emitChatter(event.agentId as string || 'Agent', 'bid-won')
+        emitDiscoveryNudge({
+          emoji: '⛅',
+          title: 'You can bid on weather too',
+          body: 'Win the auction → control what falls → earn more. Opens every 60s.',
+          cta: 'Try it →',
+          tab: 'weather',
+        })
 
         const preset = (event.preset as keyof typeof WEATHER_DOMAINS_BY_PRESET) || 'custom'
         const effects = WEATHER_DOMAINS_BY_PRESET[preset] ?? WEATHER_DOMAINS_BY_PRESET.custom

@@ -14,6 +14,7 @@ import { UI_Z_INDEX } from '../../services/uiConstants'
 import { AgentMetaBlock } from './AgentMetaBlock'
 import { getMemeMarketStrategy } from '../../services/AgentProtocol'
 import { playSound } from './SoundManager'
+import { DiscoveryNudges } from './GameToasts'
 
 const PROXIMITY_ALERT_DISTANCE = 40
 
@@ -59,6 +60,7 @@ export function HUD(props: HUDProps) {
     + Object.keys(s.accelerationOverrides).length
     + Object.keys(s.maxSpeedOverrides).length
   )
+  const activeHumans = useGameStore(s => s.activeHumans)
   
   const playerSession = sessions['Player']
   const currentStrategy = getMemeMarketStrategy(playerSession?.strategyId)
@@ -116,6 +118,16 @@ export function HUD(props: HUDProps) {
           </div>
         </div>
       )}
+
+      {/* TOP LEFT: Live player count */}
+      <div className={`absolute top-6 left-6 ${UI_Z_INDEX.HUD} pointer-events-none`}>
+        <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full px-3 py-1.5 shadow">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-[10px] font-black text-white/70 uppercase tracking-widest">
+            {activeHumans} {activeHumans === 1 ? 'player' : 'players'} online
+          </span>
+        </div>
+      </div>
 
       {/* 1. TOP CENTER: Stacked UI */}
       <div className={`absolute top-6 left-1/2 -translate-x-1/2 ${UI_Z_INDEX.HUD} flex flex-col items-center gap-2 pointer-events-none`}>
@@ -212,39 +224,38 @@ export function HUD(props: HUDProps) {
         </div>
       </div>
 
-      {/* Spectator Banner */}
-      {!address && ui.hideSpectatorCta && (
-        <div className="absolute top-48 left-1/2 -translate-x-1/2 z-20">
-          <div className="bg-black/60 backdrop-blur-xl border border-white/20 rounded-full px-4 py-1.5 pr-5 shadow-lg flex items-center gap-2">
-            <span className="text-[9px] font-black text-white/60 uppercase tracking-widest">Spectating</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
-            <button
-              onClick={() => useGameStore.getState().setModalOpen('spectatorCta', true)}
-              className="absolute -right-1 -top-1 w-5 h-5 rounded-full bg-sky-500 hover:bg-sky-400 text-white text-[10px] font-black flex items-center justify-center shadow transition-colors"
-            >
-              +
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Wallet - Top right */}
       <div className="absolute top-6 right-6 z-30">
         <ConnectWallet source="hud_top_right" />
       </div>
 
-      {/* Spectator CTA - Center */}
+      {/* Discovery nudges — contextual onchain feature hints */}
+      <DiscoveryNudges onOpen={(tab) => {
+        setUI({ isSidebarOpen: true, activeTab: tab })
+        props.onOpenSidebar()
+      }} />
+
+      {/* Wallet upsell - soft prompt for guests, dismissible */}
       {props.isMounted && !address && !ui.hideSpectatorCta && (
-        <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center p-4">
-          <div className="relative w-full max-w-md rounded-2xl border border-white/20 bg-black/55 backdrop-blur-xl shadow-2xl p-5 text-center">
-            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-sky-300">Live Agent Arena</p>
-            <p className="mt-2 text-sm font-semibold text-white">Connect wallet to join the queue and drive vehicles.</p>
-            <div className="mt-4 flex justify-center">
-              <ConnectWallet
-                source="spectator_cta"
-                buttonClassName="group px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-black rounded-xl shadow-lg transition-all flex items-center gap-2"
-              />
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-sm px-4">
+          <div className="relative rounded-2xl border border-sky-400/20 bg-black/60 backdrop-blur-xl shadow-xl p-4 flex items-center gap-3">
+            <span className="text-2xl">🔗</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-sky-300">Save your score on-chain</p>
+              <p className="text-[11px] text-white/60 mt-0.5">Connect wallet to unlock abilities &amp; leaderboard</p>
             </div>
+            <ConnectWallet
+              source="spectator_cta"
+              buttonClassName="shrink-0 px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white text-[10px] font-black rounded-xl shadow transition-all"
+            />
+            <button
+              onClick={() => setUI({ hideSpectatorCta: true })}
+              className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-white/10 hover:bg-white/20 text-white/50 text-[10px] font-black flex items-center justify-center transition-colors"
+              aria-label="Dismiss"
+            >
+              ×
+            </button>
           </div>
         </div>
       )}

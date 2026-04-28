@@ -5,6 +5,85 @@ import { X } from 'lucide-react'
 
 export type ToastType = 'collect' | 'bid-win' | 'bid-lose' | 'rent' | 'milestone'
 
+// ── Discovery Nudges ─────────────────────────────────────────────────────────
+// Clickable contextual hints that surface onchain features at the right moment.
+
+export interface DiscoveryNudge {
+  id: number
+  emoji: string
+  title: string
+  body: string
+  cta: string
+  tab: 'weather' | 'vehicles' | 'stats'
+}
+
+let nudgeId = 0
+type NudgeListener = (nudge: DiscoveryNudge) => void
+const nudgeListeners: NudgeListener[] = []
+
+export function emitDiscoveryNudge(nudge: Omit<DiscoveryNudge, 'id'>) {
+  const full: DiscoveryNudge = { ...nudge, id: nudgeId++ }
+  nudgeListeners.forEach(l => l(full))
+}
+
+export function DiscoveryNudges({ onOpen }: { onOpen: (tab: DiscoveryNudge['tab']) => void }) {
+  const [nudges, setNudges] = useState<DiscoveryNudge[]>([])
+
+  const addNudge = useCallback((nudge: DiscoveryNudge) => {
+    setNudges(prev => {
+      // Deduplicate by tab — only one nudge per tab at a time
+      const filtered = prev.filter(n => n.tab !== nudge.tab)
+      return [...filtered, nudge]
+    })
+    setTimeout(() => {
+      setNudges(prev => prev.filter(n => n.id !== nudge.id))
+    }, 8000)
+  }, [])
+
+  useEffect(() => {
+    nudgeListeners.push(addNudge)
+    return () => {
+      const idx = nudgeListeners.indexOf(addNudge)
+      if (idx !== -1) nudgeListeners.splice(idx, 1)
+    }
+  }, [addNudge])
+
+  if (nudges.length === 0) return null
+
+  return (
+    <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 pointer-events-none">
+      {nudges.map(nudge => (
+        <div
+          key={nudge.id}
+          className="flex items-center gap-3 px-4 py-3 rounded-2xl border border-purple-400/30 bg-purple-900/70 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-top-4 duration-300 max-w-xs w-full pointer-events-auto"
+        >
+          <span className="text-2xl shrink-0">{nudge.emoji}</span>
+          <div className="flex-1 min-w-0">
+            <div className="text-[11px] font-black text-white">{nudge.title}</div>
+            <div className="text-[9px] text-white/55 leading-snug mt-0.5">{nudge.body}</div>
+          </div>
+          <button
+            onClick={() => {
+              onOpen(nudge.tab)
+              setNudges(prev => prev.filter(n => n.id !== nudge.id))
+            }}
+            className="shrink-0 px-2.5 py-1.5 rounded-xl bg-purple-500/40 hover:bg-purple-500/60 border border-purple-400/30 text-purple-200 text-[9px] font-black uppercase tracking-wider transition-all"
+          >
+            {nudge.cta}
+          </button>
+          <button
+            onClick={() => setNudges(prev => prev.filter(n => n.id !== nudge.id))}
+            className="shrink-0 text-white/30 hover:text-white/60 transition-colors"
+            aria-label="Dismiss"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export interface Toast {
   id: number
   type: ToastType

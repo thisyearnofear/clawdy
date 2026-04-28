@@ -368,7 +368,7 @@ export function ControlPanel({
                 </svg>
                 <span className="text-[10px] font-black uppercase text-sky-300">Connect Wallet</span>
               </div>
-              <p className="text-[9px] text-white/50 mb-2">Link your wallet to join the queue and drive vehicles.</p>
+              <p className="text-[9px] text-white/50 mb-2">Connect to bid on weather, use abilities, and save your score on-chain.</p>
               <ConnectWallet 
                 source="control_panel"
                 buttonClassName="w-full py-2 bg-sky-600 hover:bg-sky-500 text-white text-[10px] font-black rounded-lg shadow transition-all flex items-center justify-center gap-2"

@@ -237,6 +237,7 @@ function Experience({
   useEffect(() => {
     const unsubscribe = vehicleQueue.subscribe((state) => {
       setQueueState(state)
+      useGameStore.getState().setActiveHumans(state.activeHumans + state.waitingHumans)
       
       const activeVehicles: VehicleData[] = state.vehicles
         .filter(v => v.isOccupied && v.currentPlayerId)
@@ -296,11 +297,11 @@ function Experience({
   }, [playerId, getVehiclePosition])
 
   useEffect(() => {
-    if (address && !hasJoinedQueueRef.current) {
+    if (!hasJoinedQueueRef.current) {
       hasJoinedQueueRef.current = true
       queueMicrotask(() => {
         emitToast('bid-win', 'Joining Arena', 'Adding you to the queue...')
-        vehicleQueue.joinQueue(playerId, 'human', 0, address)
+        vehicleQueue.joinQueue(playerId, 'human', 0, address ?? playerId)
         setTimeout(() => emitToast('bid-win', 'Status Update', 'Spawning vehicle...'), 2000)
       })
     }

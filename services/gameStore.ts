@@ -269,6 +269,8 @@ export interface GameStore {
   setPlayerId: (id: string) => void
   playerVehicle: VehicleType
   setPlayerVehicle: (v: VehicleType) => void
+  activeHumans: number
+  setActiveHumans: (count: number) => void
 
   // UI
   ui: UIState
@@ -357,6 +359,7 @@ const defaultCloudConfig: CloudConfig = {
   speed: 0.2, color: '#ffffff', secondaryColor: '#e0e0e0',
   bounds: [80, 5, 80], count: 20,
   clusterBounds: [12, 3, 12],
+  preset: 'stormy',
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -426,6 +429,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setPlayerId: (playerId) => set({ playerId }),
   playerVehicle: 'speedster',
   setPlayerVehicle: (playerVehicle) => set({ playerVehicle }),
+  activeHumans: 0,
+  setActiveHumans: (activeHumans) => set({ activeHumans }),
 
   // UI
   ui: {
