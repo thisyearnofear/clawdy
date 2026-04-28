@@ -1,6 +1,7 @@
 'use client'
 
 import { Component, ReactNode } from 'react'
+import * as Sentry from '@sentry/nextjs'
 
 interface ErrorBoundaryProps {
   children: ReactNode
@@ -13,14 +14,13 @@ interface ErrorBoundaryState {
   error: Error | null
 }
 
-// Global error handler for uncaught errors
 if (typeof window !== 'undefined') {
   window.addEventListener('error', (event) => {
-    console.error('[CLAWDY] Uncaught error:', event.error)
+    Sentry.captureException(event.error)
   })
 
   window.addEventListener('unhandledrejection', (event) => {
-    console.error('[CLAWDY] Unhandled promise rejection:', event.reason)
+    Sentry.captureException(event.reason)
   })
 }
 
@@ -35,7 +35,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('[CLAWDY] Error caught by boundary:', error, errorInfo)
+    Sentry.captureException(error, { extra: { componentStack: errorInfo.componentStack } })
     this.props.onError?.(error, errorInfo)
   }
 

@@ -9,6 +9,13 @@ const PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY || ''
 
 const MAX_KEY_LENGTH = 128
 const MAX_STATE_SIZE = 512 * 1024 // 512KB for state payload
+const API_SECRET = process.env.API_SECRET || ''
+
+function validateAuth(req: NextRequest): boolean {
+  if (!API_SECRET) return true // no secret configured = open (dev mode)
+  const auth = req.headers.get('authorization')
+  return auth === `Bearer ${API_SECRET}`
+}
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -52,6 +59,10 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   if (!PRIVATE_KEY) {
     return NextResponse.json({ error: 'Storage not configured' }, { status: 503 })
+  }
+
+  if (!validateAuth(req)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   let tmpPath: string | undefined

@@ -53,9 +53,13 @@ export async function zgSaveState(
   state: ZgGameState
 ): Promise<{ rootHash?: string; txHash?: string; error?: string }> {
   try {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    const apiSecret = process.env.NEXT_PUBLIC_API_SECRET
+    if (apiSecret) headers['Authorization'] = `Bearer ${apiSecret}`
+
     const res = await fetch(ZG_API_BASE, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ key, state }),
     })
     const data = await res.json()

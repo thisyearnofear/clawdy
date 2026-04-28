@@ -20,28 +20,42 @@ for file in $STAGED; do
 
   # Private key assigned with 0x + 64 hex chars
   if echo "$DIFF" | grep -qiE '(PRIVATE_KEY|SECRET_KEY|API_SECRET)[[:space:]]*=[[:space:]]*0x[0-9a-fA-F]{64}'; then
-    echo "🚨 SECRET DETECTED in staged file: $file (private key pattern)"
+    echo "SECRET DETECTED in staged file: $file (private key pattern)"
     FOUND=1
   fi
 
   # Bare 64-char hex key after PRIVATE_KEY=
-  if echo "$DIFF" | grep -qiE 'PRIVATE_KEY[[:space:]]*=[[:space:]]*["\x27]?[0-9a-fA-F]{64}'; then
-    echo "🚨 SECRET DETECTED in staged file: $file (hex key pattern)"
+  if echo "$DIFF" | grep -qiE 'PRIVATE_KEY[[:space:]]*=[[:space:]]*["'"'"']?[0-9a-fA-F]{64}'; then
+    echo "SECRET DETECTED in staged file: $file (hex key pattern)"
     FOUND=1
   fi
 
   # PEM private key block
-  if echo "$DIFF" | grep -qE '-----BEGIN .*(PRIVATE KEY)-----'; then
-    echo "🚨 SECRET DETECTED in staged file: $file (PEM private key)"
+  if echo "$DIFF" | grep -qF '-----BEGIN'; then
+    if echo "$DIFF" | grep -qF 'PRIVATE KEY'; then
+      echo "SECRET DETECTED in staged file: $file (PEM private key)"
+      FOUND=1
+    fi
+  fi
+
+  # Common API key patterns
+  if echo "$DIFF" | grep -qE '(sk-[a-zA-Z0-9]{20,}|ghp_[a-zA-Z0-9]{36}|xoxb-[0-9]+-[a-zA-Z0-9]+)'; then
+    echo "SECRET DETECTED in staged file: $file (API key pattern)"
+    FOUND=1
+  fi
+
+  # Generic secret assignment patterns
+  if echo "$DIFF" | grep -qiE '(password|secret|token)[[:space:]]*=[[:space:]]*["'"'"'][^ "'"'"']{8,}'; then
+    echo "SECRET DETECTED in staged file: $file (generic secret pattern)"
     FOUND=1
   fi
 done
 
 if [ "$FOUND" -eq 1 ]; then
   echo ""
-  echo "❌ Commit blocked: secrets detected in staged changes."
-  echo "   Remove the secrets and try again."
-  echo "   To bypass (NOT recommended): git commit --no-verify"
+  echo "Commit blocked: secrets detected in staged changes."
+  echo "Remove the secrets and try again."
+  echo "To bypass (NOT recommended): git commit --no-verify"
   exit 1
 fi
 

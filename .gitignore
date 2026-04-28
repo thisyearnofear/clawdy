@@ -47,3 +47,8 @@ next-env.d.ts
 .zencoder.output.txt
 output.txt
 .zencoder
+
+# foundry
+/foundry/out/
+/foundry/cache/
+/foundry/lib/
