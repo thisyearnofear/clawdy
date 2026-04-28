@@ -148,9 +148,9 @@ export function HUD(props: HUDProps) {
 
   return (
     <>
-      {/* PROXIMITY ALERT: Bottom Left */}
+      {/* PROXIMITY ALERT: Bottom Left — sits above wallet upsell bar */}
       {nearestDistance !== null && (
-        <div className={`absolute bottom-6 left-6 ${UI_Z_INDEX.HUD} pointer-events-none`}>
+        <div className={`absolute bottom-24 left-6 ${UI_Z_INDEX.HUD} pointer-events-none`}>
           <div className="bg-red-500/90 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-red-400/50 shadow-lg animate-pulse">
             <span className="text-[10px] font-bold text-white uppercase tracking-wider">
               ⚠ RIVAL NEARBY {Math.round(nearestDistance)}m
@@ -161,7 +161,7 @@ export function HUD(props: HUDProps) {
 
       {/* MUD WARNING: Above proximity alert */}
       {nearMud && (
-        <div className={`absolute bottom-20 left-6 ${UI_Z_INDEX.HUD} pointer-events-none`}>
+        <div className={`absolute bottom-36 left-6 ${UI_Z_INDEX.HUD} pointer-events-none`}>
           <div className="bg-amber-900/90 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-amber-500/50 shadow-lg">
             <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">
               ⚠ MUD AHEAD
@@ -303,9 +303,9 @@ export function HUD(props: HUDProps) {
         props.onOpenSidebar()
       }} />
 
-      {/* Wallet upsell - soft prompt for guests, dismissible */}
+      {/* Wallet upsell - soft prompt for guests, dismissible — anchored bottom-center, clear of left-side alerts */}
       {props.isMounted && !address && !ui.hideSpectatorCta && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-sm px-4">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-xs px-4">
           <div className="relative rounded-2xl border border-sky-400/20 bg-black/60 backdrop-blur-xl shadow-xl p-4 flex items-center gap-3">
             <span className="text-2xl">🔗</span>
             <div className="flex-1 min-w-0">

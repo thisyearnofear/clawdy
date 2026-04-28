@@ -31,7 +31,7 @@ export function FloodLevelGauge() {
     : 'text-sky-300'
 
   return (
-    <div className="fixed left-4 top-1/2 -translate-y-1/2 z-30 flex flex-col items-center gap-1">
+    <div className="fixed left-4 top-1/3 -translate-y-1/2 z-30 flex flex-col items-center gap-1">
       {/* Phase label */}
       <div className={`text-[8px] font-black uppercase tracking-wider ${phaseColor}`}>
         {phaseLabel}

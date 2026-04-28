@@ -28,7 +28,7 @@ export function HighGroundIndicator() {
   if (!arrow) return null
 
   return (
-    <div className="fixed left-4 bottom-1/3 z-30 flex flex-col items-center gap-1">
+    <div className="fixed left-4 bottom-1/4 z-30 flex flex-col items-center gap-1">
       <div className="bg-emerald-900/80 backdrop-blur-sm rounded-xl border border-emerald-500/40 px-2.5 py-2 shadow-lg flex flex-col items-center gap-1">
         <span className="text-[7px] font-black text-emerald-400 uppercase tracking-wider">
           Higher Ground

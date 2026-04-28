@@ -65,10 +65,10 @@ export function WeatherPostProcessing({ config }: { config: CloudConfig }) {
     if (flood.active && flood.intensity > 0.15) {
       const fi = flood.intensity
       const submergedBoost = playerWater.inWater ? playerWater.depth * 0.3 : 0
-      base.vignetteDarkness += fi * 0.3 + submergedBoost
+      base.vignetteDarkness = Math.min(0.85, base.vignetteDarkness + fi * 0.2 + submergedBoost * 0.15)
       base.chromaticOffset = new THREE.Vector2(
-        base.chromaticOffset.x + fi * 0.004 + submergedBoost * 0.003,
-        base.chromaticOffset.y + fi * 0.004 + submergedBoost * 0.003,
+        Math.min(0.006, base.chromaticOffset.x + fi * 0.002 + submergedBoost * 0.001),
+        Math.min(0.006, base.chromaticOffset.y + fi * 0.002 + submergedBoost * 0.001),
       )
       base.bloomIntensity += fi * 0.2
     }
@@ -113,7 +113,7 @@ export function WeatherPostProcessing({ config }: { config: CloudConfig }) {
       <Bloom
         intensity={settings.bloomIntensity}
         luminanceThreshold={settings.bloomThreshold}
-        luminanceSmoothing={0.9}
+        luminanceSmoothing={0.3}
         radius={settings.bloomRadius}
         blendFunction={BlendFunction.ADD}
       />
