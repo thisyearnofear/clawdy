@@ -39,7 +39,7 @@ export function RoundObjectives() {
   if (!round.isActive) return null
 
   return (
-    <div className="fixed top-4 left-4 z-30 pointer-events-none">
+    <div className="fixed top-20 left-4 z-30 pointer-events-none">
       <div className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-2">Objectives</div>
       <div className="flex flex-col gap-1.5">
         {OBJECTIVES.slice(0, 3).map((obj) => {

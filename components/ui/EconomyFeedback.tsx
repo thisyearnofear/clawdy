@@ -46,7 +46,7 @@ export function EconomyFeedback() {
   if (items.length === 0) return null
 
   return (
-    <div className="fixed bottom-40 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
+    <div className="fixed bottom-32 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
       {items.map(item => (
         <div
           key={item.id}

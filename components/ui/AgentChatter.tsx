@@ -138,7 +138,7 @@ export function AgentChatter() {
   }, [bubbles])
 
   return (
-    <div className="fixed bottom-24 left-6 z-20 flex flex-col gap-2 pointer-events-none max-w-[260px]">
+    <div className="fixed bottom-40 left-6 z-20 flex flex-col gap-2 pointer-events-none max-w-[260px]">
       {bubbles.map((b) => (
         <div
           key={b.id}

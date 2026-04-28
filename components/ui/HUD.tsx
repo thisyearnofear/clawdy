@@ -340,7 +340,7 @@ function ObjectiveOverlay({ score }: { score: number }) {
 
   if (expanded) {
     return (
-      <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-40 pointer-events-none animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="fixed bottom-44 left-1/2 -translate-x-1/2 z-40 pointer-events-none animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div className="flex items-center gap-3 px-5 py-3 rounded-2xl border border-white/15 bg-black/60 backdrop-blur-xl shadow-2xl">
           <span className="text-2xl">🎯</span>
           <div>

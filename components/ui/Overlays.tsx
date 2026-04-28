@@ -119,14 +119,13 @@ function UnderwaterOverlay() {
   const playerWater = useGameStore(s => s.playerWater)
   const inWater = playerWater.inWater && playerWater.depth > 0.1
 
-  // Depth-based opacity: deeper = more opaque, capped at 0.55
-  const depthOpacity = inWater ? Math.min(0.55, playerWater.depth * 0.4) : 0
+  // Depth-based opacity: deeper = more visible, capped at 0.35 (much lighter than before)
+  const depthOpacity = inWater ? Math.min(0.35, playerWater.depth * 0.25) : 0
 
-  // Memoize bubble positions to prevent flickering
   const bubbles = useMemo(() => 
-    [...Array(12)].map((_, i) => ({
+    [...Array(8)].map((_, i) => ({
       key: i,
-      size: 2 + (i * 0.3) % 4,
+      size: 2 + (i * 0.3) % 3,
       left: (i * 7.3) % 100,
       duration: 2 + (i * 0.17) % 3,
       delay: (i * 0.23) % 2,
@@ -136,12 +135,12 @@ function UnderwaterOverlay() {
 
   return (
     <div
-      className="fixed inset-0 pointer-events-none z-[9999]"
+      className="fixed inset-0 pointer-events-none z-[25]"
       style={{
         background: `linear-gradient(180deg, 
-          rgba(10, 25, 47, ${depthOpacity * 0.8}) 0%, 
-          rgba(20, 60, 90, ${depthOpacity}) 100%)`,
-        backdropFilter: `blur(${Math.min(3, playerWater.depth * 2)}px)`,
+          rgba(10, 25, 47, ${depthOpacity * 0.6}) 0%, 
+          rgba(20, 60, 90, ${depthOpacity * 0.8}) 60%,
+          rgba(10, 30, 60, ${depthOpacity}) 100%)`,
         transition: 'opacity 0.3s ease',
       }}
     >
@@ -150,7 +149,7 @@ function UnderwaterOverlay() {
         {bubbles.map(b => (
           <div
             key={b.key}
-            className="absolute rounded-full bg-white/30 animate-pulse"
+            className="absolute rounded-full bg-white/20 animate-pulse"
             style={{
               width: `${b.size}px`,
               height: `${b.size}px`,
@@ -162,13 +161,12 @@ function UnderwaterOverlay() {
         ))}
       </div>
       
-      {/* Depth indicator text */}
-      <div className="absolute bottom-24 left-1/2 -translate-x-1/2 text-center">
-        <div className="text-white/70 text-sm font-medium tracking-wide">
-          🌊 UNDERWATER — {playerWater.depth.toFixed(1)}m deep
-        </div>
-        <div className="text-blue-300/60 text-xs mt-1">
-          Drive to higher ground to escape
+      {/* Depth indicator — top-center, below the HUD stack */}
+      <div className="absolute top-20 left-1/2 -translate-x-1/2 text-center">
+        <div className="bg-black/40 backdrop-blur-sm rounded-full px-4 py-1.5 border border-blue-400/20">
+          <span className="text-blue-200 text-xs font-bold tracking-wider">
+            🌊 UNDERWATER — {playerWater.depth.toFixed(1)}m
+          </span>
         </div>
       </div>
     </div>
