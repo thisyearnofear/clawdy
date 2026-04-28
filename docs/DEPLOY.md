@@ -17,15 +17,18 @@ The deployer wallet is: `0x1f6d430ea6d8D38516Eeb7027073a417260CC48D`
 
 It must be funded before deployment.
 
-### Option A — 0G Testnet (free, recommended for testing)
+### Option A — 0G Galileo Testnet ✅ DEPLOYED
+
+> **Already deployed.** Contracts are live on 0G Galileo Testnet (chainId 16602).
 
 1. **Get testnet tokens** at https://faucet.0g.ai — paste the deployer address
 2. **Deploy:**
    ```bash
-   USE_TESTNET=true node scripts/deploy.js
+   CHAIN=0g USE_TESTNET=true node scripts/deploy.js
    ```
 3. **Copy the printed addresses** into `.env.local`:
    ```
+   NEXT_PUBLIC_CHAIN=0g
    NEXT_PUBLIC_USE_TESTNET=true
    NEXT_PUBLIC_WEATHER_AUCTION_ADDRESS=0x...
    NEXT_PUBLIC_VEHICLE_RENT_ADDRESS=0x...
@@ -89,10 +92,14 @@ curl https://clawdy-nine.vercel.app/api/players
 
 ## Deployed Contract Addresses
 
-Update this table after deployment:
+### 0G Galileo Testnet (chainId 16602) — ✅ Live
 
-| Contract | Network | Address | Explorer |
-|----------|---------|---------|---------|
-| WeatherAuction | — | not yet deployed | — |
-| VehicleRent | — | not yet deployed | — |
-| MemeMarket | — | not yet deployed | — |
+| Contract | Address | Explorer |
+|----------|---------|----------|
+| WeatherAuction | `0xaba140aeaf158daf7c597727bbe86a2bc182481d` | [View](https://chainscan-galileo.0g.ai/address/0xaba140aeaf158daf7c597727bbe86a2bc182481d) |
+| VehicleRent | `0x09b211b1b4022d2a8e2d527c375b3e7471306c0f` | [View](https://chainscan-galileo.0g.ai/address/0x09b211b1b4022d2a8e2d527c375b3e7471306c0f) |
+| MemeMarket | `0x56dadce5439eb324db3bf1ae785dfa650298fd54` | [View](https://chainscan-galileo.0g.ai/address/0x56dadce5439eb324db3bf1ae785dfa650298fd54) |
+
+Deployer wallet: `0x1f6d430ea6d8D38516Eeb7027073a417260CC48D`
+
+### 0G Mainnet — Not yet deployed
