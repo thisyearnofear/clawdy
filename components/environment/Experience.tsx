@@ -12,7 +12,7 @@ import {
   KeyboardControls,
   Text
 } from '@react-three/drei'
-import { isMobile } from 'react-device-detect'
+import { isMobile as _isMobile } from 'react-device-detect'
 import { Physics } from '@react-three/rapier'
 import { ProceduralMemeAsset, MemeAssetStats, type MemeAssetType } from './MemeAssets'
 import { MemeAssetSpawner, type SpawnTier } from './MemeAssetSpawner'
@@ -75,6 +75,8 @@ function Experience({
 
   const [memeAssets, setMemeAssets] = useState<{ id: number; position: [number, number, number]; itemType?: MemeAssetType }[]>([])
   const [terrainSampler, setTerrainSampler] = useState<((x: number, z: number) => number) | null>(null)
+  const [isMobileClient, setIsMobileClient] = useState(false)
+  useEffect(() => { setIsMobileClient(_isMobile) }, [])
   const freeAirBubbleUsedRef = useRef(false)
   const preferredVehicle = useGameStore(s => s.ui.preferredVehicleType)
 
@@ -370,7 +372,7 @@ function Experience({
         {address && <InWorldQueueStatus playerId={playerId} queueState={queueState} isPlayerActive={isPlayerActive} playerVehicle={playerVehicle} />}
       </Physics>
       <ContactShadows opacity={0.4} scale={50} blur={1} far={20} resolution={256} color="#000000" />
-      {isMobile && <FrameLimiter fps={30} />}
+      {isMobileClient && <FrameLimiter fps={30} />}
       <CustomFogEffect />
     </KeyboardControls>
   )

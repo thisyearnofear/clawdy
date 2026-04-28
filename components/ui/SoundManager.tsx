@@ -9,15 +9,24 @@ import { useGameStore } from '../../services/gameStore'
 type SoundType = 'collect' | 'bid-win' | 'bid-lose' | 'milestone' | 'engine-idle' | 'ui-click' | 'thunder' | 'splash'
 
 let audioCtx: AudioContext | null = null
+let userHasInteracted = false
 
-function getCtx(): AudioContext {
+// Call this on any confirmed user gesture to unlock audio
+function markUserInteraction() {
+  userHasInteracted = true
+  if (audioCtx?.state === 'suspended') audioCtx.resume().catch(() => {})
+}
+
+function getCtx(): AudioContext | null {
+  if (!userHasInteracted) return null
   if (!audioCtx) audioCtx = new AudioContext()
-  if (audioCtx.state === 'suspended') audioCtx.resume()
+  if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {})
   return audioCtx
 }
 
 function playCollect() {
   const ctx = getCtx()
+  if (!ctx) return
   const osc = ctx.createOscillator()
   const gain = ctx.createGain()
   osc.type = 'sine'
@@ -32,6 +41,7 @@ function playCollect() {
 
 function playBidWin() {
   const ctx = getCtx()
+  if (!ctx) return
   const notes = [523, 659, 784, 1047] // C5 E5 G5 C6
   notes.forEach((freq, i) => {
     const osc = ctx.createOscillator()
@@ -49,6 +59,7 @@ function playBidWin() {
 
 function playBidLose() {
   const ctx = getCtx()
+  if (!ctx) return
   const osc = ctx.createOscillator()
   const gain = ctx.createGain()
   osc.type = 'sawtooth'
@@ -63,6 +74,7 @@ function playBidLose() {
 
 function playMilestone() {
   const ctx = getCtx()
+  if (!ctx) return
   const notes = [440, 554, 659, 880, 1109, 1319] // A4 C#5 E5 A5 C#6 E6
   notes.forEach((freq, i) => {
     const osc = ctx.createOscillator()
@@ -80,6 +92,7 @@ function playMilestone() {
 
 function playUIClick() {
   const ctx = getCtx()
+  if (!ctx) return
   const osc = ctx.createOscillator()
   const gain = ctx.createGain()
   osc.type = 'sine'
@@ -93,6 +106,7 @@ function playUIClick() {
 
 function playThunder() {
   const ctx = getCtx()
+  if (!ctx) return
   // Variation: sometimes distant rumble, sometimes close crack.
   const distance = Math.random() // 0=close, 1=distant
   const isDistant = distance > 0.55
@@ -128,6 +142,7 @@ function playThunder() {
 
 function playSplash() {
   const ctx = getCtx()
+  if (!ctx) return
 
   // Quick filtered noise burst (water hiss) + tiny pop
   const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.08), ctx.sampleRate)
@@ -322,7 +337,9 @@ export function SoundManager() {
     if (enabledRef.current) return
     enabledRef.current = true
     try {
+      markUserInteraction()
       const ctx = getCtx()
+      if (!ctx) return
       stopAmbientRef.current = startAmbient(ctx)
       stormAmbienceRef.current = startStormAmbience(ctx)
     } catch {
