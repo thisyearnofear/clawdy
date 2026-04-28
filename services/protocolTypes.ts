@@ -47,6 +47,7 @@ export interface AgentSession {
   foamBoardUntil?: number
   foamBoardCount?: number
   drainPlugCount?: number
+  shieldUntil?: number
   strategyId?: MemeMarketStrategy['id']
   strategyAggression?: number
   strategyWeatherFocus?: number
@@ -168,6 +169,9 @@ export const MEME_MARKET_ABILITIES = [
   { id: 1, key: 'speed_boost', label: 'Speed Boost', source: 'Spicy Pepper' },
   { id: 2, key: 'anti_gravity', label: 'Anti-Gravity', source: 'Floaty Marshmallow' },
   { id: 3, key: 'flood_drain', label: 'Flood Drain', source: 'Drain Plug' },
+  { id: 4, key: 'air_bubble', label: 'Air Bubble', source: 'Bubble Wrap' },
+  { id: 5, key: 'foam_board', label: 'Foam Board', source: 'Foam Pad' },
+  { id: 6, key: 'shield', label: 'Force Field', source: 'Bubble Shield' },
 ] as const
 
 export type MemeMarketAbility = (typeof MEME_MARKET_ABILITIES)[number]

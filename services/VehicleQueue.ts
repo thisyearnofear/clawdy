@@ -10,6 +10,7 @@ export interface QueuedPlayer {
   type: 'human' | 'agent'
   priority: number
   isGhost: boolean
+  preferredVehicleType?: 'speedster' | 'truck'
   vehicleId?: string
   sessionStartTime?: number
   sessionEndTime?: number
@@ -58,7 +59,9 @@ export class VehicleQueueManager {
       .sort((a, b) => b.priority - a.priority || a.joinedAt - b.joinedAt)
 
     for (const player of waitingPlayers) {
-      const availableVehicle = this.vehicles.find(v => !v.isOccupied && v.allowedTypes.includes(player.type))
+      const availableVehicle =
+        (player.preferredVehicleType && this.vehicles.find(v => !v.isOccupied && v.allowedTypes.includes(player.type) && v.type === player.preferredVehicleType)) ||
+        this.vehicles.find(v => !v.isOccupied && v.allowedTypes.includes(player.type))
       if (!availableVehicle) {
         player.isGhost = true // If waiting, they are in ghost mode
         continue
@@ -139,7 +142,7 @@ export class VehicleQueueManager {
 
   // Public API
 
-  joinQueue(playerId: string, type: 'human' | 'agent' = 'human', priority: number = 0, address?: string): { position: number; estimatedWait: number } {
+  joinQueue(playerId: string, type: 'human' | 'agent' = 'human', priority: number = 0, address?: string, preferredVehicleType?: 'speedster' | 'truck'): { position: number; estimatedWait: number } {
     const existing = this.queue.find(p => p.id === playerId)
     if (existing) {
       if (existing.status === 'active') return { position: 0, estimatedWait: 0 }
@@ -159,9 +162,12 @@ export class VehicleQueueManager {
         status: 'waiting',
         type,
         priority,
-        isGhost: true
+        isGhost: true,
+        preferredVehicleType,
       }
       this.queue.push(player)
+    } else if (preferredVehicleType) {
+      existing.preferredVehicleType = preferredVehicleType
     }
     this.notifyListeners()
     

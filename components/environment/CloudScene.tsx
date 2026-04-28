@@ -354,8 +354,8 @@ export default function CloudScene() {
 
       <Overlays 
         showOnboarding={ui.showOnboarding}
-        onDoneOnboarding={() => {
-          setUI({ showOnboarding: false })
+        onDoneOnboarding={(preferredVehicleType) => {
+          setUI({ showOnboarding: false, preferredVehicleType: preferredVehicleType ?? null })
           localStorage.setItem('clawdy-onboarded', '1')
         }}
         bidWinPreset={ui.bidWinPreset}

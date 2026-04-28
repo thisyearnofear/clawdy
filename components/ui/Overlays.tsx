@@ -16,7 +16,7 @@ import { playSound } from './SoundManager'
 
 interface OverlaysProps {
   showOnboarding: boolean
-  onDoneOnboarding: () => void
+  onDoneOnboarding: (preferredVehicleType?: 'speedster' | 'truck') => void
   bidWinPreset: string | null
   onDoneBidWin: () => void
 }
@@ -71,7 +71,7 @@ export function Overlays({
     <>
       {/* Onboarding */}
       {showOnboarding && (
-        <OnboardingOverlay onDone={onDoneOnboarding} />
+        <OnboardingOverlay onDone={(v) => onDoneOnboarding(v)} />
       )}
 
       {/* Global color grading / vignette */}

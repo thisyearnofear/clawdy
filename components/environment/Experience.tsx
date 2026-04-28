@@ -74,6 +74,7 @@ function Experience({
   const [memeAssets, setMemeAssets] = useState<{ id: number; position: [number, number, number]; itemType?: MemeAssetType }[]>([])
   const [vehicles, setVehicles] = useState<VehicleData[]>([])
   const [queueState, setQueueState] = useState<QueueState | null>(null)
+  const preferredVehicle = useGameStore(s => s.ui.preferredVehicleType)
   const [terrainSampler, setTerrainSampler] = useState<((x: number, z: number) => number) | null>(null)
   const hasJoinedQueueRef = useRef(false)
   
@@ -119,6 +120,12 @@ function Experience({
   const assetCountRef = useRef(0)
 
   const handleDespawn = (id: number) => {
+    // Shield check: if the player has an active Force Field, block destroy events on their assets
+    const playerSess = agentProtocol.getSession('Player')
+    if (playerSess?.shieldUntil && playerSess.shieldUntil > Date.now()) {
+      emitToast('milestone', '🛡️ Force Field', 'Your food is protected!')
+      return
+    }
     setMemeAssets((prev) => {
       const next = prev.filter((item) => item.id !== id)
       assetCountRef.current = next.length
@@ -129,6 +136,12 @@ function Experience({
   const handleCollect = (id: number, stats: MemeAssetStats, collectorId?: string) => {
     const agentId = getAgentByVehicleId(collectorId)?.id || 'Player'
     if (agentId === 'Player') playSound('collect')
+    // Grant Force Field when player collects a shield asset
+    if (agentId === 'Player' && (stats.type as string) === 'shield') {
+      const sess = agentProtocol.getSession('Player')
+      if (sess) sess.shieldUntil = Date.now() + 15_000
+      emitToast('milestone', '🛡️ Force Field Active', '15s of food protection!')
+    }
     if (agentId === 'Player' && playerWater.inWater) {
       if (stats.type === 'air_bubble') addPlayerBubbleSave()
       if (stats.type === 'foam_board') addPlayerBoardSave()
@@ -303,7 +316,8 @@ function Experience({
       hasJoinedQueueRef.current = true
       queueMicrotask(() => {
         emitToast('bid-win', 'Joining Arena', 'Adding you to the queue...')
-        vehicleQueue.joinQueue(playerId, 'human', 0, address ?? playerId)
+        vehicleQueue.joinQueue(playerId, 'human', 0, address ?? playerId, preferredVehicle ?? undefined)
+        if (preferredVehicle) emitToast('bid-win', `${preferredVehicle === 'speedster' ? '🏎️' : '🚛'} Vehicle Ready`, `Your ${preferredVehicle} is queued!`)
         setTimeout(() => emitToast('bid-win', 'Status Update', 'Spawning vehicle...'), 2000)
       })
     }
@@ -538,10 +552,13 @@ function InWorldQueueStatus({ playerId, queueState, isPlayerActive, playerVehicl
   }
   if (player?.status === 'waiting') {
     const position = queueState.queue.filter(p => p.status === 'waiting').findIndex(p => p.id === playerId) + 1
+    const eta = position * 30
+    const etaText = eta >= 60 ? `~${Math.ceil(eta / 60)}m` : `~${eta}s`
     return (
       <group position={[0, 8, -15]}>
-        <Text fontSize={1} color="#fbbf24" anchorX="center" anchorY="middle" outlineWidth={0.05} outlineColor="#000000">WAITING IN QUEUE</Text>
-        <Text position={[0, -1.2, 0]} fontSize={0.6} color="#ffffff" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="#000000">Position: {position} / {queueState.waitingCount}</Text>
+        <Text fontSize={1} color="#fbbf24" anchorX="center" anchorY="middle" outlineWidth={0.05} outlineColor="#000000">👻 SCOUTING MODE</Text>
+        <Text position={[0, -1.4, 0]} fontSize={0.6} color="#ffffff" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="#000000">Queue position {position} of {queueState.waitingCount} · spawning {etaText}</Text>
+        <Text position={[0, -2.4, 0]} fontSize={0.5} color="#94a3b8" anchorX="center" anchorY="middle" outlineWidth={0.02} outlineColor="#000000">Watch the arena — learn food spawn patterns before you drive!</Text>
       </group>
     )
   }

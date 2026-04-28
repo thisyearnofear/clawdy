@@ -180,6 +180,7 @@ export interface UIState {
   isSidebarOpen: boolean
   activeTab: 'weather' | 'vehicles' | 'stats'
   showOnboarding: boolean
+  preferredVehicleType: 'speedster' | 'truck' | null
   bidWinPreset: string | null
   isLoading: boolean
   error: string | null
@@ -437,6 +438,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     isSidebarOpen: false,
     activeTab: 'weather',
     showOnboarding: false,
+    preferredVehicleType: null,
     bidWinPreset: null,
     isLoading: false,
     error: null,
