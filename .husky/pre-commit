@@ -30,13 +30,11 @@ for file in $STAGED; do
     FOUND=1
   fi
 
-  # PEM private key block
-  if echo "$DIFF" | grep -qF '-----BEGIN'; then
-    if echo "$DIFF" | grep -qF 'PRIVATE KEY'; then
-      echo "SECRET DETECTED in staged file: $file (PEM private key)"
+  # PEM key block (matches -----BEGIN ... KEY-----)
+  if echo "$DIFF" | grep -qE '^-----BEGIN.*KEY-----'; then
+      echo "SECRET DETECTED in staged file: $file (PEM key)"
       FOUND=1
     fi
-  fi
 
   # Common API key patterns
   if echo "$DIFF" | grep -qE '(sk-[a-zA-Z0-9]{20,}|ghp_[a-zA-Z0-9]{36}|xoxb-[0-9]+-[a-zA-Z0-9]+)'; then
