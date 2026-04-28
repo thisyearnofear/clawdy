@@ -1,3 +1,5 @@
+Command finished with exit code 0.
+Command output:
 'use client'
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
@@ -28,15 +30,12 @@ import { AgentVision } from './AgentVision'
 import { IntentionVisualizer } from './IntentionVisualizer'
 import { MemeAssetInstances } from './MemeAssetInstances'
 import { VehicleType, agentProtocol, VEHICLE_RENT_ADDRESS } from '../../services/AgentProtocol'
-import { QueueState } from '../../services/VehicleQueue'
-import { getAgentByVehicleId } from '../../services/agents'
+import { vehicleQueue, QueueState } from '../../services/VehicleQueue'
 import { emitToast } from '../ui/GameToasts'
 import { useWatchContractEvent, useReadContract } from 'wagmi'
 import { VEHICLE_RENT_ABI } from '../../services/abis/VehicleRent'
 import { useAccount } from 'wagmi'
 import { POLL_INTERVAL } from '../../services/web3Config'
-import { usePlayerQueue } from '../../hooks/usePlayerQueue'
-import { useCombatEvents } from '../../hooks/useCombatEvents'
 
 import FrameLimiter from '../utils/FrameLimiter'
 import { CustomFogEffect } from './CustomFogEffect'
@@ -45,6 +44,7 @@ import { WeatherPostProcessing } from './WeatherPostProcessing'
 import { PuddleRipples } from './PuddleRipples'
 import { FloodWater } from './FloodWater'
 import { MudMarkers } from './MudMarkers'
+import { getAgentByVehicleId } from '../../services/agents'
 import type { RapierRigidBody } from '@react-three/rapier'
 import { useGameStore, GRAVITY_FOR_PRESET, type GravityMode } from '../../services/gameStore'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
@@ -74,18 +74,16 @@ function Experience({
   const playerId = address || 'anonymous'
 
   const [memeAssets, setMemeAssets] = useState<{ id: number; position: [number, number, number]; itemType?: MemeAssetType }[]>([])
-  const [terrainSampler, setTerrainSampler] = useState<((x: number, z: number) => number) | null>(null)
-  const freeAirBubbleUsedRef = useRef(false)
+  const [vehicles, setVehicles] = useState<VehicleData[]>([])
+  const [queueState, setQueueState] = useState<QueueState | null>(null)
   const preferredVehicle = useGameStore(s => s.ui.preferredVehicleType)
-
+  const [terrainSampler, setTerrainSampler] = useState<((x: number, z: number) => number) | null>(null)
+  const hasJoinedQueueRef = useRef(false)
+  const freeAirBubbleUsedRef = useRef(false)
+  
   const playerVehicleObjRef = useRef<RapierRigidBody | null>(null)
   const spectatorVehicleObjRef = useRef<RapierRigidBody | null>(null)
   const lastPriorityToastAtRef = useRef(0)
-
-  const { vehicles, setVehicles, queueState, getVehiclePosition } = usePlayerQueue(
-    playerId, address, cloudConfig, preferredVehicle
-  )
-
   const currentPlayerVehicleId = queueState?.getPlayerVehicle(playerId)?.id
 
   const { data: onChainVehicleRentStatus } = useReadContract({
@@ -112,9 +110,20 @@ function Experience({
     )))
   }, [currentPlayerVehicleId, onChainVehicleRentStatus])
 
+  const getVehiclePosition = useCallback((index: number, isGhost: boolean = false): [number, number, number] => {
+    const angle = (index / 10) * Math.PI * 2
+    const radius = cloudConfig.bounds[0] * (isGhost ? 0.9 : 0.8)
+    return [
+      Math.cos(angle) * radius,
+      isGhost ? 8 : 5,
+      Math.sin(angle) * radius
+    ]
+  }, [cloudConfig.bounds])
+
   const assetCountRef = useRef(0)
 
   const handleDespawn = (id: number) => {
+    // Shield check: if the player has an active Force Field, block destroy events on their assets
     const playerSess = agentProtocol.getSession('Player')
     if (playerSess?.shieldUntil && playerSess.shieldUntil > Date.now()) {
       emitToast('milestone', '🛡️ BLOCKED', 'Force Field absorbed the attack!')
@@ -128,6 +137,64 @@ function Experience({
     })
   }
 
+  const handleCollect = (id: number, stats: MemeAssetStats, collectorId?: string) => {
+    const agentId = getAgentByVehicleId(collectorId)?.id || 'Player'
+    if (agentId === 'Player') playSound('collect')
+    // Grant 1 free Air Bubble per session on first collect (no wallet needed)
+    if (agentId === 'Player' && !freeAirBubbleUsedRef.current) {
+      freeAirBubbleUsedRef.current = true
+      const sess = agentProtocol.getSession('Player')
+      if (sess) {
+        sess.airBubbleUntil = Date.now() + 8_000
+        sess.airBubbleCount = (sess.airBubbleCount ?? 0) + 1
+      }
+      emitToast('milestone', '🫧 Free Air Bubble!', '8s flood immunity — collect more to earn abilities')
+    }
+    // Grant Force Field when player collects a shield asset
+    if (agentId === 'Player' && (stats.type as string) === 'shield') {
+      const sess = agentProtocol.getSession('Player')
+      if (sess) sess.shieldUntil = Date.now() + 15_000
+      emitToast('milestone', '🛡️ Force Field Active', '15s of food protection!')
+    }
+    if (agentId === 'Player' && playerWater.inWater) {
+      if (stats.type === 'air_bubble') addPlayerBubbleSave()
+      if (stats.type === 'foam_board') addPlayerBoardSave()
+      if (stats.type === 'air_bubble') {
+        const next = vehicleQueue.bumpPriority('Player', 1, 'clutch_air_bubble')
+        if (next !== null) {
+          // eslint-disable-next-line react-hooks/purity
+          lastPriorityToastAtRef.current = Date.now()
+          emitToast('milestone', 'Queue Priority +1', `Now P${next}`)
+        }
+      }
+      if (stats.type === 'foam_board') {
+        const next = vehicleQueue.bumpPriority('Player', 1, 'clutch_foam_board')
+        if (next !== null) {
+          // eslint-disable-next-line react-hooks/purity
+          lastPriorityToastAtRef.current = Date.now()
+          emitToast('milestone', 'Queue Priority +1', `Now P${next}`)
+        }
+      }
+    }
+    if (agentId === 'Player' && stats.type === 'drain_plug') {
+      const p = playerVehicleObjRef.current?.translation?.()
+      const center: [number, number, number] = p
+        ? [p.x, p.y, p.z]
+        : [playerVehiclePosition.x, playerVehiclePosition.y, playerVehiclePosition.z]
+      triggerFloodDrain(0.95, 8000, center)
+      addPlayerDrainUse()
+      const next = vehicleQueue.bumpPriority('Player', 2, 'drain_plug')
+      // eslint-disable-next-line react-hooks/purity
+      if (Date.now() - lastPriorityToastAtRef.current > 1800 && next !== null) {
+        // eslint-disable-next-line react-hooks/purity
+        lastPriorityToastAtRef.current = Date.now()
+        emitToast('milestone', 'Queue Priority +2', `Now P${next}`)
+      }
+    }
+    agentProtocol.collectAsset(agentId, stats)
+    handleDespawn(id)
+  }
+
   const sessions = useGameStore(s => s.sessions)
   const playerSession = sessions['Player']
   const leaderEarned = Object.values(sessions).reduce((max, s) => Math.max(max, s.totalEarned ?? 0), 0)
@@ -135,6 +202,11 @@ function Experience({
   const behindBy = Math.max(0, leaderEarned - playerEarned)
   const isPlayerBehind = behindBy > 0.008
   const flood = useGameStore(s => s.flood)
+  const playerWater = useGameStore(s => s.playerWater)
+  const addPlayerBubbleSave = useGameStore(s => s.addPlayerBubbleSave)
+  const addPlayerBoardSave = useGameStore(s => s.addPlayerBoardSave)
+  const triggerFloodDrain = useGameStore(s => s.triggerFloodDrain)
+  const addPlayerDrainUse = useGameStore(s => s.addPlayerDrainUse)
 
   const chooseAssistedAssetType = (tier: SpawnTier = 'ground'): MemeAssetType | undefined => {
     if (flood.active && flood.intensity > 0.25) {
@@ -191,35 +263,104 @@ function Experience({
     : 1
   const effectiveSpawnRate = Math.min(10, spawnRate * endgameMultiplier)
 
-  const playerVehicle = queueState?.getPlayerVehicle(playerId)
-  const isPlayerActive = queueState?.isPlayerActive(playerId) ?? false
-  const spectatorVehicle = useMemo(() => vehicles.find(v => v.agentControlled && !v.isGhost), [vehicles])
+  const wasActiveRef = useRef(false)
 
-  const playerVehiclePosition = useMemo(() => {
-    if (isPlayerActive && playerVehicle) {
-      const vehicle = vehicles.find(v => v.id === playerVehicle.id)
-      if (vehicle) return new THREE.Vector3(...vehicle.position)
-    }
-    return new THREE.Vector3(0, 0, 0)
-  }, [isPlayerActive, playerVehicle, vehicles])
-
-  const { handleCollect } = useCombatEvents({
-    playerId,
-    setVehicles,
-    handleDespawn,
-    freeAirBubbleUsedRef,
-    lastPriorityToastAtRef,
-    playerVehicleObjRef,
-    playerVehiclePosition,
-  })
-
-  // ── world asset sync (vehicle/queue state managed by usePlayerQueue) ──
   useEffect(() => {
-    agentProtocol.updateWorldState({
-      assets: memeAssets.map(a => ({ id: a.id, type: a.itemType ?? 'asset', rarity: 'unknown', position: a.position })),
-      bounds: cloudConfig.bounds
+    const unsubscribe = vehicleQueue.subscribe((state) => {
+      setQueueState(state)
+      useGameStore.getState().setActiveHumans(state.activeHumans + state.waitingHumans)
+
+      // Respawn feedback: detect active → waiting transition
+      const isNowActive = state.vehicles.some(v => v.currentPlayerId === playerId && v.isOccupied)
+      if (wasActiveRef.current && !isNowActive) {
+        emitToast('milestone', '💨 Session Ended', 'Back in queue — you\'ll respawn shortly!')
+        playSound('collect')
+      }
+      wasActiveRef.current = isNowActive
+      
+      const activeVehicles: VehicleData[] = state.vehicles
+        .filter(v => v.isOccupied && v.currentPlayerId)
+        .map((v, index) => {
+          const occupant = state.queue.find(p => p.id === v.currentPlayerId)
+          const occupantType = occupant?.type ?? 'human'
+          return {
+            id: v.id,
+            type: v.type,
+            position: getVehiclePosition(index),
+            agentControlled: occupantType === 'agent',
+            playerId: v.currentPlayerId,
+            isPlayerVehicle: v.currentPlayerId === playerId,
+            isGhost: false
+          }
+        })
+      
+      const waiting = state.queue
+        .filter(p => p.status === 'waiting')
+        .sort((a, b) => b.priority - a.priority || a.joinedAt - b.joinedAt)
+      const ghostVehicles: VehicleData[] = waiting
+        .slice(0, 6) // perf guardrail
+        .map((p, index) => ({
+          id: `ghost-${p.id}`,
+          type: p.type === 'agent' ? 'tank' : 'speedster',
+          position: getVehiclePosition(index + activeVehicles.length, true),
+          agentControlled: p.type === 'agent',
+          playerId: p.id,
+          isPlayerVehicle: p.id === playerId,
+          isGhost: true
+        }))
+      
+      setVehicles(prevVehicles => {
+        const newVehicles = [...activeVehicles, ...ghostVehicles];
+        if (JSON.stringify(prevVehicles) === JSON.stringify(newVehicles)) return prevVehicles;
+
+        const currentWorldVehicles = agentProtocol.getWorldState().vehicles
+        const worldVehicleIds = new Set(currentWorldVehicles.map(v => v.id))
+        const brandNewVehicles = newVehicles
+          .filter(v => !worldVehicleIds.has(v.id))
+          .map(v => ({
+            id: v.id,
+            type: v.type,
+            position: v.position,
+            rotation: [0, 0, 0, 1] as [number, number, number, number],
+            isRented: v.playerId !== undefined && !v.isGhost,
+            rentExpiresAt: 0
+          }))
+        
+        if (brandNewVehicles.length > 0) {
+          agentProtocol.updateWorldState({ vehicles: [...currentWorldVehicles, ...brandNewVehicles] })
+        }
+        return newVehicles;
+      });
     })
-  }, [memeAssets, cloudConfig.bounds])
+    return () => unsubscribe()
+  }, [playerId, getVehiclePosition])
+
+  useEffect(() => {
+    if (!hasJoinedQueueRef.current) {
+      hasJoinedQueueRef.current = true
+      queueMicrotask(() => {
+        emitToast('bid-win', 'Joining Arena', 'Adding you to the queue...')
+        vehicleQueue.joinQueue(playerId, 'human', 0, address ?? playerId, preferredVehicle ?? undefined)
+        if (preferredVehicle) emitToast('bid-win', `${preferredVehicle === 'speedster' ? '🏎️' : '🚛'} Vehicle Ready`, `Your ${preferredVehicle} is queued!`)
+        setTimeout(() => emitToast('bid-win', 'Status Update', 'Spawning vehicle...'), 2000)
+      })
+    }
+  }, [address, playerId])
+
+  useEffect(() => {
+    const unsubCombat = agentProtocol.subscribeToCombat((event) => {
+      if (event.type === 'destroy') handleDespawn(event.assetId)
+    })
+    const unsubscribe = agentProtocol.subscribeToVehicle((cmd) => {
+      if (cmd.type) {
+        setVehicles(prev => {
+          const updatedVehicles = prev.map(v => v.id === cmd.vehicleId ? { ...v, type: cmd.type! } : v);
+          return prev.some((v, i) => i < updatedVehicles.length && v.type !== updatedVehicles[i].type) ? updatedVehicles : prev;
+        });
+      }
+    })
+    return () => { unsubCombat(); unsubscribe() }
+  }, [])
 
   useWatchContractEvent({
     address: VEHICLE_RENT_ADDRESS as `0x${string}`,
@@ -234,8 +375,29 @@ function Experience({
     },
   })
 
+  const lastWorldUpdateRef = useRef(0)
+  useFrame(() => {
+    const now = Date.now()
+    if (now - lastWorldUpdateRef.current < 200) return
+    lastWorldUpdateRef.current = now
+    agentProtocol.updateWorldState({
+       assets: memeAssets.map(a => ({ id: a.id, type: a.itemType ?? 'asset', rarity: 'unknown', position: a.position })),
+       bounds: cloudConfig.bounds
+    })
+  })
 
+  const playerVehicle = queueState?.getPlayerVehicle(playerId)
+  const isPlayerActive = queueState?.isPlayerActive(playerId) ?? false
+  const spectatorVehicle = useMemo(() => vehicles.find(v => v.agentControlled && !v.isGhost), [vehicles])
   const isCameraFollowingVehicle = Boolean(isPlayerActive ? playerVehicle : spectatorVehicle)
+
+  const playerVehiclePosition = useMemo(() => {
+    if (isPlayerActive && playerVehicle) {
+      const vehicle = vehicles.find(v => v.id === playerVehicle.id);
+      if (vehicle) return new THREE.Vector3(...vehicle.position);
+    }
+    return new THREE.Vector3(0, 0, 0);
+  }, [isPlayerActive, playerVehicle, vehicles]);
 
   const [useSphericalTerrain, setUseSphericalTerrain] = useState(false);
   const [weatherPhase, setWeatherPhase] = useState(0)

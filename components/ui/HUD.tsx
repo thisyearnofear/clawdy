@@ -61,6 +61,27 @@ export function HUD(props: HUDProps) {
     + Object.keys(s.maxSpeedOverrides).length
   )
   const activeHumans = useGameStore(s => s.activeHumans)
+  const setActiveHumans = useGameStore(s => s.setActiveHumans)
+
+  // Server-synced player count: ping /api/players every 30s
+  useEffect(() => {
+    const ping = async () => {
+      try {
+        const res = await fetch('/api/players', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ playerId: playerId || 'anonymous' }),
+        })
+        if (res.ok) {
+          const { count } = await res.json()
+          if (typeof count === 'number') setActiveHumans(count)
+        }
+      } catch { /* network error — keep local count */ }
+    }
+    ping()
+    const interval = window.setInterval(ping, 30_000)
+    return () => window.clearInterval(interval)
+  }, [playerId, setActiveHumans])
   
   const playerSession = sessions['Player']
   const currentStrategy = getMemeMarketStrategy(playerSession?.strategyId)

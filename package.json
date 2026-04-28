@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "prepare": "git config core.hooksPath .husky"
+    "prepare": "git config core.hooksPath .husky",
+    "test": "vitest run"
   },
   "dependencies": {
     "@0gfoundation/0g-ts-sdk": "^1.2.2",
@@ -41,6 +42,7 @@
     "eslint-config-next": "16.1.6",
     "solc": "^0.8.34",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.5"
   }
 }
