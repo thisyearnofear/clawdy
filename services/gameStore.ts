@@ -187,6 +187,7 @@ export interface UIState {
   showHUD: boolean
   hideSpectatorCta: boolean
   showQuickControls: boolean
+  cameraMode: 'chase' | 'wide' | 'hood' | 'free'
   vehiclesTabPulseAt: number
   modals: {
     wallet: boolean
@@ -445,6 +446,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     showHUD: true,
     hideSpectatorCta: false,
     showQuickControls: false,
+    cameraMode: 'chase' as const,
     vehiclesTabPulseAt: 0,
     modals: { wallet: false, onboarding: false, recap: false, spectatorCta: false },
   },

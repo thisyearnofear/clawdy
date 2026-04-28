@@ -18,6 +18,36 @@ import { DiscoveryNudges } from './GameToasts'
 
 const PROXIMITY_ALERT_DISTANCE = 40
 
+const CAMERA_MODES = ['chase', 'wide', 'hood', 'free'] as const
+type CameraMode = typeof CAMERA_MODES[number]
+const CAMERA_MODE_LABELS: Record<CameraMode, string> = {
+  chase: '🎥 Chase',
+  wide:  '🔭 Wide',
+  hood:  '🏎 Hood',
+  free:  '🌐 Free',
+}
+
+function CameraModeToggle() {
+  const cameraMode = useGameStore(s => s.ui.cameraMode)
+  const setUI = useGameStore(s => s.setUI)
+  const cycle = () => {
+    const idx = CAMERA_MODES.indexOf(cameraMode as CameraMode)
+    const next = CAMERA_MODES[(idx + 1) % CAMERA_MODES.length]
+    setUI({ cameraMode: next })
+  }
+  return (
+    <button
+      onClick={cycle}
+      title="Cycle camera mode (right-mouse to look around)"
+      className="flex items-center gap-1.5 bg-black/40 hover:bg-white/10 backdrop-blur-xl border border-white/10 rounded-full px-3 py-1.5 shadow transition-all pointer-events-auto"
+    >
+      <span className="text-[10px] font-black text-white/70 uppercase tracking-widest">
+        {CAMERA_MODE_LABELS[cameraMode as CameraMode] ?? '🎥 Chase'}
+      </span>
+    </button>
+  )
+}
+
 function getDistance(a: [number, number, number], b: [number, number, number]): number {
   return Math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2)
 }
@@ -140,7 +170,7 @@ export function HUD(props: HUDProps) {
         </div>
       )}
 
-      {/* TOP LEFT: Live player count + share button */}
+      {/* TOP LEFT: Live player count + share button + camera mode */}
       <div className={`absolute top-6 left-6 ${UI_Z_INDEX.HUD} flex flex-col gap-2`}>
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full px-3 py-1.5 shadow pointer-events-none">
@@ -159,6 +189,7 @@ export function HUD(props: HUDProps) {
             <span className="text-[11px]">𝕏</span>
             <span className="text-[10px] font-black text-white uppercase tracking-widest">Share</span>
           </a>
+          <CameraModeToggle />
         </div>
       </div>
 
