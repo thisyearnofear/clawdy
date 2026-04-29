@@ -3,25 +3,25 @@
 **vibejam2026 entry** | Live: https://clawdy-nine.vercel.app | No wallet needed to play
 
 ## Pitch
-Real-time multiplayer 3D arena — autonomous AI agents and humans compete to control the weather, collect food, and dominate an on-chain economy. Built on 0G blockchain. No wallet needed to play.
+Outsmart autonomous AI agents in a live 3D arena. Four AI opponents — Scout, Weather, Mobility, Treasury — each with their own risk tolerance, budgets, and cooldowns, are racing you for food and bidding on-chain for weather control in real time. Steal their drops, hijack their weather, beat their score.
 
 ## Project Vision
-Clawdy is a decentralized "Climate Strategy" arena where AI agents and human players collaborate to navigate a reactive 3D world. We bridge the gap between abstract AI agent decision-making and tangible, high-agency gameplay.
+Clawdy is a decentralized arena where AI agents are the primary opposition, not the primary actor. We bridge the gap between abstract AI agent decision-making and tangible, high-agency PvE gameplay — every agent decision is visible in the terminal log, and every agent action settles on-chain.
 
 ## Why X-Layer, BNB, and 0G?
-- **X-Layer:** Selected for its high-performance EVM compatibility, allowing for rapid-fire physics and weather-auction bidding.
-- **BNB Chain:** Acts as our high-liquidity market hub. It enables players to mint "Meme Assets" (mined on X-Layer) into utility-driven ability boosts, connecting the game to a wider cultural economy.
-- **0G Storage:** Provides a decentralized memory bank. By anchoring agent decision-rationales on 0G, we provide a transparent, verifiable history of why an agent performed a specific action, solving the "Black Box AI" issue.
+- **X-Layer (primary):** High-performance EVM compatibility for rapid-fire physics and weather-auction bidding.
+- **BNB Chain:** High-liquidity hub where collected assets become signed-proof "Meme Abilities" usable in-arena.
+- **0G Storage:** Persistent, decentralized memory — agent decision rationales and round state survive refreshes and sessions.
 
 ## Impact & Innovation
-- **Agent Transparency:** Our terminal logs and `IntentionVisualizer` (the "Bidding Beams") ensure players can actually see what agents are thinking and what they are targeting.
-- **Strategic Depth:** Human-agent collaboration is not optional—human oversight is required to solve high-level strategic challenges (e.g., Sphinx Riddles) that agents cannot reliably navigate, creating a true symbiotic gameplay experience.
-- **Cross-Chain Utility:** We moved beyond simple bridging to a "Function-specific" multi-chain approach, showing judges how to utilize different chain strengths (Throughput vs. Liquidity) in a single unified game loop.
+- **Agents Are Real Opponents:** Per-role policies (cooldowns, budget reserves, risk tolerance) make Scout, Weather, Mobility, and Treasury behave distinctly. The Bidding Beams + decision feed surface what each agent is targeting and why.
+- **Beatable-But-Demanding AI:** The agents carry deliberate imperfection (20% suboptimal-target, ±15% turn wobble), giving humans a real chance to outplay them while the AI never tires.
+- **Cross-Chain Utility:** Function-specific multi-chain — X-Layer for throughput, BNB for liquidity-backed abilities (signed-proof minting), 0G for persistence.
 
 ## Architecture & Code Quality
-- **Performance:** Implemented a `Persistent Vehicle Pool` to prevent Wasm physics memory leaks and `InstancedMesh` rendering for world assets.
-- **Reliability:** Built with a resilient `Optimistic UI` and fallback-aware `AgentProtocol` seam (Local Policy vs. MCP).
-- **Standards:** Clean, modular architecture with explicit dependencies and zero-bloat dependency management (moving to `viem`).
+- **Performance:** `Persistent Vehicle Pool`, `InstancedMesh` rendering, adaptive DPR, fewer cloud segments.
+- **Reliability:** Optimistic UI with on-chain rollback, fallback-aware `AgentProtocol` seam (Local Policy ↔ MCP), single source of truth for role policy in `skillEngine.ROLE_POLICY`.
+- **Standards:** Modular architecture, explicit dependencies, `viem`-first web3 layer.
 
 ## Conclusion
-Clawdy represents the next generation of Web3 gaming: autonomous, performant, and cross-chain-native. It demonstrates how AI can move from passive smart-contract executors to proactive, strategic participants in a gaming economy.
+Clawdy reframes AI agents from passive simulators into proactive, on-chain rivals. The challenge isn't just to play — it's to play smarter than four agents who never blink.

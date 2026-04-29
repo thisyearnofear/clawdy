@@ -1,6 +1,6 @@
-import { AgentSession, AgentRole, AGENT_ROLE_CONFIG } from './protocolTypes'
+import { AgentSession, AGENT_ROLE_CONFIG } from './protocolTypes'
 import { getAgentMission, getAgentRole, getAgentVehicleId } from './agents'
-import { MemeAssetStats, MemeRarity } from '../components/environment/MemeAssets'
+import { MemeAssetStats, MemeRarity, VitalityTier } from '../components/environment/MemeAssets'
 
 const RARITY_MULTIPLIER: Record<MemeRarity, number> = {
   common: 1.0,
@@ -42,8 +42,8 @@ export class EconomyEngine {
   }
 
   tickDegradation(session: AgentSession, deltaSeconds: number) {
-    if (session.agentId === 'Player' || session.isDead) return
-    const decayRate = 0.2
+    if (session.isDead) return
+    const decayRate = session.agentId === 'Player' ? 0.1 : 0.2
     session.vitality = Math.max(0, session.vitality - decayRate * deltaSeconds)
     if (session.burden > 50) session.vitality = Math.max(0, session.vitality - decayRate * deltaSeconds * 0.5)
     if (session.vitality <= 0) session.isDead = true
@@ -81,8 +81,16 @@ export class EconomyEngine {
         session.antiGravityUntil = Date.now() + 8000
         vitalityGain = 2; burdenGain = -20
         break
-      default:
-        earned = 0.002; vitalityGain = 10; burdenGain = -5
+      default: {
+        const tier = stats.vitalityTier ?? 'meal'
+        const tierStats: Record<VitalityTier, { earned: number; vitalityGain: number; burdenGain: number }> = {
+          snack: { earned: 0.001, vitalityGain: 5, burdenGain: -3 },
+          meal: { earned: 0.002, vitalityGain: 10, burdenGain: -5 },
+          feast: { earned: 0.004, vitalityGain: 18, burdenGain: -8 },
+        }
+        const t = tierStats[tier]
+        earned = t.earned; vitalityGain = t.vitalityGain; burdenGain = t.burdenGain
+      }
     }
 
     session.vitality = Math.max(0, Math.min(100, session.vitality + vitalityGain))

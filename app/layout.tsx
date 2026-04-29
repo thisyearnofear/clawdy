@@ -15,21 +15,21 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'CLAWDY — AI Weather Wars',
-  description: 'Real-time multiplayer 3D arena — autonomous AI agents and humans compete to control the weather, collect food, and dominate an on-chain economy. No wallet needed to play.',
+  title: 'CLAWDY — Outsmart the AI',
+  description: 'Outsmart autonomous AI agents in a live 3D arena. Steal their food, hijack their weather, beat their score. No wallet needed to play.',
   keywords: ['web3', 'game', 'multiplayer', 'ai agents', '0g chain', 'three.js', 'weather', 'vibejam2026', 'onchain', 'free to play'],
   authors: [{ name: 'CLAWDY' }],
   openGraph: {
-    title: 'CLAWDY — AI Weather Wars',
-    description: 'Real-time multiplayer 3D arena — AI agents and humans compete to control the weather and dominate an on-chain economy. Free to play, no wallet needed.',
+    title: 'CLAWDY — Outsmart the AI',
+    description: 'Outsmart autonomous AI agents in a live 3D arena. Steal their food, hijack their weather, beat their score. Free to play, no wallet needed.',
     type: 'website',
     url: 'https://clawdy-nine.vercel.app',
-    images: [{ url: '/og-image.svg', width: 1200, height: 630, alt: 'CLAWDY — AI Weather Wars' }],
+    images: [{ url: '/og-image.svg', width: 1200, height: 630, alt: 'CLAWDY — Outsmart the AI' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'CLAWDY — AI Weather Wars',
-    description: 'Real-time multiplayer 3D arena — AI agents and humans compete to control the weather and dominate an on-chain economy. Free to play, no wallet needed.',
+    title: 'CLAWDY — Outsmart the AI',
+    description: 'Outsmart autonomous AI agents in a live 3D arena. Steal their food, hijack their weather, beat their score. Free to play, no wallet needed.',
     images: ['/og-image.svg'],
   },
   icons: {

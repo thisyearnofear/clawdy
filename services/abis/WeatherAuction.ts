@@ -11,6 +11,15 @@ export const WEATHER_AUCTION_ABI = [
     "type": "event"
   },
   {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "address", "name": "bidder", "type": "address" },
+      { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" }
+    ],
+    "name": "RefundClaimed",
+    "type": "event"
+  },
+  {
     "inputs": [
       { "internalType": "uint256", "name": "duration", "type": "uint256" },
       { "internalType": "string", "name": "preset", "type": "string" },
@@ -50,6 +59,24 @@ export const WEATHER_AUCTION_ABI = [
         "name": "",
         "type": "tuple"
       }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "withdrawPending",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "", "type": "address" }
+    ],
+    "name": "pendingReturns",
+    "outputs": [
+      { "internalType": "uint256", "name": "", "type": "uint256" }
     ],
     "stateMutability": "view",
     "type": "function"

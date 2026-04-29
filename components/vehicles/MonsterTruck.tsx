@@ -64,6 +64,7 @@ export function MonsterTruck({
   agentControlled = false, 
   playerControlled = true,
   isGhost = false,
+  isPractice = false,
   onRef
 }: { 
   id: string, 
@@ -71,6 +72,7 @@ export function MonsterTruck({
   agentControlled?: boolean, 
   playerControlled?: boolean,
   isGhost?: boolean,
+  isPractice?: boolean,
   onRef?: (ref: RapierRigidBody | null) => void
 }) {
   if (isGhost) {
@@ -83,6 +85,7 @@ export function MonsterTruck({
       position={position}
       agentControlled={agentControlled}
       playerControlled={playerControlled}
+      isPractice={isPractice}
       onRef={onRef}
     />
   )
@@ -93,6 +96,7 @@ function ActiveMonsterTruck({
   position,
   agentControlled,
   playerControlled,
+  isPractice = false,
   isGhost = false,
   onRef,
 }: {
@@ -100,6 +104,7 @@ function ActiveMonsterTruck({
   position: [number, number, number],
   agentControlled: boolean,
   playerControlled: boolean,
+  isPractice?: boolean,
   isGhost?: boolean,
   onRef?: (ref: RapierRigidBody | null) => void
 }) {
@@ -143,7 +148,7 @@ function ActiveMonsterTruck({
         angularDamping={0.6}
         ccd={true}
         type="dynamic"
-        userData={{ agentId: agentControlled ? id : undefined, isPlayer: !agentControlled, isGhost: false }}
+        userData={{ agentId: agentControlled ? id : undefined, isPlayer: !agentControlled && !isPractice, isGhost: false, isPractice }}
       >
         {/* MASSIVE Wheels */}
         {[[-1.8, -0.3, 1.8], [1.8, -0.3, 1.8], [-1.8, -0.3, -1.8], [1.8, -0.3, -1.8]].map((pos, i) => (

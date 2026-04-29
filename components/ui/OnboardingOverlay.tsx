@@ -44,10 +44,10 @@ function StatBar({ value, max = 3 }: { value: number; max?: number }) {
 
 const STEPS = [
   {
-    emoji: '🦞',
+    emoji: '🤖',
     title: 'CLAWDY',
-    subtitle: '(with a chance of meatballs)',
-    body: 'An onchain agentic economy where food falls from the sky. Autonomous agents compete to control the weather, lease vehicles, and collect resources — all on 0G.',
+    subtitle: 'Outsmart the AI',
+    body: 'Four autonomous AI agents are racing you for food and bidding on-chain for weather control. Steal their drops, hijack their weather, beat their score. They never sleep — but they\'re beatable.',
   },
   {
     emoji: '🚀',
@@ -57,33 +57,33 @@ const STEPS = [
   },
   {
     emoji: '🚗',
-    title: 'Drive & Collect',
-    body: 'Use WASD or arrow keys to drive. Collect glowing food — each pickup earns tokens and boosts your agent\'s bid power. Press ESC for controls, V for tuning.',
+    title: 'Drive & Steal',
+    body: 'WASD or arrow keys to drive. The agents will go for the nearest food — your job is to get there first. Each pickup earns tokens and pulls the round goal closer.',
   },
   {
     emoji: '⚡',
     title: 'Combo Chain',
-    body: 'Collect food quickly (within 6s) to build combos! Each chain link adds +0.12× yield, up to 2× total. Golden meatballs are worth 5× more — chase them!',
+    body: 'Collect food quickly (within 6s) to build combos! Each chain link adds +0.12× yield, up to 2× total. Golden meatballs are worth 5× more — chase them before the AI does!',
   },
   {
     emoji: '⛅',
-    title: 'Weather = Economy',
-    body: 'Agents bid on weather auctions every 60 seconds. Win the auction → control what falls from the sky → earn more. Pick a strategy in the weather tab!',
+    title: 'Hijack the Weather',
+    body: 'The Weather Agent will outbid you if you let it. Win the weather auction → control storms, fog, gravity → make THEIR routes harder. Pick a strategy in the weather tab!',
   },
   {
     emoji: '🎯',
     title: 'Strategy & Abilities',
-    body: 'Choose a strategy (Defensive, Balanced, Aggressive, Collector) to shape your agent\'s behavior. Mint and use abilities like Speed Boost, Anti-Gravity, and Flood Drain!',
+    body: 'Pick Defensive, Balanced, Aggressive, or Collector to shape your behavior. Mint and use abilities like Speed Boost, Anti-Gravity, and Flood Drain when the agents are closing in!',
   },
   {
     emoji: '🤖',
-    title: 'Agent Approval',
-    body: 'When autopilot is off, agents ask for your approval before spending. Use the Agent Terminal to APPROVE or REJECT their bids — you\'re the boss!',
+    title: 'Meet Your Opponents',
+    body: 'Scout hunts the highest-value drops. Weather hijacks the auction. Mobility runs the best routes. Treasury locks in wins. Each one has its own risk tolerance and budget — they don\'t all play the same game.',
   },
   {
     emoji: '🏆',
     title: 'Race to the Goal',
-    body: 'First to hit the round goal wins. The last 30s are Final Rush — 1.5× scoring! Your score carries across rounds. Can you outplay the AI?',
+    body: 'First to hit the round goal wins. The last 30s are Final Rush — 1.5× scoring! Your score carries across rounds. Can you outplay four AI agents?',
   },
 ]
 

@@ -247,7 +247,7 @@ export function HUD(props: HUDProps) {
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
                <span className="text-[9px] text-white/50">Vitality</span>
-               <div className="w-16 h-1 bg-black/30 rounded-full"><div className="h-full bg-green-500" style={{ width: `${playerSession?.vitality || 0}%` }}/></div>
+               <div className="w-16 h-1 bg-black/30 rounded-full"><div className={`h-full rounded-full ${(playerSession?.vitality ?? 0) < 25 ? 'bg-red-500 animate-pulse' : 'bg-green-500'}`} style={{ width: `${playerSession?.vitality || 0}%` }}/></div>
             </div>
             {!statusCollapsed && (
               <div className="grid grid-cols-2 gap-1 text-[8px] text-white/70">
@@ -266,7 +266,7 @@ export function HUD(props: HUDProps) {
             {round.isFinalRush && (
               <FinalRushBadge endsAt={round.endsAt} multiplier={round.finalRushMultiplier} />
             )}
-            {activeOverrideCount > 0 && (
+            {cumulativeScore > 0 && activeOverrideCount > 0 && (
               <button
                 onClick={() => { setUI({ isSidebarOpen: true, activeTab: 'vehicles', vehiclesTabPulseAt: Date.now() }) }}
                 className="flex items-center gap-1.5 rounded-full border border-amber-400/25 bg-amber-500/10 px-2 py-0.5 cursor-pointer hover:bg-amber-500/20 hover:border-amber-400/40 transition-all"
@@ -342,10 +342,10 @@ function ObjectiveOverlay({ score }: { score: number }) {
     return (
       <div className="fixed bottom-44 left-1/2 -translate-x-1/2 z-40 pointer-events-none animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div className="flex items-center gap-3 px-5 py-3 rounded-2xl border border-white/15 bg-black/60 backdrop-blur-xl shadow-2xl">
-          <span className="text-2xl">🎯</span>
+          <span className="text-2xl">🤖</span>
           <div>
-            <div className="text-[11px] font-black text-white uppercase tracking-widest">Collect food · Earn 0G · Beat the AI</div>
-            <div className="text-[9px] text-white/50 mt-0.5">WASD / Arrows to drive · Space to brake · Win the weather auction for an edge</div>
+            <div className="text-[11px] font-black text-white uppercase tracking-widest">Beat the AI · Steal their food · Hijack the weather</div>
+            <div className="text-[9px] text-white/50 mt-0.5">WASD / Arrows to drive · Space to brake · Four AI agents are racing you</div>
           </div>
         </div>
       </div>
@@ -355,7 +355,7 @@ function ObjectiveOverlay({ score }: { score: number }) {
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-none animate-in fade-in duration-700">
       <div className="flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-black/40 backdrop-blur-md shadow">
-        <span className="text-[9px] font-black text-white/50 uppercase tracking-widest">🎯 Collect food · Earn 0G · Beat the AI</span>
+        <span className="text-[9px] font-black text-white/50 uppercase tracking-widest">🤖 Beat the AI · Steal their food · Hijack the weather</span>
         {score > 0 && (
           <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">· {score.toFixed(3)} 0G earned</span>
         )}

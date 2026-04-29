@@ -30,13 +30,18 @@ export class VehicleQueueManager {
   private queue: QueuedPlayer[] = []
   // Separate caps (recommended): humans always have room even if agents fill up, and vice versa.
   // We express caps via per-slot allowedTypes rather than a second queue system.
+  // Session duration is aligned with round duration (2 min) to keep rotation fast.
+  private static readonly HUMAN_SESSION_MS = 2 * 60 * 1000
+  private static readonly AGENT_SESSION_MS = 5 * 60 * 1000
   private vehicles: VehicleSlot[] = [
-    // Human slots
-    { id: 'vehicle-1', type: 'speedster', isOccupied: false, allowedTypes: ['human'], maxSessionDuration: 5 * 60 * 1000 },
-    { id: 'vehicle-2', type: 'truck', isOccupied: false, allowedTypes: ['human'], maxSessionDuration: 5 * 60 * 1000 },
+    // Human slots — 4 total (2 speedster, 2 truck) so a 4-player party always fits
+    { id: 'vehicle-1', type: 'speedster', isOccupied: false, allowedTypes: ['human'], maxSessionDuration: VehicleQueueManager.HUMAN_SESSION_MS },
+    { id: 'vehicle-2', type: 'truck', isOccupied: false, allowedTypes: ['human'], maxSessionDuration: VehicleQueueManager.HUMAN_SESSION_MS },
+    { id: 'vehicle-5', type: 'speedster', isOccupied: false, allowedTypes: ['human'], maxSessionDuration: VehicleQueueManager.HUMAN_SESSION_MS },
+    { id: 'vehicle-6', type: 'truck', isOccupied: false, allowedTypes: ['human'], maxSessionDuration: VehicleQueueManager.HUMAN_SESSION_MS },
     // Agent slots
-    { id: 'vehicle-3', type: 'tank', isOccupied: false, allowedTypes: ['agent'], maxSessionDuration: 5 * 60 * 1000 },
-    { id: 'vehicle-4', type: 'monster', isOccupied: false, allowedTypes: ['agent'], maxSessionDuration: 5 * 60 * 1000 },
+    { id: 'vehicle-3', type: 'tank', isOccupied: false, allowedTypes: ['agent'], maxSessionDuration: VehicleQueueManager.AGENT_SESSION_MS },
+    { id: 'vehicle-4', type: 'monster', isOccupied: false, allowedTypes: ['agent'], maxSessionDuration: VehicleQueueManager.AGENT_SESSION_MS },
   ]
   private listeners: Set<(state: QueueState) => void> = new Set()
   private checkInterval: NodeJS.Timeout | null = null

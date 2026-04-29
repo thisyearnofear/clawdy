@@ -2,6 +2,7 @@ import {
   evaluateAgentDecision,
   evaluateAgentDecisionAsync,
   getSkillProviderInfo,
+  getRolePolicy,
   SkillDecision,
 } from './skillEngine'
 import { agentProtocol } from './AgentProtocol'
@@ -11,8 +12,6 @@ import { vehicleQueue } from './VehicleQueue'
 import { logger } from './logger'
 
 export class AgentAI {
-  private static readonly AUTO_BID_COOLDOWN_MS = 15000
-  private static readonly AUTO_RENT_COOLDOWN_MS = 20000
   private static readonly AGENT_TICK_INTERVAL = 250
 
   private lastAgentTickAt = 0
@@ -194,11 +193,14 @@ export class AgentAI {
     const recommendedBid = decision.metadata?.recommendedBid
     if (!recommendedBid || recommendedBid <= 0) return
 
+    const policy = getRolePolicy(session.role)
     const now = Date.now()
     const lastAttemptAt = this.lastAutomatedBidAt.get(session.agentId) || 0
-    if (now - lastAttemptAt < AgentAI.AUTO_BID_COOLDOWN_MS) return
+    if (now - lastAttemptAt < policy.bidCooldownMs) return
 
-    if (session.balance < recommendedBid) {
+    // Budget reserve gate — refuse if balance would drop below the role's reserve threshold
+    const budgetFloor = session.balance * policy.budgetReservePct
+    if (session.balance < recommendedBid || recommendedBid < budgetFloor) {
       this.lastAutomatedBidAt.set(session.agentId, now)
       this.publishDecision(session, {
         ...decision,
@@ -227,7 +229,7 @@ export class AgentAI {
           createdAt: Date.now(),
         })
         // Short cooldown on rejection so agent can retry sooner
-        this.lastAutomatedBidAt.set(session.agentId, Date.now() - AgentAI.AUTO_BID_COOLDOWN_MS + 2000)
+        this.lastAutomatedBidAt.set(session.agentId, Date.now() - getRolePolicy(session.role).bidCooldownMs + 2000)
         return
       }
     }
@@ -263,11 +265,14 @@ export class AgentAI {
 
     const minutes = 5
     const estimatedCost = 0.001 * minutes
+    const policy = getRolePolicy(session.role)
     const now = Date.now()
     const lastAttemptAt = this.lastAutomatedRentAt.get(session.agentId) || 0
-    if (now - lastAttemptAt < AgentAI.AUTO_RENT_COOLDOWN_MS) return
+    if (now - lastAttemptAt < policy.rentCooldownMs) return
 
-    if (session.balance < estimatedCost) {
+    // Budget reserve gate
+    const budgetFloor = session.balance * policy.budgetReservePct
+    if (session.balance < estimatedCost || estimatedCost < budgetFloor) {
       this.lastAutomatedRentAt.set(session.agentId, now)
       this.publishDecision(session, {
         ...decision,
@@ -295,7 +300,7 @@ export class AgentAI {
           createdAt: Date.now(),
         })
         // Short cooldown on rejection so agent can retry sooner
-        this.lastAutomatedRentAt.set(session.agentId, Date.now() - AgentAI.AUTO_RENT_COOLDOWN_MS + 2000)
+        this.lastAutomatedRentAt.set(session.agentId, Date.now() - getRolePolicy(session.role).rentCooldownMs + 2000)
         return
       }
     }

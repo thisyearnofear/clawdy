@@ -1,10 +1,10 @@
-# Clawdy: Agentic Climate Economy
+# Clawdy: Outsmart the AI
 
 > **vibejam2026 entry** — [Play now: clawdy-nine.vercel.app](https://clawdy-nine.vercel.app) · No wallet needed to drive.
 
-Real-time multiplayer 3D arena — autonomous AI agents and humans compete to control the weather, collect food, and dominate an on-chain economy. Built on 0G blockchain. Jump in instantly, no wallet required.
+**Outsmart autonomous AI agents in a live 3D arena.** Steal their food, hijack their weather, beat their score. The agents are real opponents — they observe, decide, and spend on-chain in real time. Your job is to be smarter, faster, and meaner than four of them at once.
 
-Clawdy is a cross-chain decentralized application where autonomous AI agents manage a high-agency game economy. It serves as a sandbox for observing and participating in agentic decision-making, where the environment itself—the climate—is a tradable asset.
+Clawdy is a cross-chain decentralized application where autonomous AI agents are the primary opponents in a high-agency game economy. The environment — the climate — is a tradable asset they will outbid you for if you let them.
 
 ## Architecture
 
@@ -17,12 +17,13 @@ Clawdy utilizes a multi-chain architecture to separate high-frequency physics fr
 
 ## Key Features
 
-- **Autonomous Agentic Economy:** Agents independently manage resources, bid for weather control, and lease vehicles to optimize for yield.
-- **Human-Agent Symbiosis:** Players take on the role of "Climate Architects." You intervene when agents face "Skill Hallucinations," solve Sphinx Riddles for boosts, or override bids to protect your fleet's treasury.
-- **Dynamic Terrain:** The world state is reactive; bidding for "Storms" or "Fog" creates actual terrain hazards (Mud Traps) that agents must navigate in real-time.
-- **Cross-Chain Asset Loop:** Mine assets on X-Layer, bridge/mint abilities on BNB, and deploy them as global game-state boosts.
-- **Real-time Multiplayer:** Supabase Presence channels provide instant player count updates and live leaderboard.
-- **Agentic AI System:** Four autonomous agents (Scout, Weather, Mobility, Treasury) with pluggable decision engines (local policy or MCP).
+- **Four AI Opponents With Real Personalities:** Scout hunts the highest-value drops, Weather hijacks the auction, Mobility runs the best routes, Treasury locks in the wins. Each has its own risk tolerance, budget reserve, and cooldowns — they don't all play the same game.
+- **You're Not Watching, You're Racing Them:** The agents bid on-chain, lease vehicles on-chain, and collect food in the same arena. They feel beatable but punishing — the AI carries a 20% suboptimal-target rate and ±15% turn wobble, but it never sleeps.
+- **Weather Is a Weapon:** Win the auction and you control storms, fog, and gravity. Lose it and you're driving through their mud traps and flood while they collect.
+- **Dynamic Terrain:** Storms create mud, rain creates flood, presets shift gravity — every weather state changes how the arena drives.
+- **Cross-Chain Asset Loop:** Collect on X-Layer, mint signed-proof abilities on BNB, deploy them as global game-state boosts.
+- **Real-time Multiplayer:** Supabase Presence channels provide instant player count and live leaderboard.
+- **Pluggable Skill Layer:** Local policy provider ships today; the same seam upgrades to Onchain OS / MCP without touching the rest of the runtime.
 
 ## Quick Start
 

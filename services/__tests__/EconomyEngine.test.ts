@@ -63,11 +63,12 @@ describe('EconomyEngine', () => {
       expect(session.vitality).toBeLessThan(100)
     })
 
-    it('does not degrade Player sessions', () => {
+    it('degrades Player sessions at a slower rate (0.1/s)', () => {
       const session = engine.authorizeAgent('Player', 60000)
       const initialVitality = session.vitality
       engine.tickDegradation(session, 10)
-      expect(session.vitality).toBe(initialVitality)
+      // Player degrades at 0.1/s, so 10s = 1 point lost
+      expect(session.vitality).toBe(initialVitality - 1)
     })
 
     it('marks session as dead when vitality reaches 0', () => {

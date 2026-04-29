@@ -70,6 +70,7 @@ export function Tank({
   agentControlled = false, 
   playerControlled = true,
   isGhost = false,
+  isPractice = false,
   onRef
 }: { 
   id: string, 
@@ -77,6 +78,7 @@ export function Tank({
   agentControlled?: boolean, 
   playerControlled?: boolean,
   isGhost?: boolean,
+  isPractice?: boolean,
   onRef?: (ref: RapierRigidBody | null) => void
 }) {
   if (isGhost) {
@@ -89,6 +91,7 @@ export function Tank({
       position={position}
       agentControlled={agentControlled}
       playerControlled={playerControlled}
+      isPractice={isPractice}
       onRef={onRef}
     />
   )
@@ -99,6 +102,7 @@ function ActiveTank({
   position,
   agentControlled,
   playerControlled,
+  isPractice = false,
   isGhost = false,
   onRef,
 }: {
@@ -106,6 +110,7 @@ function ActiveTank({
   position: [number, number, number],
   agentControlled: boolean,
   playerControlled: boolean,
+  isPractice?: boolean,
   isGhost?: boolean,
   onRef?: (ref: RapierRigidBody | null) => void
 }) {
@@ -189,7 +194,7 @@ function ActiveTank({
         linearDamping={0.5}
         angularDamping={0.9}
         type="dynamic"
-        userData={{ agentId: agentControlled ? id : undefined, isPlayer: !agentControlled, isGhost: false }}
+        userData={{ agentId: agentControlled ? id : undefined, isPlayer: !agentControlled && !isPractice, isGhost: false, isPractice }}
       >
         <mesh castShadow receiveShadow>
           <boxGeometry args={[2.5, 1, 4]} />

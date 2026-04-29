@@ -26,6 +26,7 @@ export function Vehicle({
   agentControlled = false, 
   playerControlled = true, 
   isGhost = false,
+  isPractice = false,
   onRef 
 }: { 
   id: string, 
@@ -33,6 +34,7 @@ export function Vehicle({
   agentControlled?: boolean, 
   playerControlled?: boolean, 
   isGhost?: boolean,
+  isPractice?: boolean,
   onRef?: (ref: RapierRigidBody | null) => void 
 }) {
   if (isGhost) {
@@ -45,6 +47,7 @@ export function Vehicle({
       position={position}
       agentControlled={agentControlled}
       playerControlled={playerControlled}
+      isPractice={isPractice}
       onRef={onRef}
     />
   )
@@ -55,12 +58,14 @@ function ActiveVehicle({
   position,
   agentControlled,
   playerControlled,
+  isPractice = false,
   onRef,
 }: {
   id: string
   position: [number, number, number]
   agentControlled: boolean
   playerControlled: boolean
+  isPractice?: boolean
   onRef?: (ref: RapierRigidBody | null) => void
 }) {
   const chassisRef = useRef<RapierRigidBody>(null)
@@ -86,7 +91,7 @@ function ActiveVehicle({
         angularDamping={0.6}
         ccd={true}
         type="dynamic"
-        userData={{ agentId: agentControlled ? id : undefined, isPlayer: playerControlled, isGhost: false }}
+        userData={{ agentId: agentControlled ? id : undefined, isPlayer: playerControlled && !isPractice, isGhost: false, isPractice }}
       >
         {/* Chassis - blue for player, red for agent */}
         <mesh castShadow receiveShadow>

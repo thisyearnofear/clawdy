@@ -259,12 +259,16 @@ export function ControlPanel({
   const mintAbility = async (abilityId: number, label: string) => {
     if (!address) return
 
-    const success = await agentProtocol.mintAbilityOnChain(address as `0x${string}`, abilityId, 1)
+    // Try signed proof first (player-accessible), fall back to owner-only mint
+    let success = await agentProtocol.mintAbilityWithProof(address as `0x${string}`, abilityId, 1)
+    if (!success && canMintAbilities) {
+      success = await agentProtocol.mintAbilityOnChain(address as `0x${string}`, abilityId, 1)
+    }
     if (success) {
       emitToast('milestone', `${label} minted`, 'Check your wallet balance')
       await refetchAbilityBalances()
     } else {
-      emitToast('bid-lose', `${label} mint failed`, canMintAbilities ? 'Check wallet permissions' : 'Only the contract owner can mint')
+      emitToast('bid-lose', `${label} mint failed`, 'Could not generate mint proof')
     }
   }
 

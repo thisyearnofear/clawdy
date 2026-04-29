@@ -45,9 +45,8 @@ const FINAL_RUSH_MULTIPLIER = 1.5 // scoring boost in final rush
 
 function computeRoundGoal(activeSessionCount: number): number {
   // Scale goal with active agents so rounds stay competitive
-  // 1 agent: 0.08, 4 agents: 0.11, 8 agents: 0.14
-  const scale = 1 + Math.max(0, activeSessionCount - 1) * 0.1
-  return Number((BASE_ROUND_GOAL * scale).toFixed(3))
+  // 1 agent: 0.08, 4 agents: 0.155, 8 agents: 0.255
+  return Number((BASE_ROUND_GOAL + 0.025 * Math.max(0, activeSessionCount - 1)).toFixed(3))
 }
 
 function createInitialRound(activeSessionCount: number = 1, sessions?: Record<string, AgentSession>): RoundState {

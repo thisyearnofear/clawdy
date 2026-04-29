@@ -52,17 +52,30 @@ describe('VehicleQueueManager', () => {
     expect(slot?.type).toBe('speedster')
   })
 
-  it('falls back to any free slot when preferred type is occupied', () => {
-    // Fill the speedster slot first
+  it('assigns second speedster when two speedster slots exist', () => {
     queue.joinQueue('player-1', 'human', 0, undefined, 'speedster')
     vi.advanceTimersByTime(2500)
-    // Second player also wants speedster but it's taken
     queue.joinQueue('player-2', 'human', 0, undefined, 'speedster')
     vi.advanceTimersByTime(2500)
     const state = queue.getQueueState()
     expect(state.isPlayerActive('player-2')).toBe(true)
     const slot = state.getPlayerVehicle('player-2')
-    expect(slot?.type).toBe('truck') // fallback to the other human slot
+    expect(slot?.type).toBe('speedster') // second speedster slot
+  })
+
+  it('falls back to truck when all speedster slots are occupied', () => {
+    // Fill both speedster slots
+    queue.joinQueue('player-1', 'human', 0, undefined, 'speedster')
+    vi.advanceTimersByTime(2500)
+    queue.joinQueue('player-2', 'human', 0, undefined, 'speedster')
+    vi.advanceTimersByTime(2500)
+    // Third player wants speedster but both are taken
+    queue.joinQueue('player-3', 'human', 0, undefined, 'speedster')
+    vi.advanceTimersByTime(2500)
+    const state = queue.getQueueState()
+    expect(state.isPlayerActive('player-3')).toBe(true)
+    const slot = state.getPlayerVehicle('player-3')
+    expect(slot?.type).toBe('truck') // fallback to truck
   })
 
   it('does not assign agent players to human slots', () => {
@@ -124,8 +137,25 @@ describe('VehicleQueueManager', () => {
   it('activeHumans reflects number of active human players', () => {
     queue.joinQueue('player-1', 'human', 0)
     queue.joinQueue('player-2', 'human', 0)
+    queue.joinQueue('player-3', 'human', 0)
+    queue.joinQueue('player-4', 'human', 0)
     vi.advanceTimersByTime(2500)
     const state = queue.getQueueState()
-    expect(state.activeHumans).toBe(2)
+    expect(state.activeHumans).toBe(4)
+  })
+
+  it('supports up to 4 simultaneous human players', () => {
+    for (let i = 1; i <= 4; i++) {
+      queue.joinQueue(`player-${i}`, 'human', 0)
+      vi.advanceTimersByTime(2500)
+    }
+    const state = queue.getQueueState()
+    expect(state.activeHumans).toBe(4)
+    // 5th player should remain waiting
+    queue.joinQueue('player-5', 'human', 0)
+    vi.advanceTimersByTime(2500)
+    const state2 = queue.getQueueState()
+    expect(state2.activeHumans).toBe(4)
+    expect(state2.queue.find(p => p.id === 'player-5')?.status).toBe('waiting')
   })
 })

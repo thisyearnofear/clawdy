@@ -56,6 +56,7 @@ export function Speedster({
   agentControlled = false, 
   playerControlled = true,
   isGhost = false,
+  isPractice = false,
   onRef
 }: { 
   id: string, 
@@ -63,6 +64,7 @@ export function Speedster({
   agentControlled?: boolean, 
   playerControlled?: boolean,
   isGhost?: boolean,
+  isPractice?: boolean,
   onRef?: (ref: RapierRigidBody | null) => void
 }) {
   if (isGhost) {
@@ -75,6 +77,7 @@ export function Speedster({
       position={position}
       agentControlled={agentControlled}
       playerControlled={playerControlled}
+      isPractice={isPractice}
       onRef={onRef}
     />
   )
@@ -85,6 +88,7 @@ function ActiveSpeedster({
   position,
   agentControlled,
   playerControlled,
+  isPractice = false,
   isGhost = false,
   onRef,
 }: {
@@ -92,6 +96,7 @@ function ActiveSpeedster({
   position: [number, number, number]
   agentControlled: boolean
   playerControlled: boolean
+  isPractice?: boolean
   isGhost?: boolean
   onRef?: (ref: RapierRigidBody | null) => void
 }) {
@@ -129,7 +134,7 @@ function ActiveSpeedster({
         angularDamping={0.8}
         ccd={true}
         type="dynamic"
-        userData={{ agentId: agentControlled ? id : undefined, isPlayer: !agentControlled, isGhost: false }}
+        userData={{ agentId: agentControlled ? id : undefined, isPlayer: !agentControlled && !isPractice, isGhost: false, isPractice }}
       >
         {/* Main Body */}
         <mesh castShadow>

@@ -16,6 +16,7 @@ export type MemeAssetType =
   | 'burger' | 'donut' | 'icecream' | 'hotdog' | 'pizza' | 'sushi' | 'taco' | 'apple' | 'broccoli' | 'soda' | 'rotten_burger'
 
 export type MemeRarity = 'common' | 'rare' | 'epic' | 'legendary'
+export type VitalityTier = 'snack' | 'meal' | 'feast'
 
 export interface MemeAssetStats {
   type: MemeAssetType
@@ -24,25 +25,26 @@ export interface MemeAssetStats {
   mass: number
   isDestroyable: boolean
   ability?: string
+  vitalityTier?: VitalityTier
 }
 
 export const MEME_ASSET_METADATA: Record<MemeAssetType, Omit<MemeAssetStats, 'type'>> = {
-  meatball: { rarity: 'common', effect: 'vitality', mass: 0.8, isDestroyable: true },
+  meatball: { rarity: 'common', effect: 'vitality', mass: 0.8, isDestroyable: true, vitalityTier: 'meal' },
   golden_meatball: { rarity: 'legendary', effect: 'powerup', mass: 1.2, isDestroyable: true, ability: 'jackpot' },
   spicy_pepper: { rarity: 'rare', effect: 'speed', mass: 0.4, isDestroyable: true, ability: 'speed_boost' },
   floaty_marshmallow: { rarity: 'rare', effect: 'gravity', mass: 0.2, isDestroyable: true, ability: 'anti_gravity' },
   air_bubble: { rarity: 'epic', effect: 'utility', mass: 0.15, isDestroyable: true, ability: 'water_immunity' },
   foam_board: { rarity: 'epic', effect: 'utility', mass: 0.35, isDestroyable: true, ability: 'water_grip' },
   drain_plug: { rarity: 'legendary', effect: 'utility', mass: 0.5, isDestroyable: true, ability: 'flood_drain' },
-  apple: { rarity: 'common', effect: 'vitality', mass: 0.5, isDestroyable: true },
-  sushi: { rarity: 'common', effect: 'vitality', mass: 0.4, isDestroyable: true },
-  broccoli: { rarity: 'common', effect: 'vitality', mass: 0.3, isDestroyable: true },
-  burger: { rarity: 'common', effect: 'vitality', mass: 1.5, isDestroyable: true },
-  pizza: { rarity: 'common', effect: 'vitality', mass: 1.2, isDestroyable: true },
-  donut: { rarity: 'common', effect: 'vitality', mass: 1.0, isDestroyable: true },
-  hotdog: { rarity: 'common', effect: 'vitality', mass: 1.1, isDestroyable: true },
-  taco: { rarity: 'common', effect: 'vitality', mass: 1.3, isDestroyable: true },
-  icecream: { rarity: 'common', effect: 'vitality', mass: 0.8, isDestroyable: true },
+  apple: { rarity: 'common', effect: 'vitality', mass: 0.5, isDestroyable: true, vitalityTier: 'snack' },
+  sushi: { rarity: 'common', effect: 'vitality', mass: 0.4, isDestroyable: true, vitalityTier: 'snack' },
+  broccoli: { rarity: 'common', effect: 'vitality', mass: 0.3, isDestroyable: true, vitalityTier: 'snack' },
+  burger: { rarity: 'common', effect: 'vitality', mass: 1.5, isDestroyable: true, vitalityTier: 'feast' },
+  pizza: { rarity: 'common', effect: 'vitality', mass: 1.2, isDestroyable: true, vitalityTier: 'feast' },
+  donut: { rarity: 'common', effect: 'vitality', mass: 1.0, isDestroyable: true, vitalityTier: 'meal' },
+  hotdog: { rarity: 'common', effect: 'vitality', mass: 1.1, isDestroyable: true, vitalityTier: 'meal' },
+  taco: { rarity: 'common', effect: 'vitality', mass: 1.3, isDestroyable: true, vitalityTier: 'feast' },
+  icecream: { rarity: 'common', effect: 'vitality', mass: 0.8, isDestroyable: true, vitalityTier: 'meal' },
   soda: { rarity: 'rare', effect: 'obstacle', mass: 3.0, isDestroyable: true },
   rotten_burger: { rarity: 'rare', effect: 'obstacle', mass: 5.0, isDestroyable: true },
 }

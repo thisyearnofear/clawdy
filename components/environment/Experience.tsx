@@ -136,6 +136,17 @@ function Experience({
   const behindBy = Math.max(0, leaderEarned - playerEarned)
   const isPlayerBehind = behindBy > 0.008
   const flood = useGameStore(s => s.flood)
+  const comebackToastShownRef = useRef(false)
+
+  useEffect(() => {
+    if (isPlayerBehind && !comebackToastShownRef.current) {
+      comebackToastShownRef.current = true
+      emitToast('milestone', 'Comeback drop incoming!', 'Special items are spawning for you')
+    }
+    if (!isPlayerBehind) {
+      comebackToastShownRef.current = false
+    }
+  }, [isPlayerBehind])
 
   const chooseAssistedAssetType = (tier: SpawnTier = 'ground'): MemeAssetType | undefined => {
     if (flood.active && flood.intensity > 0.25) {
@@ -330,23 +341,29 @@ function Experience({
         {Array.from({ length: 8 }).map((_, i) => {
           const v = vehicles[i]
           const isPlayerVehicle = v?.playerId === playerId && isPlayerActive
-          const isSpectatorVehicle = !isPlayerVehicle && spectatorVehicle?.id === v?.id
-          
+          const isPracticeVehicle = !!(v?.isPractice && v?.playerId === playerId && !isPlayerActive)
+          const isSpectatorVehicle = !isPlayerVehicle && !isPracticeVehicle && spectatorVehicle?.id === v?.id
+
+          // A practice vehicle is *driveable but non-scoring* — used for waiting humans to learn the arena.
+          const isDriveByPlayer = isPlayerVehicle || isPracticeVehicle
           const props = { 
             id: v?.id ?? `pool-${i}`, 
             position: v?.position ?? EMPTY_VEHICLE_POSITION, 
             agentControlled: v?.agentControlled ?? false, 
-            isGhost: !v || v.isGhost,
-            playerControlled: isPlayerVehicle,
+            isGhost: !v || (v.isGhost && !isPracticeVehicle),
+            playerControlled: isDriveByPlayer,
+            isPractice: isPracticeVehicle,
             onRef: isPlayerVehicle
               ? (ref: RapierRigidBody | null) => { playerVehicleObjRef.current = ref }
-              : isSpectatorVehicle
-                ? (ref: RapierRigidBody | null) => { spectatorVehicleObjRef.current = ref }
-                : undefined
+              : isPracticeVehicle
+                ? (ref: RapierRigidBody | null) => { playerVehicleObjRef.current = ref }
+                : isSpectatorVehicle
+                  ? (ref: RapierRigidBody | null) => { spectatorVehicleObjRef.current = ref }
+                  : undefined
           }
 
           const agentProfile = v?.agentControlled && v?.playerId ? getAgentByVehicleId(v.playerId) : null
-          const labelText = isPlayerVehicle ? '▶ YOU' : agentProfile ? agentProfile.id : null
+          const labelText = isPlayerVehicle ? '▶ YOU' : isPracticeVehicle ? '◌ PRACTICE' : agentProfile ? agentProfile.id : null
 
           return (
             <group key={`pool-${i}`} visible={!!v}>
@@ -430,9 +447,9 @@ function InWorldQueueStatus({ playerId, queueState, isPlayerActive, playerVehicl
     const etaText = eta >= 60 ? `~${Math.ceil(eta / 60)}m` : `~${eta}s`
     return (
       <group position={[0, 8, -15]}>
-        <Text fontSize={1} color="#fbbf24" anchorX="center" anchorY="middle" outlineWidth={0.05} outlineColor="#000000">👻 SCOUTING MODE</Text>
-        <Text position={[0, -1.4, 0]} fontSize={0.6} color="#ffffff" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="#000000">Queue position {position} of {queueState.waitingCount} · spawning {etaText}</Text>
-        <Text position={[0, -2.4, 0]} fontSize={0.5} color="#94a3b8" anchorX="center" anchorY="middle" outlineWidth={0.02} outlineColor="#000000">Watch the arena — learn food spawn patterns before you drive!</Text>
+        <Text fontSize={1} color="#fbbf24" anchorX="center" anchorY="middle" outlineWidth={0.05} outlineColor="#000000">PRACTICE MODE</Text>
+        <Text position={[0, -1.4, 0]} fontSize={0.6} color="#ffffff" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="#000000">Queue position {position} of {queueState.waitingCount} · scoring starts {etaText}</Text>
+        <Text position={[0, -2.4, 0]} fontSize={0.5} color="#94a3b8" anchorX="center" anchorY="middle" outlineWidth={0.02} outlineColor="#000000">Practice driving now — steal their food when your slot opens!</Text>
       </group>
     )
   }

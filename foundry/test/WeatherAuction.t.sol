@@ -8,6 +8,7 @@ contract WeatherAuctionTest is Test {
     WeatherAuction auction;
     address bidder1 = makeAddr("bidder1");
     address bidder2 = makeAddr("bidder2");
+    address bidder3 = makeAddr("bidder3");
 
     receive() external payable {}
 
@@ -90,6 +91,63 @@ contract WeatherAuctionTest is Test {
         assertEq(bid.agent, bidder2);
     }
 
+    // ── Refund tests ──────────────────────────────────────────────────────────
+
+    function test_outbid_storesPendingReturn() public {
+        vm.deal(bidder1, 1 ether);
+        vm.deal(bidder2, 1 ether);
+
+        vm.prank(bidder1);
+        auction.bid{value: 0.1 ether}(60, "stormy", 100, 50, 30, 0xFF0000);
+
+        vm.prank(bidder2);
+        auction.bid{value: 0.2 ether}(60, "sunset", 100, 50, 30, 0xFFAA00);
+
+        assertEq(auction.pendingReturns(bidder1), 0.1 ether);
+    }
+
+    function test_withdrawPending_refundClaimable() public {
+        vm.deal(bidder1, 1 ether);
+        vm.deal(bidder2, 1 ether);
+
+        vm.prank(bidder1);
+        auction.bid{value: 0.1 ether}(60, "stormy", 100, 50, 30, 0xFF0000);
+
+        vm.prank(bidder2);
+        auction.bid{value: 0.2 ether}(60, "sunset", 100, 50, 30, 0xFFAA00);
+
+        uint256 balanceBefore = bidder1.balance;
+        vm.prank(bidder1);
+        auction.withdrawPending();
+        assertEq(bidder1.balance, balanceBefore + 0.1 ether);
+        assertEq(auction.pendingReturns(bidder1), 0);
+    }
+
+    function test_withdrawPending_revertsWhenNothingToWithdraw() public {
+        vm.prank(bidder1);
+        vm.expectRevert("Nothing to withdraw");
+        auction.withdrawPending();
+    }
+
+    function test_withdrawPending_multipleOutbidsAccumulate() public {
+        vm.deal(bidder1, 10 ether);
+        vm.deal(bidder2, 10 ether);
+        vm.deal(bidder3, 10 ether);
+
+        vm.prank(bidder1);
+        auction.bid{value: 0.1 ether}(60, "stormy", 100, 50, 30, 0xFF0000);
+
+        vm.prank(bidder2);
+        auction.bid{value: 0.2 ether}(60, "sunset", 100, 50, 30, 0xFFAA00);
+
+        vm.prank(bidder3);
+        auction.bid{value: 0.3 ether}(60, "aurora", 100, 50, 30, 0x00FF00);
+
+        // bidder1 was outbid once (0.1), bidder2 was outbid once (0.2)
+        assertEq(auction.pendingReturns(bidder1), 0.1 ether);
+        assertEq(auction.pendingReturns(bidder2), 0.2 ether);
+    }
+
     function test_withdraw_ownerOnly() public {
         vm.deal(bidder1, 1 ether);
         vm.prank(bidder1);
@@ -118,5 +176,22 @@ contract WeatherAuctionTest is Test {
 
         vm.prank(bidder1);
         auction.bid{value: 0.1 ether}(60, "stormy", 100, 50, 30, 0xFF0000);
+    }
+
+    function test_emitsRefundClaimedEvent() public {
+        vm.deal(bidder1, 1 ether);
+        vm.deal(bidder2, 1 ether);
+
+        vm.prank(bidder1);
+        auction.bid{value: 0.1 ether}(60, "stormy", 100, 50, 30, 0xFF0000);
+
+        vm.prank(bidder2);
+        auction.bid{value: 0.2 ether}(60, "sunset", 100, 50, 30, 0xFFAA00);
+
+        vm.expectEmit(true, false, false, true);
+        emit WeatherAuction.RefundClaimed(bidder1, 0.1 ether);
+
+        vm.prank(bidder1);
+        auction.withdrawPending();
     }
 }

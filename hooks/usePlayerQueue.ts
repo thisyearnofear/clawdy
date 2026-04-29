@@ -17,6 +17,8 @@ interface VehicleData {
   playerId?: string
   isPlayerVehicle?: boolean
   isGhost?: boolean
+  // True when this vehicle is the local human's *practice* (non-scoring) vehicle while waiting in queue
+  isPractice?: boolean
 }
 
 export function usePlayerQueue(
@@ -84,15 +86,21 @@ export function usePlayerQueue(
         .sort((a, b) => b.priority - a.priority || a.joinedAt - b.joinedAt)
       const ghostVehicles: VehicleData[] = waiting
         .slice(0, 6)
-        .map((p, index) => ({
-          id: `ghost-${p.id}`,
-          type: p.type === 'agent' ? 'tank' : 'speedster',
-          position: getVehiclePosition(index + activeVehicles.length, true),
-          agentControlled: p.type === 'agent',
-          playerId: p.id,
-          isPlayerVehicle: p.id === playerId,
-          isGhost: true
-        }))
+        .map((p, index) => {
+          // Local human waiting in queue gets a *driveable practice* vehicle (non-scoring).
+          // Other waiting players (and AI) get translucent ghost shells.
+          const isLocalHumanPractice = p.id === playerId && p.type === 'human'
+          return {
+            id: `ghost-${p.id}`,
+            type: p.type === 'agent' ? 'tank' : (p.preferredVehicleType ?? 'speedster'),
+            position: getVehiclePosition(index + activeVehicles.length, !isLocalHumanPractice),
+            agentControlled: p.type === 'agent',
+            playerId: p.id,
+            isPlayerVehicle: p.id === playerId,
+            isGhost: !isLocalHumanPractice,
+            isPractice: isLocalHumanPractice,
+          }
+        })
 
       setVehicles(prevVehicles => {
         const newVehicles = [...activeVehicles, ...ghostVehicles]

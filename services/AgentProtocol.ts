@@ -331,6 +331,44 @@ class AgentProtocol {
     return false
   }
 
+  async mintAbilityWithProof(to: `0x${string}`, abilityId: number, amount: number = 1) {
+    if (!this.blockchainService.isAutonomyEnabled() || MEME_MARKET_ADDRESS === '0x0000000000000000000000000000000000000000') return false
+
+    try {
+      const res = await fetch('/api/mint-proof', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to, abilityId, amount }),
+      })
+      if (!res.ok) return false
+      const { deadline, signature } = await res.json() as { deadline: number; signature: string }
+
+      const hash = await this.blockchainService.sendContractTransaction({
+        type: 'mint_ability_proof',
+        to: MEME_MARKET_ADDRESS,
+        abi: MEME_MARKET_ABI,
+        functionName: 'mintWithProof',
+        args: [to, BigInt(abilityId), BigInt(amount), BigInt(deadline), signature as `0x${string}`],
+        amount: 0,
+      })
+      if (hash) {
+        const ability = this.applyMemeMarketAbility(abilityId, amount)
+        this.gameEventListeners.forEach((listener) => listener({
+          type: 'ability-minted',
+          agentId: to,
+          abilityId,
+          abilityKey: ability?.key,
+          abilityLabel: ability?.label,
+          amount,
+          hash,
+        }))
+      }
+      return Boolean(hash)
+    } catch {
+      return false
+    }
+  }
+
   private applyMemeMarketAbility(abilityId: number, amount: number = 1) {
     const ability = getMemeMarketAbility(abilityId)
     const session = this.sessionManager.getSession('Player')

@@ -1,5 +1,5 @@
 import type { CloudConfig } from '../components/environment/CloudManager'
-import type { AgentSession, WorldState, WeatherStatus } from './protocolTypes'
+import type { AgentRole, AgentSession, WorldState, WeatherStatus } from './protocolTypes'
 import { logger } from './logger'
 
 export type SkillProviderId = 'local-policy' | 'onchain-os'
@@ -10,6 +10,28 @@ export interface SkillProviderInfo {
   mode: 'fallback' | 'mcp'
   mcpReady: boolean
   summary: string
+}
+
+// ── Per-role policy ──────────────────────────────────────────────────────
+
+export interface RolePolicy {
+  bidCooldownMs: number
+  rentCooldownMs: number
+  riskTolerance: number
+  budgetReservePct: number
+  preferredAction: 'observe' | 'route' | 'bid' | 'rent'
+}
+
+export const ROLE_POLICY: Record<AgentRole, RolePolicy> = {
+  operator: { bidCooldownMs: 0, rentCooldownMs: 0, riskTolerance: 0.5, budgetReservePct: 0, preferredAction: 'observe' },
+  scout: { bidCooldownMs: 30000, rentCooldownMs: 25000, riskTolerance: 0.3, budgetReservePct: 0.15, preferredAction: 'route' },
+  weather: { bidCooldownMs: 10000, rentCooldownMs: 20000, riskTolerance: 0.8, budgetReservePct: 0.05, preferredAction: 'bid' },
+  mobility: { bidCooldownMs: 20000, rentCooldownMs: 12000, riskTolerance: 0.5, budgetReservePct: 0.1, preferredAction: 'rent' },
+  treasury: { bidCooldownMs: 25000, rentCooldownMs: 25000, riskTolerance: 0.2, budgetReservePct: 0.25, preferredAction: 'observe' },
+}
+
+export function getRolePolicy(role: AgentRole): RolePolicy {
+  return ROLE_POLICY[role]
 }
 
 export interface SkillDecision {
@@ -157,20 +179,28 @@ function localPolicyDecision(input: SkillEvaluationInput): SkillDecision {
   const weatherOpportunity = Number(((assetPressure * 0.08 + distanceScore * 0.04) * strategyBias).toFixed(3))
   const sessionVehicle = worldState.vehicles.find((entry) => entry.id === session.vehicleId)
 
+  const policy = getRolePolicy(session.role)
+
+  // Budget reserve gate — refuse to spend if balance would drop below reserve threshold
+  const budgetFloor = session.balance * policy.budgetReservePct
+
   if (session.role === 'weather' && weatherOpportunity > currentWeatherBid.amount) {
-    return {
-      agentId: session.agentId,
-      provider: 'local-policy',
-      title: 'Treasury cleared a weather play',
-      summary: `Asset density and route score justify a ${weatherOpportunity.toFixed(3)} ETH bid.`,
-      action: 'bid',
-      confidence: Math.min(0.95, 0.5 + assetPressure * 0.25 + distanceScore * 0.2 + strategyWeatherFocus * 0.1),
-      createdAt,
-      metadata: {
-        targetAssetId,
-        recommendedBid: weatherOpportunity,
-        preset: assetPressure > 0.6 ? 'stormy' : 'sunset',
-      },
+    const riskAdjustedBid = weatherOpportunity * (0.7 + policy.riskTolerance * 0.3)
+    if (riskAdjustedBid > budgetFloor) {
+      return {
+        agentId: session.agentId,
+        provider: 'local-policy',
+        title: 'Treasury cleared a weather play',
+        summary: `Asset density and route score justify a ${riskAdjustedBid.toFixed(3)} ETH bid.`,
+        action: 'bid',
+        confidence: Math.min(0.95, 0.5 + assetPressure * 0.25 + distanceScore * 0.2 + strategyWeatherFocus * 0.1),
+        createdAt,
+        metadata: {
+          targetAssetId,
+          recommendedBid: riskAdjustedBid,
+          preset: assetPressure > 0.6 ? 'stormy' : 'sunset',
+        },
+      }
     }
   }
 
@@ -200,12 +230,29 @@ function localPolicyDecision(input: SkillEvaluationInput): SkillDecision {
     }
   }
 
+  if (session.role === 'treasury') {
+    const highBalance = session.balance > 0.5
+    const goodWeather = weatherOpportunity > currentWeatherBid.amount * 1.5
+    if (highBalance && goodWeather && targetAssetId !== null) {
+      return {
+        agentId: session.agentId,
+        provider: 'local-policy',
+        title: 'Treasury approved a conservative bid',
+        summary: `Balance healthy, weather opportunity clear. Recommending a measured ${weatherOpportunity.toFixed(3)} ETH spend.`,
+        action: 'bid',
+        confidence: 0.7,
+        createdAt,
+        metadata: { targetAssetId, recommendedBid: weatherOpportunity * 0.7 },
+      }
+    }
+  }
+
   return {
     agentId: session.agentId,
     provider: 'local-policy',
-    title: 'Treasury held position',
+    title: `${session.role.charAt(0).toUpperCase() + session.role.slice(1)} held position`,
     summary: 'Current conditions do not justify new spend. Preserve balance and keep observing.',
-    action: 'observe',
+    action: policy.preferredAction === 'bid' || policy.preferredAction === 'rent' ? 'observe' : policy.preferredAction,
     confidence: 0.64,
     createdAt,
     metadata: { targetAssetId },
