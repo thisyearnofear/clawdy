@@ -2,7 +2,6 @@ import { createConfig } from 'wagmi'
 import { injected, walletConnect, coinbaseWallet } from 'wagmi/connectors'
 import { http, fallback } from 'wagmi'
 import { defineChain } from 'viem'
-import { xLayer, xLayerTestnet, bsc, bscTestnet } from 'viem/chains'
 
 // ── 0G chains (not in viem/chains, defined manually) ─────────────────
 const zeroGMainnet = defineChain({
@@ -30,38 +29,20 @@ const zeroGTestnet = defineChain({
 })
 
 // ── Chain resolution ─────────────────────────────────────────────────
-export type ChainTarget = '0g' | 'xlayer' | 'bnb'
-
-const CHAIN_ENV = (process.env.NEXT_PUBLIC_CHAIN || '0g').toLowerCase() as ChainTarget
 const USE_TESTNET =
   (process.env.NEXT_PUBLIC_USE_TESTNET ??
-    process.env.NEXT_PUBLIC_USE_0G_TESTNET ??
-    process.env.NEXT_PUBLIC_USE_XLAYER_TESTNET) === 'true'
+    process.env.NEXT_PUBLIC_USE_0G_TESTNET) === 'true'
 
-const CHAIN_MAP = {
-  '0g':     { mainnet: zeroGMainnet, testnet: zeroGTestnet },
-  xlayer:   { mainnet: xLayer,       testnet: xLayerTestnet },
-  bnb:      { mainnet: bsc,          testnet: bscTestnet },
-} as const
+export const primaryChain = USE_TESTNET ? zeroGTestnet : zeroGMainnet
 
-const resolved = CHAIN_MAP[CHAIN_ENV] ?? CHAIN_MAP['0g']
-
-export const chainTarget: ChainTarget = CHAIN_ENV
-export const isTestnet = USE_TESTNET
-export const primaryChain = USE_TESTNET ? resolved.testnet : resolved.mainnet
-
-// Expose all chains so users can switch at runtime
-const allChains = USE_TESTNET
-  ? [resolved.testnet, ...Object.values(CHAIN_MAP).map(c => c.testnet).filter(c => c.id !== resolved.testnet.id)]
-  : [resolved.mainnet, ...Object.values(CHAIN_MAP).map(c => c.mainnet).filter(c => c.id !== resolved.mainnet.id)]
-export const supportedChains = allChains as unknown as readonly [typeof primaryChain, ...typeof primaryChain[]]
+// Single-chain: only expose the primary chain to the wallet
+export const supportedChains = [primaryChain] as unknown as readonly [typeof primaryChain, ...typeof primaryChain[]]
 
 // Poll every 12s (wagmi default is 4s) — sufficient for game event sync
 export const POLL_INTERVAL = 12_000
 
-const transports: Record<number, ReturnType<typeof fallback>> = {}
-for (const chain of allChains) {
-  transports[chain.id] = fallback([http(chain.rpcUrls.default.http[0])])
+const transports: Record<number, ReturnType<typeof fallback>> = {
+  [primaryChain.id]: fallback([http(primaryChain.rpcUrls.default.http[0])]),
 }
 
 export const config = createConfig({

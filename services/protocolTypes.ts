@@ -130,18 +130,6 @@ export const CONTRACT_ADDRESSES: Record<number, ChainContracts> = {
     vehicleRent: '0xd98cb26dcc3a3b01404564568cbf2de1dc3de652',
     memeMarket: '0x44c07afa8340450167796390a8cc493b1aca0dd1',
   },
-  // X-Layer Testnet (chainId 195)
-  195: {
-    weatherAuction: '0x3d183dc932ea183a8acb2aabb451a456892150ba',
-    vehicleRent: '0xf02f7bedb7cb6be02ee52f7f0286b4c3f1dbc0fb',
-    memeMarket: '0x7568d551495cfba8de11ad8af31100d58563fd1e',
-  },
-  // BNB Testnet (chainId 97)
-  97: {
-    weatherAuction: '0x0094ba23b76bb2802356d76e96ec067797d07009',
-    vehicleRent: '0x92e5425f9d2f113445097e5490e77cd234c0d3ca',
-    memeMarket: '0x2e8463a8a0355a3e601cc313bdcdbe6d77e46f9b',
-  },
 }
 
 /** Resolve contract addresses for a given chain ID. Falls back to env vars, then zero address. */
