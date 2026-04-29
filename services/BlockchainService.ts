@@ -9,7 +9,7 @@ import type { ContractWalletClient, BlockchainProvider } from './protocolTypes'
 export type { ContractWalletClient }
 
 interface SendTransactionParams {
-  type: 'weather_bid' | 'vehicle_rent' | 'mint_ability'
+  type: 'weather_bid' | 'vehicle_rent' | 'mint_ability' | 'mint_ability_proof'
   to: `0x${string}`
   abi: unknown
   functionName: string
@@ -78,7 +78,7 @@ export class BlockchainService {
   // ── Transaction Tracking ─────────────────────────────────────────
 
   private trackTransaction(
-    type: 'weather_bid' | 'vehicle_rent' | 'mint_ability',
+    type: 'weather_bid' | 'vehicle_rent' | 'mint_ability' | 'mint_ability_proof',
     amount: number,
     hash?: string,
     error?: string,
