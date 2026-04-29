@@ -243,6 +243,15 @@ export function useVehiclePhysics(
       chassisRef.current.applyImpulse({ x: towardCenter.x * bounceStrength, y: 0, z: towardCenter.z * bounceStrength }, true)
     }
 
+    // Void kill plane: if vehicle falls below Y=-10, teleport to surface
+    const VOID_Y = -10
+    const SAFE_Y = 8
+    if (vPos.y < VOID_Y) {
+      chassisRef.current.setTranslation({ x: vPos.x, y: SAFE_Y, z: vPos.z }, true)
+      chassisRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true)
+      chassisRef.current.setAngvel({ x: 0, y: 0, z: 0 }, true)
+    }
+
     // --- MUD AHEAD WARNING ---
     // Check ahead for mud to give player warning before hitting it
     if (playerControlled && Math.abs(smoothedForward.current) > 0.1) {

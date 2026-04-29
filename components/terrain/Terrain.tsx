@@ -321,6 +321,7 @@ export function Terrain({
           key={`terrain-slot-${index}`}
           type="fixed"
           colliders="trimesh"
+          ccd={true}
           position={[chunk.coordX * CHUNK_SIZE, CHUNK_Y_OFFSET, chunk.coordZ * CHUNK_SIZE]}
           ref={(api) => {
             if (api) rigidBodyRefs.current[index] = api

@@ -33,6 +33,13 @@ export function usePlayerQueue(
   const [queueState, setQueueState] = useState<QueueState | null>(null)
   const hasJoinedQueueRef = useRef(false)
   const wasActiveRef = useRef(false)
+  const lastPlayerIdRef = useRef(playerId)
+
+  // Reset queue join when player identity changes (e.g., wallet disconnect)
+  if (lastPlayerIdRef.current !== playerId) {
+    lastPlayerIdRef.current = playerId
+    hasJoinedQueueRef.current = false
+  }
 
   const getVehiclePosition = useCallback((index: number, isGhost: boolean = false): [number, number, number] => {
     const angle = (index / 10) * Math.PI * 2

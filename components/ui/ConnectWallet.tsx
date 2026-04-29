@@ -6,6 +6,7 @@ import { primaryChain } from '../../services/web3Config'
 import { useMemo, useState, useEffect } from 'react'
 import { trackEvent } from '../../services/analytics'
 import { useGameStore } from '../../services/gameStore'
+import { vehicleQueue } from '../../services/VehicleQueue'
 
 // Wallet Icons as SVG components for better visuals
 const MetaMaskIcon = () => (
@@ -203,6 +204,9 @@ export function ConnectWallet({ buttonClassName, source = 'hud_top_right' }: Con
 
         <button
           onClick={() => {
+            const store = useGameStore.getState()
+            const currentPlayerId = store.playerId || 'anonymous'
+            vehicleQueue.leaveQueue(currentPlayerId)
             disconnect()
             agentProtocol.logout()
             setIsAutonomyActive(false)

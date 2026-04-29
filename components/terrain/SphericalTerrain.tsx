@@ -325,7 +325,7 @@ export function SimpleSphericalTerrain() {
 
   return (
     <group>
-      <RigidBody type="fixed" colliders="trimesh" position={[0, 0, 0]}>
+      <RigidBody type="fixed" colliders="trimesh" ccd={true} position={[0, 0, 0]}>
         <mesh 
           ref={meshRef} 
           geometry={geometry} 
@@ -506,7 +506,7 @@ export function IntegratedSphericalTerrain({
 
   return (
     <group ref={groupRef}>
-      <RigidBody type="fixed" colliders="trimesh" position={[0, 0, 0]}>
+      <RigidBody type="fixed" colliders="trimesh" ccd={true} position={[0, 0, 0]}>
         <mesh 
           ref={meshRef} 
           geometry={geometry} 
