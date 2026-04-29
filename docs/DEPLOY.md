@@ -67,7 +67,7 @@ After deploying contracts, set these in **Vercel → Settings → Environment Va
 | `API_SECRET` | Random string for /api/0g-storage auth | 🟡 Recommended |
 | `NEXT_PUBLIC_API_SECRET` | Same as API_SECRET (client-side) | 🟡 Recommended |
 | `NEXT_PUBLIC_USE_TESTNET` | `true` if using testnet | Optional |
-| `NEXT_PUBLIC_CHAIN` | `0g` / `xlayer` / `bnb` (default: `0g`) | Optional |
+| `NEXT_PUBLIC_CHAIN` | `0g` (only supported value) | Optional |
 
 After setting env vars, trigger a redeploy: **Vercel → Deployments → Redeploy**.
 
@@ -140,9 +140,9 @@ curl https://clawdy-nine.vercel.app/api/players
 
 | Contract | Address | Explorer |
 |----------|---------|----------|
-| WeatherAuction | `0xaba140aeaf158daf7c597727bbe86a2bc182481d` | [View](https://chainscan-galileo.0g.ai/address/0xaba140aeaf158daf7c597727bbe86a2bc182481d) |
-| VehicleRent | `0x09b211b1b4022d2a8e2d527c375b3e7471306c0f` | [View](https://chainscan-galileo.0g.ai/address/0x09b211b1b4022d2a8e2d527c375b3e7471306c0f) |
-| MemeMarket | `0x56dadce5439eb324db3bf1ae785dfa650298fd54` | [View](https://chainscan-galileo.0g.ai/address/0x56dadce5439eb324db3bf1ae785dfa650298fd54) |
+| WeatherAuction | `0x21506d1ba6ac219b7dbb893fdb009af62f3b25b0` | [View](https://chainscan-galileo.0g.ai/address/0x21506d1ba6ac219b7dbb893fdb009af62f3b25b0) |
+| VehicleRent | `0xd98cb26dcc3a3b01404564568cbf2de1dc3de652` | [View](https://chainscan-galileo.0g.ai/address/0xd98cb26dcc3a3b01404564568cbf2de1dc3de652) |
+| MemeMarket | `0x44c07afa8340450167796390a8cc493b1aca0dd1` | [View](https://chainscan-galileo.0g.ai/address/0x44c07afa8340450167796390a8cc493b1aca0dd1) |
 
 Deployer wallet: `0x1f6d430ea6d8D38516Eeb7027073a417260CC48D`
 
