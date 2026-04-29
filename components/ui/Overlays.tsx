@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useGameStore } from '../../services/gameStore'
 import { OnboardingOverlay } from './OnboardingOverlay'
-import { GameToasts, BidWinCelebration, AuctionFlash } from './GameToasts'
+import { GameToasts, BidWinCelebration } from './GameToasts'
 import { SoundManager } from './SoundManager'
 import { EconomyFeedback } from './EconomyFeedback'
 import { MobileTouchControls } from './MobileTouchControls'
@@ -91,9 +91,6 @@ export function Overlays({
         <BidWinCelebration preset={bidWinPreset} onDone={onDoneBidWin} />
       )}
 
-      {/* Auction flash — full-screen dramatic announcement */}
-      <AuctionFlash />
-
       {/* Toast notifications */}
       <GameToasts />
 
@@ -161,11 +158,11 @@ function UnderwaterOverlay() {
         ))}
       </div>
       
-      {/* Depth indicator — top-center, below the HUD stack */}
-      <div className="absolute top-20 left-1/2 -translate-x-1/2 text-center">
-        <div className="bg-black/40 backdrop-blur-sm rounded-full px-4 py-1.5 border border-blue-400/20">
-          <span className="text-blue-200 text-xs font-bold tracking-wider">
-            🌊 UNDERWATER — {playerWater.depth.toFixed(1)}m
+      {/* Depth indicator — bottom-left, clear of other HUD */}
+      <div className="absolute bottom-6 left-6">
+        <div className="bg-black/50 backdrop-blur-sm rounded-full px-3 py-1.5 border border-blue-400/20">
+          <span className="text-blue-200 text-[10px] font-bold tracking-wider">
+            🌊 {playerWater.depth.toFixed(1)}m deep
           </span>
         </div>
       </div>
