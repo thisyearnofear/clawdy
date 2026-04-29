@@ -70,6 +70,8 @@ export function useVehiclePhysics(
   const lastPlayerWaterSyncRef = useRef(0)
   const lastPlayerWaterStateRef = useRef({ inWater: false, depth: 0 })
   const lastMudWarningUpdate = useRef(0)
+  const stuckInMudRef = useRef(0)
+  const lastMudBoostRef = useRef(0)
 
   useEffect(() => {
     if (agentControlled) {
@@ -155,11 +157,11 @@ export function useVehiclePhysics(
     const surfaceType = getSurfaceType(vPos.x, vPos.z)
     const rollingFriction = SURFACE_FRICTION[surfaceType] || 0.98
     
-    // Mud Trap logic
+    // Mud Trap logic — punishing but escapable
     const isMud = surfaceType === 'mud'
-    const mudPenalty = isMud ? 2.0 : 1.0
+    const mudPenalty = isMud ? 1.5 : 1.0
     
-    const baseDamping = handling.baseLinearDamping + (1 - rollingFriction) * handling.surfaceDampingInfluence * (isMud ? 1.5 : 1.0)
+    const baseDamping = handling.baseLinearDamping + (1 - rollingFriction) * handling.surfaceDampingInfluence * (isMud ? 1.2 : 1.0)
 
     // Flood drag
     const waterSurfaceY = flood.level
@@ -233,8 +235,8 @@ export function useVehiclePhysics(
     const distFromCenter = Math.sqrt(vPos.x ** 2 + vPos.z ** 2)
     const BOUNDARY_RADIUS = 60
     const boundaryDrag = distFromCenter > BOUNDARY_RADIUS ? Math.pow(distFromCenter / BOUNDARY_RADIUS, 2) : 1.0
-    // Ensure minimum acceleration floor so cars don't become bricks in mud/flood (apply before boundary drag)
-    const finalAcceleration = Math.max(effectiveAcceleration * 0.35, accelerationPower) / boundaryDrag
+    // Ensure minimum acceleration floor so cars don't become bricks in mud/flood
+    const finalAcceleration = Math.max(effectiveAcceleration * 0.5, accelerationPower) / boundaryDrag
     
     // Hard boundary bounce at 60 units - push vehicle back toward center
     if (distFromCenter > BOUNDARY_RADIUS) {
@@ -252,6 +254,23 @@ export function useVehiclePhysics(
       chassisRef.current.setAngvel({ x: 0, y: 0, z: 0 }, true)
     }
 
+    // Mud stuck recovery: if in mud and barely moving while trying to drive, periodically boost
+    const now = performance.now()
+    const currentSpeed = Math.sqrt(velocity.x ** 2 + velocity.z ** 2)
+    const isTryingToMove = Math.abs(smoothedForward.current) > 0.1
+    if (isMud && currentSpeed < 0.5 && isTryingToMove) {
+      stuckInMudRef.current += delta
+      // After 1.5s stuck, give a forward boost impulse every 2s
+      if (stuckInMudRef.current > 1.5 && now - lastMudBoostRef.current > 2000) {
+        const boostDir = forwardDir.clone().multiplyScalar(stats.mass * 3.0)
+        chassisRef.current.applyImpulse({ x: boostDir.x, y: stats.mass * 0.5, z: boostDir.z }, true)
+        lastMudBoostRef.current = now
+        stuckInMudRef.current = 0
+      }
+    } else {
+      stuckInMudRef.current = 0
+    }
+
     // --- MUD AHEAD WARNING ---
     // Check ahead for mud to give player warning before hitting it
     if (playerControlled && Math.abs(smoothedForward.current) > 0.1) {
@@ -262,7 +281,6 @@ export function useVehiclePhysics(
       const nearMudAhead = aheadSurface === 'mud'
       
       // Only update store occasionally to avoid spam (every 200ms)
-      const now = performance.now()
       if (nearMud !== nearMudAhead || now - lastMudWarningUpdate.current > 200) {
         setNearMud(nearMudAhead)
         lastMudWarningUpdate.current = now
