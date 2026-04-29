@@ -29,9 +29,23 @@ CREATE TABLE IF NOT EXISTS weather_state (
 CREATE INDEX IF NOT EXISTS idx_leaderboard_total_earned ON leaderboard (total_earned DESC);
 CREATE INDEX IF NOT EXISTS idx_leaderboard_rounds_won ON leaderboard (rounds_won DESC);
 
+-- Game events: analytics + live event stream source
+CREATE TABLE IF NOT EXISTS game_events (
+  id BIGSERIAL PRIMARY KEY,
+  event TEXT NOT NULL,
+  player_id TEXT,
+  payload JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_game_events_event ON game_events (event);
+CREATE INDEX IF NOT EXISTS idx_game_events_player ON game_events (player_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_game_events_created ON game_events (created_at DESC);
+
 -- RLS policies
 ALTER TABLE leaderboard ENABLE ROW LEVEL SECURITY;
 ALTER TABLE weather_state ENABLE ROW LEVEL SECURITY;
+ALTER TABLE game_events ENABLE ROW LEVEL SECURITY;
 
 -- Anyone can read leaderboard
 CREATE POLICY "Leaderboard readable by everyone" ON leaderboard FOR SELECT USING (true);
@@ -49,6 +63,10 @@ CREATE POLICY "Weather state readable by everyone" ON weather_state FOR SELECT U
 
 -- Weather state can be updated by anyone
 CREATE POLICY "Weather state updatable" ON weather_state FOR ALL USING (true);
+
+-- Game events: anyone can insert (analytics), readable by everyone
+CREATE POLICY "Game events insertable by everyone" ON game_events FOR INSERT WITH CHECK (true);
+CREATE POLICY "Game events readable by everyone" ON game_events FOR SELECT USING (true);
 
 -- Insert initial weather state
 INSERT INTO weather_state (id, preset) VALUES (1, 'custom') ON CONFLICT (id) DO NOTHING;

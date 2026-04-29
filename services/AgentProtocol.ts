@@ -66,6 +66,7 @@ import { ApprovalGate } from './ApprovalGate'
 import { SessionManager } from './SessionManager'
 import { BlockchainService } from './BlockchainService'
 import { updateWeatherState } from '../hooks/useRealtimeWeather'
+import { logGameEvent } from './gameEvents'
 import {
   type AgentSession,
   type WorldState,
@@ -474,6 +475,15 @@ class AgentProtocol {
 
     this.notifyWeatherListeners(command.config)
     this.gameEventListeners.forEach(l => l({ type: 'bid-won', agentId: command.agentId, preset: command.config.preset || 'custom' }))
+    logGameEvent({
+      event: 'weather_bid_won',
+      playerId: command.agentId,
+      payload: {
+        preset: command.config.preset || 'custom',
+        amount: command.bid,
+        message: `${command.agentId} won the weather auction with ${command.bid.toFixed(3)} ETH (${command.config.preset || 'custom'})`,
+      },
+    })
 
     // Sync weather state to Supabase for real-time broadcast
     updateWeatherState({

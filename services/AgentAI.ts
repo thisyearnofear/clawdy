@@ -11,6 +11,7 @@ import { getControllableAgents } from './agents'
 import { vehicleQueue } from './VehicleQueue'
 import { logger } from './logger'
 import { trackEvent } from './analytics'
+import { logGameEvent } from './gameEvents'
 
 export class AgentAI {
   private static readonly AGENT_TICK_INTERVAL = 250
@@ -145,6 +146,11 @@ export class AgentAI {
       reason: decision.action,
       confidence: decision.confidence,
     })
+    logGameEvent({
+      event: 'agent_decision',
+      playerId: session.agentId,
+      payload: { role: session.role, action: decision.action, confidence: decision.confidence, title: decision.title },
+    })
   }
 
   private executeAutoPilot(session: AgentSession, vehicle: WorldState['vehicles'][number], worldState: WorldState, targetId: number) {
@@ -262,6 +268,17 @@ export class AgentAI {
     if (success) {
       session.executedBidCount += 1
       trackEvent('agent_bid', { playerId: session.agentId, source: session.role, amount: recommendedBid })
+      logGameEvent({
+        event: 'agent_bid',
+        playerId: session.agentId,
+        payload: {
+          role: session.role,
+          amount: recommendedBid,
+          preset: decision.metadata?.preset || 'sunset',
+          provider: decision.provider,
+          message: `${session.agentId} bid ${recommendedBid.toFixed(3)} ETH on ${decision.metadata?.preset || 'sunset'} weather`,
+        },
+      })
     }
   }
 
@@ -323,6 +340,17 @@ export class AgentAI {
     if (success) {
       session.executedRentCount += 1
       trackEvent('agent_rent', { playerId: session.agentId, source: session.role, vehicleId: session.vehicleId })
+      logGameEvent({
+        event: 'agent_rent',
+        playerId: session.agentId,
+        payload: {
+          role: session.role,
+          vehicleId: session.vehicleId,
+          vehicleType: requestedType,
+          minutes,
+          message: `${session.agentId} leased a ${requestedType} for ${minutes} min`,
+        },
+      })
       await agentProtocol.processVehicleCommand({
         agentId: session.agentId,
         vehicleId: session.vehicleId,
