@@ -124,6 +124,12 @@ interface ChainContracts {
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`
 
 export const CONTRACT_ADDRESSES: Record<number, ChainContracts> = {
+  // 0G Galileo Testnet (chainId 16602)
+  16602: {
+    weatherAuction: '0x21506d1ba6ac219b7dbb893fdb009af62f3b25b0',
+    vehicleRent: '0xd98cb26dcc3a3b01404564568cbf2de1dc3de652',
+    memeMarket: '0x44c07afa8340450167796390a8cc493b1aca0dd1',
+  },
   // X-Layer Testnet (chainId 195)
   195: {
     weatherAuction: '0x3d183dc932ea183a8acb2aabb451a456892150ba',
