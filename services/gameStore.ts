@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { AgentSession, WorldState, WeatherStatus, VehicleType } from './protocolTypes'
 import type { CloudConfig } from '../components/environment/CloudManager'
 import { logger } from './logger'
+import type { RoundSummary } from './zgStorage'
 
 // ── Local-storage helpers (safe for SSR) ──────────────────────────────
 function loadFromStorage<T>(key: string, fallback: T): T {
@@ -491,6 +492,30 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const startTotal = prev.round.totalEarnedAtRoundStart[winner] ?? 0
       roundEarned = currentTotal - startTotal
     }
+
+    // Persist immutable round summary to 0G Storage (fire-and-forget)
+    if (typeof window !== 'undefined') {
+      const summary: RoundSummary = {
+        roundNumber: prev.round.roundNumber,
+        startedAt: prev.round.startedAt,
+        endedAt: now,
+        winner,
+        durationMs: now - prev.round.startedAt,
+        participants: Object.values(prev.sessions).map((s) => ({
+          agentId: s.agentId,
+          role: s.role,
+          earnedThisRound: s.totalEarned - (prev.round.totalEarnedAtRoundStart[s.agentId] ?? 0),
+          bidsExecuted: s.executedBidCount,
+          rentsExecuted: s.executedRentCount,
+          collectionsThisRound: s.collectedCount,
+        })),
+        weatherEvents: [],
+      }
+      import('./zgStorage').then(({ zgAppendRoundSummary }) => {
+        zgAppendRoundSummary(summary).catch(() => { /* non-blocking */ })
+      })
+    }
+
     return {
       round: {
         ...prev.round,

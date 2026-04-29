@@ -36,6 +36,51 @@ export interface ZgGameState {
 
 const ZG_API_BASE = '/api/0g-storage'
 
+// ── Agent Memory ─────────────────────────────────────────────────────
+
+export interface AgentMemoryEntry {
+  agentId: string
+  role: string
+  roundsPlayed: number
+  roundsWon: number
+  totalEarned: number
+  totalBids: number
+  totalRents: number
+  avgConfidence?: number
+  lastUpdated: number
+}
+
+export interface AgentMemoryStore {
+  version: number
+  timestamp: number
+  agents: Record<string, AgentMemoryEntry>
+}
+
+// ── Round History ─────────────────────────────────────────────────────
+
+export interface RoundSummary {
+  roundNumber: number
+  startedAt: number
+  endedAt: number
+  winner: string | null
+  durationMs: number
+  participants: {
+    agentId: string
+    role: string
+    earnedThisRound: number
+    bidsExecuted: number
+    rentsExecuted: number
+    collectionsThisRound: number
+  }[]
+  weatherEvents: { agentId: string; preset: string; amount: number; ts: number }[]
+  rootHash?: string
+}
+
+export interface RoundHistoryStore {
+  version: number
+  rounds: RoundSummary[]
+}
+
 export interface ZgHealthStatus {
   ok: boolean
   configured?: boolean
@@ -118,4 +163,74 @@ export async function zgHealth(): Promise<ZgHealthStatus> {
   } catch (err) {
     return { ok: false, error: (err as Error).message }
   }
+}
+
+// ── Agent Memory helpers ─────────────────────────────────────────────
+
+const AGENT_MEMORY_KEY = 'agent-memory'
+
+/**
+ * Load agent memory from 0G Storage.
+ */
+export async function zgLoadAgentMemory(): Promise<AgentMemoryStore | null> {
+  try {
+    const rootHash = localStorage.getItem(`clawdy:0g:${AGENT_MEMORY_KEY}`)
+    if (!rootHash) return null
+    const res = await fetch(`${ZG_API_BASE}?rootHash=${encodeURIComponent(rootHash)}`)
+    if (!res.ok) return null
+    const data = await res.json()
+    return data.state as AgentMemoryStore
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Save agent memory to 0G Storage (fire-and-forget).
+ */
+export async function zgSaveAgentMemory(
+  memory: AgentMemoryStore,
+): Promise<{ rootHash?: string; error?: string }> {
+  return zgSaveState(AGENT_MEMORY_KEY, memory as unknown as ZgGameState)
+}
+
+// ── Round History helpers ─────────────────────────────────────────────
+
+const ROUND_HISTORY_KEY = 'round-history'
+const MAX_STORED_ROUNDS = 50
+
+/**
+ * Load round history from 0G Storage.
+ */
+export async function zgLoadRoundHistory(): Promise<RoundHistoryStore | null> {
+  try {
+    const rootHash = localStorage.getItem(`clawdy:0g:${ROUND_HISTORY_KEY}`)
+    if (!rootHash) return null
+    const res = await fetch(`${ZG_API_BASE}?rootHash=${encodeURIComponent(rootHash)}`)
+    if (!res.ok) return null
+    const data = await res.json()
+    return data.state as RoundHistoryStore
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Append a round summary to 0G Storage (immutable record).
+ * Keeps the most recent MAX_STORED_ROUNDS rounds.
+ */
+export async function zgAppendRoundSummary(
+  summary: RoundSummary,
+): Promise<{ rootHash?: string; error?: string }> {
+  const existing = await zgLoadRoundHistory()
+  const rounds = existing?.rounds ?? []
+  const updated: RoundHistoryStore = {
+    version: 1,
+    rounds: [...rounds, summary].slice(-MAX_STORED_ROUNDS),
+  }
+  const result = await zgSaveState(ROUND_HISTORY_KEY, updated as unknown as ZgGameState)
+  if (result.rootHash) {
+    summary.rootHash = result.rootHash
+  }
+  return result
 }

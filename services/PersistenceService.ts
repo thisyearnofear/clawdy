@@ -1,5 +1,5 @@
 import type { AgentSession } from './protocolTypes'
-import { ZgGameState } from './zgStorage'
+import { ZgGameState, zgLoadAgentMemory, zgSaveAgentMemory, type AgentMemoryStore } from './zgStorage'
 import { useGameStore, type VehicleHandlingProfile } from './gameStore'
 import { logger } from './logger'
 
@@ -7,6 +7,8 @@ export class PersistenceService {
   private zgSaveCounter = 0
   private zgAvailability: boolean | null = null
   private zgConfigured: boolean | null = null
+  private agentMemory: AgentMemoryStore | null = null
+  private agentMemoryLoaded = false
 
   constructor() {}
 
@@ -82,6 +84,9 @@ export class PersistenceService {
         })
         return
       }
+
+      // Also persist agent memory snapshot
+      void this.persistAgentMemory(sessions)
       // Only log on success to keep console clean, or keep totally silent if configured
       if (result.rootHash) {
         // console.log('[0G Storage] State persisted')
@@ -99,6 +104,33 @@ export class PersistenceService {
         })
       }
       } catch (err) { logger.debug('[Persistence] 0G save failed:', err) }
+  }
+
+  private async persistAgentMemory(sessions: Record<string, unknown>) {
+    try {
+      const existing = this.agentMemory ?? { version: 1, timestamp: Date.now(), agents: {} }
+      const updated: AgentMemoryStore = {
+        version: 1,
+        timestamp: Date.now(),
+        agents: { ...existing.agents },
+      }
+      for (const [id, raw] of Object.entries(sessions)) {
+        const s = raw as Record<string, number>
+        const prev = existing.agents[id]
+        updated.agents[id] = {
+          agentId: id,
+          role: prev?.role ?? 'unknown',
+          roundsPlayed: (prev?.roundsPlayed ?? 0),
+          roundsWon: (prev?.roundsWon ?? 0),
+          totalEarned: s.totalEarned ?? 0,
+          totalBids: s.executedBidCount ?? 0,
+          totalRents: s.executedRentCount ?? 0,
+          lastUpdated: Date.now(),
+        }
+      }
+      this.agentMemory = updated
+      await zgSaveAgentMemory(updated)
+    } catch (err) { logger.debug('[Persistence] agent memory save failed:', err) }
 
   }
 
@@ -121,6 +153,17 @@ export class PersistenceService {
     try {
       const store = useGameStore.getState()
       const { zgLoadState } = await import('./zgStorage')
+
+      // Load agent memory in parallel (non-blocking)
+      if (!this.agentMemoryLoaded) {
+        this.agentMemoryLoaded = true
+        zgLoadAgentMemory().then((mem) => {
+          if (mem) {
+            this.agentMemory = mem
+            logger.info('[Persistence] Loaded agent memory from 0G, agents:', Object.keys(mem.agents).length)
+          }
+        }).catch(() => { /* non-blocking */ })
+      }
       const result = await zgLoadState('global')
       if (result.state?.sessions) {
         logger.info('[Persistence] Restored state from 0G, timestamp:', result.state.timestamp)
