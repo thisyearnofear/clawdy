@@ -16,13 +16,15 @@ import { AgentChatter, emitChatter } from '../ui/AgentChatter'
 import { AgentDecisionPanel } from '../ui/AgentDecisionPanel'
 import { RoundObjectives } from '../ui/RoundObjectives'
 import { HUD } from '../ui/HUD'
-import { ControlPanel } from '../ui/ControlPanel'
+import dynamic from 'next/dynamic'
 import { Overlays } from '../ui/Overlays'
 import { MobileTouchControls } from '../ui/MobileTouchControls'
 import { useGameStore } from '../../services/gameStore'
 import { vehicleQueue } from '../../services/VehicleQueue'
 import { trackEvent } from '../../services/analytics'
 import { upsertLeaderboardEntry } from '../../hooks/useRealtimeLeaderboard'
+
+const ControlPanel = dynamic(() => import('../ui/ControlPanel').then(m => m.ControlPanel), { ssr: false })
 
 const WEATHER_DOMAINS_BY_PRESET = {
   stormy: [

@@ -14,7 +14,7 @@ import { UI_Z_INDEX } from '../../services/uiConstants'
 import { AgentMetaBlock } from './AgentMetaBlock'
 import { getMemeMarketStrategy } from '../../services/AgentProtocol'
 import { playSound } from './SoundManager'
-import { DiscoveryNudges } from './GameToasts'
+import { DiscoveryNudges, emitToast } from './GameToasts'
 
 const PROXIMITY_ALERT_DISTANCE = 40
 
@@ -112,6 +112,27 @@ export function HUD(props: HUDProps) {
     const interval = window.setInterval(ping, 30_000)
     return () => window.clearInterval(interval)
   }, [playerId, setActiveHumans])
+
+  // One-time deployer balance check — warn if gas is running low
+  useEffect(() => {
+    const checkBalance = async () => {
+      try {
+        const rpcUrl = 'https://evmrpc-testnet.0g.ai'
+        const deployer = '0x1f6d430ea6d8D38516Eeb7027073a417260CC48D'
+        const res = await fetch(rpcUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jsonrpc: '2.0', method: 'eth_getBalance', params: [deployer, 'latest'], id: 1 }),
+        })
+        const { result } = await res.json() as { result: string }
+        const balance0G = parseInt(result, 16) / 1e18
+        if (balance0G < 0.02) {
+          emitToast('bid-lose', 'Low gas reserve', `Deployer has ${balance0G.toFixed(4)} 0G — on-chain actions may fail`)
+        }
+      } catch { /* RPC unreachable — skip silently */ }
+    }
+    checkBalance()
+  }, [])
   
   const playerSession = sessions['Player']
   const currentStrategy = getMemeMarketStrategy(playerSession?.strategyId)

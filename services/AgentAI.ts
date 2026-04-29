@@ -10,6 +10,7 @@ import type { AgentSession, WorldState, WeatherStatus, VehicleType } from './pro
 import { getControllableAgents } from './agents'
 import { vehicleQueue } from './VehicleQueue'
 import { logger } from './logger'
+import { trackEvent } from './analytics'
 
 export class AgentAI {
   private static readonly AGENT_TICK_INTERVAL = 250
@@ -138,6 +139,12 @@ export class AgentAI {
     session.decisionCount += 1
     session.lastSkillProvider = decision.provider
     agentProtocol.publishDecision(decision)
+    trackEvent('agent_decision', {
+      playerId: session.agentId,
+      source: session.role,
+      reason: decision.action,
+      confidence: decision.confidence,
+    })
   }
 
   private executeAutoPilot(session: AgentSession, vehicle: WorldState['vehicles'][number], worldState: WorldState, targetId: number) {
@@ -254,6 +261,7 @@ export class AgentAI {
 
     if (success) {
       session.executedBidCount += 1
+      trackEvent('agent_bid', { playerId: session.agentId, source: session.role, amount: recommendedBid })
     }
   }
 
@@ -314,6 +322,7 @@ export class AgentAI {
 
     if (success) {
       session.executedRentCount += 1
+      trackEvent('agent_rent', { playerId: session.agentId, source: session.role, vehicleId: session.vehicleId })
       await agentProtocol.processVehicleCommand({
         agentId: session.agentId,
         vehicleId: session.vehicleId,

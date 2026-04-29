@@ -8,8 +8,13 @@ export type AnalyticsEventName =
   | 'queue_activated'
   | 'queue_left'
   | 'queue_priority_changed'
+  | 'queue_practice_start'
+  | 'queue_practice_end'
   | 'weather_auction_effect_applied'
   | 'player_influence_window_started'
+  | 'agent_decision'
+  | 'agent_bid'
+  | 'agent_rent'
 
 export interface AnalyticsPayload {
   playerId?: string

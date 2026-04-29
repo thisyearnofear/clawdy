@@ -31,6 +31,7 @@ import { VehicleType, agentProtocol, VEHICLE_RENT_ADDRESS } from '../../services
 import { QueueState } from '../../services/VehicleQueue'
 import { getAgentByVehicleId } from '../../services/agents'
 import { emitToast } from '../ui/GameToasts'
+import { trackEvent } from '../../services/analytics'
 import { useWatchContractEvent, useReadContract } from 'wagmi'
 import { VEHICLE_RENT_ABI } from '../../services/abis/VehicleRent'
 import { useAccount } from 'wagmi'
@@ -206,6 +207,21 @@ function Experience({
   const playerVehicle = queueState?.getPlayerVehicle(playerId)
   const isPlayerActive = queueState?.isPlayerActive(playerId) ?? false
   const spectatorVehicle = useMemo(() => vehicles.find(v => v.agentControlled && !v.isGhost), [vehicles])
+
+  // Track practice mode transitions
+  const wasInPracticeRef = useRef(false)
+  const practiceStartRef = useRef(0)
+  useEffect(() => {
+    const inPractice = !isPlayerActive && vehicles.some(v => v?.isPractice && v?.playerId === playerId)
+    if (inPractice && !wasInPracticeRef.current) {
+      wasInPracticeRef.current = true
+      practiceStartRef.current = Date.now()
+      trackEvent('queue_practice_start', { playerId })
+    } else if (!inPractice && wasInPracticeRef.current) {
+      wasInPracticeRef.current = false
+      trackEvent('queue_practice_end', { playerId, estimatedWait: Date.now() - practiceStartRef.current })
+    }
+  }, [isPlayerActive, vehicles, playerId])
 
   const playerVehiclePosition = useMemo(() => {
     if (isPlayerActive && playerVehicle) {
