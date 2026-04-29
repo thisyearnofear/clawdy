@@ -78,12 +78,12 @@ function compile(contractName) {
 
 // ── Deploy ───────────────────────────────────────────────────────────
 
-async function deploy(contractName) {
+async function deploy(contractName, args = []) {
   console.log(`Compiling ${contractName}...`);
   const { abi, bytecode } = compile(contractName);
   console.log(`Deploying ${contractName}...`);
   const gasPrice = await publicClient.getGasPrice();
-  const hash = await walletClient.deployContract({ abi, bytecode, args: [], type: 'legacy', gasPrice });
+  const hash = await walletClient.deployContract({ abi, bytecode, args, type: 'legacy', gasPrice });
   console.log(`  tx: ${hash}`);
   const receipt = await publicClient.waitForTransactionReceipt({ hash });
   console.log(`  deployed at: ${receipt.contractAddress}`);
@@ -99,7 +99,9 @@ async function deploy(contractName) {
 
   const weatherAddr = await deploy('WeatherAuction');
   const vehicleAddr = await deploy('VehicleRent');
-  const marketAddr = await deploy('MemeMarket');
+  // MemeMarket uses EIP-712 signed minting — signer is the deployer by default (or override via MINT_SIGNER env)
+  const mintSigner = process.env.MINT_SIGNER || account.address;
+  const marketAddr = await deploy('MemeMarket', [mintSigner]);
 
   console.log('\n=== DEPLOYMENT RESULTS ===');
   console.log(`NEXT_PUBLIC_CHAIN=${chainTarget}`);
