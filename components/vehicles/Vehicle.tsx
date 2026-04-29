@@ -99,7 +99,7 @@ function ActiveVehicle({
         </mesh>
         
         {/* Cabin */}
-        <mesh position={[0, 0.5, 0]} castShadow>
+        <mesh position={[0, 0.5, 0]}>
           <boxGeometry args={[1.5, 0.6, 2]} />
           <meshStandardMaterial color="#2d3436" transparent opacity={0.7} />
         </mesh>

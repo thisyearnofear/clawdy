@@ -39,7 +39,6 @@ import { usePlayerQueue } from '../../hooks/usePlayerQueue'
 import { useCombatEvents } from '../../hooks/useCombatEvents'
 
 import FrameLimiter from '../utils/FrameLimiter'
-import { CustomFogEffect } from './CustomFogEffect'
 import { WeatherParticles } from './WeatherParticles'
 import { WeatherPostProcessing } from './WeatherPostProcessing'
 import { PuddleRipples } from './PuddleRipples'
@@ -385,7 +384,6 @@ function Experience({
       </Physics>
       <ContactShadows opacity={0.4} scale={50} blur={1} far={20} resolution={256} color="#000000" />
       {isMobileClient && <FrameLimiter fps={30} />}
-      <CustomFogEffect />
     </KeyboardControls>
   )
 }
@@ -469,7 +467,7 @@ function SkyIsland({ position, size, color }: { position: [number, number, numbe
     <group>
       <RigidBody type="fixed" position={position}>
         <CuboidCollider args={[size[0] / 2, size[1] / 2, size[2] / 2]} />
-        <mesh castShadow receiveShadow><boxGeometry args={size} /><meshStandardMaterial color={color} metalness={0.3} roughness={0.6} transparent opacity={0.85} /></mesh>
+        <mesh receiveShadow><boxGeometry args={size} /><meshStandardMaterial color={color} metalness={0.3} roughness={0.6} transparent opacity={0.85} /></mesh>
         <mesh position={[0, size[1] / 2 + 0.05, 0]}><planeGeometry args={[size[0] * 0.9, size[2] * 0.9]} /><meshStandardMaterial color="#ffffff" emissive={color} emissiveIntensity={0.4} transparent opacity={0.5} side={2} /></mesh>
       </RigidBody>
       <mesh ref={glowRef} position={[position[0], position[1] - 0.3, position[2]]}><sphereGeometry args={[Math.max(size[0], size[2]) * 0.4, 16, 8]} /><meshBasicMaterial color={color} transparent opacity={0.15} /></mesh>

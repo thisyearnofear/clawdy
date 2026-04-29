@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { EffectComposer, Bloom, Vignette, ChromaticAberration } from '@react-three/postprocessing'
+import { EffectComposer, Bloom, Vignette, ChromaticAberration, N8AO, DepthOfField } from '@react-three/postprocessing'
 import { BlendFunction } from 'postprocessing'
 import * as THREE from 'three'
 import type { CloudConfig } from './CloudManager'
@@ -110,6 +110,17 @@ export function WeatherPostProcessing({ config }: { config: CloudConfig }) {
 
   return (
     <EffectComposer>
+      <N8AO
+        aoRadius={0.5}
+        intensity={1.5}
+        aoSamples={6}
+        denoiseSamples={4}
+      />
+      <DepthOfField
+        focusDistance={0.02}
+        focalLength={0.05}
+        bokehScale={2}
+      />
       <Bloom
         intensity={settings.bloomIntensity}
         luminanceThreshold={settings.bloomThreshold}

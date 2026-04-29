@@ -197,11 +197,11 @@ function ActiveTank({
         </mesh>
         
         <group ref={turretRef} position={[0, 0.7, 0]}>
-          <mesh castShadow={!isGhost}>
+          <mesh>
             <boxGeometry args={[1.5, 0.6, 1.5]} />
             <meshStandardMaterial {...materialProps} color={isGhost ? "#ffffff" : "#353c16"} />
           </mesh>
-          <mesh position={[0, 0, -1.2]} rotation={[Math.PI / 2, 0, 0]} castShadow={!isGhost}>
+          <mesh position={[0, 0, -1.2]} rotation={[Math.PI / 2, 0, 0]}>
             <cylinderGeometry args={[0.15, 0.15, 2, 8]} />
             <meshStandardMaterial {...materialProps} color={isGhost ? "#ffffff" : "#1e210b"} />
           </mesh>

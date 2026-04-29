@@ -148,10 +148,10 @@ function ActiveMonsterTruck({
         {/* MASSIVE Wheels */}
         {[[-1.8, -0.3, 1.8], [1.8, -0.3, 1.8], [-1.8, -0.3, -1.8], [1.8, -0.3, -1.8]].map((pos, i) => (
            <group key={i} position={pos as [number, number, number]}>
-             <mesh rotation={[0, 0, Math.PI / 2]} castShadow>
-                <cylinderGeometry args={[1.2, 1.2, 1, 32]} />
-                <meshStandardMaterial color="#1a1a1a" roughness={0.9} {...materialProps} />
-             </mesh>
+              <mesh rotation={[0, 0, Math.PI / 2]}>
+                 <cylinderGeometry args={[1.2, 1.2, 1, 32]} />
+                 <meshStandardMaterial color="#1a1a1a" roughness={0.9} {...materialProps} />
+              </mesh>
              {/* Hub with spokes */}
              <mesh rotation={[0, 0, Math.PI / 2]}>
                 <cylinderGeometry args={[0.55, 0.55, 1.06, 32]} />
@@ -174,7 +174,7 @@ function ActiveMonsterTruck({
 
         {/* Suspension Struts */}
         {[[-1.8, 0.5, 1.8], [1.8, 0.5, 1.8], [-1.8, 0.5, -1.8], [1.8, 0.5, -1.8]].map((pos, i) => (
-           <mesh key={i} position={pos as [number, number, number]} castShadow>
+           <mesh key={i} position={pos as [number, number, number]}>
               <cylinderGeometry args={[0.15, 0.15, 1.2, 8]} />
               <meshStandardMaterial color="#f39c12" metalness={0.8} {...materialProps} />
            </mesh>
@@ -182,15 +182,15 @@ function ActiveMonsterTruck({
 
         {/* Main Body */}
         <group ref={bodyRef}>
-          <mesh position={[0, 1.2, 0]} castShadow>
+          <mesh castShadow position={[0, 1.2, 0]}>
             <boxGeometry args={[2.5, 0.4, 4]} />
             <meshPhysicalMaterial color="#2c3e50" metalness={0.7} roughness={0.2} clearcoat={0.6} clearcoatRoughness={0.1} {...materialProps} />
           </mesh>
-          <mesh position={[0, 1.8, 0]} castShadow>
+          <mesh position={[0, 1.8, 0]}>
             <boxGeometry args={[2.2, 1.2, 3.5]} />
             <meshPhysicalMaterial color="#d63031" metalness={0.5} roughness={0.25} clearcoat={1.0} clearcoatRoughness={0.05} reflectivity={1.0} {...materialProps} />
           </mesh>
-          <mesh position={[0, 2.4, -1.2]} castShadow>
+          <mesh position={[0, 2.4, -1.2]}>
             <boxGeometry args={[1.2, 0.4, 0.8]} />
             <meshPhysicalMaterial color="#c0392b" metalness={0.5} roughness={0.2} clearcoat={0.8} {...materialProps} />
           </mesh>
@@ -208,36 +208,36 @@ function ActiveMonsterTruck({
             <meshStandardMaterial color="#74b9ff" transparent opacity={0.4} />
           </mesh>
           {[[-1, 2.8, 1], [1, 2.8, 1], [-1, 2.8, -1], [1, 2.8, -1]].map((pos, i) => (
-             <mesh key={i} position={pos as [number, number, number]} castShadow>
+             <mesh key={i} position={pos as [number, number, number]}>
                 <cylinderGeometry args={[0.08, 0.08, 1.2, 8]} />
                 <meshStandardMaterial color="#f39c12" metalness={0.8} {...materialProps} />
              </mesh>
           ))}
           {/* Roll cage top bars */}
-          <mesh position={[0, 3.4, 0]} castShadow>
+          <mesh position={[0, 3.4, 0]}>
             <boxGeometry args={[2, 0.1, 2.2]} />
             <meshStandardMaterial color="#d63031" {...materialProps} />
           </mesh>
           {/* Roll cage cross-bars front/rear */}
-          <mesh position={[0, 3.35, 1]} castShadow>
+          <mesh position={[0, 3.35, 1]}>
             <boxGeometry args={[2, 0.08, 0.08]} />
             <meshStandardMaterial color="#f39c12" metalness={0.8} {...materialProps} />
           </mesh>
-          <mesh position={[0, 3.35, -1]} castShadow>
+          <mesh position={[0, 3.35, -1]}>
             <boxGeometry args={[2, 0.08, 0.08]} />
             <meshStandardMaterial color="#f39c12" metalness={0.8} {...materialProps} />
           </mesh>
           {/* X-brace on roof */}
-          <mesh position={[0, 3.42, 0]} rotation={[0, 0.42, 0]} castShadow>
+          <mesh position={[0, 3.42, 0]} rotation={[0, 0.42, 0]}>
             <boxGeometry args={[2.6, 0.06, 0.06]} />
             <meshStandardMaterial color="#e17055" metalness={0.7} {...materialProps} />
           </mesh>
-          <mesh position={[0, 3.42, 0]} rotation={[0, -0.42, 0]} castShadow>
+          <mesh position={[0, 3.42, 0]} rotation={[0, -0.42, 0]}>
             <boxGeometry args={[2.6, 0.06, 0.06]} />
             <meshStandardMaterial color="#e17055" metalness={0.7} {...materialProps} />
           </mesh>
           {/* Rear spoiler bar */}
-          <mesh position={[0, 2.8, 1.8]} castShadow>
+          <mesh position={[0, 2.8, 1.8]}>
             <boxGeometry args={[2.4, 0.1, 0.6]} />
             <meshStandardMaterial color="#c0392b" {...materialProps} />
           </mesh>
@@ -247,7 +247,7 @@ function ActiveMonsterTruck({
             <meshStandardMaterial color="#74b9ff" transparent opacity={0.35} metalness={0.9} roughness={0.05} />
           </mesh>
           {/* Exhaust pipes (left side) */}
-          <mesh position={[-1.35, 1.5, 0.5]} rotation={[0, 0, 0]} castShadow>
+          <mesh position={[-1.35, 1.5, 0.5]} rotation={[0, 0, 0]}>
             <cylinderGeometry args={[0.1, 0.12, 2.2, 12]} />
             <meshPhysicalMaterial color="#636e72" metalness={0.95} roughness={0.1} clearcoat={0.5} />
           </mesh>
@@ -256,7 +256,7 @@ function ActiveMonsterTruck({
             <meshStandardMaterial color="#2d3436" metalness={0.9} emissive="#ff6b35" emissiveIntensity={0.3} />
           </mesh>
           {/* Exhaust pipes (right side) */}
-          <mesh position={[1.35, 1.5, 0.5]} rotation={[0, 0, 0]} castShadow>
+          <mesh position={[1.35, 1.5, 0.5]} rotation={[0, 0, 0]}>
             <cylinderGeometry args={[0.1, 0.12, 2.2, 12]} />
             <meshPhysicalMaterial color="#636e72" metalness={0.95} roughness={0.1} clearcoat={0.5} />
           </mesh>
@@ -264,11 +264,11 @@ function ActiveMonsterTruck({
             <cylinderGeometry args={[0.12, 0.1, 0.15, 12]} />
             <meshStandardMaterial color="#2d3436" metalness={0.9} emissive="#ff6b35" emissiveIntensity={0.3} />
           </mesh>
-          <mesh position={[-1, 2.4, 1.8]} castShadow>
+          <mesh position={[-1, 2.4, 1.8]}>
             <cylinderGeometry args={[0.08, 0.08, 0.8, 8]} />
             <meshStandardMaterial color="#c0392b" {...materialProps} />
           </mesh>
-          <mesh position={[1, 2.4, 1.8]} castShadow>
+          <mesh position={[1, 2.4, 1.8]}>
             <cylinderGeometry args={[0.08, 0.08, 0.8, 8]} />
             <meshStandardMaterial color="#c0392b" {...materialProps} />
           </mesh>

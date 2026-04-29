@@ -338,7 +338,7 @@ export function Vegetation({
       ref={meshRef}
       args={[geometry, material, maxInstances]}
       frustumCulled
-      castShadow
+      castShadow={false}
       receiveShadow
     />
   )

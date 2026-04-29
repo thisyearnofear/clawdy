@@ -138,17 +138,17 @@ function ActiveSpeedster({
         </mesh>
         
         {/* Tapered front nose — wedge shape */}
-        <mesh position={[0, -0.06, -2.15]} castShadow>
+        <mesh position={[0, -0.06, -2.15]}>
           <boxGeometry args={[1.6, 0.22, 0.9]} />
           <meshPhysicalMaterial color="#0984e3" metalness={0.9} roughness={0.12} clearcoat={1.0} clearcoatRoughness={0.05} />
         </mesh>
-        <mesh position={[0, -0.1, -2.55]} castShadow>
+        <mesh position={[0, -0.1, -2.55]}>
           <boxGeometry args={[1.4, 0.14, 0.5]} />
           <meshPhysicalMaterial color="#0984e3" metalness={0.9} roughness={0.12} clearcoat={1.0} clearcoatRoughness={0.05} />
         </mesh>
         
         {/* Cockpit canopy */}
-        <mesh position={[0, 0.5, 0.2]} castShadow>
+        <mesh position={[0, 0.5, 0.2]}>
           <boxGeometry args={[1.4, 0.4, 1.8]} />
           <meshPhysicalMaterial color="#0984e3" metalness={0.85} roughness={0.1} clearcoat={0.8} clearcoatRoughness={0.1} />
         </mesh>
@@ -170,30 +170,30 @@ function ActiveSpeedster({
         </mesh>
         
         {/* Rear deck */}
-        <mesh position={[0, 0.25, 1.4]} rotation={[0.3, 0, 0]} castShadow>
+        <mesh position={[0, 0.25, 1.4]} rotation={[0.3, 0, 0]}>
           <boxGeometry args={[1.6, 0.1, 1.2]} />
           <meshPhysicalMaterial color="#0984e3" metalness={0.9} roughness={0.12} clearcoat={1.0} clearcoatRoughness={0.05} />
         </mesh>
         
         {/* LARGE REAR SPOILER */}
         <group position={[0, 0.9, 1.8]}>
-          <mesh castShadow>
+          <mesh>
             <boxGeometry args={[2.2, 0.08, 0.5]} />
             <meshPhysicalMaterial color="#1a252f" metalness={0.8} roughness={0.2} clearcoat={0.5} />
           </mesh>
-          <mesh position={[-1.1, 0, 0]} castShadow>
+          <mesh position={[-1.1, 0, 0]}>
             <boxGeometry args={[0.1, 0.4, 0.6]} />
             <meshPhysicalMaterial color="#1a252f" metalness={0.8} roughness={0.2} clearcoat={0.5} />
           </mesh>
-          <mesh position={[1.1, 0, 0]} castShadow>
+          <mesh position={[1.1, 0, 0]}>
             <boxGeometry args={[0.1, 0.4, 0.6]} />
             <meshPhysicalMaterial color="#1a252f" metalness={0.8} roughness={0.2} clearcoat={0.5} />
           </mesh>
-          <mesh position={[-0.6, -0.35, 0]} castShadow>
+          <mesh position={[-0.6, -0.35, 0]}>
             <cylinderGeometry args={[0.05, 0.05, 0.7, 8]} />
             <meshStandardMaterial color="#2c3e50" metalness={0.8} />
           </mesh>
-          <mesh position={[0.6, -0.35, 0]} castShadow>
+          <mesh position={[0.6, -0.35, 0]}>
             <cylinderGeometry args={[0.05, 0.05, 0.7, 8]} />
             <meshStandardMaterial color="#2c3e50" metalness={0.8} />
           </mesh>
@@ -219,13 +219,13 @@ function ActiveSpeedster({
         <SpeedsterUnderglow />
         
         {/* Rear diffuser */}
-        <mesh position={[0, -0.15, 2.15]} castShadow>
+        <mesh position={[0, -0.15, 2.15]}>
           <boxGeometry args={[1.4, 0.15, 0.3]} />
           <meshStandardMaterial color="#2c3e50" />
         </mesh>
         {/* Diffuser fins */}
         {[-0.5, 0, 0.5].map((x, i) => (
-          <mesh key={i} position={[x, -0.22, 2.0]} rotation={[0.2, 0, 0]} castShadow>
+          <mesh key={i} position={[x, -0.22, 2.0]} rotation={[0.2, 0, 0]}>
             <boxGeometry args={[0.06, 0.12, 0.5]} />
             <meshStandardMaterial color="#1a252f" metalness={0.7} roughness={0.3} />
           </mesh>
@@ -259,7 +259,7 @@ function ActiveSpeedster({
         {/* WHEELS */}
         {[[-1, -0.15, -1.4], [1, -0.15, -1.4]].map((pos, i) => (
           <group key={i} position={pos as [number, number, number]} ref={el => { if (el) wheelsRef.current[i] = el }}>
-             <mesh rotation={[0, 0, Math.PI / 2]} castShadow={!isGhost}>
+             <mesh rotation={[0, 0, Math.PI / 2]}>
                 <cylinderGeometry args={[0.35, 0.35, 0.35, 32]} />
                 <meshStandardMaterial color="#111" roughness={0.9} />
              </mesh>
@@ -279,7 +279,7 @@ function ActiveSpeedster({
         
         {[[-1.05, -0.15, 1.4], [1.05, -0.15, 1.4]].map((pos, i) => (
            <group key={i} position={pos as [number, number, number]} ref={el => { if (el) wheelsRef.current[i + 2] = el }}>
-             <mesh rotation={[0, 0, Math.PI / 2]} castShadow={!isGhost}>
+              <mesh rotation={[0, 0, Math.PI / 2]}>
                 <cylinderGeometry args={[0.38, 0.38, 0.45, 32]} />
                 <meshStandardMaterial color="#111" roughness={0.9} />
              </mesh>

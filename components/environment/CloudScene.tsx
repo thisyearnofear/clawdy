@@ -3,7 +3,7 @@
 import { Canvas } from '@react-three/fiber'
 import { Suspense, useState, useEffect, useRef } from 'react'
 import Experience from './Experience'
-import { Loader, Environment } from '@react-three/drei'
+import { Loader, Environment, PerformanceMonitor } from '@react-three/drei'
 import { CloudConfig } from './CloudManager'
 import { agentProtocol, WEATHER_AUCTION_ADDRESS, getMemeMarketAbility } from '../../services/AgentProtocol'
 import { useWatchContractEvent, useAccount, useReadContract } from 'wagmi'
@@ -363,9 +363,12 @@ export default function CloudScene() {
     setCloudConfig({ preset })
   }
 
+  const [dpr, setDpr] = useState(1.5)
+
   return (
     <div className="w-full h-screen bg-gradient-to-b from-sky-400 to-sky-200 relative overflow-hidden">
-      <Canvas shadows={{ type: 1 }}> {/* 1 is PCFShadowMap in THREE */}
+      <Canvas shadows={{ type: 1 }} dpr={dpr}> {/* 1 is PCFShadowMap in THREE */}
+        <PerformanceMonitor onDecline={() => setDpr(1)} onIncline={() => setDpr(1.5)} />
         <Suspense fallback={null}>
           <Environment preset="city" />
           <Experience cloudConfig={config} spawnRate={spawnRate} playerVehicleType={playerVehicle} />

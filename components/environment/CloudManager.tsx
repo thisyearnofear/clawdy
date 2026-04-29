@@ -22,46 +22,46 @@ export interface CloudConfig {
 export const CLOUD_PRESETS = {
   stormy: {
     seed: 10,
-    segments: 80,
+    segments: 40,
     volume: 18,
     growth: 6,
     opacity: 1,
     speed: 0.8,
-    color: '#6a7588', // Lighter gray
-    secondaryColor: '#2d3436', // Darker gray
+    color: '#6a7588',
+    secondaryColor: '#2d3436',
     bounds: [100, 10, 100] as [number, number, number],
-    count: 22,
+    count: 18,
     clusterBounds: [12, 3, 12],
   },
   sunset: {
     seed: 20,
-    segments: 60,
+    segments: 35,
     volume: 12,
     growth: 8,
     opacity: 0.7,
     speed: 0.2,
-    color: '#ff9f43', // Orange
-    secondaryColor: '#ff6b6b', // Pinkish red
+    color: '#ff9f43',
+    secondaryColor: '#ff6b6b',
     bounds: [120, 8, 120] as [number, number, number],
-    count: 20,
+    count: 15,
     clusterBounds: [12, 3, 12],
   },
   candy: {
     seed: 30,
-    segments: 50,
+    segments: 30,
     volume: 10,
     growth: 5,
     opacity: 0.9,
     speed: 0.3,
-    color: '#ff9ff3', // Pink
-    secondaryColor: '#74b9ff', // Blue
+    color: '#ff9ff3',
+    secondaryColor: '#74b9ff',
     bounds: [100, 5, 100] as [number, number, number],
-    count: 25,
+    count: 18,
     clusterBounds: [10, 3, 10],
   },
   cosmic: {
     seed: 40,
-    segments: 30,
+    segments: 20,
     volume: 6,
     growth: 3,
     opacity: 0.4,
@@ -69,7 +69,7 @@ export const CLOUD_PRESETS = {
     color: '#1a1a3e',
     secondaryColor: '#4a0080',
     bounds: [150, 15, 150] as [number, number, number],
-    count: 15,
+    count: 10,
     clusterBounds: [15, 5, 15],
   }
 }
