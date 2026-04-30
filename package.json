@@ -14,7 +14,6 @@
   },
   "dependencies": {
     "@0gfoundation/0g-ts-sdk": "^1.2.2",
-    "@dimforge/rapier3d-compat": "^0.19.2",
     "@metamask/smart-accounts-kit": "^0.4.0-beta.1",
     "@openzeppelin/contracts": "^5.6.1",
     "@react-three/drei": "^10.7.7",
@@ -37,6 +36,9 @@
     "viem": "^2.48.4",
     "wagmi": "^3.4.1",
     "zustand": "^5.0.12"
+  },
+  "overrides": {
+    "@dimforge/rapier3d-compat": "0.19.2"
   },
   "devDependencies": {
     "@next/bundle-analyzer": "^16.2.4",
