@@ -369,7 +369,17 @@ export default function CloudScene() {
 
   return (
     <div className="w-full h-screen bg-gradient-to-b from-sky-400 to-sky-200 relative overflow-hidden">
-      <Canvas shadows={{ type: 1 }} dpr={dpr}> {/* 1 is PCFShadowMap in THREE */}
+      <Canvas
+        shadows={{ type: 1 }}
+        dpr={dpr}
+        gl={{
+          antialias: true,
+          alpha: true,
+          powerPreference: 'high-performance',
+          stencil: false,
+          depth: true,
+        }}
+      > {/* 1 is PCFShadowMap in THREE */}
         <PerformanceMonitor onDecline={() => setDpr(1)} onIncline={() => setDpr(1.5)} />
         <Suspense fallback={null}>
           <Environment preset="city" />
