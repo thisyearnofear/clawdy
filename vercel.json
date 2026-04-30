@@ -1,7 +1,7 @@
 {
   "framework": "nextjs",
   "buildCommand": "npm run build",
-  "installCommand": "npm ci",
+  "installCommand": "npm ci --force",
   "regions": ["iad1"],
   "functions": {
     "app/api/0g-storage/route.ts": {
