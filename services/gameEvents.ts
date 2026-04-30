@@ -10,14 +10,17 @@ export interface GameEvent {
 
 // Shared persistent channel — created once and reused for all broadcasts
 let _broadcastChannel: RealtimeChannel | null = null
+let _channelReady = false
 
 function getBroadcastChannel(): RealtimeChannel | null {
   const supabase = getSupabase()
   if (!supabase) return null
   if (!_broadcastChannel) {
-    _broadcastChannel = supabase.channel('live-events').subscribe()
+    _broadcastChannel = supabase.channel('live-events').subscribe((status) => {
+      _channelReady = status === 'SUBSCRIBED'
+    })
   }
-  return _broadcastChannel
+  return _channelReady ? _broadcastChannel : null
 }
 
 /**
@@ -39,7 +42,7 @@ export function logGameEvent(evt: GameEvent) {
       if (error) logger.debug('[gameEvents] insert failed:', error.message)
     })
 
-  // Broadcast on the shared live channel for instant UI updates
+  // Broadcast on the shared live channel for instant UI updates (only when connected)
   const channel = getBroadcastChannel()
   if (channel) {
     channel.send({

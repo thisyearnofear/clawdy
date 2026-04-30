@@ -10,6 +10,7 @@
     "prepare": "git config core.hooksPath .husky",
     "test": "vitest run",
     "contracts:sync": "bash scripts/sync-contracts.sh",
+    "postinstall": "node -e \"const v=JSON.parse(require('fs').readFileSync(require.resolve('@dimforge/rapier3d-compat').replace(/\\/[^\\/]*$/,'/package.json'),'utf8')).version;if(!v.startsWith('0.19')){console.error('WRONG rapier:',v);process.exit(1)}console.log('rapier3d-compat:',v)\"",
     "contracts:test": "cd foundry && forge test -vv"
   },
   "dependencies": {
@@ -48,7 +49,6 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
-    "pg": "^8.20.0",
     "solc": "^0.8.34",
     "tailwindcss": "^4",
     "typescript": "^5",
