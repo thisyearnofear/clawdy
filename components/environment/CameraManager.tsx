@@ -1,7 +1,7 @@
 'use client'
+
 import { useRef, useEffect, useCallback } from 'react'
-import { useFrame } from '@react-three/fiber'
-import { CameraControls } from '@react-three/drei'
+import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { RapierRigidBody } from '@react-three/rapier'
 import { useGameStore } from '../../services/gameStore'
@@ -16,33 +16,31 @@ interface CameraManagerProps {
   smoothTime?: number
 }
 
-// Per-mode distance/height multipliers
 const MODE_CONFIG = {
   chase: { distMult: 1.0, heightMult: 1.0 },
-  wide:  { distMult: 2.0, heightMult: 1.6 },
-  hood:  { distMult: 0.5, heightMult: 0.4 },
-  free:  { distMult: 1.0, heightMult: 1.0 },
+  wide: { distMult: 2.0, heightMult: 1.6 },
+  hood: { distMult: 0.5, heightMult: 0.4 },
+  free: { distMult: 1.0, heightMult: 1.0 },
 } as const
 
-export function CameraManager({ 
-  target, 
+export function CameraManager({
+  target,
   targetRef,
-  active, 
+  active,
   mode = 'spectator',
   intensity = 0,
-  offset = [0, 8, 15] 
+  offset = [0, 8, 15],
 }: CameraManagerProps) {
-  const controlsRef = useRef<CameraControls>(null)
-  const cameraPos = useRef(new THREE.Vector3())
-  const cameraTarget = useRef(new THREE.Vector3())
+  const { camera } = useThree()
   const targetPos = useRef(new THREE.Vector3())
   const backward = useRef(new THREE.Vector3())
   const smoothedBackward = useRef(new THREE.Vector3(0, 0, 1))
   const quaternion = useRef(new THREE.Quaternion())
   const upOffset = useRef(new THREE.Vector3())
+  const idealPos = useRef(new THREE.Vector3())
+  const lookAtTarget = useRef(new THREE.Vector3())
   const shakeVec = useRef(new THREE.Vector3())
 
-  // Look-ahead: right-mouse drag yaw offset
   const lookYawOffset = useRef(0)
   const isRightMouseDown = useRef(false)
   const lastMouseX = useRef(0)
@@ -55,7 +53,10 @@ export function CameraManager({
   const weatherBoost = 1 + Math.min(0.2, Math.max(0, intensity) * 0.15)
 
   const onMouseDown = useCallback((e: MouseEvent) => {
-    if (e.button === 2) { isRightMouseDown.current = true; lastMouseX.current = e.clientX }
+    if (e.button === 2) {
+      isRightMouseDown.current = true
+      lastMouseX.current = e.clientX
+    }
   }, [])
 
   const onMouseMove = useCallback((e: MouseEvent) => {
@@ -74,18 +75,6 @@ export function CameraManager({
   }, [active, cameraMode])
 
   useEffect(() => {
-    if (controlsRef.current) {
-      controlsRef.current.dollyToCursor = false
-      controlsRef.current.minDistance = 8
-      controlsRef.current.maxDistance = 120
-      controlsRef.current.dollySpeed = 3
-      controlsRef.current.truckSpeed = 2
-      controlsRef.current.smoothTime = 0.15
-      controlsRef.current.draggingSmoothTime = 0.1
-    }
-  }, [])
-
-  useEffect(() => {
     window.addEventListener('mousedown', onMouseDown)
     window.addEventListener('mousemove', onMouseMove)
     window.addEventListener('mouseup', onMouseUp)
@@ -98,22 +87,20 @@ export function CameraManager({
     }
   }, [onMouseDown, onMouseMove, onMouseUp, onContextMenu])
 
-  // Snap look offset back to centre when right mouse released
   useFrame((_, delta) => {
     if (!isRightMouseDown.current && Math.abs(lookYawOffset.current) > 0.001) {
       lookYawOffset.current *= Math.max(0, 1 - delta * 6)
     }
   })
 
-  useFrame((state, delta) => {
-    if (!controlsRef.current) return
+  useFrame((_, delta) => {
     const activeTarget = targetRef?.current ?? target
     if (!active || !activeTarget || cameraMode === 'free') return
 
     const { distMult, heightMult } = MODE_CONFIG[cameraMode]
-
     const translation = activeTarget.translation()
     targetPos.current.set(translation.x, translation.y, translation.z)
+
     const rotation = activeTarget.rotation()
     quaternion.current.set(rotation.x, rotation.y, rotation.z, rotation.w)
 
@@ -126,7 +113,6 @@ export function CameraManager({
     smoothedBackward.current.y = 0
     smoothedBackward.current.normalize()
 
-    // Apply look-ahead yaw offset (right-mouse drag), snap back when released
     const lookDir = smoothedBackward.current.clone()
     if (Math.abs(lookYawOffset.current) > 0.001) {
       const yawQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), lookYawOffset.current)
@@ -135,38 +121,28 @@ export function CameraManager({
 
     const trailingDistance = (mode === 'active' ? offset[2] : offset[2] + 4) * distMult
     const followHeight = (mode === 'active' ? offset[1] : offset[1] + 2) * heightMult
-    const idealPos = targetPos.current.clone()
-      .add(lookDir.clone().multiplyScalar(trailingDistance))
+
+    idealPos.current
+      .copy(targetPos.current)
+      .add(lookDir.multiplyScalar(trailingDistance))
       .add(upOffset.current.set(0, followHeight, 0))
 
-    controlsRef.current.getPosition(cameraPos.current)
-    controlsRef.current.getTarget(cameraTarget.current)
-
-    cameraTarget.current.lerp(targetPos.current, delta * targetLerpSpeed * weatherBoost)
-    cameraPos.current.lerp(idealPos, delta * followSpeed * weatherBoost)
+    lookAtTarget.current.lerp(targetPos.current, delta * targetLerpSpeed * weatherBoost)
+    camera.position.lerp(idealPos.current, delta * followSpeed * weatherBoost)
 
     if (cameraShake.until > Date.now() && cameraShake.intensity > 0) {
       const amp = 0.12 * cameraShake.intensity
       shakeVec.current.set(
         (Math.random() - 0.5) * amp,
         (Math.random() - 0.5) * amp,
-        (Math.random() - 0.5) * amp
+        (Math.random() - 0.5) * amp,
       )
-      cameraPos.current.add(shakeVec.current)
+      camera.position.add(shakeVec.current)
     }
 
-    controlsRef.current.setLookAt(
-      cameraPos.current.x, cameraPos.current.y, cameraPos.current.z,
-      cameraTarget.current.x, cameraTarget.current.y, cameraTarget.current.z,
-      false
-    )
+    camera.lookAt(lookAtTarget.current)
+    camera.updateMatrixWorld()
   })
 
-  return (
-    <CameraControls 
-      ref={controlsRef} 
-      enabled={!active || cameraMode === 'free'}
-      makeDefault 
-    />
-  )
+  return null
 }

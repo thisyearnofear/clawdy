@@ -341,7 +341,6 @@ function Experience({
       <fog attach="fog" args={[isNightMode ? '#0a0a2e' : cloudConfig.preset === 'stormy' ? '#4a5568' : cloudConfig.preset === 'sunset' ? '#ffccaa' : cloudConfig.preset === 'candy' ? '#ffe0f0' : '#c9d5ff', cloudConfig.preset === 'stormy' ? 10 : cloudConfig.preset === 'cosmic' ? 20 : 18, (cloudConfig.preset === 'stormy' ? 60 : cloudConfig.preset === 'cosmic' ? 120 : 90) - (activeWeatherEffects.lightning?.intensity ?? 0) * 18]} />
       <WeatherParticles config={cloudConfig} />
       <PuddleRipples bounds={cloudConfig.bounds} getHeightAt={terrainSampler ?? undefined} />
-      <WeatherPostProcessing config={cloudConfig} />
       <FloodWater bounds={cloudConfig.bounds} />
       <Physics gravity={physicsGravity}>
         <LaunchPads />
