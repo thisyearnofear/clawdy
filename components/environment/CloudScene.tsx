@@ -1,7 +1,7 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { Suspense, useState, useEffect, useRef } from 'react'
+import { Suspense, useState, useEffect, useRef, useMemo } from 'react'
 import Experience from './Experience'
 import { Environment, PerformanceMonitor } from '@react-three/drei'
 import { CloudConfig } from './CloudManager'
@@ -22,6 +22,7 @@ import { LoadingSplash } from '../ui/LoadingSplash'
 import { MobileTouchControls } from '../ui/MobileTouchControls'
 import { MarbleBadge } from '../ui/MarbleBadge'
 import { useGameStore } from '../../services/gameStore'
+import { getMarbleWorldConfig, shouldUseMarbleWorld } from '../../services/marbleWorld'
 import { vehicleQueue } from '../../services/VehicleQueue'
 import { trackEvent } from '../../services/analytics'
 import { upsertLeaderboardEntry } from '../../hooks/useRealtimeLeaderboard'
@@ -369,6 +370,8 @@ export default function CloudScene() {
   }
 
   const [dpr, setDpr] = useState(1.5)
+  const marbleConfig = useMemo(() => getMarbleWorldConfig(), [])
+  const isMarbleActive = shouldUseMarbleWorld(marbleConfig)
 
   return (
     <div className="w-full h-screen bg-gradient-to-b from-sky-400 to-sky-200 relative overflow-hidden">
@@ -377,7 +380,7 @@ export default function CloudScene() {
         shadows={{ type: 1 }}
         dpr={dpr}
         gl={{
-          antialias: true,
+          antialias: !isMarbleActive, // Spark recommends antialias:false for splat rendering
           alpha: true,
           powerPreference: 'high-performance',
           stencil: false,

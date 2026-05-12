@@ -64,7 +64,10 @@ export function MarbleWorldLayer({ config, visible = true, onLoad }: MarbleWorld
           lod: splatFormat === 'rad',
           paged: splatFormat === 'rad',
           onLoad: () => {
-            if (!cancelled) onLoad?.()
+            if (!cancelled) {
+              console.log('[MarbleWorldLayer] Splat loaded successfully')
+              onLoad?.()
+            }
           },
         })
         scene.add(splatMesh as unknown as THREE.Object3D)
