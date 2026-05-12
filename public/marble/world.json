@@ -1,0 +1,11 @@
+{
+  "world_id": "038d084c-2f7c-4839-b083-84e7ebef03ca",
+  "world_marble_url": "https://marble.worldlabs.ai/world/038d084c-2f7c-4839-b083-84e7ebef03ca",
+  "display_name": "",
+  "model": "marble-1.1",
+  "splat_resolution": "500k",
+  "splat_output": "/Users/udingethe/Dev/clawdy/public/marble/arena.spz",
+  "collider_output": "/Users/udingethe/Dev/clawdy/public/marble/collider.glb",
+  "caption": "The scene is a surreal, high-energy cloud-top arena designed for an agent vehicle game, rendered in a vibrant, arcade-style aesthetic. The overall tone is exhilarating and fantastical, emphasizing dynamic gameplay over realism. Broad, drivable paths, crafted from weathered, iridescent cloud-rock, crisscross the expansive space, providing ample room for vehicle maneuvers. Numerous ramps, sculpted from the same ethereal material, launch vehicles into the air, creating opportunities for aerial combat and strategic repositioning. Scattered throughout the arena are various forms of cover, including large, jagged cloud-rock formations and translucent, glowing crystal structures, offering tactical advantages. Despite the cover, open sightlines are maintained across significant portions of the arena, ensuring constant engagement. The terrain exhibits a weather-worn appearance, with subtle cracks and erosion patterns etched into the cloud-rock surfaces, hinting at the arena's ancient origins. Glowing collectible food stations, pulsating with soft, inviting light, are strategically placed along the paths and atop elevated platforms, serving as objectives and power-ups. A clear central landmark, a colossal, spiraling crystal spire, dominates the arena's core, radiating a gentle, multicolored light that illuminates the surrounding area. The paths are wide and flat, ensuring optimal vehicle physics and AI navigation. Smaller, floating cloud islands with additional ramps and cover elements orbit the main arena, connected by narrow, arcing bridges of light. The 360 scene is faultless.",
+  "generated_at": "2026-05-12T18:15:21.509Z"
+}
