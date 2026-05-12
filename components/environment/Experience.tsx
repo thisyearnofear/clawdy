@@ -314,10 +314,11 @@ function Experience({
   }, [cloudConfig.preset, handlingMode, setGravityMode])
 
   useEffect(() => {
+    if (useMarbleWorld) return // No terrain toggle in marble mode
     const handleKeyDown = (e: KeyboardEvent) => { if (e.key === 't' || e.key === 'T') setUseSphericalTerrain(prev => !prev) }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, []);
+  }, [useMarbleWorld]);
 
   return (
     <KeyboardControls
@@ -348,11 +349,11 @@ function Experience({
       />
       <fog attach="fog" args={[isNightMode ? '#0a0a2e' : cloudConfig.preset === 'stormy' ? '#4a5568' : cloudConfig.preset === 'sunset' ? '#ffccaa' : cloudConfig.preset === 'candy' ? '#ffe0f0' : '#c9d5ff', cloudConfig.preset === 'stormy' ? 10 : cloudConfig.preset === 'cosmic' ? 20 : 18, (cloudConfig.preset === 'stormy' ? 60 : cloudConfig.preset === 'cosmic' ? 120 : 90) - (activeWeatherEffects.lightning?.intensity ?? 0) * 18]} />
       <WeatherParticles config={cloudConfig} />
-      <PuddleRipples bounds={cloudConfig.bounds} getHeightAt={terrainSampler ?? undefined} />
-      <FloodWater bounds={cloudConfig.bounds} />
+      {!useMarbleWorld && <PuddleRipples bounds={cloudConfig.bounds} getHeightAt={terrainSampler ?? undefined} />}
+      {!useMarbleWorld && <FloodWater bounds={cloudConfig.bounds} />}
       <Physics gravity={physicsGravity}>
-        <LaunchPads />
-        <SkyIslands />
+        {!useMarbleWorld && <LaunchPads />}
+        {!useMarbleWorld && <SkyIslands />}
         <CloudManager config={cloudConfig} />
         <MemeAssetSpawner spawnRate={effectiveSpawnRate} bounds={spawnBounds} spawnHeight={spawnHeight} maxItems={55} onSpawn={(item) => setMemeAssets((prev) => [...prev, { ...item, itemType: chooseAssistedAssetType(item.tier) }])} />
         <AgentVision />
@@ -413,8 +414,8 @@ function Experience({
             </group>
           )
         })}
-        <MudMarkers />
-        <Vegetation getHeightAt={useSphericalTerrain ? getSphericalTerrainHeight : terrainSampler} />
+        {!useMarbleWorld && <MudMarkers />}
+        {!useMarbleWorld && <Vegetation getHeightAt={useSphericalTerrain ? getSphericalTerrainHeight : terrainSampler} />}
         {useMarbleWorld ? (
           <MarbleCollider config={marbleWorld} onReady={setTerrainSampler} />
         ) : useSphericalTerrain ? (
