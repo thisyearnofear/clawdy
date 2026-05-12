@@ -1,19 +1,26 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { getMarbleWorldConfig, shouldUseMarbleWorld } from '../../services/marbleWorld'
 
 /**
  * Small attribution badge shown when the Marble world is active.
  * Links to the world on marble.worldlabs.ai so judges can verify it's generated.
+ * Client-only to avoid hydration mismatch.
  */
 export function MarbleBadge() {
-  const config = useMemo(() => getMarbleWorldConfig(), [])
-  const isActive = shouldUseMarbleWorld(config)
+  const [show, setShow] = useState(false)
+  const [worldUrl, setWorldUrl] = useState('')
 
-  if (!isActive) return null
+  useEffect(() => {
+    const config = getMarbleWorldConfig()
+    if (shouldUseMarbleWorld(config)) {
+      setShow(true)
+      setWorldUrl(`https://marble.worldlabs.ai/world/${config.id}`)
+    }
+  }, [])
 
-  const worldUrl = `https://marble.worldlabs.ai/world/${config.id}`
+  if (!show) return null
 
   return (
     <a

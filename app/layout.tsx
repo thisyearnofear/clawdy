@@ -51,11 +51,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
         <Providers>
           {children}
         </Providers>
-        <Script async src="https://vibej.am/2026/widget.js" />
+        <Script async src="https://vibej.am/2026/widget.js" strategy="lazyOnload" />
       </body>
     </html>
   );
