@@ -8,6 +8,17 @@ Place exported Marble world assets here:
 
 ## Asset Pipeline
 
+### API path
+
+1. Set `WLT_API_KEY` in `.env.local`
+2. Optionally set `MARBLE_WORLD_PROMPT`, `MARBLE_WORLD_MODEL`, and `MARBLE_SPZ_RESOLUTION`
+3. Run `npm run marble:generate`
+4. Confirm this directory contains `arena.spz`, `collider.glb`, and `world.json`
+
+The script uses World Labs' `/marble/v1/worlds:generate` endpoint, polls `/marble/v1/operations/{operation_id}`, then downloads the selected SPZ and returned collider mesh.
+
+### Manual path
+
 1. Generate a world in [World Labs Marble](https://marble.worldlabs.ai/)
 2. Export the scene as `.spz` (or `.rad` for large worlds)
 3. Create or export a collider mesh (simplified geometry that approximates driveable surfaces)
