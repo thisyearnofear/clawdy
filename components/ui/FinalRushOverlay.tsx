@@ -6,7 +6,7 @@ import { playSound } from './SoundManager'
 
 export const FinalRushOverlay = React.memo(function FinalRushOverlay() {
   const round = useGameStore(s => s.round)
-  const [now, setNow] = useState(() => Date.now())
+  const [now, setNow] = useState(0)
   const lastSecondRef = useRef<number | null>(null)
 
   const remainingMs = round.endsAt - now

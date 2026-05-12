@@ -103,9 +103,10 @@ export function ControlPanel({
 
   // ── PlayerStrategyPanel logic (CONSOLIDATION: merged into ControlPanel) ──
   const [manualBidOverride, setManualBidOverride] = useState<number | null>(null)
-  const [nowMs, setNowMs] = useState(() => Date.now())
+  const [nowMs, setNowMs] = useState(0)
 
   useEffect(() => {
+    setNowMs(Date.now())
     const timer = window.setInterval(() => setNowMs(Date.now()), 1000)
     return () => window.clearInterval(timer)
   }, [])

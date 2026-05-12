@@ -8,7 +8,7 @@ import { useGameStore } from '../../services/gameStore'
 export const QueueStatusBadge = React.memo(function QueueStatusBadge({ playerId }: { playerId: string }) {
   const { address } = useAccount()
   const [queueState, setQueueState] = useState<QueueState | null>(null)
-  const [now, setNow] = useState(() => Date.now())
+  const [now, setNow] = useState(0)
   
   const setModalOpen = useGameStore(s => s.setModalOpen)
 
@@ -22,6 +22,7 @@ export const QueueStatusBadge = React.memo(function QueueStatusBadge({ playerId 
 
   // Only tick the timer when the player is waiting or active
   useEffect(() => {
+    setNow(Date.now())
     const player = queueState?.queue.find(p => p.id === playerId)
     const needsTimer = player?.status === 'waiting' || (queueState?.isPlayerActive(playerId))
     if (!needsTimer) return

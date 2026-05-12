@@ -15,7 +15,7 @@ export const RoundRecap = React.memo(function RoundRecap() {
   const sessions = useGameStore(s => s.sessions)
   const floodStats = useGameStore(s => s.playerFloodStats)
   const setModalOpen = useGameStore(s => s.setModalOpen)
-  const [now, setNow] = useState(() => Date.now())
+  const [now, setNow] = useState(0)
   const [dismissedRound, setDismissedRound] = useState<number | null>(null)
 
   const leaderboard = useMemo(() => {
