@@ -13,8 +13,12 @@ const TIPS = [
 
 export function LoadingSplash({ onReady }: { onReady?: () => void }) {
   const [progress, setProgress] = useState(0)
-  const [tip] = useState(() => TIPS[Math.floor(Math.random() * TIPS.length)])
+  const [tip, setTip] = useState(TIPS[0])
   const [fadeOut, setFadeOut] = useState(false)
+
+  useEffect(() => {
+    setTip(TIPS[Math.floor(Math.random() * TIPS.length)])
+  }, [])
 
   useEffect(() => {
     // Simulate progress based on time (real loading is handled by Suspense)
