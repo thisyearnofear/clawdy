@@ -3,7 +3,7 @@
 import { Canvas } from '@react-three/fiber'
 import { Suspense, useState, useEffect, useRef } from 'react'
 import Experience from './Experience'
-import { Loader, Environment, PerformanceMonitor } from '@react-three/drei'
+import { Environment, PerformanceMonitor } from '@react-three/drei'
 import { CloudConfig } from './CloudManager'
 import { agentProtocol, WEATHER_AUCTION_ADDRESS, getMemeMarketAbility } from '../../services/AgentProtocol'
 import { useWatchContractEvent, useAccount, useReadContract } from 'wagmi'
@@ -18,6 +18,7 @@ import { RoundObjectives } from '../ui/RoundObjectives'
 import { HUD } from '../ui/HUD'
 import dynamic from 'next/dynamic'
 import { Overlays } from '../ui/Overlays'
+import { LoadingSplash } from '../ui/LoadingSplash'
 import { MobileTouchControls } from '../ui/MobileTouchControls'
 import { useGameStore } from '../../services/gameStore'
 import { vehicleQueue } from '../../services/VehicleQueue'
@@ -68,6 +69,7 @@ export default function CloudScene() {
   } = useGameStore()
 
   const [isMounted, setIsMounted] = useState(false)
+  const [splashDone, setSplashDone] = useState(false)
   const flood = useGameStore(s => s.flood)
   const cumulativeScore = useGameStore(s => s.cumulativeScore)
   const round = useGameStore(s => s.round)
@@ -369,6 +371,7 @@ export default function CloudScene() {
 
   return (
     <div className="w-full h-screen bg-gradient-to-b from-sky-400 to-sky-200 relative overflow-hidden">
+      {!splashDone && <LoadingSplash onReady={() => setSplashDone(true)} />}
       <Canvas
         shadows={{ type: 1 }}
         dpr={dpr}
@@ -386,7 +389,6 @@ export default function CloudScene() {
           <Experience cloudConfig={config} spawnRate={spawnRate} playerVehicleType={playerVehicle} />
         </Suspense>
       </Canvas>
-      <Loader />
 
       <Overlays 
         showOnboarding={ui.showOnboarding}
@@ -443,10 +445,10 @@ function HelpHint() {
   useEffect(() => {
     if (dismissed) return
     
-    // Show for 30 seconds instead of 5 - gives user time to find it
+    // Show for 8 seconds — enough to notice, not enough to clutter
     const timer = setTimeout(() => {
       setVisible(false)
-    }, 30000)
+    }, 8000)
     
     // Listen for any keypress to dismiss
     const handleKeyDown = () => {

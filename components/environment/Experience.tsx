@@ -466,32 +466,18 @@ function PlayerVehicleIndicator({ position }: { position: [number, number, numbe
 function InWorldQueueStatus({ playerId, queueState, isPlayerActive, playerVehicle }: { playerId: string; queueState: QueueState | null; isPlayerActive: boolean; playerVehicle: { id: string; type: VehicleType } | undefined }) {
   if (!queueState) return null
   const player = queueState.queue.find(p => p.id === playerId)
-  if (isPlayerActive && playerVehicle) {
-    return (
-      <group position={[0, 6, 0]}>
-        <Text fontSize={0.8} color="#00ff00" anchorX="center" anchorY="middle" outlineWidth={0.05} outlineColor="#000000">YOU ARE DRIVING</Text>
-        <Text position={[0, -1, 0]} fontSize={0.5} color="#ffffff" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="#000000">WASD / Arrows to drive • Space to brake/action</Text>
-      </group>
-    )
-  }
+  // Active player: no in-world text needed — the HUD handles it
+  if (isPlayerActive && playerVehicle) return null
   if (player?.status === 'waiting') {
     const position = queueState.queue.filter(p => p.status === 'waiting').findIndex(p => p.id === playerId) + 1
-    const eta = position * 30
-    const etaText = eta >= 60 ? `~${Math.ceil(eta / 60)}m` : `~${eta}s`
     return (
       <group position={[0, 8, -15]}>
-        <Text fontSize={1} color="#fbbf24" anchorX="center" anchorY="middle" outlineWidth={0.05} outlineColor="#000000">PRACTICE MODE</Text>
-        <Text position={[0, -1.4, 0]} fontSize={0.6} color="#ffffff" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="#000000">Queue position {position} of {queueState.waitingCount} · scoring starts {etaText}</Text>
-        <Text position={[0, -2.4, 0]} fontSize={0.5} color="#94a3b8" anchorX="center" anchorY="middle" outlineWidth={0.02} outlineColor="#000000">Practice driving now — steal their food when your slot opens!</Text>
+        <Text fontSize={0.8} color="#fbbf24" anchorX="center" anchorY="middle" outlineWidth={0.04} outlineColor="#000000">PRACTICE MODE</Text>
+        <Text position={[0, -1.2, 0]} fontSize={0.4} color="#94a3b8" anchorX="center" anchorY="middle" outlineWidth={0.02} outlineColor="#000000">Queue #{position} · scoring starts soon</Text>
       </group>
     )
   }
-  // Pure spectator — show controls hint so they know what to expect
-  return (
-    <group position={[0, 6, 0]}>
-      <Text fontSize={0.6} color="#94a3b8" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="#000000">WASD / Arrows to drive · Space to brake</Text>
-    </group>
-  )
+  return null
 }
 
 import { LaunchPad } from './LaunchPad'

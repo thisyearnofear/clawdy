@@ -7,6 +7,7 @@ import type { RapierRigidBody } from '@react-three/rapier'
 import { RigidBody } from '@react-three/rapier'
 import { useVehiclePhysics, VehicleStats } from '../../hooks/useVehiclePhysics'
 import { WaterTurnSplashes } from '../environment/WaterTurnSplashes'
+import { VehicleTrail } from './VehicleTrail'
 import { GhostVehicleShell } from './GhostVehicleShell'
 
 export const SPEEDSTER_STATS: VehicleStats = {
@@ -308,6 +309,11 @@ function ActiveSpeedster({
         enabled={playerControlled && !agentControlled}
         turnInput={inputs.turn}
         brake={inputs.brake}
+      />
+      <VehicleTrail
+        chassisRef={chassisRef}
+        color="#00e5ff"
+        isPlayer={playerControlled && !agentControlled}
       />
     </group>
   )

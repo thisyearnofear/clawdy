@@ -1,0 +1,74 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+
+const TIPS = [
+  'Chain pickups within 6s for combo multipliers',
+  'Win the weather auction to control the arena',
+  'Golden meatballs are worth 5× — chase them',
+  'The AI has blind spots — exploit them',
+  'Storms create mud traps — avoid or weaponize them',
+  'ESC opens the control panel for abilities and tuning',
+]
+
+export function LoadingSplash({ onReady }: { onReady?: () => void }) {
+  const [progress, setProgress] = useState(0)
+  const [tip] = useState(() => TIPS[Math.floor(Math.random() * TIPS.length)])
+  const [fadeOut, setFadeOut] = useState(false)
+
+  useEffect(() => {
+    // Simulate progress based on time (real loading is handled by Suspense)
+    const start = Date.now()
+    const duration = 2000 // minimum splash duration for branding
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - start
+      const p = Math.min(100, (elapsed / duration) * 100)
+      setProgress(p)
+      if (p >= 100) {
+        clearInterval(interval)
+        setFadeOut(true)
+        setTimeout(() => onReady?.(), 400)
+      }
+    }, 50)
+    return () => clearInterval(interval)
+  }, [onReady])
+
+  return (
+    <div
+      className={`fixed inset-0 z-[200] flex flex-col items-center justify-center bg-slate-950 transition-opacity duration-400 ${
+        fadeOut ? 'opacity-0 pointer-events-none' : 'opacity-100'
+      }`}
+    >
+      {/* Logo / Title */}
+      <div className="flex flex-col items-center gap-3 mb-12">
+        <span className="text-6xl">☁️</span>
+        <h1 className="text-4xl font-black text-white tracking-tight">CLAWDY</h1>
+        <p className="text-sm text-white/40 font-medium">Outsmart the AI in a Marble-generated world</p>
+      </div>
+
+      {/* Progress bar */}
+      <div className="w-64 h-1 bg-white/10 rounded-full overflow-hidden mb-6">
+        <div
+          className="h-full bg-sky-400 rounded-full transition-all duration-200 ease-out"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+
+      {/* Tip */}
+      <p className="text-xs text-white/30 max-w-xs text-center">
+        💡 {tip}
+      </p>
+
+      {/* Tech credits */}
+      <div className="absolute bottom-8 flex items-center gap-4 text-[10px] text-white/20 uppercase tracking-widest">
+        <span>Marble</span>
+        <span className="w-0.5 h-3 bg-white/10" />
+        <span>Spark</span>
+        <span className="w-0.5 h-3 bg-white/10" />
+        <span>Three.js</span>
+        <span className="w-0.5 h-3 bg-white/10" />
+        <span>0G Chain</span>
+      </div>
+    </div>
+  )
+}

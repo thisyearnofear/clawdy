@@ -40,6 +40,21 @@ const VEHICLE_MODE_SCALE: Record<VehicleHandlingProfile, number> = {
   tank: 0.82,
 }
 
+// Pre-allocated THREE objects to avoid GC pressure in useFrame (8 vehicles × 60fps)
+const _quaternion = new THREE.Quaternion()
+const _forwardDir = new THREE.Vector3()
+const _rightDir = new THREE.Vector3()
+const _surfaceNormal = new THREE.Vector3()
+const _surfaceForward = new THREE.Vector3()
+const _force = new THREE.Vector3()
+const _currentUp = new THREE.Vector3()
+const _targetUp = new THREE.Vector3(0, 1, 0)
+const _stabilizeAxis = new THREE.Vector3()
+const _towardCenter = new THREE.Vector3()
+const _steerForce = new THREE.Vector3()
+const _fOffset = new THREE.Vector3()
+const _boostDir = new THREE.Vector3()
+
 export function useVehiclePhysics(
   id: string,
   chassisRef: React.RefObject<RapierRigidBody | null>,
@@ -134,10 +149,12 @@ export function useVehiclePhysics(
     const velocity = chassisRef.current.linvel()
     const speed = Math.sqrt(velocity.x ** 2 + velocity.z ** 2)
     const rotation = chassisRef.current.rotation()
-    const quaternion = new THREE.Quaternion(rotation.x, rotation.y, rotation.z, rotation.w)
+    _quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w)
 
-    const forwardDir = new THREE.Vector3(0, 0, -1).applyQuaternion(quaternion)
-    const rightDir = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion)
+    _forwardDir.set(0, 0, -1).applyQuaternion(_quaternion)
+    _rightDir.set(1, 0, 0).applyQuaternion(_quaternion)
+    const forwardDir = _forwardDir
+    const rightDir = _rightDir
 
     // Sync position back to Protocol
     if (agentControlled || (playerControlled && speed > 0.01)) {
@@ -241,8 +258,8 @@ export function useVehiclePhysics(
     // Hard boundary bounce at 60 units - push vehicle back toward center
     if (distFromCenter > BOUNDARY_RADIUS) {
       const bounceStrength = (distFromCenter - BOUNDARY_RADIUS) * 0.5
-      const towardCenter = new THREE.Vector3(-vPos.x, 0, -vPos.z).normalize()
-      chassisRef.current.applyImpulse({ x: towardCenter.x * bounceStrength, y: 0, z: towardCenter.z * bounceStrength }, true)
+      _towardCenter.set(-vPos.x, 0, -vPos.z).normalize()
+      chassisRef.current.applyImpulse({ x: _towardCenter.x * bounceStrength, y: 0, z: _towardCenter.z * bounceStrength }, true)
     }
 
     // Void kill plane: if vehicle falls below Y=-10, teleport to surface
@@ -262,8 +279,8 @@ export function useVehiclePhysics(
       stuckInMudRef.current += delta
       // After 1.5s stuck, give a forward boost impulse every 2s
       if (stuckInMudRef.current > 1.5 && now - lastMudBoostRef.current > 2000) {
-        const boostDir = forwardDir.clone().multiplyScalar(stats.mass * 3.0)
-        chassisRef.current.applyImpulse({ x: boostDir.x, y: stats.mass * 0.5, z: boostDir.z }, true)
+        _boostDir.copy(forwardDir).multiplyScalar(stats.mass * 3.0)
+        chassisRef.current.applyImpulse({ x: _boostDir.x, y: stats.mass * 0.5, z: _boostDir.z }, true)
         lastMudBoostRef.current = now
         stuckInMudRef.current = 0
       }
@@ -293,10 +310,10 @@ export function useVehiclePhysics(
       const forwardSpeed = velocity.x * forwardDir.x + velocity.z * forwardDir.z
       if (Math.abs(forwardSpeed) < maxSpeed || (forwardSpeed * smoothedForward.current < 0)) {
         const [nx, ny, nz] = getTerrainNormal(vPos.x, vPos.z)
-        const surfaceNormal = new THREE.Vector3(nx, ny, nz)
-        const surfaceForward = forwardDir.clone().sub(surfaceNormal.clone().multiplyScalar(forwardDir.dot(surfaceNormal))).normalize()
-        const force = surfaceForward.multiplyScalar(smoothedForward.current * finalAcceleration * delta)
-        chassisRef.current.applyImpulse({ x: force.x, y: force.y, z: force.z }, true)
+        _surfaceNormal.set(nx, ny, nz)
+        _surfaceForward.copy(forwardDir).sub(_surfaceNormal.clone().multiplyScalar(forwardDir.dot(_surfaceNormal))).normalize()
+        _force.copy(_surfaceForward).multiplyScalar(smoothedForward.current * finalAcceleration * delta)
+        chassisRef.current.applyImpulse({ x: _force.x, y: _force.y, z: _force.z }, true)
 
         if (handling.pitchTorqueMultiplier > 0) {
           const pitchForce = -smoothedForward.current * stats.mass * handling.pitchTorqueMultiplier
@@ -324,10 +341,10 @@ export function useVehiclePhysics(
             // Raised floor: steering stays at ≥40% authority even at high speed
             // Old formula dropped to ~33% at speed=50; new formula stays ~55% at speed=50
             const speedSteerFactor = Math.max(0.4, Math.min((28 * effectiveSteerRetention) / (speed + 10), 1))
-            const steerForce = rightDir.clone().multiplyScalar(smoothedTurn.current * steerStrength * speedSteerFactor)
-            const fOffset = forwardDir.clone().multiplyScalar(stats.frontOffset)
-            const steerPoint = { x: vPos.x + fOffset.x, y: vPos.y, z: vPos.z + fOffset.z }
-            chassisRef.current.applyImpulseAtPoint({ x: steerForce.x, y: 0, z: steerForce.z }, steerPoint, true)
+            _steerForce.copy(rightDir).multiplyScalar(smoothedTurn.current * steerStrength * speedSteerFactor)
+            _fOffset.copy(forwardDir).multiplyScalar(stats.frontOffset)
+            const steerPoint = { x: vPos.x + _fOffset.x, y: vPos.y, z: vPos.z + _fOffset.z }
+            chassisRef.current.applyImpulseAtPoint({ x: _steerForce.x, y: 0, z: _steerForce.z }, steerPoint, true)
 
             if (handling.leanTorqueMultiplier > 0) {
               const leanForce = -smoothedTurn.current * stats.mass * handling.leanTorqueMultiplier * speedSteerFactor
@@ -371,14 +388,13 @@ export function useVehiclePhysics(
     }
 
     // --- 7. PRO STABILIZER ---
-    const currentUp = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion)
-    const targetUp = new THREE.Vector3(0, 1, 0)
-    const stabilizeAxis = new THREE.Vector3().crossVectors(currentUp, targetUp)
-    const stabilizeAngle = currentUp.angleTo(targetUp)
+    _currentUp.set(0, 1, 0).applyQuaternion(_quaternion)
+    _stabilizeAxis.crossVectors(_currentUp, _targetUp)
+    const stabilizeAngle = _currentUp.angleTo(_targetUp)
 
     if (stabilizeAngle > handling.stabilizerThreshold) {
       const stabilizeStrength = stats.mass * handling.stabilizerStrength * delta * stabilizeAngle
-      chassisRef.current.applyTorqueImpulse({ x: stabilizeAxis.x * stabilizeStrength, y: stabilizeAxis.y * stabilizeStrength, z: stabilizeAxis.z * stabilizeStrength }, true)
+      chassisRef.current.applyTorqueImpulse({ x: _stabilizeAxis.x * stabilizeStrength, y: _stabilizeAxis.y * stabilizeStrength, z: _stabilizeAxis.z * stabilizeStrength }, true)
     }
     
     // Damp angular velocity to prevent wild spinning

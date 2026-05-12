@@ -5,6 +5,7 @@ import type { RapierRigidBody } from '@react-three/rapier'
 import { RigidBody } from '@react-three/rapier'
 import { useVehiclePhysics, VehicleStats } from '../../hooks/useVehiclePhysics'
 import { WaterTurnSplashes } from '../environment/WaterTurnSplashes'
+import { VehicleTrail } from './VehicleTrail'
 import { GhostVehicleShell } from './GhostVehicleShell'
 
 export const VEHICLE_STATS: VehicleStats = {
@@ -135,6 +136,11 @@ function ActiveVehicle({
         enabled={playerControlled && !agentControlled}
         turnInput={inputs.turn}
         brake={inputs.brake}
+      />
+      <VehicleTrail
+        chassisRef={chassisRef}
+        color={agentControlled ? '#ff7675' : '#74b9ff'}
+        isPlayer={playerControlled && !agentControlled}
       />
     </group>
   )

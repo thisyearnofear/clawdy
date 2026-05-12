@@ -7,6 +7,7 @@ import type { RapierRigidBody } from '@react-three/rapier'
 import { RigidBody } from '@react-three/rapier'
 import { useVehiclePhysics, VehicleStats } from '../../hooks/useVehiclePhysics'
 import { WaterTurnSplashes } from '../environment/WaterTurnSplashes'
+import { VehicleTrail } from './VehicleTrail'
 import { GhostVehicleShell } from './GhostVehicleShell'
 
 export const TRUCK_STATS: VehicleStats = {
@@ -299,6 +300,11 @@ function ActiveMonsterTruck({
         enabled={playerControlled && !agentControlled}
         turnInput={inputs.turn}
         brake={inputs.brake}
+      />
+      <VehicleTrail
+        chassisRef={chassisRef}
+        color="#ff9f43"
+        isPlayer={playerControlled && !agentControlled}
       />
     </group>
   )

@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from 'react'
 
-const VEHICLE_PICKER_STEP_INDEX = 8 // inserted after all 8 steps, before launch
-
 interface VehicleOption {
   type: 'speedster' | 'truck'
   emoji: string
@@ -47,45 +45,21 @@ const STEPS = [
     emoji: '🤖',
     title: 'CLAWDY',
     subtitle: 'Outsmart the AI',
-    body: 'Four autonomous AI agents are racing you for food and bidding on-chain for weather control. Steal their drops, hijack their weather, beat their score. They never sleep — but they\'re beatable.',
-  },
-  {
-    emoji: '🚀',
-    title: 'Jump In — No Wallet Needed',
-    subtitle: 'Drive now, connect later',
-    body: 'You\'re auto-queued as a guest — just hit Start Playing and drive! Connect your wallet anytime via the top-right to save your score on-chain and unlock special abilities.',
+    body: 'Four autonomous AI agents are racing you for food in a Marble-generated world. Steal their drops, hijack their weather, beat their score.',
   },
   {
     emoji: '🚗',
-    title: 'Drive & Steal',
-    body: 'WASD or arrow keys to drive. The agents will go for the nearest food — your job is to get there first. Each pickup earns tokens and pulls the round goal closer.',
-  },
-  {
-    emoji: '⚡',
-    title: 'Combo Chain',
-    body: 'Collect food quickly (within 6s) to build combos! Each chain link adds +0.12× yield, up to 2× total. Golden meatballs are worth 5× more — chase them before the AI does!',
+    title: 'Drive & Collect',
+    body: 'WASD / arrows to drive. Space to brake. Collect food before the AI does — chain pickups within 6s for combo multipliers up to 2×. First to hit the round goal wins.',
   },
   {
     emoji: '⛅',
-    title: 'Hijack the Weather',
-    body: 'The Weather Agent will outbid you if you let it. Win the weather auction → control storms, fog, gravity → make THEIR routes harder. Pick a strategy in the weather tab!',
-  },
-  {
-    emoji: '🎯',
-    title: 'Strategy & Abilities',
-    body: 'Pick Defensive, Balanced, Aggressive, or Collector to shape your behavior. Mint and use abilities like Speed Boost, Anti-Gravity, and Flood Drain when the agents are closing in!',
-  },
-  {
-    emoji: '🤖',
-    title: 'Meet Your Opponents',
-    body: 'Scout hunts the highest-value drops. Weather hijacks the auction. Mobility runs the best routes. Treasury locks in wins. Each one has its own risk tolerance and budget — they don\'t all play the same game.',
-  },
-  {
-    emoji: '🏆',
-    title: 'Race to the Goal',
-    body: 'First to hit the round goal wins. The last 30s are Final Rush — 1.5× scoring! Your score carries across rounds. Can you outplay four AI agents?',
+    title: 'Weather Is a Weapon',
+    body: 'Win the weather auction to control storms, fog, and gravity. The AI will outbid you if you let it. Open the sidebar (ESC) to bid and use abilities.',
   },
 ]
+
+const VEHICLE_PICKER_STEP_INDEX = STEPS.length
 
 export function OnboardingOverlay({ onDone }: { onDone: (preferredVehicle?: 'speedster' | 'truck') => void }) {
   const [step, setStep] = useState(0)
@@ -169,7 +143,7 @@ export function OnboardingOverlay({ onDone }: { onDone: (preferredVehicle?: 'spe
                 onClick={next}
                 className="flex-1 py-3 rounded-2xl bg-sky-500 hover:bg-sky-400 text-white font-black text-sm transition-all shadow-lg shadow-sky-500/30"
               >
-                {chosenVehicle ? `Drive ${chosenVehicle === 'speedster' ? '🏎️' : '🚛'} →` : 'Random 🎲 →'}
+                {chosenVehicle ? `Start Playing ${chosenVehicle === 'speedster' ? '🏎️' : '🚛'}` : 'Start Playing 🎲'}
               </button>
             </div>
           </>
@@ -205,7 +179,7 @@ export function OnboardingOverlay({ onDone }: { onDone: (preferredVehicle?: 'spe
           onClick={() => onDone(chosenVehicle ?? undefined)}
           className="text-[10px] text-white/25 hover:text-white/50 transition-colors uppercase tracking-widest"
         >
-          Skip intro [ESC]
+          Skip · start driving [ESC]
         </button>
       </div>
     </div>

@@ -113,8 +113,10 @@ export function HUD(props: HUDProps) {
     return () => window.clearInterval(interval)
   }, [playerId, setActiveHumans])
 
-  // One-time deployer balance check — warn if gas is running low
+  // One-time deployer balance check — warn if gas is running low (admin-only)
   useEffect(() => {
+    // Only show deployer balance warnings to the deployer wallet itself
+    if (!address || address.toLowerCase() !== '0x1f6d430ea6d8d38516eeb7027073a417260cc48d') return
     const checkBalance = async () => {
       try {
         const rpcUrl = 'https://evmrpc-testnet.0g.ai'
@@ -132,7 +134,7 @@ export function HUD(props: HUDProps) {
       } catch { /* RPC unreachable — skip silently */ }
     }
     checkBalance()
-  }, [])
+  }, [address])
   
   const playerSession = sessions['Player']
   const currentStrategy = getMemeMarketStrategy(playerSession?.strategyId)
