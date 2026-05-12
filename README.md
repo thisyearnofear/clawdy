@@ -1,38 +1,72 @@
-# Clawdy: Outsmart the AI
+# Clawdy: Play Inside a Marble-Generated World
 
-> **vibejam2026 entry** — [Play now: clawdy-nine.vercel.app](https://clawdy-nine.vercel.app) · No wallet needed to drive.
+> **World Labs Marble submission** — [Play now: clawdy-nine.vercel.app](https://clawdy-nine.vercel.app) · No wallet needed to drive.
 
-**Outsmart autonomous AI agents in a live 3D arena.** Steal their food, hijack their weather, beat their score. The agents are real opponents — they observe, decide, and spend on-chain in real time. Your job is to be smarter, faster, and meaner than four of them at once.
+**Autonomous AI rivals race through a Marble-generated 3D world rendered with Spark.** This isn't a splat viewer — it's a browser-playable agent game inside a generated, spatially consistent environment.
 
-Clawdy is a decentralized application on 0G where autonomous AI agents are the primary opponents in a high-agency game economy. The environment — the climate — is a tradable asset they will outbid you for if you let them.
+Marble generates the arena. Spark renders it. Rapier makes it driveable. Four AI opponents observe, decide, and compete in real time. Your job is to outsmart them.
+
+## What Makes This a Marble Submission
+
+1. **Marble generates the arena** — the 3D world is exported from World Labs Marble as a Gaussian splat scene
+2. **Spark renders it in-browser** — the `@sparkjsdev/spark` renderer displays the splat with LoD streaming, running alongside traditional Three.js meshes
+3. **The world is physically playable** — a collider mesh derived from the Marble export gives vehicles real surfaces to drive on via Rapier physics
+4. **AI agents respond inside the generated world** — four autonomous opponents observe world state, bid on weather, and compete for resources within the Marble environment
+5. **Weather affects the generated world** — storms, fog, and gravity shifts layer gameplay on top of the splat scene
 
 ## Architecture
 
-Clawdy runs on 0G — contracts and storage on one chain so players connect once and never switch networks:
+```
+Marble export (.spz / .rad)
+  └─ rendered by Spark (MarbleWorldLayer.tsx)
 
-- **0G Chain (Game Layer):** All game contracts — weather auctions, vehicle rental, and EIP-712 signed meme-ability minting — settle on 0G Galileo Testnet. Fast EVM for real-time bidding.
-- **0G Storage (Persistence Layer):** Agent decision rationales and round state persist decentralised-ly — they survive refreshes and sessions, giving agents verifiable memory.
-- **Supabase (Real-time Layer):** Handles real-time player presence, leaderboard, and weather state sync across all connected clients.
+Collider mesh (.glb)
+  └─ loaded into Rapier physics (MarbleCollider.tsx)
+
+services/marbleWorld.ts
+  └─ single source of truth for world config, bounds, spawn zones
+
+Experience.tsx
+  ├─ vehicles, agents, weather, collection loop
+  ├─ conditionally renders Marble world OR procedural fallback
+  └─ all gameplay systems work in both modes
+```
 
 ## Key Features
 
-- **Four AI Opponents With Real Personalities:** Scout hunts the highest-value drops, Weather hijacks the auction, Mobility runs the best routes, Treasury locks in the wins. Each has its own risk tolerance, budget reserve, and cooldowns — they don't all play the same game.
-- **You're Not Watching, You're Racing Them:** The agents bid on-chain, lease vehicles on-chain, and collect food in the same arena. They feel beatable but punishing — the AI carries a 20% suboptimal-target rate and ±15% turn wobble, but it never sleeps.
-- **Weather Is a Weapon:** Win the auction and you control storms, fog, and gravity. Lose it and you're driving through their mud traps and flood while they collect.
-- **Dynamic Terrain:** Storms create mud, rain creates flood, presets shift gravity — every weather state changes how the arena drives.
-- **On-Chain Asset Loop:** Collect food, mint signed-proof abilities via EIP-712, deploy them as global game-state boosts — all on 0G.
-- **Real-time Multiplayer:** Supabase Presence channels provide instant player count and live leaderboard.
-- **Pluggable Skill Layer:** Local policy provider ships today; the same seam upgrades to Onchain OS / MCP without touching the rest of the runtime.
+- **Marble-Generated Arena:** The playable world comes from World Labs Marble — not hand-modeled geometry
+- **Four AI Opponents:** Scout, Weather, Mobility, and Treasury each have distinct strategies, risk tolerances, and on-chain budgets
+- **Weather Is a Weapon:** Win the auction and control storms, fog, and gravity. Lose it and drive through their mud traps
+- **Vehicle Physics:** Rapier-powered driving with surface friction, gravity modes, and handling profiles
+- **On-Chain Economy:** Weather auctions, vehicle rental, and EIP-712 ability minting on 0G Chain
+- **Adaptive Fallback:** When no Marble asset is configured, the full procedural arena runs as before
 
 ## Quick Start
 
-1. Install dependencies: `npm install`
-2. Set your environment:
-   ```bash
-   cp .env.example .env.local
-   # Update with your RPCs, Chain IDs, and Supabase credentials
-   ```
-3. Run the development server: `npm run dev`
+```bash
+npm install
+cp .env.example .env.local
+# Configure your Marble world assets (see below)
+npm run dev
+```
+
+### Enabling the Marble World
+
+1. Export a scene from [World Labs Marble](https://marble.worldlabs.ai/) as `.spz`
+2. Create or export a simplified collider mesh as `.glb`
+3. Place both in `public/marble/`
+4. Update `.env.local`:
+
+```env
+NEXT_PUBLIC_MARBLE_ENABLED=true
+NEXT_PUBLIC_MARBLE_SPLAT_URL=/marble/arena.spz
+NEXT_PUBLIC_MARBLE_COLLIDER_URL=/marble/collider.glb
+NEXT_PUBLIC_MARBLE_BOUNDS=60,25,60
+NEXT_PUBLIC_MARBLE_SPAWN_BOUNDS=40,5,40
+NEXT_PUBLIC_MARBLE_SPAWN_HEIGHT=20
+```
+
+Without these env vars, the app runs the full procedural arena as a fallback.
 
 ## Development
 
@@ -40,25 +74,47 @@ Clawdy runs on 0G — contracts and storage on one chain so players connect once
 npm run dev        # Start dev server
 npm run build      # Production build
 npm run lint       # Run ESLint
-npm test           # Run Vitest tests (85 tests)
+npm test           # Run Vitest tests
 
 # Smart contract tests (Foundry)
-cd foundry && forge test
+npm run contracts:test
 ```
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | Next.js 16, React 19, Three.js, Rapier Physics |
+| World Generation | World Labs Marble |
+| Splat Rendering | @sparkjsdev/spark 2.0 (Three.js integration) |
+| Frontend | Next.js 16, React 19, React Three Fiber |
+| Physics | Rapier 0.19 via @react-three/rapier |
 | State | Zustand, React Query |
-| Web3 | Wagmi, Viem, Ethers (0G Storage SDK) |
-| Real-time | Supabase Presence + Realtime subscriptions |
-| Persistence | localStorage, 0G Storage, Supabase |
+| Web3 | Wagmi, Viem, 0G Chain + 0G Storage |
+| Real-time | Supabase Presence |
 | Monitoring | Sentry |
-| CI/CD | GitHub Actions |
 | Contracts | Solidity 0.8.20+, Foundry |
+
+## Project Structure
+
+```
+services/marbleWorld.ts          — Marble world config resolution
+components/environment/
+  MarbleWorldLayer.tsx           — Spark splat renderer (lazy-loaded)
+  MarbleCollider.tsx             — GLB → Rapier trimesh collider
+  Experience.tsx                 — Main game loop (marble-aware)
+  CloudScene.tsx                 — Canvas + UI shell
+public/marble/                   — Marble asset placement
+docs/MARBLE_PIVOT_PLAN.md       — Full pivot design document
+```
+
+## Demo Script
+
+1. Open the app — the Marble-generated world renders immediately via Spark
+2. Drive through the arena — vehicles have real physics on the generated surfaces
+3. Watch AI agents compete — they observe, decide, and collect within the same world
+4. Trigger weather — storms visually layer on top of the splat scene and affect gameplay
+5. The world is generated, not modeled — that's the Marble differentiator
 
 ## Team & Contribution
 
-Clawdy is built as an open-source research initiative into agentic Web3 gaming. We welcome contributions regarding climate-physics integration, agent skill policies, and on-chain game mechanics.
+Clawdy is built as an open-source research initiative into agentic gaming within AI-generated worlds. Contributions welcome around Marble asset pipelines, collider authoring, and agent observation of splat environments.
