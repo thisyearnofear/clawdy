@@ -23,6 +23,7 @@ vi.mock('../gameStore', () => ({
 }))
 
 import { PersistenceService } from '../PersistenceService'
+import type { AgentSession } from '../protocolTypes'
 
 describe('PersistenceService', () => {
   let service: PersistenceService
@@ -45,8 +46,14 @@ describe('PersistenceService', () => {
 
   describe('persistState', () => {
     it('saves sessions to localStorage', () => {
-      const sessions = new Map([
+      const sessions = new Map<string, AgentSession>([
         ['Scout-1', {
+          agentId: 'Scout-1',
+          role: 'scout',
+          mission: 'Find profitable routes.',
+          vehicleId: 'vehicle-1',
+          activeUntil: Date.now() + 60000,
+          permissions: ['asset_control', 'route_planning'],
           balance: 2.5,
           totalEarned: 1.5,
           totalPaid: 0.5,
@@ -56,6 +63,9 @@ describe('PersistenceService', () => {
           vitality: 80,
           burden: 20,
           decisionCount: 5,
+          targetAssetId: null,
+          autoPilot: true,
+          agentLoyalty: 90,
         }],
       ])
       service.persistState(sessions)
