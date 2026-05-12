@@ -85,6 +85,7 @@ function Experience({
   const preferredVehicle = useGameStore(s => s.ui.preferredVehicleType)
   const marbleWorld = useMemo(() => getMarbleWorldConfig(), [])
   const useMarbleWorld = shouldUseMarbleWorld(marbleWorld)
+  const [marbleDebug, setMarbleDebug] = useState(false)
   const worldBounds: [number, number, number] = useMarbleWorld ? marbleWorld.bounds : cloudConfig.bounds
   const spawnBounds: [number, number, number] = useMarbleWorld ? marbleWorld.spawnBounds : [50, 5, 50]
   const spawnHeight = useMarbleWorld ? marbleWorld.spawnHeight : 18
@@ -321,6 +322,14 @@ function Experience({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [useMarbleWorld]);
 
+  // Debug toggle: backtick shows collider wireframe over the splat
+  useEffect(() => {
+    if (!useMarbleWorld) return
+    const handleKeyDown = (e: KeyboardEvent) => { if (e.key === '`') setMarbleDebug(prev => !prev) }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [useMarbleWorld])
+
   return (
     <KeyboardControls
       map={[{ name: 'forward', keys: ['ArrowUp', 'KeyW'] }, { name: 'backward', keys: ['ArrowDown', 'KeyS'] }, { name: 'left', keys: ['ArrowLeft', 'KeyA'] }, { name: 'right', keys: ['ArrowRight', 'KeyD'] }, { name: 'jump', keys: ['Space'] }]}
@@ -419,7 +428,7 @@ function Experience({
         {!useMarbleWorld && <MudMarkers />}
         {!useMarbleWorld && <Vegetation getHeightAt={useSphericalTerrain ? getSphericalTerrainHeight : terrainSampler} />}
         {useMarbleWorld ? (
-          <MarbleCollider config={marbleWorld} onReady={setTerrainSampler} />
+          <MarbleCollider config={marbleWorld} debug={marbleDebug} onReady={setTerrainSampler} />
         ) : useSphericalTerrain ? (
           <IntegratedSphericalTerrain playerPosition={playerVehiclePosition} onTerrainReady={setTerrainSampler} />
         ) : (

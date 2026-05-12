@@ -19,6 +19,18 @@ const baseConfig: NextConfig = {
   headers: async () => [
     { source: '/(.*)', headers: securityHeaders },
   ],
+  webpack: (config) => {
+    // Fix for @sparkjsdev/spark WASM URL resolution with Webpack/Next.js
+    // See: https://github.com/sparkjsdev/spark-react-r3f#using-webpack
+    config.module.parser = {
+      ...config.module.parser,
+      javascript: {
+        ...config.module.parser?.javascript,
+        url: false, // disable parsing of `new URL()` syntax
+      },
+    }
+    return config
+  },
 };
 
 export default withBundleAnalyzer(

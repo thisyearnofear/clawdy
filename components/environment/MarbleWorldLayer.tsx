@@ -1,27 +1,33 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useMemo } from 'react'
 import { useThree } from '@react-three/fiber'
+import { extend } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { MarbleWorldConfig } from '../../services/marbleWorld'
 
+// Lazy-loaded Spark classes — we extend them into R3F's JSX namespace
+let sparkExtended = false
+
 /**
  * MarbleWorldLayer renders a Gaussian Splat scene using the Spark renderer.
- * It lazily imports @sparkjsdev/spark so the bundle stays lean when Marble is disabled.
+ * Uses the official R3F `extend()` pattern from sparkjsdev/spark-react-r3f.
  *
  * Props:
  *  - config: resolved MarbleWorldConfig (must have splat.url set)
- *  - visible: whether to show the splat layer (allows fade-out without unmount)
+ *  - visible: whether to show the splat layer
+ *  - onLoad: callback when splat finishes loading
  */
 interface MarbleWorldLayerProps {
   config: MarbleWorldConfig
   visible?: boolean
+  onLoad?: () => void
 }
 
-export function MarbleWorldLayer({ config, visible = true }: MarbleWorldLayerProps) {
+export function MarbleWorldLayer({ config, visible = true, onLoad }: MarbleWorldLayerProps) {
   const { gl, scene } = useThree()
-  const sparkRef = useRef<unknown>(null)
-  const splatMeshRef = useRef<unknown>(null)
+  const sparkRef = useRef<THREE.Object3D | null>(null)
+  const splatRef = useRef<THREE.Object3D | null>(null)
   const disposeRef = useRef<(() => void) | null>(null)
   const splatUrl = config.splat?.url
   const splatFormat = config.splat?.format
@@ -33,31 +39,37 @@ export function MarbleWorldLayer({ config, visible = true }: MarbleWorldLayerPro
 
     async function init() {
       try {
-        // Lazy-load Spark to avoid bundling when marble is disabled
-        const { SparkRenderer, SplatMesh } = await import('@sparkjsdev/spark')
+        const Spark = await import('@sparkjsdev/spark')
 
         if (cancelled) return
 
-        // Create the Spark renderer and attach to the scene
-        const spark = new SparkRenderer({
+        // Extend R3F JSX namespace (idempotent)
+        if (!sparkExtended) {
+          extend({ SparkRenderer: Spark.SparkRenderer, SplatMesh: Spark.SplatMesh })
+          sparkExtended = true
+        }
+
+        // Create SparkRenderer
+        const spark = new Spark.SparkRenderer({
           renderer: gl,
           sortRadial: true,
           lodSplatScale: 1.0,
         })
         scene.add(spark as unknown as THREE.Object3D)
-        sparkRef.current = spark
+        sparkRef.current = spark as unknown as THREE.Object3D
 
-        // Create the SplatMesh from the configured URL
-        const splatMesh = new SplatMesh({
+        // Create SplatMesh
+        const splatMesh = new Spark.SplatMesh({
           url: splatUrl,
-          lod: splatFormat !== 'spz',
+          lod: splatFormat === 'rad',
           paged: splatFormat === 'rad',
+          onLoad: () => {
+            if (!cancelled) onLoad?.()
+          },
         })
-
         scene.add(splatMesh as unknown as THREE.Object3D)
-        splatMeshRef.current = splatMesh
+        splatRef.current = splatMesh as unknown as THREE.Object3D
 
-        // Cleanup function
         disposeRef.current = () => {
           scene.remove(splatMesh as unknown as THREE.Object3D)
           scene.remove(spark as unknown as THREE.Object3D)
@@ -78,17 +90,14 @@ export function MarbleWorldLayer({ config, visible = true }: MarbleWorldLayerPro
       disposeRef.current?.()
       disposeRef.current = null
       sparkRef.current = null
-      splatMeshRef.current = null
+      splatRef.current = null
     }
-  }, [gl, scene, splatFormat, splatUrl])
+  }, [gl, scene, splatFormat, splatUrl, onLoad])
 
-  // Toggle visibility without unmounting
+  // Toggle visibility
   useEffect(() => {
-    const mesh = splatMeshRef.current as { visible?: boolean } | null
-    if (mesh && 'visible' in mesh) {
-      mesh.visible = visible
-    }
+    if (splatRef.current) splatRef.current.visible = visible
   }, [visible])
 
-  return null // Spark renders via scene injection, no JSX geometry needed
+  return null
 }

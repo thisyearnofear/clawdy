@@ -10,14 +10,16 @@ import type { MarbleWorldConfig } from '../../services/marbleWorld'
  * MarbleCollider loads a GLB mesh and creates a Rapier trimesh collider from it.
  * This gives the Marble-generated world physical surfaces for vehicles to drive on.
  *
- * The collider mesh is invisible — the visual layer is handled by MarbleWorldLayer.
+ * The collider mesh is invisible by default — press Space to toggle debug wireframe.
+ * The visual layer is handled by MarbleWorldLayer (Spark splat renderer).
  */
 interface MarbleColliderProps {
   config: MarbleWorldConfig
+  debug?: boolean
   onReady?: (sampler: (x: number, z: number) => number) => void
 }
 
-export function MarbleCollider({ config, onReady }: MarbleColliderProps) {
+export function MarbleCollider({ config, debug = false, onReady }: MarbleColliderProps) {
   const [geometry, setGeometry] = useState<THREE.BufferGeometry | null>(null)
 
   useEffect(() => {
@@ -36,7 +38,6 @@ export function MarbleCollider({ config, onReady }: MarbleColliderProps) {
         gltf.scene.traverse((child) => {
           if (!colliderGeometry && (child as THREE.Mesh).isMesh) {
             const mesh = child as THREE.Mesh
-            // Apply world transforms to the geometry so collider matches visual
             mesh.updateWorldMatrix(true, false)
             const geo = mesh.geometry.clone()
             geo.applyMatrix4(mesh.matrixWorld)
@@ -82,8 +83,14 @@ export function MarbleCollider({ config, onReady }: MarbleColliderProps) {
 
   return (
     <RigidBody type="fixed" colliders="trimesh" ccd={true}>
-      <mesh geometry={geometry} visible={false}>
-        <meshBasicMaterial visible={false} />
+      <mesh geometry={geometry} visible={debug}>
+        <meshBasicMaterial
+          color="#00ff88"
+          wireframe
+          transparent
+          opacity={0.3}
+          visible={debug}
+        />
       </mesh>
     </RigidBody>
   )
