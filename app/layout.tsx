@@ -15,21 +15,21 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'CLAWDY — Outsmart the AI',
-  description: 'Outsmart autonomous AI agents in a live 3D arena. Steal their food, hijack their weather, beat their score. No wallet needed to play.',
-  keywords: ['web3', 'game', 'multiplayer', 'ai agents', '0g chain', 'three.js', 'weather', 'vibejam2026', 'onchain', 'free to play'],
+  title: 'CLAWDY — Play Inside a Marble-Generated World',
+  description: 'Race autonomous AI agents through a World Labs Marble-generated 3D arena rendered with Spark. Drive, collect, and outsmart four AI opponents in real time.',
+  keywords: ['world labs', 'marble', 'spark', 'gaussian splatting', 'ai agents', 'web3', 'game', 'three.js', '3d', 'hackathon'],
   authors: [{ name: 'CLAWDY' }],
   openGraph: {
-    title: 'CLAWDY — Outsmart the AI',
-    description: 'Outsmart autonomous AI agents in a live 3D arena. Steal their food, hijack their weather, beat their score. Free to play, no wallet needed.',
+    title: 'CLAWDY — Play Inside a Marble-Generated World',
+    description: 'Race autonomous AI agents through a Marble-generated 3D arena. The world is AI-generated, physically playable, and the opponents are real.',
     type: 'website',
     url: 'https://clawdy-nine.vercel.app',
-    images: [{ url: '/og-image.svg', width: 1200, height: 630, alt: 'CLAWDY — Outsmart the AI' }],
+    images: [{ url: '/og-image.svg', width: 1200, height: 630, alt: 'CLAWDY — Play Inside a Marble-Generated World' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'CLAWDY — Outsmart the AI',
-    description: 'Outsmart autonomous AI agents in a live 3D arena. Steal their food, hijack their weather, beat their score. Free to play, no wallet needed.',
+    title: 'CLAWDY — Play Inside a Marble-Generated World',
+    description: 'Race autonomous AI agents through a Marble-generated 3D arena. The world is AI-generated, physically playable, and the opponents are real.',
     images: ['/og-image.svg'],
   },
   icons: {

@@ -52,6 +52,7 @@ import { playSound } from '../ui/SoundManager'
 import { getMarbleWorldConfig, shouldUseMarbleWorld } from '../../services/marbleWorld'
 import { MarbleWorldLayer } from './MarbleWorldLayer'
 import { MarbleCollider } from './MarbleCollider'
+import { CollectionBurst, emitCollectionBurst } from './CollectionBurst'
 
 interface VehicleData {
   id: string
@@ -358,9 +359,10 @@ function Experience({
         <MemeAssetSpawner spawnRate={effectiveSpawnRate} bounds={spawnBounds} spawnHeight={spawnHeight} maxItems={55} onSpawn={(item) => setMemeAssets((prev) => [...prev, { ...item, itemType: chooseAssistedAssetType(item.tier) }])} />
         <AgentVision />
         <IntentionVisualizer />
+        <CollectionBurst />
         <MemeAssetInstances assets={memeAssets} />
         {memeAssets.map((item) => (
-          <ProceduralMemeAsset key={item.id} id={item.id} itemType={item.itemType} position={item.position} onDespawn={() => handleDespawn(item.id)} onCollect={(id, stats, collector) => handleCollect(id, stats, collector)} />
+          <ProceduralMemeAsset key={item.id} id={item.id} itemType={item.itemType} position={item.position} onDespawn={() => handleDespawn(item.id)} onCollect={(id, stats, collector) => { emitCollectionBurst(item.position, stats.type === 'golden_meatball' ? '#f1c40f' : '#00e5ff'); handleCollect(id, stats, collector) }} />
         ))}
         {Array.from({ length: 8 }).map((_, i) => {
           const v = vehicles[i]
