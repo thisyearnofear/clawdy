@@ -49,6 +49,7 @@ import type { RapierRigidBody } from '@react-three/rapier'
 import { useGameStore, GRAVITY_FOR_PRESET, type GravityMode } from '../../services/gameStore'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import { playSound } from '../ui/SoundManager'
+import { getMarbleWorldConfig, shouldUseMarbleWorld } from '../../services/marbleWorld'
 
 interface VehicleData {
   id: string
@@ -79,6 +80,11 @@ function Experience({
   useEffect(() => { setIsMobileClient(_isMobile) }, [])
   const freeAirBubbleUsedRef = useRef(false)
   const preferredVehicle = useGameStore(s => s.ui.preferredVehicleType)
+  const marbleWorld = useMemo(() => getMarbleWorldConfig(), [])
+  const useMarbleWorld = shouldUseMarbleWorld(marbleWorld)
+  const worldBounds: [number, number, number] = useMarbleWorld ? marbleWorld.bounds : cloudConfig.bounds
+  const spawnBounds: [number, number, number] = useMarbleWorld ? marbleWorld.spawnBounds : [50, 5, 50]
+  const spawnHeight = useMarbleWorld ? marbleWorld.spawnHeight : 18
 
   const playerVehicleObjRef = useRef<RapierRigidBody | null>(null)
   const spectatorVehicleObjRef = useRef<RapierRigidBody | null>(null)
@@ -245,9 +251,9 @@ function Experience({
   useEffect(() => {
     agentProtocol.updateWorldState({
       assets: memeAssets.map(a => ({ id: a.id, type: a.itemType ?? 'asset', rarity: 'unknown', position: a.position })),
-      bounds: cloudConfig.bounds
+      bounds: worldBounds
     })
-  }, [memeAssets, cloudConfig.bounds])
+  }, [memeAssets, worldBounds])
 
   useWatchContractEvent({
     address: VEHICLE_RENT_ADDRESS as `0x${string}`,
@@ -346,7 +352,7 @@ function Experience({
         <LaunchPads />
         <SkyIslands />
         <CloudManager config={cloudConfig} />
-        <MemeAssetSpawner spawnRate={effectiveSpawnRate} bounds={[50, 5, 50]} spawnHeight={18} maxItems={55} onSpawn={(item) => setMemeAssets((prev) => [...prev, { ...item, itemType: chooseAssistedAssetType(item.tier) }])} />
+        <MemeAssetSpawner spawnRate={effectiveSpawnRate} bounds={spawnBounds} spawnHeight={spawnHeight} maxItems={55} onSpawn={(item) => setMemeAssets((prev) => [...prev, { ...item, itemType: chooseAssistedAssetType(item.tier) }])} />
         <AgentVision />
         <IntentionVisualizer />
         <MemeAssetInstances assets={memeAssets} />
