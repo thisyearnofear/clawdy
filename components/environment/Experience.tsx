@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { CameraManager } from './CameraManager'
@@ -442,7 +442,11 @@ function Experience({
         )}
         {address && <InWorldQueueStatus playerId={playerId} queueState={queueState} isPlayerActive={isPlayerActive} playerVehicle={playerVehicle} />}
       </Physics>
-      {useMarbleWorld && <MarbleWorldLayer config={marbleWorld} />}
+      {useMarbleWorld && (
+        <ErrorBoundaryFallback>
+          <MarbleWorldLayer config={marbleWorld} />
+        </ErrorBoundaryFallback>
+      )}
       <ContactShadows opacity={0.4} scale={50} blur={1} far={20} resolution={256} color="#000000" />
       {isMobileClient && <FrameLimiter fps={30} />}
     </KeyboardControls>
@@ -520,6 +524,24 @@ function SkyIsland({ position, size, color }: { position: [number, number, numbe
       <mesh ref={glowRef} position={[position[0], position[1] - 0.3, position[2]]}><sphereGeometry args={[Math.max(size[0], size[2]) * 0.4, 16, 8]} /><meshBasicMaterial color={color} transparent opacity={0.15} /></mesh>
     </group>
   )
+}
+
+// Error boundary that silently catches Spark/Marble failures without crashing the game
+class ErrorBoundaryFallback extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props)
+    this.state = { hasError: false }
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+  componentDidCatch(error: Error) {
+    console.warn('[MarbleWorldLayer] Caught error, falling back to procedural world:', error.message)
+  }
+  render() {
+    if (this.state.hasError) return null
+    return this.props.children
+  }
 }
 
 export default ExperienceWithMobileControls;
