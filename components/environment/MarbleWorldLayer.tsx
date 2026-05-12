@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { useThree, useFrame } from '@react-three/fiber'
+import { useEffect, useRef } from 'react'
+import { useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { MarbleWorldConfig } from '../../services/marbleWorld'
 
@@ -18,25 +18,20 @@ interface MarbleWorldLayerProps {
   visible?: boolean
 }
 
-type LoadState = 'idle' | 'loading' | 'ready' | 'error'
-
 export function MarbleWorldLayer({ config, visible = true }: MarbleWorldLayerProps) {
   const { gl, scene } = useThree()
-  const [loadState, setLoadState] = useState<LoadState>('idle')
-  const [progress, setProgress] = useState(0)
   const sparkRef = useRef<unknown>(null)
   const splatMeshRef = useRef<unknown>(null)
   const disposeRef = useRef<(() => void) | null>(null)
+  const splatUrl = config.splat?.url
+  const splatFormat = config.splat?.format
 
   useEffect(() => {
-    if (!config.splat?.url) return
+    if (!splatUrl || !splatFormat) return
 
     let cancelled = false
 
     async function init() {
-      setLoadState('loading')
-      setProgress(0)
-
       try {
         // Lazy-load Spark to avoid bundling when marble is disabled
         const { SparkRenderer, SplatMesh } = await import('@sparkjsdev/spark')
@@ -54,16 +49,9 @@ export function MarbleWorldLayer({ config, visible = true }: MarbleWorldLayerPro
 
         // Create the SplatMesh from the configured URL
         const splatMesh = new SplatMesh({
-          url: config.splat!.url,
-          lod: true,
-          onProgress: (event: ProgressEvent) => {
-            if (event.lengthComputable) {
-              setProgress(Math.round((event.loaded / event.total) * 100))
-            }
-          },
-          onLoad: () => {
-            if (!cancelled) setLoadState('ready')
-          },
+          url: splatUrl,
+          lod: splatFormat !== 'spz',
+          paged: splatFormat === 'rad',
         })
 
         scene.add(splatMesh as unknown as THREE.Object3D)
@@ -79,7 +67,6 @@ export function MarbleWorldLayer({ config, visible = true }: MarbleWorldLayerPro
       } catch (err) {
         if (!cancelled) {
           console.error('[MarbleWorldLayer] Failed to load Spark/splat:', err)
-          setLoadState('error')
         }
       }
     }
@@ -93,7 +80,7 @@ export function MarbleWorldLayer({ config, visible = true }: MarbleWorldLayerPro
       sparkRef.current = null
       splatMeshRef.current = null
     }
-  }, [config.splat?.url, gl, scene])
+  }, [gl, scene, splatFormat, splatUrl])
 
   // Toggle visibility without unmounting
   useEffect(() => {
@@ -103,14 +90,5 @@ export function MarbleWorldLayer({ config, visible = true }: MarbleWorldLayerPro
     }
   }, [visible])
 
-  // Expose load state for parent UI (loading indicator, error state)
-  useFrame(() => {
-    // Spark handles its own rendering pipeline via the scene graph.
-    // No per-frame work needed here beyond what Spark does internally.
-  })
-
   return null // Spark renders via scene injection, no JSX geometry needed
 }
-
-// Re-export load state type for consumers
-export type { LoadState as MarbleLoadState }

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { RigidBody } from '@react-three/rapier'
-import { useLoader } from '@react-three/fiber'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import * as THREE from 'three'
 import type { MarbleWorldConfig } from '../../services/marbleWorld'
