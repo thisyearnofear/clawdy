@@ -50,6 +50,8 @@ import { useGameStore, GRAVITY_FOR_PRESET, type GravityMode } from '../../servic
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import { playSound } from '../ui/SoundManager'
 import { getMarbleWorldConfig, shouldUseMarbleWorld } from '../../services/marbleWorld'
+import { MarbleWorldLayer } from './MarbleWorldLayer'
+import { MarbleCollider } from './MarbleCollider'
 
 interface VehicleData {
   id: string
@@ -413,13 +415,22 @@ function Experience({
         })}
         <MudMarkers />
         <Vegetation getHeightAt={useSphericalTerrain ? getSphericalTerrainHeight : terrainSampler} />
-        {useSphericalTerrain ? <IntegratedSphericalTerrain playerPosition={playerVehiclePosition} onTerrainReady={setTerrainSampler} /> : <Terrain onSamplerReady={setTerrainSampler} />}
-        <group position={[0, 20, -10]}>
-          <Text fontSize={0.5} color={useSphericalTerrain ? "#ff6b6b" : "#4ecdc4"} anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="#000000">SPHERICAL: {useSphericalTerrain ? "ON" : "OFF"}</Text>
-          <Text position={[0, -1, 0]} fontSize={0.3} color="#ffffff" anchorX="center" anchorY="middle" outlineWidth={0.02} outlineColor="#000000">Press &apos;T&apos; to toggle</Text>
-        </group>
+        {useMarbleWorld ? (
+          <MarbleCollider config={marbleWorld} onReady={setTerrainSampler} />
+        ) : useSphericalTerrain ? (
+          <IntegratedSphericalTerrain playerPosition={playerVehiclePosition} onTerrainReady={setTerrainSampler} />
+        ) : (
+          <Terrain onSamplerReady={setTerrainSampler} />
+        )}
+        {!useMarbleWorld && (
+          <group position={[0, 20, -10]}>
+            <Text fontSize={0.5} color={useSphericalTerrain ? "#ff6b6b" : "#4ecdc4"} anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="#000000">SPHERICAL: {useSphericalTerrain ? "ON" : "OFF"}</Text>
+            <Text position={[0, -1, 0]} fontSize={0.3} color="#ffffff" anchorX="center" anchorY="middle" outlineWidth={0.02} outlineColor="#000000">Press &apos;T&apos; to toggle</Text>
+          </group>
+        )}
         {address && <InWorldQueueStatus playerId={playerId} queueState={queueState} isPlayerActive={isPlayerActive} playerVehicle={playerVehicle} />}
       </Physics>
+      {useMarbleWorld && <MarbleWorldLayer config={marbleWorld} />}
       <ContactShadows opacity={0.4} scale={50} blur={1} far={20} resolution={256} color="#000000" />
       {isMobileClient && <FrameLimiter fps={30} />}
     </KeyboardControls>
