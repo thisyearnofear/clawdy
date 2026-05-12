@@ -20,6 +20,7 @@ import dynamic from 'next/dynamic'
 import { Overlays } from '../ui/Overlays'
 import { LoadingSplash } from '../ui/LoadingSplash'
 import { MobileTouchControls } from '../ui/MobileTouchControls'
+import { MarbleBadge } from '../ui/MarbleBadge'
 import { useGameStore } from '../../services/gameStore'
 import { vehicleQueue } from '../../services/VehicleQueue'
 import { trackEvent } from '../../services/analytics'
@@ -434,6 +435,9 @@ export default function CloudScene() {
 
       {/* Help hint component - persistent until first keypress */}
       <HelpHint />
+
+      {/* Marble attribution badge */}
+      <MarbleBadge />
     </div>
   )
 }

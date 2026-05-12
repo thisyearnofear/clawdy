@@ -32,6 +32,19 @@ NEXT_PUBLIC_MARBLE_COLLIDER_URL=/marble/collider.glb
 
 ## Collider Mesh Guidelines
 
+The collider can come from two sources:
+
+### 1. API-generated (automatic)
+Run `npm run marble:generate` — if the API returns a `collider_mesh_url`, it downloads automatically.
+
+### 2. Splat Collider Builder (manual, recommended for refinement)
+Use the hackathon-provided tool to author better colliders:
+- **Web app:** https://splat-collider-builder.netlify.app/
+- **Source:** https://github.com/icurtis1/splat-collider-builder
+
+Load your `arena.spz`, draw collision volumes over driveable surfaces, export as `collider.glb`.
+
+### Guidelines
 - Keep triangle count low (< 10k triangles) for physics performance
 - Ensure the mesh is watertight where vehicles drive
 - Match the scale/origin of the splat export
