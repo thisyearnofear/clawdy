@@ -6,6 +6,7 @@ import { agentProtocol } from '../services/AgentProtocol'
 import { emitToast } from '../components/ui/GameToasts'
 import { playSound } from '../components/ui/SoundManager'
 import { useGameStore } from '../services/gameStore'
+import { isLocalPlayMode } from '../services/runtimeConfig'
 import type { VehicleType } from '../services/AgentProtocol'
 import type { CloudConfig } from '../components/environment/CloudManager'
 
@@ -46,6 +47,8 @@ export function usePlayerQueue(
   }, [playerId])
 
   const getVehiclePosition = useCallback((index: number, isGhost: boolean = false): [number, number, number] => {
+    if (isLocalPlayMode() && index === 0 && !isGhost) return [0, 5, 0]
+
     const angle = (index / 10) * Math.PI * 2
     const radius = cloudConfig.bounds[0] * (isGhost ? 0.9 : 0.8)
     return [

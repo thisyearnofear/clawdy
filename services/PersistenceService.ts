@@ -2,6 +2,7 @@ import type { AgentSession } from './protocolTypes'
 import { ZgGameState, zgLoadAgentMemory, zgSaveAgentMemory, type AgentMemoryStore } from './zgStorage'
 import { useGameStore, type VehicleHandlingProfile } from './gameStore'
 import { logger } from './logger'
+import { is0GPersistenceEnabled } from './runtimeConfig'
 
 export class PersistenceService {
   private zgSaveCounter = 0
@@ -31,6 +32,8 @@ export class PersistenceService {
       })
       localStorage.setItem('clawdy:sessions', JSON.stringify(savedSessions))
       localStorage.setItem('clawdy:timestamp', Date.now().toString())
+
+      if (!is0GPersistenceEnabled()) return
 
       // Persist to 0G Storage every 6th cycle (~30s if called every 5s)
       this.zgSaveCounter++
@@ -148,6 +151,8 @@ export class PersistenceService {
         }
       }
     } catch (err) { logger.debug('[Persistence] localStorage restore failed:', err) }
+
+    if (!is0GPersistenceEnabled()) return
 
     // Fall back to 0G Storage
     try {

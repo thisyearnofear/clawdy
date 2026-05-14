@@ -1,6 +1,7 @@
 import { getSupabase } from './supabase'
 import { logger } from './logger'
 import type { RealtimeChannel } from '@supabase/supabase-js'
+import { getAnalyticsMode } from './runtimeConfig'
 
 export interface GameEvent {
   event: string
@@ -11,6 +12,11 @@ export interface GameEvent {
 // Shared persistent channel — created once and reused for all broadcasts
 let _broadcastChannel: RealtimeChannel | null = null
 let _channelReady = false
+
+const BATCH_INTERVAL_MS = 3000
+const MAX_BATCH_SIZE = 25
+let _eventBuffer: { event: string; player_id: string | null; payload: Record<string, unknown> }[] = []
+let _batchTimeout: NodeJS.Timeout | null = null
 
 function getBroadcastChannel(): RealtimeChannel | null {
   const supabase = getSupabase()
@@ -23,26 +29,53 @@ function getBroadcastChannel(): RealtimeChannel | null {
   return _channelReady ? _broadcastChannel : null
 }
 
-/**
- * Persist a game event to Supabase (fire-and-forget).
- * Events are also broadcast via Supabase Realtime for live feeds.
- */
-export function logGameEvent(evt: GameEvent) {
+function flushEvents() {
+  if (_eventBuffer.length === 0) return
+
+  const toInsert = [..._eventBuffer]
+  _eventBuffer = []
+  if (_batchTimeout) {
+    clearTimeout(_batchTimeout)
+    _batchTimeout = null
+  }
+
   const supabase = getSupabase()
   if (!supabase) return
 
   supabase
     .from('game_events')
-    .insert({
-      event: evt.event,
-      player_id: evt.playerId ?? null,
-      payload: evt.payload ?? {},
-    })
+    .insert(toInsert)
     .then(({ error }) => {
-      if (error) logger.debug('[gameEvents] insert failed:', error.message)
+      if (error) logger.debug('[gameEvents] batch insert failed:', error.message)
     })
+}
 
-  // Broadcast on the shared live channel for instant UI updates (only when connected)
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', flushEvents)
+  window.addEventListener('pagehide', flushEvents)
+}
+
+/**
+ * Persist a game event to Supabase (fire-and-forget).
+ * Events are also broadcast via Supabase Realtime for live feeds.
+ */
+export function logGameEvent(evt: GameEvent) {
+  if (getAnalyticsMode() === 'off') return
+
+  // 1. Buffer for batched insert
+  _eventBuffer.push({
+    event: evt.event,
+    player_id: evt.playerId ?? null,
+    payload: evt.payload ?? {},
+  })
+
+  if (_eventBuffer.length >= MAX_BATCH_SIZE) {
+    flushEvents()
+  } else if (!_batchTimeout) {
+    _batchTimeout = setTimeout(flushEvents, BATCH_INTERVAL_MS)
+  }
+
+  // 2. Broadcast on the shared live channel for instant UI updates (only when connected)
   const channel = getBroadcastChannel()
   if (channel) {
     channel.send({

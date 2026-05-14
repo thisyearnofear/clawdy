@@ -19,10 +19,12 @@ import { HUD } from '../ui/HUD'
 import dynamic from 'next/dynamic'
 import { Overlays } from '../ui/Overlays'
 import { LoadingSplash } from '../ui/LoadingSplash'
+import { PerformanceStats } from '../utils/PerformanceStats'
 import { MobileTouchControls } from '../ui/MobileTouchControls'
 import { MarbleBadge } from '../ui/MarbleBadge'
 import { useGameStore } from '../../services/gameStore'
 import { getMarbleWorldConfig, shouldUseMarbleWorld } from '../../services/marbleWorld'
+import { getRuntimeProfile } from '../../services/runtimeConfig'
 import { vehicleQueue } from '../../services/VehicleQueue'
 import { trackEvent } from '../../services/analytics'
 import { upsertLeaderboardEntry } from '../../hooks/useRealtimeLeaderboard'
@@ -103,6 +105,7 @@ export default function CloudScene() {
 
   const [isMounted, setIsMounted] = useState(false)
   const [splashDone, setSplashDone] = useState(false)
+  const runtimeProfile = useMemo(() => getRuntimeProfile(), [])
   const flood = useGameStore(s => s.flood)
   const cumulativeScore = useGameStore(s => s.cumulativeScore)
   const round = useGameStore(s => s.round)
@@ -396,7 +399,7 @@ export default function CloudScene() {
     setCloudConfig({ preset })
   }
 
-  const [dpr, setDpr] = useState(1.5)
+  const [dpr, setDpr] = useState(runtimeProfile.mode === 'production' ? 1.25 : 1.5)
   const marbleConfig = useMemo(() => getMarbleWorldConfig(), [])
   const isMarbleActive = shouldUseMarbleWorld(marbleConfig)
 
@@ -417,7 +420,7 @@ export default function CloudScene() {
         <PerformanceMonitor onDecline={() => setDpr(1)} onIncline={() => setDpr(1.5)} />
         <Suspense fallback={null}>
           <Environment preset="city" />
-          <Experience cloudConfig={config} spawnRate={spawnRate} playerVehicleType={playerVehicle} />
+          <Experience cloudConfig={config} spawnRate={spawnRate} spectacleEnabled={splashDone} playerVehicleType={playerVehicle} />
         </Suspense>
       </Canvas>
 
@@ -454,11 +457,11 @@ export default function CloudScene() {
         setPlayerVehicle={setPlayerVehicle}
       />
 
-      <AgentChatter />
+      {splashDone && <AgentChatter />}
 
       {/* New UI components for Product/Game Design improvements */}
-      <AgentDecisionPanel />
-      <RoundObjectives />
+      {splashDone && <AgentDecisionPanel />}
+      {splashDone && <RoundObjectives />}
 
       {/* Mobile touch controls - always rendered, component handles internal mobile detection */}
       <MobileTouchControls />
@@ -466,8 +469,11 @@ export default function CloudScene() {
       {/* Help hint component - persistent until first keypress */}
       <HelpHint />
 
+      {/* Performance & Runtime stats */}
+      <PerformanceStats />
+
       {/* Marble attribution badge */}
-      <MarbleBadge />
+      {splashDone && <MarbleBadge />}
     </div>
   )
 }

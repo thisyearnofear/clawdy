@@ -3,6 +3,7 @@
 import { Clouds, Cloud } from '@react-three/drei'
 import * as THREE from 'three'
 import { useMemo } from 'react'
+import { getCloudCountLimit, isLocalPlayMode } from '../../services/runtimeConfig'
 
 export interface CloudConfig {
   seed: number
@@ -99,7 +100,7 @@ export function CloudManager({ config }: { config: CloudConfig }) {
 
   const clouds = useMemo(() => {
     const random = seededRandom(activeConfig.seed)
-    const count = activeConfig.count || 12
+    const count = isLocalPlayMode() ? Math.min(activeConfig.count || 12, getCloudCountLimit()) : activeConfig.count || 12
     const items: { position: [number, number, number]; color: string; speed: number }[] = []
     
     // Increased distribution range
@@ -110,8 +111,8 @@ export function CloudManager({ config }: { config: CloudConfig }) {
     const clusterBounds = activeConfig.clusterBounds || [12, 3, 12]
     const verticalRange = clusterBounds[1] // Use the Y component for vertical spread
     
-    // Always keep one center cloud
-    items.push({ position: [0, 25, 0], color: activeConfig.color, speed: activeConfig.speed })
+    // Keep the local first-person driving lane visually open.
+    items.push({ position: isLocalPlayMode() ? [0, 34, -45] : [0, 25, 0], color: activeConfig.color, speed: activeConfig.speed })
 
     for (let i = 1; i < count; i++) {
       const isSecondary = activeConfig.secondaryColor && random() > 0.5

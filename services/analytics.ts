@@ -1,4 +1,5 @@
 import { logger } from './logger'
+import { getAnalyticsMode } from './runtimeConfig'
 
 export type AnalyticsEventName =
   | 'spectator_cta_viewed'
@@ -57,10 +58,6 @@ function getSessionId() {
   const next = createSessionId()
   window.sessionStorage.setItem(SESSION_STORAGE_KEY, next)
   return next
-}
-
-function getAnalyticsMode() {
-  return process.env.NEXT_PUBLIC_ANALYTICS_MODE ?? 'console'
 }
 
 function pushToDataLayer(evt: AnalyticsEvent) {

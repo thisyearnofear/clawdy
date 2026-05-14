@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { getLoadingSplashDurationMs } from '../../services/runtimeConfig'
 
 const TIPS = [
   'Chain pickups within 6s for combo multipliers',
@@ -23,7 +24,7 @@ export function LoadingSplash({ onReady }: { onReady?: () => void }) {
   useEffect(() => {
     // Simulate progress based on time (real loading is handled by Suspense)
     const start = Date.now()
-    const duration = 2000 // minimum splash duration for branding
+    const duration = getLoadingSplashDurationMs()
     const interval = setInterval(() => {
       const elapsed = Date.now() - start
       const p = Math.min(100, (elapsed / duration) * 100)

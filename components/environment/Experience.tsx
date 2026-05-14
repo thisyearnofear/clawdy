@@ -28,6 +28,12 @@ import { AgentVision } from './AgentVision'
 import { IntentionVisualizer } from './IntentionVisualizer'
 import { MemeAssetInstances } from './MemeAssetInstances'
 import { VehicleType, agentProtocol, VEHICLE_RENT_ADDRESS } from '../../services/AgentProtocol'
+import { 
+  getCloudCountLimit, 
+  isAIAgentsEnabled, 
+  isLocalPlayMode, 
+  shouldEnableSpectacleOnBoot 
+} from '../../services/runtimeConfig'
 import { QueueState } from '../../services/VehicleQueue'
 import { getAgentByVehicleId } from '../../services/agents'
 import { emitToast } from '../ui/GameToasts'
@@ -84,12 +90,18 @@ function readRentStatus(result: unknown): { expiresAt: bigint; vehicleType: stri
   return { expiresAt, vehicleType }
 }
 
+function isShieldActive(shieldUntil?: number) {
+  return typeof shieldUntil === 'number' && shieldUntil > Date.now()
+}
+
 function Experience({
   cloudConfig,
-  spawnRate = 2
+  spawnRate = 2,
+  spectacleEnabled = true,
 }: {
   cloudConfig: CloudConfig;
   spawnRate?: number;
+  spectacleEnabled?: boolean;
 }) {
   useThree() 
   const { address } = useAccount()
@@ -97,8 +109,18 @@ function Experience({
 
   const [memeAssets, setMemeAssets] = useState<{ id: number; position: [number, number, number]; itemType?: MemeAssetType }[]>([])
   const [terrainSampler, setTerrainSampler] = useState<((x: number, z: number) => number) | null>(null)
-  const [isMobileClient, setIsMobileClient] = useState(false)
-  useEffect(() => { setIsMobileClient(_isMobile) }, [])
+  const [isMobileClient, setIsMobileClient] = useState(_isMobile)
+  const [renderPhase, setRenderPhase] = useState(shouldEnableSpectacleOnBoot() ? 4 : 1)
+
+  useEffect(() => {
+    if (renderPhase !== 1) return
+    const timers = [
+      setTimeout(() => setRenderPhase(2), 500),
+      setTimeout(() => setRenderPhase(3), 1500),
+      setTimeout(() => setRenderPhase(4), 3000),
+    ]
+    return () => timers.forEach(clearTimeout)
+  }, [renderPhase])
   const freeAirBubbleUsedRef = useRef(false)
   const preferredVehicle = useGameStore(s => s.ui.preferredVehicleType)
   const marbleWorld = useMemo(() => getMarbleWorldConfig(), [])
@@ -146,7 +168,7 @@ function Experience({
 
   const handleDespawn = (id: number) => {
     const playerSess = agentProtocol.getSession('Player')
-    if (playerSess?.shieldUntil && playerSess.shieldUntil > Date.now()) {
+    if (isShieldActive(playerSess?.shieldUntil)) {
       emitToast('milestone', '🛡️ BLOCKED', 'Force Field absorbed the attack!')
       playSound('collect')
       return
@@ -376,17 +398,32 @@ function Experience({
         shadow-bias={-0.0005}
       />
       <fog attach="fog" args={[isNightMode ? '#0a0a2e' : cloudConfig.preset === 'stormy' ? '#4a5568' : cloudConfig.preset === 'sunset' ? '#ffccaa' : cloudConfig.preset === 'candy' ? '#ffe0f0' : '#c9d5ff', cloudConfig.preset === 'stormy' ? 10 : cloudConfig.preset === 'cosmic' ? 20 : 18, (cloudConfig.preset === 'stormy' ? 60 : cloudConfig.preset === 'cosmic' ? 120 : 90) - (activeWeatherEffects.lightning?.intensity ?? 0) * 18]} />
-      <WeatherParticles config={cloudConfig} />
-      {!useMarbleWorld && <PuddleRipples bounds={cloudConfig.bounds} getHeightAt={terrainSampler ?? undefined} />}
-      {!useMarbleWorld && <FloodWater bounds={cloudConfig.bounds} />}
+      
+      {renderPhase >= 3 && (
+        <>
+          {spectacleEnabled && <WeatherParticles config={cloudConfig} />}
+          {!useMarbleWorld && spectacleEnabled && <PuddleRipples bounds={cloudConfig.bounds} getHeightAt={terrainSampler ?? undefined} />}
+          {!useMarbleWorld && spectacleEnabled && <FloodWater bounds={cloudConfig.bounds} />}
+        </>
+      )}
+
       <Physics gravity={physicsGravity}>
-        {!useMarbleWorld && <LaunchPads />}
-        {!useMarbleWorld && <SkyIslands />}
-        <CloudManager config={cloudConfig} />
-        <MemeAssetSpawner spawnRate={effectiveSpawnRate} bounds={spawnBounds} spawnHeight={spawnHeight} maxItems={55} onSpawn={(item) => setMemeAssets((prev) => [...prev, { ...item, itemType: chooseAssistedAssetType(item.tier) }])} />
-        <AgentVision />
-        <IntentionVisualizer />
-        <CollectionBurst />
+        {renderPhase >= 3 && (
+          <>
+            {!useMarbleWorld && spectacleEnabled && <LaunchPads />}
+            {!useMarbleWorld && spectacleEnabled && <SkyIslands />}
+            {spectacleEnabled && <CloudManager config={cloudConfig} />}
+            {spectacleEnabled && <MemeAssetSpawner spawnRate={effectiveSpawnRate} bounds={spawnBounds} spawnHeight={spawnHeight} maxItems={55} onSpawn={(item) => setMemeAssets((prev) => [...prev, { ...item, itemType: chooseAssistedAssetType(item.tier) }])} />}
+          </>
+        )}
+        
+        {renderPhase >= 4 && (
+          <>
+            {spectacleEnabled && <AgentVision />}
+            {spectacleEnabled && <IntentionVisualizer />}
+            {spectacleEnabled && <CollectionBurst />}
+          </>
+        )}
         <MemeAssetInstances assets={memeAssets} />
         {memeAssets.map((item) => (
           <ProceduralMemeAsset key={item.id} id={item.id} itemType={item.itemType} position={item.position} onDespawn={() => handleDespawn(item.id)} onCollect={(id, stats, collector) => { emitCollectionBurst(item.position, stats.type === 'golden_meatball' ? '#f1c40f' : '#00e5ff'); handleCollect(id, stats, collector) }} />
@@ -443,8 +480,12 @@ function Experience({
             </group>
           )
         })}
-        {!useMarbleWorld && <MudMarkers />}
-        {!useMarbleWorld && <Vegetation getHeightAt={useSphericalTerrain ? getSphericalTerrainHeight : terrainSampler} />}
+        {renderPhase >= 3 && (
+          <>
+            {!useMarbleWorld && spectacleEnabled && <MudMarkers />}
+            {!useMarbleWorld && spectacleEnabled && <Vegetation getHeightAt={useSphericalTerrain ? getSphericalTerrainHeight : terrainSampler} />}
+          </>
+        )}
         {useMarbleWorld ? (
           <MarbleCollider config={marbleWorld} debug={marbleDebug} onReady={setTerrainSampler} />
         ) : useSphericalTerrain ? (
@@ -458,20 +499,20 @@ function Experience({
             <Text position={[0, -1, 0]} fontSize={0.3} color="#ffffff" anchorX="center" anchorY="middle" outlineWidth={0.02} outlineColor="#000000">Press &apos;T&apos; to toggle</Text>
           </group>
         )}
-        {address && <InWorldQueueStatus playerId={playerId} queueState={queueState} isPlayerActive={isPlayerActive} playerVehicle={playerVehicle} />}
+        {renderPhase >= 2 && address && <InWorldQueueStatus playerId={playerId} queueState={queueState} isPlayerActive={isPlayerActive} playerVehicle={playerVehicle} />}
       </Physics>
-      {useMarbleWorld && (
+      {renderPhase >= 4 && useMarbleWorld && (
         <ErrorBoundaryFallback>
           <MarbleWorldLayer config={marbleWorld} />
         </ErrorBoundaryFallback>
       )}
-      <ContactShadows opacity={0.4} scale={50} blur={1} far={20} resolution={256} color="#000000" />
+      {spectacleEnabled && <ContactShadows opacity={0.4} scale={50} blur={1} far={20} resolution={256} color="#000000" />}
       {isMobileClient && <FrameLimiter fps={30} />}
     </KeyboardControls>
   )
 }
 
-function ExperienceWithMobileControls(props: { cloudConfig: CloudConfig; spawnRate?: number; playerVehicleType?: VehicleType }) {
+function ExperienceWithMobileControls(props: { cloudConfig: CloudConfig; spawnRate?: number; playerVehicleType?: VehicleType; spectacleEnabled?: boolean }) {
   return (
     <>
       <Experience {...props} />

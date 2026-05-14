@@ -3,6 +3,7 @@ import type { AgentSession, WorldState, WeatherStatus, VehicleType } from './pro
 import type { CloudConfig } from '../components/environment/CloudManager'
 import { logger } from './logger'
 import type { RoundSummary } from './zgStorage'
+import { is0GPersistenceEnabled } from './runtimeConfig'
 
 // ── Local-storage helpers (safe for SSR) ──────────────────────────────
 function loadFromStorage<T>(key: string, fallback: T): T {
@@ -494,7 +495,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
 
     // Persist immutable round summary to 0G Storage (fire-and-forget)
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && is0GPersistenceEnabled()) {
       const summary: RoundSummary = {
         roundNumber: prev.round.roundNumber,
         startedAt: prev.round.startedAt,

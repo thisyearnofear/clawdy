@@ -12,17 +12,17 @@ import { vehicleQueue } from './VehicleQueue'
 import { logger } from './logger'
 import { trackEvent } from './analytics'
 import { logGameEvent } from './gameEvents'
+import { getAiTickIntervalMs, isAIAgentsEnabled } from './runtimeConfig'
 
 export class AgentAI {
-  private static readonly AGENT_TICK_INTERVAL = 250
-
   private lastAgentTickAt = 0
   private lastAutomatedBidAt: Map<string, number> = new Map()
   private lastAutomatedRentAt: Map<string, number> = new Map()
   private pendingDecisionRequests = new Set<string>()
+  private lastDecisionSignature = new Map<string, { signature: string; at: number }>()
 
   constructor() {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && isAIAgentsEnabled()) {
        setTimeout(() => {
          agentProtocol.subscribeToState((state) => this.onWorldUpdate(state))
          this.startContinuousSpawning()
@@ -49,6 +49,7 @@ export class AgentAI {
   }
 
   async initAIAgents() {
+    if (!isAIAgentsEnabled()) return
     const agents = getControllableAgents()
     for (const agent of agents) {
       await agentProtocol.authorizeAgent(agent.id, 3600000 * 24, 5.0)
@@ -62,7 +63,8 @@ export class AgentAI {
 
   private onWorldUpdate(worldState: WorldState) {
     const now = Date.now()
-    if (now - this.lastAgentTickAt < AgentAI.AGENT_TICK_INTERVAL) return
+    const tickInterval = getAiTickIntervalMs()
+    if (now - this.lastAgentTickAt < tickInterval) return
     this.lastAgentTickAt = now
 
     const sessions = agentProtocol.getSessions()
@@ -137,6 +139,14 @@ export class AgentAI {
   }
 
   private publishDecision(session: AgentSession, decision: SkillDecision) {
+    const signature = `${decision.provider}|${decision.action}|${decision.title}|${decision.summary}|${decision.confidence.toFixed(2)}`
+    const previous = this.lastDecisionSignature.get(session.agentId)
+    const now = decision.createdAt
+    if (previous && previous.signature === signature && now - previous.at < 4000) {
+      return
+    }
+    this.lastDecisionSignature.set(session.agentId, { signature, at: now })
+
     session.decisionCount += 1
     session.lastSkillProvider = decision.provider
     agentProtocol.publishDecision(decision)

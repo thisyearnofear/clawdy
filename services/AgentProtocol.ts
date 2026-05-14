@@ -67,6 +67,7 @@ import { SessionManager } from './SessionManager'
 import { BlockchainService } from './BlockchainService'
 import { updateWeatherState } from '../hooks/useRealtimeWeather'
 import { logGameEvent } from './gameEvents'
+import { is0GPersistenceEnabled, isAIAgentsEnabled } from './runtimeConfig'
 import {
   type AgentSession,
   type WorldState,
@@ -116,7 +117,9 @@ class AgentProtocol {
 
   constructor() {
     this.sessionManager.authorizeAgent('Player', 3600000 * 24, 10.0)
-    this.initAIAgents()
+    if (isAIAgentsEnabled()) {
+      this.initAIAgents()
+    }
     this.initPublicApi()
 
     if (typeof window !== 'undefined') {
@@ -124,7 +127,7 @@ class AgentProtocol {
       setInterval(() => {
         persistenceService.persistState(this.sessionManager.getSessionMap())
         this.syncWithStore()
-      }, 5000)
+      }, is0GPersistenceEnabled() ? 5000 : 15000)
     }
   }
 

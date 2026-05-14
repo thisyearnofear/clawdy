@@ -2,6 +2,7 @@ import { agentProtocol } from './AgentProtocol'
 import type { VehicleType } from './protocolTypes'
 import { trackEvent } from './analytics'
 import { logger } from './logger'
+import { getRuntimeProfile } from './runtimeConfig'
 
 export interface QueuedPlayer {
   id: string
@@ -175,6 +176,10 @@ export class VehicleQueueManager {
     } else if (preferredVehicleType) {
       existing.preferredVehicleType = preferredVehicleType
     }
+    if (typeof window !== 'undefined' && getRuntimeProfile().mode === 'local-play') {
+      this.processQueue()
+    }
+
     this.notifyListeners()
     
     const waitingCount = this.queue.filter(p => p.status === 'waiting' && p.type === type).length
