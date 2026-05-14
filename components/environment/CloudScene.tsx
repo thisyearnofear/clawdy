@@ -53,6 +53,37 @@ const WEATHER_DOMAINS_BY_PRESET = {
   ],
 } as const
 
+type WeatherBidConfig = { preset: string; volume: bigint; growth: bigint; speed: bigint; color: number }
+type WeatherConfigResult =
+  | readonly [string, bigint, bigint, WeatherBidConfig]
+  | { agent?: string; amount?: bigint; expiresAt?: bigint; config?: WeatherBidConfig }
+
+function isWeatherBidConfig(value: unknown): value is WeatherBidConfig {
+  if (!value || typeof value !== 'object') return false
+  const config = value as Partial<WeatherBidConfig>
+  return (
+    typeof config.preset === 'string' &&
+    typeof config.volume === 'bigint' &&
+    typeof config.growth === 'bigint' &&
+    typeof config.speed === 'bigint' &&
+    typeof config.color === 'number'
+  )
+}
+
+function readWeatherConfig(result: unknown): { expiresAt: bigint; config: WeatherBidConfig } | null {
+  if (Array.isArray(result)) {
+    const [, , expiresAt, config] = result as readonly unknown[]
+    if (typeof expiresAt !== 'bigint' || !isWeatherBidConfig(config)) return null
+    return { expiresAt, config }
+  }
+  if (!result || typeof result !== 'object') return null
+  const status = result as Extract<WeatherConfigResult, { config?: WeatherBidConfig }>
+  const expiresAt = status.expiresAt
+  const config = status.config
+  if (typeof expiresAt !== 'bigint' || !isWeatherBidConfig(config)) return null
+  return { expiresAt, config }
+}
+
 export default function CloudScene() {
   const { address } = useAccount()
   const playerId = address || 'anonymous'
@@ -113,20 +144,16 @@ export default function CloudScene() {
   useEffect(() => {
     if (!onChainWeatherConfig || !isWeatherAuctionConfigured) return
 
-    const [, , expiresAt, config] = onChainWeatherConfig as unknown as [
-      string,
-      bigint,
-      bigint,
-      { preset: string; volume: bigint; growth: bigint; speed: bigint; color: number }
-    ]
+    const weatherConfig = readWeatherConfig(onChainWeatherConfig)
+    if (!weatherConfig) return
 
-    if (Number(expiresAt) * 1000 <= Date.now()) return
+    if (Number(weatherConfig.expiresAt) * 1000 <= Date.now()) return
 
     setCloudConfig({
-      preset: config.preset as CloudConfig['preset'],
-      volume: Number(config.volume),
-      growth: Number(config.growth),
-      speed: Number(config.speed) / 100,
+      preset: weatherConfig.config.preset as CloudConfig['preset'],
+      volume: Number(weatherConfig.config.volume),
+      growth: Number(weatherConfig.config.growth),
+      speed: Number(weatherConfig.config.speed) / 100,
     })
   }, [isWeatherAuctionConfigured, onChainWeatherConfig, setCloudConfig])
 

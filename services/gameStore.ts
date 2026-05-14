@@ -362,7 +362,7 @@ const defaultCloudConfig: CloudConfig = {
   speed: 0.2, color: '#ffffff', secondaryColor: '#e0e0e0',
   bounds: [80, 5, 80], count: 20,
   clusterBounds: [12, 3, 12],
-  preset: 'stormy',
+  preset: 'custom',
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({

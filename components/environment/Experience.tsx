@@ -66,6 +66,24 @@ interface VehicleData {
 
 const EMPTY_VEHICLE_POSITION: [number, number, number] = [0, -100, 0]
 
+type RentStatusResult =
+  | readonly [string, bigint, string]
+  | { agent?: string; expiresAt?: bigint; vehicleType?: string }
+
+function readRentStatus(result: unknown): { expiresAt: bigint; vehicleType: string } | null {
+  if (Array.isArray(result)) {
+    const [, expiresAt, vehicleType] = result as unknown as RentStatusResult & readonly unknown[]
+    if (typeof expiresAt !== 'bigint' || typeof vehicleType !== 'string') return null
+    return { expiresAt, vehicleType }
+  }
+  if (!result || typeof result !== 'object') return null
+  const status = result as Extract<RentStatusResult, { expiresAt?: bigint; vehicleType?: string }>
+  const expiresAt = status.expiresAt
+  const vehicleType = status.vehicleType
+  if (typeof expiresAt !== 'bigint' || typeof vehicleType !== 'string') return null
+  return { expiresAt, vehicleType }
+}
+
 function Experience({
   cloudConfig,
   spawnRate = 2
@@ -114,15 +132,15 @@ function Experience({
   useEffect(() => {
     if (!currentPlayerVehicleId || !onChainVehicleRentStatus) return
 
-    const [, expiresAt, vehicleType] = onChainVehicleRentStatus as unknown as [string, bigint, string]
-    if (Number(expiresAt) * 1000 <= Date.now()) return
+    const rentStatus = readRentStatus(onChainVehicleRentStatus)
+    if (!rentStatus || Number(rentStatus.expiresAt) * 1000 <= Date.now()) return
 
     setVehicles((prev) => prev.map((vehicle) => (
       vehicle.id === currentPlayerVehicleId
-        ? { ...vehicle, type: vehicleType as VehicleType, agentControlled: true }
+        ? { ...vehicle, type: rentStatus.vehicleType as VehicleType, agentControlled: true }
         : vehicle
     )))
-  }, [currentPlayerVehicleId, onChainVehicleRentStatus])
+  }, [currentPlayerVehicleId, onChainVehicleRentStatus, setVehicles])
 
   const assetCountRef = useRef(0)
 

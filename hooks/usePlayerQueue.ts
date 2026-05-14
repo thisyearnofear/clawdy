@@ -37,11 +37,13 @@ export function usePlayerQueue(
   const wasActiveRef = useRef(false)
   const lastPlayerIdRef = useRef(playerId)
 
-  // Reset queue join when player identity changes (e.g., wallet disconnect)
-  if (lastPlayerIdRef.current !== playerId) {
-    lastPlayerIdRef.current = playerId
-    hasJoinedQueueRef.current = false
-  }
+  // Reset queue join when player identity changes (e.g., wallet disconnect).
+  useEffect(() => {
+    if (lastPlayerIdRef.current !== playerId) {
+      lastPlayerIdRef.current = playerId
+      hasJoinedQueueRef.current = false
+    }
+  }, [playerId])
 
   const getVehiclePosition = useCallback((index: number, isGhost: boolean = false): [number, number, number] => {
     const angle = (index / 10) * Math.PI * 2
@@ -102,28 +104,28 @@ export function usePlayerQueue(
           }
         })
 
+      const newVehicles = [...activeVehicles, ...ghostVehicles]
+      const currentWorldVehicles = agentProtocol.getWorldState().vehicles
+      const worldVehicleIds = new Set(currentWorldVehicles.map(v => v.id))
+      const brandNewVehicles = newVehicles
+        .filter(v => !worldVehicleIds.has(v.id))
+        .map(v => ({
+          id: v.id,
+          type: v.type,
+          position: v.position,
+          rotation: [0, 0, 0, 1] as [number, number, number, number],
+          isRented: v.playerId !== undefined && !v.isGhost,
+          rentExpiresAt: 0
+        }))
+
+      if (brandNewVehicles.length > 0) {
+        agentProtocol.updateWorldState({ vehicles: [...currentWorldVehicles, ...brandNewVehicles] })
+      }
+
       setVehicles(prevVehicles => {
-        const newVehicles = [...activeVehicles, ...ghostVehicles]
         if (prevVehicles.length === newVehicles.length &&
             prevVehicles.every((v, i) => v.id === newVehicles[i].id && v.isGhost === newVehicles[i].isGhost)) {
           return prevVehicles
-        }
-
-        const currentWorldVehicles = agentProtocol.getWorldState().vehicles
-        const worldVehicleIds = new Set(currentWorldVehicles.map(v => v.id))
-        const brandNewVehicles = newVehicles
-          .filter(v => !worldVehicleIds.has(v.id))
-          .map(v => ({
-            id: v.id,
-            type: v.type,
-            position: v.position,
-            rotation: [0, 0, 0, 1] as [number, number, number, number],
-            isRented: v.playerId !== undefined && !v.isGhost,
-            rentExpiresAt: 0
-          }))
-
-        if (brandNewVehicles.length > 0) {
-          agentProtocol.updateWorldState({ vehicles: [...currentWorldVehicles, ...brandNewVehicles] })
         }
         return newVehicles
       })
@@ -141,7 +143,7 @@ export function usePlayerQueue(
         setTimeout(() => emitToast('bid-win', 'Status Update', 'Spawning vehicle...'), 2000)
       })
     }
-  }, [address, playerId])
+  }, [address, playerId, preferredVehicle, safePreferred])
 
   return { vehicles, setVehicles, queueState, getVehiclePosition }
 }

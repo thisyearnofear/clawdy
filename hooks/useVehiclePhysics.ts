@@ -55,6 +55,22 @@ const _steerForce = new THREE.Vector3()
 const _fOffset = new THREE.Vector3()
 const _boostDir = new THREE.Vector3()
 
+type VehicleInputs = { forward: number; turn: number; brake: boolean; aim: number; action: boolean }
+
+function normalizeInputs(inputs: Partial<VehicleInputs> | undefined): VehicleInputs {
+  return {
+    forward: inputs?.forward ?? 0,
+    turn: inputs?.turn ?? 0,
+    brake: inputs?.brake ?? false,
+    aim: inputs?.aim ?? 0,
+    action: inputs?.action ?? false,
+  }
+}
+
+function inputsChanged(a: VehicleInputs, b: VehicleInputs): boolean {
+  return a.forward !== b.forward || a.turn !== b.turn || a.brake !== b.brake || a.aim !== b.aim || a.action !== b.action
+}
+
 export function useVehiclePhysics(
   id: string,
   chassisRef: React.RefObject<RapierRigidBody | null>,
@@ -75,7 +91,7 @@ export function useVehiclePhysics(
   const setNearMud = useGameStore(state => state.setNearMud)
   const addPlayerWaterTime = useGameStore(state => state.addPlayerWaterTime)
   const nearMud = useGameStore(state => state.nearMud)
-  const [inputs, setInputs] = useState({ forward: 0, turn: 0, brake: false, aim: 0, action: false })
+  const [inputs, setInputs] = useState<VehicleInputs>({ forward: 0, turn: 0, brake: false, aim: 0, action: false })
   
   // Smoothing for physics forces
   const smoothedForward = useRef(0)
@@ -87,18 +103,13 @@ export function useVehiclePhysics(
   const lastMudWarningUpdate = useRef(0)
   const stuckInMudRef = useRef(0)
   const lastMudBoostRef = useRef(0)
+  const agentInputsRef = useRef<VehicleInputs>(inputs)
 
   useEffect(() => {
     if (agentControlled) {
       const unsubscribe = agentProtocol.subscribeToVehicle((cmd) => {
         if (cmd.vehicleId === id) {
-          setInputs({
-            forward: cmd.inputs.forward ?? 0,
-            turn: cmd.inputs.turn ?? 0,
-            brake: cmd.inputs.brake ?? false,
-            aim: cmd.inputs.aim ?? 0,
-            action: cmd.inputs.action ?? false
-          })
+          agentInputsRef.current = normalizeInputs(cmd.inputs)
         }
       })
       return unsubscribe
@@ -115,11 +126,15 @@ export function useVehiclePhysics(
     const isFoamBoard = !!(session && session.foamBoardUntil && session.foamBoardUntil > Date.now())
 
     // Determine current raw input
-    let rawForward = inputs.forward
-    let rawTurn = inputs.turn
-    let rawBrake = inputs.brake
-    let rawAction = inputs.action
-    let rawAim = inputs.aim
+    let rawForward = agentControlled ? agentInputsRef.current.forward : inputs.forward
+    let rawTurn = agentControlled ? agentInputsRef.current.turn : inputs.turn
+    let rawBrake = agentControlled ? agentInputsRef.current.brake : inputs.brake
+    let rawAction = agentControlled ? agentInputsRef.current.action : inputs.action
+    let rawAim = agentControlled ? agentInputsRef.current.aim : inputs.aim
+
+    if (agentControlled && inputsChanged(inputs, agentInputsRef.current)) {
+      setInputs(agentInputsRef.current)
+    }
     
     if (!agentControlled && playerControlled) {
       type Keys = Record<'forward' | 'backward' | 'left' | 'right' | 'jump', boolean>
