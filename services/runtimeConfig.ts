@@ -76,10 +76,10 @@ function baseProfile(mode: RuntimeMode): RuntimeProfile {
         enableAIAgents: false,
         enable0GPersistence: false,
         analyticsMode: 'off',
-        logLevel: 'warn',
-        loadingSplashMs: 450,
-        cloudCountLimit: 6,
-        enableSpectacleOnBoot: false,
+        logLevel: 'info',
+        loadingSplashMs: 300,
+        cloudCountLimit: 8,
+        enableSpectacleOnBoot: true,
         aiTickIntervalMs: 1000,
       }
   }

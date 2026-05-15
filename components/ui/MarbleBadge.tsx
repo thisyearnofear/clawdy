@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useMemo } from 'react'
 import { getMarbleWorldConfig, shouldUseMarbleWorld } from '../../services/marbleWorld'
 
 /**
@@ -9,18 +9,12 @@ import { getMarbleWorldConfig, shouldUseMarbleWorld } from '../../services/marbl
  * Client-only to avoid hydration mismatch.
  */
 export function MarbleBadge() {
-  const [show, setShow] = useState(false)
-  const [worldUrl, setWorldUrl] = useState('')
-
-  useEffect(() => {
+  const worldUrl = useMemo(() => {
     const config = getMarbleWorldConfig()
-    if (shouldUseMarbleWorld(config)) {
-      setShow(true)
-      setWorldUrl(`https://marble.worldlabs.ai/world/${config.id}`)
-    }
+    return shouldUseMarbleWorld(config) ? `https://marble.worldlabs.ai/world/${config.id}` : null
   }, [])
 
-  if (!show) return null
+  if (!worldUrl) return null
 
   return (
     <a

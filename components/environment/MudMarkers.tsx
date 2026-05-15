@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { getMudIntensity, getTerrainHeight } from '../terrain/terrainUtils'
@@ -8,9 +8,6 @@ import { getMudIntensity, getTerrainHeight } from '../terrain/terrainUtils'
 const SCAN_RANGE = 55
 const SCAN_STEP = 4
 const MAX_MARKERS = 400
-
-const tempMatrix = new THREE.Matrix4()
-const tempColor = new THREE.Color()
 
 export function MudMarkers() {
   const meshRef = useRef<THREE.InstancedMesh>(null)
@@ -32,7 +29,7 @@ export function MudMarkers() {
   }, [])
 
   // Set up instances once
-  useMemo(() => {
+  useEffect(() => {
     if (!meshRef.current) return
     const mesh = meshRef.current
     const dummy = new THREE.Object3D()

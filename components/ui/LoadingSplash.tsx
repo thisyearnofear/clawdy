@@ -12,31 +12,44 @@ const TIPS = [
   'ESC opens the control panel for abilities and tuning',
 ]
 
-export function LoadingSplash({ onReady }: { onReady?: () => void }) {
+export function LoadingSplash({
+  ready = true,
+  status = 'Preparing your vehicle',
+  onReady,
+}: {
+  ready?: boolean
+  status?: string
+  onReady?: () => void
+}) {
   const [progress, setProgress] = useState(0)
-  const [tip, setTip] = useState(TIPS[0])
+  const [tip] = useState(() => TIPS[Math.floor(Math.random() * TIPS.length)] ?? TIPS[0])
   const [fadeOut, setFadeOut] = useState(false)
+  const [timedOut, setTimedOut] = useState(false)
 
   useEffect(() => {
-    setTip(TIPS[Math.floor(Math.random() * TIPS.length)])
-  }, [])
-
-  useEffect(() => {
-    // Simulate progress based on time (real loading is handled by Suspense)
+    if (fadeOut) return
     const start = Date.now()
     const duration = getLoadingSplashDurationMs()
+    const maxWaitMs = Math.max(3500, duration + 2500)
+
     const interval = setInterval(() => {
       const elapsed = Date.now() - start
-      const p = Math.min(100, (elapsed / duration) * 100)
-      setProgress(p)
-      if (p >= 100) {
+      const readinessReached = ready || elapsed >= maxWaitMs
+      if (elapsed >= maxWaitMs) setTimedOut(true)
+
+      const targetProgress = readinessReached
+        ? 100
+        : Math.min(92, (elapsed / duration) * 92)
+
+      setProgress(targetProgress)
+      if (targetProgress >= 100) {
         clearInterval(interval)
         setFadeOut(true)
         setTimeout(() => onReady?.(), 400)
       }
     }, 50)
     return () => clearInterval(interval)
-  }, [onReady])
+  }, [fadeOut, onReady, ready])
 
   return (
     <div
@@ -62,6 +75,9 @@ export function LoadingSplash({ onReady }: { onReady?: () => void }) {
       {/* Tip */}
       <p className="text-xs text-white/30 max-w-xs text-center">
         💡 {tip}
+      </p>
+      <p className="mt-3 text-[10px] font-black uppercase tracking-[0.24em] text-sky-300/60">
+        {timedOut ? 'Starting fallback arena' : status}
       </p>
 
       {/* Tech credits */}

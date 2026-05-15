@@ -11,7 +11,6 @@ import type { MemeAssetStats } from '../components/environment/MemeAssets'
 import { getAgentByVehicleId } from '../services/agents'
 
 interface UseCombatEventsOptions {
-  playerId: string
   setVehicles: React.Dispatch<React.SetStateAction<{
     id: string; type: VehicleType; position: [number, number, number]
     agentControlled: boolean; playerId?: string; isPlayerVehicle?: boolean; isGhost?: boolean
@@ -24,7 +23,6 @@ interface UseCombatEventsOptions {
 }
 
 export function useCombatEvents({
-  playerId,
   setVehicles,
   handleDespawn,
   freeAirBubbleUsedRef,
@@ -109,7 +107,7 @@ export function useCombatEvents({
       }
     })
     return () => { unsubCombat(); unsubVehicle() }
-  }, [])
+  }, [handleDespawn, setVehicles])
 
   return { handleCollect, flood }
 }

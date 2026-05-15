@@ -67,10 +67,9 @@ interface HUDProps {
 export function HUD(props: HUDProps) {
   const [weatherCollapsed, setWeatherCollapsed] = useState(false)
   const [statusCollapsed, setStatusCollapsed] = useState(false)
-  const [nowMs, setNowMs] = useState(0)
+  const [nowMs, setNowMs] = useState(() => Date.now())
 
   useEffect(() => {
-    setNowMs(Date.now())
     const timer = window.setInterval(() => setNowMs(Date.now()), 1000)
     return () => window.clearInterval(timer)
   }, [])
@@ -389,12 +388,11 @@ function ObjectiveOverlay({ score }: { score: number }) {
 }
 
 function FinalRushBadge({ endsAt, multiplier }: { endsAt: number; multiplier: number }) {
-  const [remainingSec, setRemainingSec] = useState(0)
+  const [remainingSec, setRemainingSec] = useState(() => Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)))
   const lastSecondRef = useRef<number>(0)
 
   useEffect(() => {
     const initial = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000))
-    setRemainingSec(initial)
     lastSecondRef.current = initial
     const timer = setInterval(() => {
       const next = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000))

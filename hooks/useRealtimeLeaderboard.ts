@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { getSupabase } from '../services/supabase'
 
 export interface LeaderboardEntry {
@@ -22,13 +22,16 @@ export interface LeaderboardEntry {
  */
 export function useRealtimeLeaderboard(limit = 10) {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
+  const hasInitialized = useRef(false)
 
   useEffect(() => {
-    const supabase = getSupabase()
-    if (!supabase) { setLoading(false); return }
+    if (hasInitialized.current) return
+    hasInitialized.current = true
 
-    // Initial fetch
+    const supabase = getSupabase()
+    if (!supabase) return
+
     const fetchLeaderboard = async () => {
       const { data } = await supabase
         .from('leaderboard')
@@ -38,9 +41,9 @@ export function useRealtimeLeaderboard(limit = 10) {
       if (data) setEntries(data)
       setLoading(false)
     }
+
     fetchLeaderboard()
 
-    // Real-time subscription
     const channel = supabase
       .channel('leaderboard-changes')
       .on(

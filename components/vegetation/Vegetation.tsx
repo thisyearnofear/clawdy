@@ -251,9 +251,8 @@ export function Vegetation({
           if (random() > surfaceDensity) continue
 
           // Slope-aware tilt from terrain normal
-          const [nx, , nz] = getTerrainNormal(x, z)
+          const [nx] = getTerrainNormal(x, z)
           const slopeTiltX = Math.atan2(nx, 1) * 0.4
-          const slopeTiltZ = Math.atan2(nz, 1) * 0.4
 
           const scale = 0.6 + random() * 0.9
           instances.push({

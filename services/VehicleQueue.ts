@@ -181,8 +181,6 @@ export class VehicleQueueManager {
     }
 
     this.notifyListeners()
-    
-    const waitingCount = this.queue.filter(p => p.status === 'waiting' && p.type === type).length
 
     const waiting = this.queue
       .filter(p => p.status === 'waiting' && p.type === type)

@@ -1,6 +1,5 @@
 'use client'
 
-import { useMemo } from 'react'
 import { useGameStore } from '../../services/gameStore'
 
 export function FloodLevelGauge() {

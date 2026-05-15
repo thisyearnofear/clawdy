@@ -15,6 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://clawdy-nine.vercel.app'),
   title: 'CLAWDY — Play Inside a Marble-Generated World',
   description: 'Race autonomous AI agents through a World Labs Marble-generated 3D arena rendered with Spark. Drive, collect, and outsmart four AI opponents in real time.',
   keywords: ['world labs', 'marble', 'spark', 'gaussian splatting', 'ai agents', 'web3', 'game', 'three.js', '3d', 'hackathon'],

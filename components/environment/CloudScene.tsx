@@ -2,7 +2,7 @@
 
 import { Canvas } from '@react-three/fiber'
 import { Suspense, useState, useEffect, useRef, useMemo } from 'react'
-import Experience from './Experience'
+import Experience, { type LaunchReadinessState } from './Experience'
 import { Environment, PerformanceMonitor } from '@react-three/drei'
 import { CloudConfig } from './CloudManager'
 import { agentProtocol, WEATHER_AUCTION_ADDRESS, getMemeMarketAbility } from '../../services/AgentProtocol'
@@ -103,8 +103,8 @@ export default function CloudScene() {
     clearExpiredWeatherEffects,
   } = useGameStore()
 
-  const [isMounted, setIsMounted] = useState(false)
   const [splashDone, setSplashDone] = useState(false)
+  const [launchState, setLaunchState] = useState<LaunchReadinessState | null>(null)
   const runtimeProfile = useMemo(() => getRuntimeProfile(), [])
   const flood = useGameStore(s => s.flood)
   const cumulativeScore = useGameStore(s => s.cumulativeScore)
@@ -173,7 +173,6 @@ export default function CloudScene() {
       cta: 'See abilities →',
       tab: 'weather',
     })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flood.phase])
 
   // Score milestone nudge — fires once when cumulative score crosses 1.0 0G
@@ -210,9 +209,6 @@ export default function CloudScene() {
   })
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIsMounted(true)
-    
     // Onboarding check
     if (!localStorage.getItem('clawdy-onboarded')) {
       setUI({ showOnboarding: true })
@@ -402,10 +398,20 @@ export default function CloudScene() {
   const [dpr, setDpr] = useState(runtimeProfile.mode === 'production' ? 1.25 : 1.5)
   const marbleConfig = useMemo(() => getMarbleWorldConfig(), [])
   const isMarbleActive = shouldUseMarbleWorld(marbleConfig)
+  const isBlockingLaunchOverlayOpen = !splashDone || ui.showOnboarding
+  const showGameChrome = splashDone && !ui.showOnboarding
+  const launchReady = launchState?.ready ?? false
+  const launchStatus = getLaunchStatusText(launchState)
 
   return (
     <div className="w-full h-screen bg-gradient-to-b from-sky-400 to-sky-200 relative overflow-hidden">
-      {!splashDone && <LoadingSplash onReady={() => setSplashDone(true)} />}
+      {!splashDone && (
+        <LoadingSplash
+          ready={launchReady}
+          status={launchStatus}
+          onReady={() => setSplashDone(true)}
+        />
+      )}
       <Canvas
         shadows={{ type: 1 }}
         dpr={dpr}
@@ -420,7 +426,12 @@ export default function CloudScene() {
         <PerformanceMonitor onDecline={() => setDpr(1)} onIncline={() => setDpr(1.5)} />
         <Suspense fallback={null}>
           <Environment preset="city" />
-          <Experience cloudConfig={config} spawnRate={spawnRate} spectacleEnabled={splashDone} playerVehicleType={playerVehicle} />
+          <Experience
+            cloudConfig={config}
+            spawnRate={spawnRate}
+            spectacleEnabled={splashDone}
+            onLaunchStateChange={setLaunchState}
+          />
         </Suspense>
       </Canvas>
 
@@ -434,15 +445,17 @@ export default function CloudScene() {
         onDoneBidWin={() => setUI({ bidWinPreset: null })}
       />
 
-      <HUD 
-        playerId={playerId}
-        isMounted={isMounted}
-        onOpenSidebar={() => setUI({ isSidebarOpen: true })}
-        onToggleQuickControls={() => setUI({ showQuickControls: !ui.showQuickControls })}
-        showQuickControls={ui.showQuickControls}
-        cloudConfig={config}
-        onApplyPreset={applyPreset}
-      />
+      {showGameChrome && (
+        <HUD 
+          playerId={playerId}
+          isMounted={true}
+          onOpenSidebar={() => setUI({ isSidebarOpen: true })}
+          onToggleQuickControls={() => setUI({ showQuickControls: !ui.showQuickControls })}
+          showQuickControls={ui.showQuickControls}
+          cloudConfig={config}
+          onApplyPreset={applyPreset}
+        />
+      )}
 
       <ControlPanel 
         isOpen={ui.isSidebarOpen}
@@ -457,23 +470,82 @@ export default function CloudScene() {
         setPlayerVehicle={setPlayerVehicle}
       />
 
-      {splashDone && <AgentChatter />}
+      {showGameChrome && <AgentChatter />}
 
       {/* New UI components for Product/Game Design improvements */}
-      {splashDone && <AgentDecisionPanel />}
-      {splashDone && <RoundObjectives />}
+      {showGameChrome && <AgentDecisionPanel />}
+      {showGameChrome && <RoundObjectives />}
 
-      {/* Mobile touch controls - always rendered, component handles internal mobile detection */}
-      <MobileTouchControls />
+      {/* Mobile touch controls - single mount; hidden while launch/onboarding blocks interaction. */}
+      {showGameChrome && <MobileTouchControls />}
 
       {/* Help hint component - persistent until first keypress */}
-      <HelpHint />
+      {showGameChrome && <HelpHint />}
+
+      {isBlockingLaunchOverlayOpen && <LaunchBackdropCue />}
+      {process.env.NODE_ENV === 'development' && <LaunchDiagnostics state={launchState} runtimeMode={runtimeProfile.mode} />}
 
       {/* Performance & Runtime stats */}
-      <PerformanceStats />
+      {showGameChrome && <PerformanceStats />}
 
       {/* Marble attribution badge */}
-      {splashDone && <MarbleBadge />}
+      {showGameChrome && <MarbleBadge />}
+    </div>
+  )
+}
+
+function getLaunchStatusText(state: LaunchReadinessState | null) {
+  if (!state) return 'Booting arena'
+  if (!state.terrainReady) return state.mode === 'marble' ? 'Loading Marble collider' : 'Building terrain'
+  if (!state.queueReady) return 'Joining arena queue'
+  if (!state.vehicleReady) return 'Preparing your vehicle'
+  if (!state.cameraReady) return 'Locking chase camera'
+  if (!state.marbleReady) return 'Loading Marble world'
+  return state.marbleFallbackActive ? 'Fallback arena ready' : 'Ready to drive'
+}
+
+function LaunchBackdropCue() {
+  return (
+    <div className="pointer-events-none absolute inset-x-0 bottom-8 z-[5] flex justify-center px-4">
+      <div className="rounded-full border border-white/15 bg-black/30 px-4 py-2 text-center shadow-xl backdrop-blur-md">
+        <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/55">
+          Preparing your vehicle · WASD to drive after launch
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function LaunchDiagnostics({
+  state,
+  runtimeMode,
+}: {
+  state: LaunchReadinessState | null
+  runtimeMode: string
+}) {
+  if (!state) return null
+  const rows = [
+    ['mode', runtimeMode],
+    ['world', state.mode],
+    ['terrain', state.terrainReady ? 'ready' : 'loading'],
+    ['queue', state.queueStatus],
+    ['vehicle', state.playerVehicleLabel ?? (state.vehicleReady ? 'ready' : 'loading')],
+    ['camera', state.cameraReady ? 'locked' : 'waiting'],
+    ['marble', state.marbleReady ? (state.marbleFallbackActive ? 'fallback' : 'ready') : 'loading'],
+    ['phase', String(state.renderPhase)],
+  ]
+
+  return (
+    <div className="fixed bottom-4 left-4 z-[120] pointer-events-none rounded-2xl border border-white/10 bg-black/55 px-3 py-2 font-mono text-[9px] text-white/55 shadow-xl backdrop-blur-xl">
+      <div className="mb-1 font-black uppercase tracking-[0.2em] text-sky-300/70">Launch Dev</div>
+      <div className="grid grid-cols-[auto_auto] gap-x-3 gap-y-0.5">
+        {rows.map(([label, value]) => (
+          <div key={label} className="contents">
+            <span className="text-white/30">{label}</span>
+            <span className={value === 'ready' || value === 'locked' || value === 'active' ? 'text-emerald-300/80' : 'text-white/60'}>{value}</span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

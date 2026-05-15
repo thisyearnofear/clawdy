@@ -1,16 +1,10 @@
 'use client'
 
-import { useRef } from 'react'
-import { useFrame } from '@react-three/fiber'
 import { Line } from '@react-three/drei'
 import * as THREE from 'three'
 import { agentProtocol } from '../../services/AgentProtocol'
 
 export function IntentionVisualizer() {
-  useFrame(() => {
-    // This component will be populated by active intentions from AgentProtocol
-  })
-
   const sessions = agentProtocol.getSessions()
   const worldState = agentProtocol.getWorldState()
 

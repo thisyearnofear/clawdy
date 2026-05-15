@@ -3,7 +3,6 @@
 import { useMemo, useRef } from 'react'
 import { RigidBody, RigidBodyProps, RapierRigidBody, CuboidCollider } from '@react-three/rapier'
 import { useFrame } from '@react-three/fiber'
-import * as THREE from 'three'
 
 export type MemeAssetType = 
   | 'meatball' 

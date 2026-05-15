@@ -1,12 +1,11 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useGameStore } from '../../services/gameStore'
 import { OnboardingOverlay } from './OnboardingOverlay'
 import { GameToasts, BidWinCelebration } from './GameToasts'
 import { SoundManager } from './SoundManager'
 import { EconomyFeedback } from './EconomyFeedback'
-import { MobileTouchControls } from './MobileTouchControls'
 import { RoundRecap } from './RoundRecap'
 import { FinalRushOverlay } from './FinalRushOverlay'
 import { WeatherGradeOverlay } from './WeatherGradeOverlay'
@@ -99,9 +98,6 @@ export function Overlays({
 
       {/* Economy feedback floaters */}
       <EconomyFeedback />
-
-      {/* Mobile touch controls */}
-      <MobileTouchControls />
 
       {/* Underwater screen overlay - only visible when player is actually submerged */}
       {flood.active && flood.level > -1 && (

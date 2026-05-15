@@ -14,7 +14,7 @@ import {
 } from '@react-three/drei'
 import { isMobile as _isMobile } from 'react-device-detect'
 import { Physics } from '@react-three/rapier'
-import { ProceduralMemeAsset, MemeAssetStats, type MemeAssetType } from './MemeAssets'
+import { ProceduralMemeAsset, type MemeAssetType } from './MemeAssets'
 import { MemeAssetSpawner, type SpawnTier } from './MemeAssetSpawner'
 import { CloudManager, CloudConfig } from './CloudManager'
 import { Terrain } from '../terrain/Terrain'
@@ -28,12 +28,7 @@ import { AgentVision } from './AgentVision'
 import { IntentionVisualizer } from './IntentionVisualizer'
 import { MemeAssetInstances } from './MemeAssetInstances'
 import { VehicleType, agentProtocol, VEHICLE_RENT_ADDRESS } from '../../services/AgentProtocol'
-import { 
-  getCloudCountLimit, 
-  isAIAgentsEnabled, 
-  isLocalPlayMode, 
-  shouldEnableSpectacleOnBoot 
-} from '../../services/runtimeConfig'
+import { shouldEnableSpectacleOnBoot } from '../../services/runtimeConfig'
 import { QueueState } from '../../services/VehicleQueue'
 import { getAgentByVehicleId } from '../../services/agents'
 import { emitToast } from '../ui/GameToasts'
@@ -47,7 +42,6 @@ import { useCombatEvents } from '../../hooks/useCombatEvents'
 
 import FrameLimiter from '../utils/FrameLimiter'
 import { WeatherParticles } from './WeatherParticles'
-import { WeatherPostProcessing } from './WeatherPostProcessing'
 import { PuddleRipples } from './PuddleRipples'
 import { FloodWater } from './FloodWater'
 import { MudMarkers } from './MudMarkers'
@@ -59,16 +53,6 @@ import { getMarbleWorldConfig, shouldUseMarbleWorld } from '../../services/marbl
 import { MarbleWorldLayer } from './MarbleWorldLayer'
 import { MarbleCollider } from './MarbleCollider'
 import { CollectionBurst, emitCollectionBurst } from './CollectionBurst'
-
-interface VehicleData {
-  id: string
-  type: VehicleType
-  position: [number, number, number]
-  agentControlled: boolean
-  playerId?: string
-  isPlayerVehicle?: boolean
-  isGhost?: boolean
-}
 
 const EMPTY_VEHICLE_POSITION: [number, number, number] = [0, -100, 0]
 
@@ -98,10 +82,12 @@ function Experience({
   cloudConfig,
   spawnRate = 2,
   spectacleEnabled = true,
+  onLaunchStateChange,
 }: {
   cloudConfig: CloudConfig;
   spawnRate?: number;
   spectacleEnabled?: boolean;
+  onLaunchStateChange?: (state: LaunchReadinessState) => void;
 }) {
   useThree() 
   const { address } = useAccount()
@@ -109,7 +95,10 @@ function Experience({
 
   const [memeAssets, setMemeAssets] = useState<{ id: number; position: [number, number, number]; itemType?: MemeAssetType }[]>([])
   const [terrainSampler, setTerrainSampler] = useState<((x: number, z: number) => number) | null>(null)
-  const [isMobileClient, setIsMobileClient] = useState(_isMobile)
+  const [terrainReady, setTerrainReady] = useState(false)
+  const [marbleVisualReady, setMarbleVisualReady] = useState(false)
+  const [marbleFallbackActive, setMarbleFallbackActive] = useState(false)
+  const isMobileClient = _isMobile
   const [renderPhase, setRenderPhase] = useState(shouldEnableSpectacleOnBoot() ? 4 : 1)
 
   useEffect(() => {
@@ -134,7 +123,7 @@ function Experience({
   const spectatorVehicleObjRef = useRef<RapierRigidBody | null>(null)
   const lastPriorityToastAtRef = useRef(0)
 
-  const { vehicles, setVehicles, queueState, getVehiclePosition } = usePlayerQueue(
+  const { vehicles, setVehicles, queueState } = usePlayerQueue(
     playerId, address, cloudConfig, preferredVehicle
   )
 
@@ -257,6 +246,7 @@ function Experience({
   const playerVehicle = queueState?.getPlayerVehicle(playerId)
   const isPlayerActive = queueState?.isPlayerActive(playerId) ?? false
   const spectatorVehicle = useMemo(() => vehicles.find(v => v.agentControlled && !v.isGhost), [vehicles])
+  const practiceVehicle = useMemo(() => vehicles.find(v => v.isPractice && v.playerId === playerId), [vehicles, playerId])
 
   // Track practice mode transitions
   const wasInPracticeRef = useRef(false)
@@ -282,7 +272,6 @@ function Experience({
   }, [isPlayerActive, playerVehicle, vehicles])
 
   const { handleCollect } = useCombatEvents({
-    playerId,
     setVehicles,
     handleDespawn,
     freeAirBubbleUsedRef,
@@ -313,7 +302,9 @@ function Experience({
   })
 
 
-  const isCameraFollowingVehicle = Boolean(isPlayerActive ? playerVehicle : spectatorVehicle)
+  const followMode = isPlayerActive || practiceVehicle ? 'active' : 'spectator'
+  const followTargetRef = isPlayerActive || practiceVehicle ? playerVehicleObjRef : spectatorVehicleObjRef
+  const isCameraFollowingVehicle = Boolean(isPlayerActive ? playerVehicle : practiceVehicle ?? spectatorVehicle)
 
   const [useSphericalTerrain, setUseSphericalTerrain] = useState(false);
   const [weatherPhase, setWeatherPhase] = useState(0)
@@ -326,6 +317,61 @@ function Experience({
     lastWeatherPhaseUpdateRef.current = elapsedTime
     setWeatherPhase(elapsedTime)
   })
+
+  const handleTerrainSamplerReady = useCallback((sampler: (x: number, z: number) => number) => {
+    setTerrainSampler(() => sampler)
+    setTerrainReady(true)
+  }, [])
+
+  useEffect(() => {
+    if (!useMarbleWorld) return
+    if (terrainReady) return
+    const timer = window.setTimeout(() => {
+      setMarbleFallbackActive(true)
+      setTerrainReady(true)
+      setTerrainSampler(() => (() => 0))
+      emitToast('milestone', 'Arena fallback ready', 'Marble collider is still loading — practice surface enabled')
+    }, 2500)
+    return () => window.clearTimeout(timer)
+  }, [terrainReady, useMarbleWorld])
+
+  useEffect(() => {
+    if (!onLaunchStateChange) return
+    const playerQueued = Boolean(queueState?.queue.some(p => p.id === playerId))
+    const vehicleReady = Boolean(playerVehicle || practiceVehicle || vehicles.some(v => v.playerId === playerId && !v.isGhost))
+    const cameraReady = Boolean(isCameraFollowingVehicle)
+    const marbleReady = !useMarbleWorld || marbleVisualReady || marbleFallbackActive
+    const ready = terrainReady && playerQueued && vehicleReady && cameraReady && marbleReady
+
+    onLaunchStateChange({
+      ready,
+      mode: useMarbleWorld ? 'marble' : useSphericalTerrain ? 'spherical' : 'procedural',
+      terrainReady,
+      queueReady: playerQueued,
+      vehicleReady,
+      cameraReady,
+      marbleReady,
+      marbleFallbackActive,
+      renderPhase,
+      vehicleCount: vehicles.length,
+      playerVehicleLabel: playerVehicle?.type ?? practiceVehicle?.type ?? null,
+      queueStatus: queueState?.queue.find(p => p.id === playerId)?.status ?? 'joining',
+    })
+  }, [
+    isCameraFollowingVehicle,
+    marbleFallbackActive,
+    marbleVisualReady,
+    onLaunchStateChange,
+    playerId,
+    playerVehicle,
+    practiceVehicle,
+    queueState,
+    renderPhase,
+    terrainReady,
+    useMarbleWorld,
+    useSphericalTerrain,
+    vehicles,
+  ])
 
   const gravityVector = useGameStore(s => s.gravityVector)
   const setGravityMode = useGameStore(s => s.setGravityMode)
@@ -376,9 +422,9 @@ function Experience({
     >
       <PerspectiveCamera makeDefault position={[0, 15, 30]} />
       <CameraManager
-        targetRef={isPlayerActive ? playerVehicleObjRef : spectatorVehicleObjRef}
+        targetRef={followTargetRef}
         active={isCameraFollowingVehicle}
-        mode={isPlayerActive ? 'active' : 'spectator'}
+        mode={followMode}
         intensity={cameraWeatherIntensity}
       />
       <Sky sunPosition={isNightMode ? [100, 1 + (activeWeatherEffects.dayNight?.intensity ?? 0) * 2, 90] : cloudConfig.preset === 'stormy' ? [100, 5, 100] : cloudConfig.preset === 'sunset' ? [100, 8, 50] : [100, 20, 100]} />
@@ -487,11 +533,22 @@ function Experience({
           </>
         )}
         {useMarbleWorld ? (
-          <MarbleCollider config={marbleWorld} debug={marbleDebug} onReady={setTerrainSampler} />
+          <>
+            <MarbleCollider config={marbleWorld} debug={marbleDebug} onReady={handleTerrainSamplerReady} />
+            {marbleFallbackActive && (
+              <RigidBody type="fixed" position={[0, -0.15, 0]}>
+                <CuboidCollider args={[marbleWorld.bounds[0], 0.1, marbleWorld.bounds[2]]} />
+                <mesh receiveShadow>
+                  <boxGeometry args={[marbleWorld.bounds[0] * 2, 0.08, marbleWorld.bounds[2] * 2]} />
+                  <meshStandardMaterial color="#6fb7a8" roughness={0.9} transparent opacity={0.35} />
+                </mesh>
+              </RigidBody>
+            )}
+          </>
         ) : useSphericalTerrain ? (
-          <IntegratedSphericalTerrain playerPosition={playerVehiclePosition} onTerrainReady={setTerrainSampler} />
+          <IntegratedSphericalTerrain playerPosition={playerVehiclePosition} onTerrainReady={handleTerrainSamplerReady} />
         ) : (
-          <Terrain onSamplerReady={setTerrainSampler} />
+          <Terrain onSamplerReady={handleTerrainSamplerReady} />
         )}
         {!useMarbleWorld && (
           <group position={[0, 20, -10]}>
@@ -503,7 +560,7 @@ function Experience({
       </Physics>
       {renderPhase >= 4 && useMarbleWorld && (
         <ErrorBoundaryFallback>
-          <MarbleWorldLayer config={marbleWorld} />
+          <MarbleWorldLayer config={marbleWorld} onLoad={() => setMarbleVisualReady(true)} />
         </ErrorBoundaryFallback>
       )}
       {spectacleEnabled && <ContactShadows opacity={0.4} scale={50} blur={1} far={20} resolution={256} color="#000000" />}
@@ -512,7 +569,22 @@ function Experience({
   )
 }
 
-function ExperienceWithMobileControls(props: { cloudConfig: CloudConfig; spawnRate?: number; playerVehicleType?: VehicleType; spectacleEnabled?: boolean }) {
+export interface LaunchReadinessState {
+  ready: boolean
+  mode: 'procedural' | 'spherical' | 'marble'
+  terrainReady: boolean
+  queueReady: boolean
+  vehicleReady: boolean
+  cameraReady: boolean
+  marbleReady: boolean
+  marbleFallbackActive: boolean
+  renderPhase: number
+  vehicleCount: number
+  playerVehicleLabel: string | null
+  queueStatus: 'joining' | 'waiting' | 'active'
+}
+
+function ExperienceWithMobileControls(props: { cloudConfig: CloudConfig; spawnRate?: number; spectacleEnabled?: boolean; onLaunchStateChange?: (state: LaunchReadinessState) => void }) {
   return (
     <>
       <Experience {...props} />

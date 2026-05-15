@@ -25,6 +25,7 @@ vi.mock('../components/environment/MemeAssets', () => ({
 }))
 
 import { EconomyEngine } from '../EconomyEngine'
+import type { MemeAssetStats } from '../../components/environment/MemeAssets'
 
 describe('EconomyEngine', () => {
   let engine: EconomyEngine
@@ -89,58 +90,58 @@ describe('EconomyEngine', () => {
   describe('collectAsset', () => {
     it('increases collectedCount', () => {
       const session = engine.authorizeAgent('Scout-1', 60000)
-      engine.collectAsset(session, { type: 'default', rarity: 'common' } as any)
+      engine.collectAsset(session, { type: 'burger', rarity: 'common', effect: 'vitality', mass: 1, isDestroyable: false } as MemeAssetStats)
       expect(session.collectedCount).toBe(1)
     })
 
     it('applies rarity multiplier to earnings', () => {
       const session = engine.authorizeAgent('Scout-1', 60000)
-      const commonResult = engine.collectAsset(session, { type: 'default', rarity: 'common' } as any)
+      const commonResult = engine.collectAsset(session, { type: 'burger', rarity: 'common', effect: 'vitality', mass: 1, isDestroyable: false } as MemeAssetStats)
       const session2 = engine.authorizeAgent('Scout-2', 60000)
-      const legendaryResult = engine.collectAsset(session2, { type: 'default', rarity: 'legendary' } as any)
+      const legendaryResult = engine.collectAsset(session2, { type: 'meatball', rarity: 'legendary', effect: 'vitality', mass: 1, isDestroyable: false } as MemeAssetStats)
       expect(legendaryResult.earned).toBeGreaterThan(commonResult.earned)
     })
 
     it('clamps vitality between 0 and 100', () => {
       const session = engine.authorizeAgent('Scout-1', 60000)
       session.vitality = 95
-      engine.collectAsset(session, { type: 'default', rarity: 'common' } as any)
+      engine.collectAsset(session, { type: 'burger', rarity: 'common', effect: 'vitality', mass: 1, isDestroyable: false } as MemeAssetStats)
       expect(session.vitality).toBeLessThanOrEqual(100)
     })
 
     it('clamps burden between 0 and 100', () => {
       const session = engine.authorizeAgent('Scout-1', 60000)
       session.burden = 5
-      engine.collectAsset(session, { type: 'default', rarity: 'common' } as any)
+      engine.collectAsset(session, { type: 'burger', rarity: 'common', effect: 'vitality', mass: 1, isDestroyable: false } as MemeAssetStats)
       expect(session.burden).toBeGreaterThanOrEqual(0)
     })
 
     it('applies combo multiplier to earnings', () => {
       const session = engine.authorizeAgent('Scout-1', 60000)
       session.comboMultiplier = 3
-      const result = engine.collectAsset(session, { type: 'default', rarity: 'common' } as any)
+      const result = engine.collectAsset(session, { type: 'burger', rarity: 'common', effect: 'vitality', mass: 1, isDestroyable: false } as MemeAssetStats)
       const session2 = engine.authorizeAgent('Scout-2', 60000)
       session2.comboMultiplier = 1
-      const result2 = engine.collectAsset(session2, { type: 'default', rarity: 'common' } as any)
+      const result2 = engine.collectAsset(session2, { type: 'burger', rarity: 'common', effect: 'vitality', mass: 1, isDestroyable: false } as MemeAssetStats)
       expect(result.earned).toBeGreaterThan(result2.earned)
     })
 
     it('grants speed boost on spicy_pepper', () => {
       const session = engine.authorizeAgent('Scout-1', 60000)
-      engine.collectAsset(session, { type: 'spicy_pepper', rarity: 'common' } as any)
+      engine.collectAsset(session, { type: 'spicy_pepper', rarity: 'common', effect: 'speed', mass: 1, isDestroyable: false } as MemeAssetStats)
       expect(session.speedBoostUntil).toBe(1010000)
     })
 
     it('grants anti-gravity on floaty_marshmallow', () => {
       const session = engine.authorizeAgent('Scout-1', 60000)
-      engine.collectAsset(session, { type: 'floaty_marshmallow', rarity: 'common' } as any)
+      engine.collectAsset(session, { type: 'floaty_marshmallow', rarity: 'common', effect: 'gravity', mass: 1, isDestroyable: false } as MemeAssetStats)
       expect(session.antiGravityUntil).toBe(1008000)
     })
 
     it('reduces burden on air_bubble', () => {
       const session = engine.authorizeAgent('Scout-1', 60000)
       session.burden = 20
-      engine.collectAsset(session, { type: 'air_bubble', rarity: 'common' } as any)
+      engine.collectAsset(session, { type: 'air_bubble', rarity: 'common', effect: 'utility', mass: 1, isDestroyable: false } as MemeAssetStats)
       expect(session.burden).toBe(12)
     })
   })

@@ -1,4 +1,4 @@
-import { createPublicClient, createWalletClient, http, parseEther, parseGwei } from 'viem';
+import { createPublicClient, createWalletClient, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { bsc } from 'viem/chains';
 

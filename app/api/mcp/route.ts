@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'params object required' }, { status: 400 })
     }
 
-    const { role, agentId, assetCount, vehicleCount, currentWeatherBid } = params
+    const { role, agentId, assetCount, currentWeatherBid } = params
 
     if (typeof role !== 'string' || !role) {
       return NextResponse.json({ error: 'role required' }, { status: 400 })
@@ -22,7 +22,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'agentId required' }, { status: 400 })
     }
     const assets = typeof assetCount === 'number' && assetCount >= 0 ? assetCount : 0
-    const vehicles = typeof vehicleCount === 'number' && vehicleCount >= 0 ? vehicleCount : 0
     const weatherBid = typeof currentWeatherBid === 'number' ? currentWeatherBid : 0
 
     await new Promise(resolve => setTimeout(resolve, 200 + Math.random() * 300))
