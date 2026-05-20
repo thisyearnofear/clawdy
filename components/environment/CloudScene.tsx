@@ -404,7 +404,7 @@ export default function CloudScene() {
   const launchStatus = getLaunchStatusText(launchState)
 
   return (
-    <div className="w-full h-screen bg-gradient-to-b from-sky-400 to-sky-200 relative overflow-hidden">
+    <div className="w-full h-screen bg-gradient-to-b from-gray-700 to-gray-900 relative overflow-hidden">
       {!splashDone && (
         <LoadingSplash
           ready={launchReady}
@@ -416,7 +416,7 @@ export default function CloudScene() {
         shadows={{ type: 1 }}
         dpr={dpr}
         gl={{
-          antialias: !isMarbleActive, // Spark recommends antialias:false for splat rendering
+          antialias: !isMarbleActive,
           alpha: true,
           powerPreference: 'high-performance',
           stencil: false,
@@ -424,8 +424,11 @@ export default function CloudScene() {
         }}
       > {/* 1 is PCFShadowMap in THREE */}
         <PerformanceMonitor onDecline={() => setDpr(1)} onIncline={() => setDpr(1.5)} />
+        <color attach="background" args={['#b8c8d8']} />
         <Suspense fallback={null}>
           <Environment preset="city" />
+        </Suspense>
+        <Suspense fallback={null}>
           <Experience
             cloudConfig={config}
             spawnRate={spawnRate}

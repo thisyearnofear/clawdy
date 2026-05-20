@@ -12,6 +12,8 @@ const TIPS = [
   'ESC opens the control panel for abilities and tuning',
 ]
 
+const DEFAULT_TIP = TIPS[0]
+
 export function LoadingSplash({
   ready = true,
   status = 'Preparing your vehicle',
@@ -22,9 +24,13 @@ export function LoadingSplash({
   onReady?: () => void
 }) {
   const [progress, setProgress] = useState(0)
-  const [tip] = useState(() => TIPS[Math.floor(Math.random() * TIPS.length)] ?? TIPS[0])
+  const [tip, setTip] = useState(DEFAULT_TIP)
   const [fadeOut, setFadeOut] = useState(false)
   const [timedOut, setTimedOut] = useState(false)
+
+  useEffect(() => {
+    setTip(TIPS[Math.floor(Math.random() * TIPS.length)] ?? DEFAULT_TIP)
+  }, [])
 
   useEffect(() => {
     if (fadeOut) return

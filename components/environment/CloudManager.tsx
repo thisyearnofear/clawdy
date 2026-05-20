@@ -111,20 +111,27 @@ export function CloudManager({ config }: { config: CloudConfig }) {
     const clusterBounds = activeConfig.clusterBounds || [12, 3, 12]
     const verticalRange = clusterBounds[1] // Use the Y component for vertical spread
     
-    // Keep the local first-person driving lane visually open.
-    items.push({ position: isLocalPlayMode() ? [0, 34, -45] : [0, 25, 0], color: activeConfig.color, speed: activeConfig.speed })
+    // Keep the chase-camera corridor open. A cloud between camera z≈30 and
+    // the origin reads as a full-screen black/gray overlay once spectacle mounts.
+    items.push({ position: [0, 34, -45], color: activeConfig.color, speed: activeConfig.speed })
 
     for (let i = 1; i < count; i++) {
       const isSecondary = activeConfig.secondaryColor && random() > 0.5
       // Spread clouds across wider vertical range (y=15-40)
       const baseHeight = 25 + (random() - 0.5) * verticalRange * 2
-      const clampedHeight = Math.max(15, Math.min(40, baseHeight))
+      let x = (random() - 0.5) * rangeX
+      let y = Math.max(15, Math.min(40, baseHeight))
+      let z = (random() - 0.5) * rangeZ
+
+      const inCameraCorridor = Math.abs(x) < 26 && z > -24 && z < 58
+      if (inCameraCorridor) {
+        y = Math.max(y, 32)
+        z = z > 18 ? z + 36 : z - 36
+        x += x < 0 ? -18 : 18
+      }
+
       items.push({
-        position: [
-          (random() - 0.5) * rangeX,
-          clampedHeight,
-          (random() - 0.5) * rangeZ
-        ],
+        position: [x, y, z],
         color: isSecondary ? activeConfig.secondaryColor! : activeConfig.color,
         speed: activeConfig.speed * (0.8 + random() * 0.4)
       })
@@ -142,7 +149,7 @@ export function CloudManager({ config }: { config: CloudConfig }) {
           bounds={(activeConfig.clusterBounds || [12, 3, 12]) as [number, number, number]}
           volume={activeConfig.volume}
           growth={activeConfig.growth}
-          opacity={activeConfig.opacity}
+          opacity={Math.min(activeConfig.opacity, 0.72)}
           speed={item.speed}
           color={item.color}
           fade={100}

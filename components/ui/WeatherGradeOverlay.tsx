@@ -52,7 +52,7 @@ export function WeatherGradeOverlay() {
     return () => cancelAnimationFrame(raf)
   }, [target, lightning])
 
-  const vignetteOpacity = clamp01(0.35 + grade * 0.35 + dayNight * 0.25)
+  const vignetteOpacity = clamp01(0.16 + grade * 0.2 + dayNight * 0.16)
 
   // Per-preset tint overlays (inspired by the rain puddle demo's grading layers).
   const tint = useMemo(() => {
@@ -63,7 +63,7 @@ export function WeatherGradeOverlay() {
     return { bottom: 'rgba(0, 0, 255, 0.05)', top: 'rgba(255, 222, 165, 0.05)' }
   }, [preset])
 
-  const tintOpacity = clamp01(grade * 0.9)
+  const tintOpacity = clamp01(grade * 0.45)
 
   return (
     <>
@@ -99,4 +99,3 @@ export function WeatherGradeOverlay() {
     </>
   )
 }
-

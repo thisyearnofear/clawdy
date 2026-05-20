@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useRef, useCallback, Suspense } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { CameraManager } from './CameraManager'
@@ -104,9 +104,9 @@ function Experience({
   useEffect(() => {
     if (renderPhase !== 1) return
     const timers = [
-      setTimeout(() => setRenderPhase(2), 500),
-      setTimeout(() => setRenderPhase(3), 1500),
-      setTimeout(() => setRenderPhase(4), 3000),
+      setTimeout(() => setRenderPhase(2), 200),
+      setTimeout(() => setRenderPhase(3), 500),
+      setTimeout(() => setRenderPhase(4), 1000),
     ]
     return () => timers.forEach(clearTimeout)
   }, [renderPhase])
@@ -428,7 +428,9 @@ function Experience({
         intensity={cameraWeatherIntensity}
       />
       <Sky sunPosition={isNightMode ? [100, 1 + (activeWeatherEffects.dayNight?.intensity ?? 0) * 2, 90] : cloudConfig.preset === 'stormy' ? [100, 5, 100] : cloudConfig.preset === 'sunset' ? [100, 8, 50] : [100, 20, 100]} />
-      <Environment preset="city" />
+      <Suspense fallback={null}>
+        <Environment preset="city" />
+      </Suspense>
       <ambientLight intensity={(cloudConfig.preset === 'stormy' ? 0.3 : cloudConfig.preset === 'cosmic' ? 0.15 : cloudConfig.preset === 'sunset' ? 0.6 : 0.5) * (1 - (activeWeatherEffects.dayNight?.intensity ?? 0) * 0.55) + lightningPulse * 0.35} />
       <directionalLight
         position={[10, 10, 5]}
@@ -443,7 +445,8 @@ function Experience({
         shadow-camera-bottom={-60}
         shadow-bias={-0.0005}
       />
-      <fog attach="fog" args={[isNightMode ? '#0a0a2e' : cloudConfig.preset === 'stormy' ? '#4a5568' : cloudConfig.preset === 'sunset' ? '#ffccaa' : cloudConfig.preset === 'candy' ? '#ffe0f0' : '#c9d5ff', cloudConfig.preset === 'stormy' ? 10 : cloudConfig.preset === 'cosmic' ? 20 : 18, (cloudConfig.preset === 'stormy' ? 60 : cloudConfig.preset === 'cosmic' ? 120 : 90) - (activeWeatherEffects.lightning?.intensity ?? 0) * 18]} />
+      {/* Fog */}
+      <fog attach="fog" args={[isNightMode ? '#0a0a2e' : cloudConfig.preset === 'stormy' ? '#4a5568' : cloudConfig.preset === 'sunset' ? '#ffccaa' : cloudConfig.preset === 'candy' ? '#ffe0f0' : '#b8c8d8', cloudConfig.preset === 'stormy' ? 8 : cloudConfig.preset === 'cosmic' ? 15 : 28, (cloudConfig.preset === 'stormy' ? 50 : cloudConfig.preset === 'cosmic' ? 100 : 75) - (activeWeatherEffects.lightning?.intensity ?? 0) * 18]} />
       
       {renderPhase >= 3 && (
         <>
@@ -453,7 +456,9 @@ function Experience({
         </>
       )}
 
-      <Physics gravity={physicsGravity}>
+      <RapierErrorBoundary>
+        <Suspense fallback={<PhysicsFallback />}>
+          <Physics gravity={physicsGravity}>
         {renderPhase >= 3 && (
           <>
             {!useMarbleWorld && spectacleEnabled && <LaunchPads />}
@@ -557,7 +562,9 @@ function Experience({
           </group>
         )}
         {renderPhase >= 2 && address && <InWorldQueueStatus playerId={playerId} queueState={queueState} isPlayerActive={isPlayerActive} playerVehicle={playerVehicle} />}
-      </Physics>
+        </Physics>
+          </Suspense>
+        </RapierErrorBoundary>
       {renderPhase >= 4 && useMarbleWorld && (
         <ErrorBoundaryFallback>
           <MarbleWorldLayer config={marbleWorld} onLoad={() => setMarbleVisualReady(true)} />
@@ -673,6 +680,100 @@ class ErrorBoundaryFallback extends React.Component<{ children: React.ReactNode 
     if (this.state.hasError) return null
     return this.props.children
   }
+}
+
+/** Displayed while Rapier WASM is initializing */
+function PhysicsFallback() {
+  const ringRef = useRef<THREE.Mesh>(null)
+  useFrame((state) => {
+    if (ringRef.current) {
+      ringRef.current.rotation.x = state.clock.getElapsedTime() * 0.6
+      ringRef.current.rotation.z = state.clock.getElapsedTime() * 0.4
+    }
+  })
+  return (
+    <group>
+      {/* Ground plane so the view isn't empty */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} receiveShadow>
+        <planeGeometry args={[120, 120]} />
+        <meshStandardMaterial color="#4a5568" roughness={0.9} />
+      </mesh>
+      {/* Loading indicator */}
+      <mesh ref={ringRef} position={[0, 2, -10]}>
+        <torusGeometry args={[0.8, 0.12, 16, 32]} />
+        <meshStandardMaterial color="#60a5fa" emissive="#3b82f6" emissiveIntensity={0.3} />
+      </mesh>
+      <Text
+        position={[0, 0.5, -10]}
+        fontSize={0.5}
+        color="#94a3b8"
+        anchorX="center"
+        anchorY="middle"
+      >
+        Loading arena…
+      </Text>
+    </group>
+  )
+}
+
+/** Error boundary — catches Rapier WASM init failures and shows a fallback scene */
+class RapierErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props)
+    this.state = { hasError: false }
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+  componentDidCatch(error: Error) {
+    console.warn('[RapierErrorBoundary] Physics engine init failed:', error.message)
+  }
+  render() {
+    if (this.state.hasError) return <RapierErrorFallback />
+    return this.props.children
+  }
+}
+
+/** Rendered when Rapier WASM fails to initialize */
+function RapierErrorFallback() {
+  return (
+    <group>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} receiveShadow>
+        <planeGeometry args={[120, 120]} />
+        <meshStandardMaterial color="#4a5568" roughness={0.9} />
+      </mesh>
+      {/* Static decorative elements */}
+      {[[10, 0, 10], [-10, 0, -10], [15, 0, -8], [-12, 0, 12]].map((pos, i) => (
+        <mesh key={i} position={[pos[0], 0.5, pos[2]]}>
+          <boxGeometry args={[0.8, 1, 0.8]} />
+          <meshStandardMaterial color="#6b7280" emissive="#4a5568" emissiveIntensity={0.15} />
+        </mesh>
+      ))}
+      <Text
+        position={[0, 3, -15]}
+        fontSize={0.7}
+        color="#f87171"
+        anchorX="center"
+        anchorY="middle"
+        outlineWidth={0.04}
+        outlineColor="#000000"
+      >
+        Physics unavailable
+      </Text>
+      <Text
+        position={[0, 1.8, -15]}
+        fontSize={0.35}
+        color="#9ca3af"
+        anchorX="center"
+        anchorY="middle"
+      >
+        Rapier WASM engine failed to load. Explore the terrain without collisions.
+      </Text>
+    </group>
+  )
 }
 
 export default ExperienceWithMobileControls;
