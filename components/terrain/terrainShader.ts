@@ -321,10 +321,10 @@ rough = mix(rough, rough * 0.3, uWetness);
 
 // Distance desaturation: fade to muted grey-green at horizon
 float distFromCam = length(vWorldPosition.xz - cameraPosition.xz);
-float desat = smoothstep(30.0, 80.0, distFromCam);
+float desat = smoothstep(50.0, 110.0, distFromCam);
 float lum = dot(col, vec3(0.299, 0.587, 0.114));
 vec3 greyCol = vec3(lum) * vec3(0.85, 0.9, 0.82); // slightly tinted grey
-col = mix(col, greyCol, desat * 0.5);
+col = mix(col, greyCol, desat * 0.35);
 
 diffuseColor = vec4(col, 1.0);
 `

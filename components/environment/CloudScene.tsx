@@ -417,14 +417,14 @@ export default function CloudScene() {
         dpr={dpr}
         gl={{
           antialias: !isMarbleActive,
-          alpha: true,
+          alpha: false,
           powerPreference: 'high-performance',
           stencil: false,
           depth: true,
         }}
       > {/* 1 is PCFShadowMap in THREE */}
         <PerformanceMonitor onDecline={() => setDpr(1)} onIncline={() => setDpr(1.5)} />
-        <color attach="background" args={['#b8c8d8']} />
+        <color attach="background" args={['#87a5c0']} />
         <Suspense fallback={null}>
           <Environment preset="city" />
         </Suspense>

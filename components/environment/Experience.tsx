@@ -446,7 +446,7 @@ function Experience({
         shadow-bias={-0.0005}
       />
       {/* Fog */}
-      <fog attach="fog" args={[isNightMode ? '#0a0a2e' : cloudConfig.preset === 'stormy' ? '#4a5568' : cloudConfig.preset === 'sunset' ? '#ffccaa' : cloudConfig.preset === 'candy' ? '#ffe0f0' : '#b8c8d8', cloudConfig.preset === 'stormy' ? 8 : cloudConfig.preset === 'cosmic' ? 15 : 28, (cloudConfig.preset === 'stormy' ? 50 : cloudConfig.preset === 'cosmic' ? 100 : 75) - (activeWeatherEffects.lightning?.intensity ?? 0) * 18]} />
+      <fog attach="fog" args={[isNightMode ? '#0a0a2e' : cloudConfig.preset === 'stormy' ? '#4a5568' : cloudConfig.preset === 'sunset' ? '#ffccaa' : cloudConfig.preset === 'candy' ? '#ffe0f0' : '#87a5c0', cloudConfig.preset === 'stormy' ? 8 : cloudConfig.preset === 'cosmic' ? 15 : 40, (cloudConfig.preset === 'stormy' ? 50 : cloudConfig.preset === 'cosmic' ? 100 : 110) - (activeWeatherEffects.lightning?.intensity ?? 0) * 18]} />
       
       {renderPhase >= 3 && (
         <>
