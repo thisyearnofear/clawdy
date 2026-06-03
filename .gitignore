@@ -41,6 +41,11 @@ yarn-error.log*
 next-env.d.ts
 .blackboxcli/
 
+# local CLI / AI agent artifacts
+.agents/
+.codex/
+.commandcode/
+
 .letta
 .zenflow
 .junie

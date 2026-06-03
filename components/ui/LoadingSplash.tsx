@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { getLoadingSplashDurationMs } from '../../services/runtimeConfig'
 
 const TIPS = [
@@ -27,10 +27,18 @@ export function LoadingSplash({
   const [tip, setTip] = useState(DEFAULT_TIP)
   const [fadeOut, setFadeOut] = useState(false)
   const [timedOut, setTimedOut] = useState(false)
+  const onReadyRef = useRef(onReady)
 
   useEffect(() => {
-    setTip(TIPS[Math.floor(Math.random() * TIPS.length)] ?? DEFAULT_TIP)
+    const timer = setTimeout(() => {
+      setTip(TIPS[Math.floor(Math.random() * TIPS.length)] ?? DEFAULT_TIP)
+    }, 0)
+    return () => clearTimeout(timer)
   }, [])
+
+  useEffect(() => {
+    onReadyRef.current = onReady
+  }, [onReady])
 
   useEffect(() => {
     if (fadeOut) return
@@ -51,11 +59,11 @@ export function LoadingSplash({
       if (targetProgress >= 100) {
         clearInterval(interval)
         setFadeOut(true)
-        setTimeout(() => onReady?.(), 400)
+        setTimeout(() => onReadyRef.current?.(), 400)
       }
     }, 50)
     return () => clearInterval(interval)
-  }, [fadeOut, onReady, ready])
+  }, [fadeOut, ready])
 
   return (
     <div

@@ -93,15 +93,17 @@ export default function CloudScene() {
     WEATHER_AUCTION_ADDRESS !== '0x0000000000000000000000000000000000000000'
   
   // State from GameStore
-  const {
-    cloudConfig: config, setCloudConfig,
-    spawnRate, setSpawnRate,
-    playerVehicle, setPlayerVehicle,
-    ui, setUI,
-    tickRound,
-    setWeatherEffect,
-    clearExpiredWeatherEffects,
-  } = useGameStore()
+  const config = useGameStore(s => s.cloudConfig)
+  const setCloudConfig = useGameStore(s => s.setCloudConfig)
+  const spawnRate = useGameStore(s => s.spawnRate)
+  const setSpawnRate = useGameStore(s => s.setSpawnRate)
+  const playerVehicle = useGameStore(s => s.playerVehicle)
+  const setPlayerVehicle = useGameStore(s => s.setPlayerVehicle)
+  const ui = useGameStore(s => s.ui)
+  const setUI = useGameStore(s => s.setUI)
+  const tickRound = useGameStore(s => s.tickRound)
+  const setWeatherEffect = useGameStore(s => s.setWeatherEffect)
+  const clearExpiredWeatherEffects = useGameStore(s => s.clearExpiredWeatherEffects)
 
   const [splashDone, setSplashDone] = useState(false)
   const [launchState, setLaunchState] = useState<LaunchReadinessState | null>(null)
