@@ -211,11 +211,6 @@ export default function CloudScene() {
   })
 
   useEffect(() => {
-    // Onboarding check
-    if (!localStorage.getItem('clawdy-onboarded')) {
-      setUI({ showOnboarding: true })
-    }
-
     // AgentProtocol subscriptions
     const unsubscribeWeather = agentProtocol.subscribeToWeather((newConfig) => {
       setCloudConfig({ ...newConfig, preset: 'custom' })
