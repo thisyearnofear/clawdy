@@ -32,7 +32,6 @@ export const RoundRecap = React.memo(function RoundRecap() {
 
   // When a new round starts, clear dismissal.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (round.isActive) setDismissedRound(null)
   }, [round.isActive, round.roundNumber])
   

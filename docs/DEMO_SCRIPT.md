@@ -1,155 +1,60 @@
-# CLAWDY Demo Script (0G APAC Hackathon)
+# Clawdy — Two-Minute Learning Demo
 
-Use this script for a **1 to 3 minute** hackathon demo video.
+**Target script, not a description of a shipped build.** Follow the accepted [plan](HACKATHON.md). Only present steps that are implemented and supported by actual training and evaluation records.
 
-## Goal
+## One-Sentence Pitch
 
-Show that `Clawdy` is:
+Clawdy lets you coach and train an autonomous competitor in a generated world, then watch it use what it learned when you can no longer intervene.
 
-- an agentic app on 0G
-- driven by role-based agents
-- capable of autonomous onchain actions
-- built around an earn-pay-earn loop
-- backed by 0G-native infra (0G Chain + 0G Storage persistence)
+Track: **Gaming & Interactive Worlds**. The working experience comes before the implementation explanation.
 
-## Demo Structure
+## Presentation Sequence
 
-### Segment 1: Opening Hook
+| Time | Show | Say |
+| --- | --- | --- |
+| 0:00–0:15 | A baseline rover approaches the flooded low route; its checkpoint and target are visible. | “This is my agent, not my avatar. I develop its policy, then it competes without me.” |
+| 0:15–0:35 | Select its recorded route-choice mistake in practice or replay. Enter a coaching correction. | “When the lower passage is flooded, take the ridge, even if it is longer.” |
+| 0:35–0:55 | Show the situation, original action, preferred legal action, and examples proposed for approval. Approve and start the real training flow, or show a clearly labeled recording of it. | “This correction becomes training data. A saved prompt would not be enough.” |
+| 0:55–1:20 | Select the resulting checkpoint. Start or replay a held-out match with different resource placement or weather timing, visibly labeled as such. No coaching controls are active. | “These weights are frozen. This run is outside the training scenarios, and I cannot help it.” |
+| 1:20–1:40 | Show the actual route decision and outcome, then the parent/new-version comparison with run counts and failures. | Describe the measured result. If it regressed, say so; do not invent improvement. |
+| 1:40–2:00 | Show the checkpoint-to-match record, sponsor contributions actually used, and reset control. | “The world is the test. Developing the competitor is the game.” |
 
-Target length: `10 to 15 seconds`
+The schedule is presentation pacing, not an estimate of training latency. Benchmark the real workflow before deciding which parts run live.
 
-Show:
+## Evidence That Must Be Visible
 
-- the live `Clawdy` scene
-- wallet UI
-- provider / activity HUD
+- Which baseline or parent checkpoint is acting.
+- The recorded observation and decision being corrected.
+- What examples were approved and where they came from.
+- A genuine new weight artifact, parent link, and training record.
+- Whether the match is live or replayed and whether its scenario is held out.
+- Frozen weights and disabled human intervention during the scored run.
+- Actual actions and consequences, not only a natural-language decision feed.
+- Evaluation sample count, comparison conditions, and failures alongside scores.
 
-Say:
+## Sponsor Explanation
 
-`Clawdy is an agentic sandbox on 0G where autonomous roles compete for weather control, vehicle access, and resource yield in a live onchain economy loop with persistent 0G Storage memory.`
+Use only the lines corresponding to verified integrations:
 
-## Segment 2: Agent Roles
+- **World Labs:** generated the environment the competitor inhabits.
+- **Tripo:** generated the rover or interactive objects shown.
+- **Mint:** supplied functional course pieces or helped assemble the playable interaction.
+- **Convex:** links approved examples, training status, checkpoint metadata, and match/replay records.
 
-Target length: `20 to 30 seconds`
+Keep the learned policy distinct from the language-model coach, authored navigation graph, shared steering controller, and physics engine. Do not attribute all of those systems to fine-tuning.
 
-Open:
+## Reliable Presentation Path
 
-- Agent Terminal
+1. Pin the world, collider, route graph, rules version, baseline, and evaluated checkpoint.
+2. Preload assets and test the full path on the presentation device.
+3. Keep one known practice example and a separately identified held-out scenario ready.
+4. Save a fallback recording of a real complete run, including training provenance and results.
+5. If training is too slow or unavailable live, label the prepared checkpoint and recorded training explicitly. Do not simulate a progress bar or imply a new update happened live.
+6. If a run diverges, use its real outcome or switch to the labeled recording. Never secretly steer the competitor.
+7. Make reset restore all episode state and the selected checkpoint without wallet, queue, or console steps.
 
-Show:
+## Do Not Demo
 
-- `Scout Agent`
-- `Weather Agent`
-- `Mobility Agent`
-- role descriptions
+The retired wallet, auction, vehicle-rental, treasury, chain, and indexer flows are not part of this product. Do not fill a missing learning step with them. Do not substitute a hand-authored route switch for a trained policy and call it learning.
 
-Say:
-
-`The app runs a single shared runtime with explicit agent roles. The scout finds opportunities, the weather agent decides when to bid, and the mobility agent leases vehicles to convert plans into movement.`
-
-## Segment 3: Agentic Wallet
-
-Target length: `15 to 25 seconds`
-
-Show:
-
-- wallet connected on 0G
-- `ACTIVATE AGENTIC WALLET`
-- autonomy active state
-
-Say:
-
-`The user authorizes an Agentic Wallet budget. After that, approved onchain actions can execute without repeated wallet prompts.`
-
-## Segment 4: Skill Layer
-
-Target length: `20 to 30 seconds`
-
-Show:
-
-- provider status in terminal/HUD
-- decision feed entries such as:
-  - weather recommendation
-  - mobility lease recommendation
-  - execution result
-
-Say:
-
-`The runtime includes a pluggable skill-decision seam. Right now the fallback local policy provider is live and drives bid and lease execution. This seam can be upgraded to 0G Compute-backed inference without changing the rest of the app.`
-
-## Segment 5: Onchain Actions
-
-Target length: `25 to 40 seconds`
-
-Show:
-
-- a weather action being triggered
-- a vehicle lease being triggered
-- the resulting HUD / terminal updates
-
-Say:
-
-`Weather and mobility actions settle onchain. The weather agent spends for temporary control when expected yield is worth it, and the mobility agent leases vehicles when route execution needs a better platform.`
-
-## Segment 6.5: 0G Storage (Persistence Proof)
-
-Target length: `10 to 20 seconds`
-
-Show:
-
-- UI continuing after refresh OR
-- the browser console log: `[0G Storage] Restored state from 0G...` OR
-- `/api/0g-storage?health=1` response
-
-Say:
-
-`Agent state is persisted to 0G Storage, so the economy loop survives refreshes and sessions. This is long-context memory for agents, backed by decentralized storage.`
-
-## Segment 6: Proof Layer
-
-Target length: `20 to 30 seconds`
-
-Open:
-
-- leaderboard
-
-Show:
-
-- source badge:
-  - `Live Indexed`
-  - or `Fallback Snapshot`
-  - or `Runtime Only`
-- execution counts
-- bid/rent breakdown
-- yield and collection totals
-
-Say:
-
-`The proof layer shows activity in the loop—bids, rentals, and collections—so judges can see the economy loop directly, alongside 0G Chain Scan links for on-chain verification.`
-
-## Segment 7: Close
-
-Target length: `10 to 15 seconds`
-
-Say:
-
-`Clawdy turns autonomous agents into a visible 0G product: observe, decide, spend onchain, gain advantage, earn, and repeat.`
-
-## Recording Notes
-
-- Prefer a desktop recording at full resolution.
-- Keep the terminal open for at least one decision and one execution event.
-- If the live indexer is not yet available, say clearly that the UI is currently in fallback snapshot or runtime-only mode.
-- If the MCP provider is not yet live, say clearly that the current provider is the fallback local policy seam and the runtime is MCP-ready.
-
-## Minimal Recording Flow
-
-If time is tight, record this sequence only:
-
-1. landing scene and HUD
-2. connect wallet and activate autonomy
-3. spawn roles in the terminal
-4. show decision feed
-5. trigger weather / lease execution
-6. open leaderboard
-7. close with the one-line pitch
+Use [SUBMISSION_CHECKLIST.md](SUBMISSION_CHECKLIST.md) to record readiness before presenting.

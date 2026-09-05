@@ -92,13 +92,16 @@ export function ControlPanel({
 
   useEffect(() => {
     if (!vehiclesTabPulseAt || !isOpen || activeTab !== 'vehicles') {
-      setSliderGlow(false)
       return
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSliderGlow(true)
     setShowAdvancedTuning(true)
     const timer = setTimeout(() => setSliderGlow(false), 2500)
-    return () => clearTimeout(timer)
+    return () => {
+      clearTimeout(timer)
+      setSliderGlow(false)
+    }
   }, [vehiclesTabPulseAt, isOpen, activeTab])
 
   // ── PlayerStrategyPanel logic (CONSOLIDATION: merged into ControlPanel) ──
@@ -106,7 +109,6 @@ export function ControlPanel({
   const [nowMs, setNowMs] = useState(0)
 
   useEffect(() => {
-    setNowMs(Date.now())
     const timer = window.setInterval(() => setNowMs(Date.now()), 1000)
     return () => window.clearInterval(timer)
   }, [])
@@ -828,8 +830,8 @@ export function ControlPanel({
                       {isSavingSnapshot ? 'Saving…' : 'Save now'}
                     </button>
                     <span className="text-[10px] text-white/40">
-                      {zgStorage.lastUpload?.timestamp
-                        ? `Last saved ${Math.max(1, Math.round((Date.now() - zgStorage.lastUpload.timestamp) / 1000))}s ago`
+                      {zgStorage.lastUpload?.timestamp && nowMs > 0
+                        ? `Last saved ${Math.max(1, Math.round((nowMs - zgStorage.lastUpload.timestamp) / 1000))}s ago`
                         : 'Cloud save keeps your progress across sessions'}
                     </span>
                   </div>

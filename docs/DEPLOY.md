@@ -1,149 +1,69 @@
-# CLAWDY — Deployment Guide
+# Clawdy — Development and Release Guide
 
-## Quick Status Check
+**Status: Season 0 implementation and deployment are pending.** This guide replaces the retired contract-deployment instructions. The [canonical plan](HACKATHON.md) defines the product; this document distinguishes existing commands from the release work still required.
 
-```bash
-node scripts/check-deployment.js              # 0G Mainnet
-USE_TESTNET=true node scripts/check-deployment.js  # 0G Testnet
-```
+No wallet funding, chain deployment, indexer, or financial persistence service is a Season 0 prerequisite. Do not use the legacy deployment scripts to launch the new product. A headless reference foundation now exists, but the application scene, legacy configuration, and external deployments have not migrated to it.
 
----
+## Current Local Commands
 
-## Contract Deployment
-
-### Prerequisites
-
-The deployer wallet is: `0x1f6d430ea6d8D38516Eeb7027073a417260CC48D`
-
-It must be funded before deployment.
-
-### Option A — 0G Galileo Testnet ✅ DEPLOYED
-
-> **Already deployed.** Contracts are live on 0G Galileo Testnet (chainId 16602).
-
-1. **Get testnet tokens** at https://faucet.0g.ai — paste the deployer address
-2. **Deploy:**
-   ```bash
-   CHAIN=0g USE_TESTNET=true node scripts/deploy.js
-   ```
-3. **Copy the printed addresses** into `.env.local`:
-   ```
-   NEXT_PUBLIC_CHAIN=0g
-   NEXT_PUBLIC_USE_TESTNET=true
-   NEXT_PUBLIC_WEATHER_AUCTION_ADDRESS=0x...
-   NEXT_PUBLIC_VEHICLE_RENT_ADDRESS=0x...
-   NEXT_PUBLIC_MEME_MARKET_ADDRESS=0x...
-   ```
-
-### Option B — 0G Mainnet (production)
-
-1. **Fund the deployer wallet** with ~0.1 0G on 0G Mainnet (chainId 16661)
-   - Bridge from another chain via https://bridge.0g.ai
-2. **Deploy:**
-   ```bash
-   node scripts/deploy.js
-   ```
-3. **Copy the printed addresses** into `.env.local`
-
----
-
-## Vercel Environment Variables
-
-After deploying contracts, set these in **Vercel → Settings → Environment Variables**:
-
-| Variable | Value | Required |
-|----------|-------|----------|
-| `DEPLOYER_PRIVATE_KEY` | Your deployer private key | ✅ Yes |
-| `NEXT_PUBLIC_WEATHER_AUCTION_ADDRESS` | From deploy output | ✅ Yes |
-| `NEXT_PUBLIC_VEHICLE_RENT_ADDRESS` | From deploy output | ✅ Yes |
-| `NEXT_PUBLIC_MEME_MARKET_ADDRESS` | From deploy output | ✅ Yes |
-| `NEXT_PUBLIC_APP_URL` | `https://clawdy-nine.vercel.app` | ✅ Yes |
-| `NEXT_PUBLIC_SUPABASE_URL` | `https://muxhhklostmbmljumurx.supabase.co` | ✅ Yes |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | From Supabase dashboard → Settings → API | ✅ Yes |
-| `NEXT_PUBLIC_WC_PROJECT_ID` | From cloud.walletconnect.com (free) | 🟡 Recommended |
-| `NEXT_PUBLIC_SENTRY_DSN` | From Sentry project settings | 🟡 Recommended |
-| `SENTRY_ORG` | Sentry org slug | 🟡 Recommended |
-| `SENTRY_PROJECT` | Sentry project slug | 🟡 Recommended |
-| `API_SECRET` | Random string for /api/0g-storage auth | 🟡 Recommended |
-| `NEXT_PUBLIC_API_SECRET` | Same as API_SECRET (client-side) | 🟡 Recommended |
-| `NEXT_PUBLIC_USE_TESTNET` | `true` if using testnet | Optional |
-| `NEXT_PUBLIC_CHAIN` | `0g` (only supported value) | Optional |
-
-After setting env vars, trigger a redeploy: **Vercel → Deployments → Redeploy**.
-
----
-
-## WalletConnect Project ID
-
-Without a real project ID, WalletConnect modal fails for non-MetaMask users (most mobile users).
-
-1. Go to https://cloud.walletconnect.com
-2. Create a free account → New Project → name it "CLAWDY"
-3. Copy the Project ID
-4. Set `NEXT_PUBLIC_WC_PROJECT_ID=<your-id>` in Vercel env vars
-
----
-
-## Supabase Setup
-
-The project uses Supabase for real-time player presence, leaderboard, and weather sync.
-
-**Project:** `muxhhklostmbmljumurx` (West EU)
-
-1. Go to https://supabase.com/dashboard/project/muxhhklostmbmljumurx/settings/api
-2. Copy the **Project URL** and **anon/public key**
-3. Set in Vercel:
-   - `NEXT_PUBLIC_SUPABASE_URL=https://muxhhklostmbmljumurx.supabase.co`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>`
-
-The database schema is in `supabase/schema.sql`. To apply:
-```bash
-supabase db query --linked -f supabase/schema.sql
-```
-
-Features powered by Supabase:
-- **Presence channels** — real-time player count (replaces polling)
-- **Leaderboard** — persistent scores with live updates
-- **Weather sync** — instant weather state changes across clients
-
----
-
-## Sentry Setup
-
-Error monitoring via Sentry (optional but recommended for production).
-
-1. Create a project at https://sentry.io
-2. Copy the **DSN** from project settings
-3. Set in Vercel:
-   - `NEXT_PUBLIC_SENTRY_DSN=<your-dsn>`
-   - `SENTRY_ORG=<your-org-slug>`
-   - `SENTRY_PROJECT=<your-project-slug>`
-
----
-
-## Verify Everything is Live
+CI currently uses Node.js 20 and npm. From the repository root:
 
 ```bash
-# Check contracts on-chain
-node scripts/check-deployment.js
-
-# Check live site
-curl https://clawdy-nine.vercel.app/api/players
-# Expected: {"count":0}
+npm ci
+npm run dev
 ```
 
----
+The existing `prepare` lifecycle configures local Git hooks, and `postinstall` checks the Rapier version. Review lifecycle behavior before installation; do not bypass security checks to resolve failures.
 
-## Deployed Contract Addresses
+For verification and production preview:
 
-### 0G Galileo Testnet (chainId 16602) — ✅ Live
+```bash
+npm run lint
+npm test
+npm run build
+npm run start
+```
 
-| Contract | Address | Explorer |
-|----------|---------|----------|
-| WeatherAuction | `0x21506d1ba6ac219b7dbb893fdb009af62f3b25b0` | [View](https://chainscan-galileo.0g.ai/address/0x21506d1ba6ac219b7dbb893fdb009af62f3b25b0) |
-| VehicleRent | `0xd98cb26dcc3a3b01404564568cbf2de1dc3de652` | [View](https://chainscan-galileo.0g.ai/address/0xd98cb26dcc3a3b01404564568cbf2de1dc3de652) |
-| MemeMarket | `0x44c07afa8340450167796390a8cc493b1aca0dd1` | [View](https://chainscan-galileo.0g.ai/address/0x44c07afa8340450167796390a8cc493b1aca0dd1) |
+These scripts build or run the application, whose scene still uses the legacy runtime. The new reference episode and world-query tests run headlessly; see the [verification snapshot](HACKATHON.md#verification-snapshot) for current results. Passing them does not establish an integrated training league. Learned-policy and artifact-validation coverage remain future work.
 
-Deployer wallet: `0x1f6d430ea6d8D38516Eeb7027073a417260CC48D`
+## Configuration During Consolidation
 
-### 0G Mainnet — Not yet deployed
+- Inspect configuration examples before using them. They still contain legacy chain and persistence settings; do not copy them blindly or overwrite an existing local environment file.
+- Public world asset URLs may be exposed to the client. Coaching/generation credentials, training service credentials, and deployment tokens must remain server-side or in the operator's secure local environment.
+- Never mirror an API secret into a `NEXT_PUBLIC_*` variable. Do not ship private credentials in policy manifests, examples, logs, or model artifacts.
+- Next.js client configuration must use supported build-time public references or a validated explicit config payload. Marble configuration now uses explicit references; the legacy runtime-profile configuration still needs consolidation. Verify the intended asset selection in the browser when that testing scope is approved.
+- See the [world asset guide](../public/marble/README.md) for the existing generator, its environment-loading behavior, output replacement risks, and collider validation.
+
+## Target Release Components
+
+| Component | Intended responsibility | Configuration status |
+| --- | --- | --- |
+| Next.js application | Practice, coaching, checkpoint selection, rendered matches, and replay. | Existing app shell; new flows pending. |
+| Controlled simulation/policy runner | Fixed-step episodes, legal actions, frozen weights, and recorded results. | Runtime/hosting configuration pending. |
+| Training execution | Update the supported small policy from approved examples. | Backend, limits, and serialization format pending a measured prototype. |
+| Convex | Ownership, reviewed examples, training status, checkpoint metadata, match/replay records. | Integration and deployment configuration pending. |
+| Artifact storage | Versioned checkpoints, snapshots, generated assets, and appropriate access controls. | Storage selection and limits pending. |
+| Coaching provider | Translate feedback into reviewable examples during practice. | Provider configuration pending; not a scored-match inference dependency. |
+
+Do not invent environment variable names or deployment commands for these services before choosing and implementing them. Update this guide with tested commands and exact configuration when the corresponding milestone is complete.
+
+The application may access its backend while a match runs. The entrant itself remains a bounded, network-free policy. Convex must not receive physics updates at render-frame frequency or be represented as an automatic training-compute service.
+
+## Release Gates
+
+1. Reconcile retired providers, API routes, dependencies, configuration examples, CI variables, and deployment helpers with the new architecture. Do not shut down external services or delete their data without specific approval.
+2. Pin a tested application revision, world/collider/route graph, rule version, simulation configuration, baseline, and checkpoint artifacts.
+3. Verify the entire autonomous round and reset before adding coaching or training to the release claim.
+4. Verify one real training/export/load cycle and the associated held-out comparison. Preserve actual provenance and failure records.
+5. Enforce artifact validation, ownership, training-record access, and server-controlled acceptance of results. Reject arbitrary executable uploads.
+6. Run lint, relevant tests, and a production build. Keep existing repository security controls intact.
+7. Test the production preview on the presentation device: asset loading, stable renderer, controls, camera, responsive layout, console/network errors, autonomous play, coaching approval, checkpoint selection, replay, and reset.
+8. Verify browser output cannot bypass match validation or modify the active checkpoint. Do not call a local exhibition a secure public ranked service.
+9. Save a clearly labeled fallback recording and prepared checkpoint evidence.
+10. Record the actual deployed URL and submitted commit in [SUBMISSION.md](SUBMISSION.md). Do not reuse a previous URL as evidence without checking its current contents.
+
+The complete acceptance checklist is [SUBMISSION_CHECKLIST.md](SUBMISSION_CHECKLIST.md).
+
+## Deployment Status
+
+There is no verified Season 0 deployment recorded by this documentation update. Legacy contract addresses, deployer instructions, and old service links have intentionally been removed from active guidance. Their history is available in Git; they are not part of the new launch path.

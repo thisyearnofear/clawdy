@@ -20,7 +20,6 @@ export function LightningFlashOverlay() {
 
   useEffect(() => {
     if (!enabled) {
-      setFlash(0)
       if (timeoutRef.current) window.clearTimeout(timeoutRef.current)
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
       timeoutRef.current = null

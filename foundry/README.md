@@ -1,66 +1,7 @@
-## Foundry
+# Retired: Contract Tooling
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+The contracts and Foundry tooling belong to Clawdy's retired onchain-economy prototype. They are not a Season 0 dependency, deployment step, or active product workstream.
 
-Foundry consists of:
+The sole direction is the [agent-training league](../docs/HACKATHON.md). Use the [current release guide](../docs/DEPLOY.md), not a contract deployment recipe, to prepare the new application.
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
-
-## Documentation
-
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
-```
-
-### Test
-
-```shell
-$ forge test
-```
-
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+This directory still contains legacy code. Retiring its documentation does not deploy, remove, or alter contracts. Review callers and dependencies before retiring the implementation; preserve required third-party licenses. Historical tooling instructions remain in Git history.

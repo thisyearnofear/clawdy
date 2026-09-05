@@ -22,20 +22,32 @@ interface MarbleWorldLayerProps {
   config: MarbleWorldConfig
   visible?: boolean
   onLoad?: () => void
+  onError?: (error: Error) => void
 }
 
-export function MarbleWorldLayer({ config, visible = true, onLoad }: MarbleWorldLayerProps) {
+export function MarbleWorldLayer({ config, visible = true, onLoad, onError }: MarbleWorldLayerProps) {
   const { gl, scene } = useThree()
   const sparkRef = useRef<THREE.Object3D | null>(null)
   const splatRef = useRef<THREE.Object3D | null>(null)
-  const disposeRef = useRef<(() => void) | null>(null)
+  const callbacksRef = useRef({ onLoad, onError })
+  const visibleRef = useRef(visible)
   const splatUrl = config.splat?.url
   const splatFormat = config.splat?.format
+
+  useEffect(() => {
+    callbacksRef.current = { onLoad, onError }
+  }, [onLoad, onError])
 
   useEffect(() => {
     if (!splatUrl || !splatFormat) return
 
     let cancelled = false
+    let dispose: (() => void) | undefined
+    const release = () => {
+      const cleanup = dispose
+      dispose = undefined
+      cleanup?.()
+    }
 
     async function init() {
       try {
@@ -57,48 +69,55 @@ export function MarbleWorldLayer({ config, visible = true, onLoad }: MarbleWorld
         })
         scene.add(spark as unknown as THREE.Object3D)
         sparkRef.current = spark as unknown as THREE.Object3D
+        dispose = () => {
+          scene.remove(spark as unknown as THREE.Object3D)
+          spark.dispose()
+        }
 
         // Create SplatMesh
         const splatMesh = new Spark.SplatMesh({
           url: splatUrl,
-          lod: splatFormat === 'rad',
+          fileType: splatFormat === 'rad' ? Spark.SplatFileType.RAD : splatFormat === 'ply' ? Spark.SplatFileType.PLY : Spark.SplatFileType.SPZ,
           paged: splatFormat === 'rad',
-          onLoad: () => {
-            if (!cancelled) {
-              console.log('[MarbleWorldLayer] Splat loaded successfully')
-              onLoad?.()
-            }
-          },
         })
+        splatMesh.visible = visibleRef.current
         scene.add(splatMesh as unknown as THREE.Object3D)
         splatRef.current = splatMesh as unknown as THREE.Object3D
-
-        disposeRef.current = () => {
+        const disposeSpark = dispose
+        dispose = () => {
           scene.remove(splatMesh as unknown as THREE.Object3D)
-          scene.remove(spark as unknown as THREE.Object3D)
           splatMesh.dispose()
-          spark.dispose()
+          disposeSpark()
+        }
+        await splatMesh.initialized
+        if (!cancelled) {
+          console.log('[MarbleWorldLayer] Splat loaded successfully')
+          callbacksRef.current.onLoad?.()
         }
       } catch (err) {
         if (!cancelled) {
+          release()
+          sparkRef.current = null
+          splatRef.current = null
           console.error('[MarbleWorldLayer] Failed to load Spark/splat:', err)
+          callbacksRef.current.onError?.(err instanceof Error ? err : new Error('World rendering failed'))
         }
       }
     }
 
-    init()
+    void init()
 
     return () => {
       cancelled = true
-      disposeRef.current?.()
-      disposeRef.current = null
+      release()
       sparkRef.current = null
       splatRef.current = null
     }
-  }, [gl, scene, splatFormat, splatUrl, onLoad])
+  }, [gl, scene, splatFormat, splatUrl])
 
   // Toggle visibility
   useEffect(() => {
+    visibleRef.current = visible
     if (splatRef.current) splatRef.current.visible = visible
   }, [visible])
 

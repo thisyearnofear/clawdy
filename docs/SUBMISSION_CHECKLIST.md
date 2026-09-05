@@ -1,45 +1,76 @@
-# Submission Checklist
+# Clawdy — Season 0 Release Checklist
 
-## Contracts and Indexing
+The [canonical plan](HACKATHON.md) defines the accepted direction. These are implementation and release gates, not completed features. Check an item only after recording actual verification evidence.
 
-- [ ] Deploy `WeatherAuction` to **0G mainnet** — `TBD`
-- [ ] Deploy `VehicleRent` to **0G mainnet** — `TBD`
-- [ ] Add 0G Chain Scan explorer links for both contracts (`https://chainscan.0g.ai/address/<addr>`)
-- [ ] (Optional) Run the indexer and confirm the GraphQL endpoint works
-- [ ] (Optional) Set `NEXT_PUBLIC_INDEXER_GRAPHQL_URL` in `.env.local`
+## One Playable Autonomous Episode
 
-## Frontend Env
+- [ ] Generated world loads with stable renderer ownership and a visible loading/failure state.
+- [ ] Collider, navigation graph, spawn, boundaries, and recovery agree on coordinates and scale.
+- [ ] A baseline completes movement, collection, banking, round termination, and reset without manual rescue.
+- [ ] Flooding and the one supported intervention visibly change traversal.
+- [ ] Gameplay uses simulation time rather than state-publication count or display frame rate.
+- [ ] Practice, evaluation, and presentation share the same versioned rules and simulation.
+- [ ] The primary path has no wallet, auction, vehicle lease, queue, or retired financial-role dependency.
 
-- [x] Set `NEXT_PUBLIC_USE_0G_TESTNET` (or legacy `NEXT_PUBLIC_USE_XLAYER_TESTNET`)
-- [x] Set `NEXT_PUBLIC_WEATHER_AUCTION_ADDRESS`
-- [x] Set `NEXT_PUBLIC_VEHICLE_RENT_ADDRESS`
-- [ ] Confirm the app connects to the intended 0G network
+## Real Coaching and Learning
 
-## Product Verification
+- [ ] Practice/replay exposes the recorded situation and action to correct.
+- [ ] Chat proposes structured examples, with generated expansions labeled separately.
+- [ ] The user can approve or reject examples before training.
+- [ ] A real training run changes supported policy parameters and produces a new checkpoint.
+- [ ] Parent and new hashes, architecture/schema versions, approved data, training seed, and configuration are recorded.
+- [ ] The UI distinguishes a live instruction, proposed correction, approved data, trained checkpoint, and evaluated result.
+- [ ] The trained checkpoint reloads and runs through the same controller as the baseline.
+- [ ] Claims accurately distinguish training, fine-tuning, prompting, and engineered navigation.
 
-- [ ] Confirm Agentic Wallet flow works
-- [ ] Confirm weather bid execution works
-- [ ] Confirm mobility lease execution works
-- [ ] Confirm provider and activity HUD render correctly
-- [ ] Confirm any leaderboard source badge flips to `Live Indexed` when the endpoint is live (if indexer is used)
+## Match and Evaluation Integrity
 
-## 0G Storage (Required Proof)
+- [ ] Rules, world, collider, route graph, runtime, and entrant versions are pinned.
+- [ ] Weights are frozen and human controls/external inference are unavailable during scored matches.
+- [ ] Observation filtering and action validation enforce the same rules for every entrant.
+- [ ] Invalid, stale, unaffordable, malformed, and late actions have tested handling.
+- [ ] Artifact loading rejects unsupported formats, versions, shapes, sizes, non-finite values, and executable content.
+- [ ] Episode state and any bounded policy memory reset between matches.
+- [ ] Training and held-out scenarios are separated; the entrant cannot read hidden evaluation seeds.
+- [ ] Version comparisons use matched scenarios and swapped starting positions where applicable.
+- [ ] Evaluation shows sample count, scoring, ties, crashes, timeouts, invalid actions, and regressions.
+- [ ] Replays contain actual accepted actions and state snapshots, not reconstructed fictional decisions.
+- [ ] Local/browser exhibition results are not represented as production-secure ranked competition.
 
-- [ ] Configure `DEPLOYER_PRIVATE_KEY` for `/api/0g-storage` uploads
-- [ ] Confirm `/api/0g-storage?health=1` returns `ok: true`
-- [ ] Confirm a state upload returns `{ rootHash, txHash }`
-- [ ] Confirm restore path works (refresh → state restored from 0G Storage)
+## Starter and Ownership
 
-## README Completion
+- [ ] The unchanged starter checkpoint completes a round in the supported environment.
+- [ ] Random smoke-test, safe-collector, and weather-aware reference baselines are available and labeled.
+- [ ] Builder and application training paths export the same validated entrant format.
+- [ ] Play, collect, train, evaluate, replay, and package workflows are documented only once implemented.
+- [ ] Checkpoint artifacts reload with equivalent behavior in the supported runtime.
+- [ ] Training records and private replay/log access enforce ownership.
+- [ ] Any reused third-party source retains required attribution.
 
-- [x] Fill mainnet deployment addresses in README.md
-- [x] Fill team members in README.md
-- [ ] Add a final architecture visual or at least the Mermaid diagram + a screenshot link
-- [ ] Verify README matches deployed reality
+## Sponsor Contributions
+
+- [ ] World Labs asset provenance and the validated playable route are documented.
+- [ ] Tripo-generated assets are actually integrated, attributed, and performance-tested.
+- [ ] Mint-created content or assembly work has a functional, visible contribution.
+- [ ] Convex connects approved examples, training status, checkpoint metadata, and match/replay records.
+- [ ] Generated assets are packaged ahead of the demo; no expiring URL or generation request is required during a match.
+- [ ] Submission claims name only verified integrations and distinguish pre-existing from new work.
+
+## Consolidation and Release Verification
+
+- [ ] Retired UI, runtime integrations, imports, and dependencies are removed from the active path.
+- [ ] Legacy environment examples, CI variables, deployment scripts, and API routes are reconciled with the new architecture.
+- [ ] Secrets remain server-side; no secret is copied into a public environment variable or model artifact.
+- [ ] Security controls remain intact; no check is disabled to hide a migration failure.
+- [ ] `npm run lint`, `npm test`, and `npm run build` run successfully on the intended commit, with relevant new tests added.
+- [ ] Production preview is verified on the presentation device, including resize, camera, controls, assets, console errors, and reset.
+- [ ] The [release guide](DEPLOY.md), [README](../README.md), and [submission draft](SUBMISSION.md) match deployed behavior.
 
 ## Demo and Submission
 
-- [ ] Record the demo using [DEMO_SCRIPT.md](./DEMO_SCRIPT.md)
-- [ ] Upload demo to YouTube or Google Drive
-- [ ] Add the demo link to the submission form
-- [ ] Submit via HackQuest before the deadline
+- [ ] The full [two-minute demo](DEMO_SCRIPT.md) works through one reliable interaction path.
+- [ ] A real fallback recording and its checkpoint/training evidence are saved.
+- [ ] Prepared checkpoints, recorded training, and replayed matches are explicitly labeled.
+- [ ] Live app URL, submitted commit, starter artifact, evaluation evidence, and demo link are filled in.
+- [ ] Organizer approval for repository reuse is reflected in the pre-existing/new-work disclosure.
+- [ ] Confirm submission channel and deadline with organizers; the supplied brief says September 5, 2026, 6:00 PM Pacific.

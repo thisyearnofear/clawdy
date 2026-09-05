@@ -1,9 +1,9 @@
-import CloudScene from '@/components/environment/CloudScene'
+import ArenaScene from '@/components/environment/ArenaScene'
 
 export default function Home() {
   return (
     <main>
-      <CloudScene />
+      <ArenaScene />
     </main>
   )
 }

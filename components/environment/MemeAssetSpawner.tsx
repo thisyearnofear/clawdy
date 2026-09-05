@@ -59,7 +59,10 @@ export function MemeAssetSpawner({
 }: MemeAssetSpawnerProps) {
   const countRef = useRef(0)
   const onSpawnRef = useRef(onSpawn)
-  onSpawnRef.current = onSpawn
+
+  useEffect(() => {
+    onSpawnRef.current = onSpawn
+  })
 
   useEffect(() => {
     const interval = setInterval(() => {

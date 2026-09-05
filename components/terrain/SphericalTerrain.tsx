@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/immutability */
 import { useMemo, useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { RigidBody } from '@react-three/rapier';
@@ -463,6 +464,14 @@ export function IntegratedSphericalTerrain({
     }
   }, [colors]);
 
+  // Helper function to convert Cartesian to spherical coordinates
+  const cartesianToSpherical = (cartesian: THREE.Vector3) => {
+    const radius = cartesian.length();
+    const latitude = Math.asin(cartesian.y / radius);
+    const longitude = Math.atan2(cartesian.z, cartesian.x);
+    return { radius, latitude, longitude };
+  };
+
   // Handle camera following and terrain updates
   useFrame((state) => {
     if (!playerPosition) return;
@@ -494,15 +503,6 @@ export function IntegratedSphericalTerrain({
       mat.metalness = THREE.MathUtils.lerp(0.1, 0.25, wetnessRef.current)
     }
   });
-
-  // Helper function to convert Cartesian to spherical coordinates
-  const cartesianToSpherical = (cartesian: THREE.Vector3) => {
-    const radius = cartesian.length();
-    const latitude = Math.asin(cartesian.y / radius);
-    const longitude = Math.atan2(cartesian.z, cartesian.x);
-    
-    return { radius, latitude, longitude };
-  };
 
   return (
     <group ref={groupRef}>

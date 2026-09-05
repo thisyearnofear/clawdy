@@ -1,120 +1,127 @@
-# Clawdy: Play Inside a Marble-Generated World
+# Clawdy — Train Your Champion
 
-> **World Labs Marble submission** — [Play now: clawdy-nine.vercel.app](https://clawdy-nine.vercel.app) · No wallet needed to drive.
+**Coach an agent. Train its policy. Watch it compete without you.**
 
-**Autonomous AI rivals race through a Marble-generated 3D world rendered with Spark.** This isn't a splat viewer — it's a browser-playable agent game inside a generated, spatially consistent environment.
+Clawdy is building an agent-training league inside a generated physical world. Conversation is the coaching interface; real training turns approved corrections into a new policy checkpoint. In a scored match, the checkpoint is frozen and the agent acts without human intervention.
 
-Marble generates the arena. Spark renders it. Rapier makes it driveable. Four AI opponents observe, decide, and compete in real time. Your job is to outsmart them.
+> The payoff is watching your agent use something you taught it when you are no longer allowed to help.
 
-## What Makes This a Marble Submission
+**Direction locked September 5, 2026:** this is the sole product direction for the repository and the Spatial Intelligence + Generative 3D Hackathon, in the **Gaming & Interactive Worlds** track. The old human-driven arena and onchain-economy approach are retired, not alternative modes.
 
-1. **Marble generates the arena** — the 3D world is exported from World Labs Marble as a Gaussian splat scene
-2. **Spark renders it in-browser** — the `@sparkjsdev/spark` renderer displays the splat with LoD streaming, running alongside traditional Three.js meshes
-3. **The world is physically playable** — a collider mesh derived from the Marble export gives vehicles real surfaces to drive on via Rapier physics
-4. **AI agents respond inside the generated world** — four autonomous opponents observe world state, bid on weather, and compete for resources within the Marble environment
-5. **Weather affects the generated world** — storms, fog, and gravity shifts layer gameplay on top of the splat scene
+## Status: Physical Baseline Integrated
 
-## Architecture
+The main page now runs the new episode authority on **Cloudbank / Course 01**, an authored course grounded against the committed World Labs collider. A shared Rapier kinematic rover controller performs collision-constrained motion; arrival and collection depend on the resulting pose, not just route time. The collider is checked against a pinned SHA-256 hash before loading the course.
 
+The interface provides safe, shortest-route, and weather-tactician reference policies; start/pause/reset; camera follow; scores and decisions; recorded-run scrubbing; and JSON export. Policy selection is locked after a run starts. The wallet provider, queue onboarding, and old event widget are no longer on the main-page path. Legacy files and API routes still exist pending retirement; they are not a second supported game.
+
+Headless tests traverse every course edge in both directions, complete and replay a physical round, and cover the session controls. **Browser automation remains deferred at the owner's request.** Canvas appearance, splat/collider visual alignment, controls in a real browser, and responsive layout have not been verified. This is a kinematic rover, not a wheeled vehicle-dynamics simulation.
+
+Real policy training, learned-checkpoint execution, coaching UI, the published starter, and Mint, Tripo, and Convex integrations are still pending. Existing deployment links are not verified Season 0 releases. The product experience below remains the target, not a claim that training is available.
+
+The [canonical plan](docs/HACKATHON.md) defines scope, architecture, implementation milestones, current risks, and acceptance criteria. It supersedes every earlier pivot.
+
+## The Target Experience
+
+**Watch → coach → approve examples → train → compete → replay → improve.**
+
+1. Watch your rover compete for resources in a world with a flooded shortcut and a longer safe route.
+2. Select a mistake in practice or replay: the rover took the flooded passage.
+3. Coach it: “When the lower passage is flooded, take the ridge, even if it is longer.”
+4. Inspect and approve the proposed state/action training examples.
+5. Train a new checkpoint with genuinely updated policy weights.
+6. Run it hands-off on held-out scenarios with different resource placements or weather timing.
+7. Compare the new checkpoint with its parent, inspect failures, and improve again.
+
+A chat response or changed route alone is not proof of training. The artifact, approved data, and evaluation results must support the claim. Improvement is measured, not guaranteed.
+
+## Season 0
+
+- One compact world, one coached rover, one rival, two meaningful routes, and one weather intervention.
+- A resource-collection and banking challenge supplies stakes; developing the competitor is the main activity.
+- A small supported policy architecture and common starting checkpoint; fine-tuning it is allowed.
+- Structured observations and high-level decisions, executed by a shared navigation and vehicle controller.
+- Practice allows coaching and demonstrations. Scored matches freeze weights and disable human control and external inference.
+- A planned starter gives builders the same observation/action contract, evaluation harness, baselines, and entrant format as the app.
+- Initial submissions are validated weight artifacts, not arbitrary executable code.
+
+This is an exhibition and first-season foundation, not a claim of production tournament security or arbitrary generated-world understanding.
+
+## Sponsor Roles
+
+| Technology | Role in the target experience | Current status |
+| --- | --- | --- |
+| World Labs | Generated practice and competition environment. | Splat, collider, metadata, and integration code exist; headless tests cover course traversal, but browser loading and visual rendering still require verification. |
+| Tripo | Distinctive rover bodies and readable interactive objects. | Planned. |
+| Mint | Functional course pieces and interaction assembly. | Planned. |
+| Convex | Coaching examples, training status, checkpoint metadata, match events, and replay access. | Planned; not the physics or training-compute engine. |
+
+Credit only integrations actually used. Generated assets are prepared before matches, not generated on the demo's critical path.
+
+## Architecture Target
+
+```text
+Coaching UI / builder workflow
+  → approved training examples
+  → actual policy training
+  → versioned checkpoint
+  → frozen policy runner
+  → common navigation/controller
+  → fixed-step simulation
+  → results and replay
 ```
-Marble export (.spz / .rad)
-  └─ rendered by Spark (MarbleWorldLayer.tsx)
 
-Collider mesh (.glb)
-  └─ loaded into Rapier physics (MarbleCollider.tsx)
+The renderer displays the world; it must not own match time or determine results through frame rate. Convex connects application records and events, not per-frame physics. The training runtime and exact artifact format remain implementation decisions to validate and freeze.
 
-services/marbleWorld.ts
-  └─ single source of truth for world config, bounds, spawn zones
+## Current Local Workflow
 
-Experience.tsx
-  ├─ vehicles, agents, weather, collection loop
-  ├─ conditionally renders Marble world OR procedural fallback
-  └─ all gameplay systems work in both modes
-```
+1. Wait for the collider check and generated-world load. A failed load stops the run rather than substituting an unrelated arena.
+2. Choose each competitor's reference policy while the episode is ready.
+3. Start the autonomous run. Camera controls observe the rovers; they do not steer them.
+4. Pause or finish, then open Review to scrub recorded state. Export saves the recording as JSON.
+5. Reset to clear the episode and unlock policy selection. Backgrounding the page pauses local practice.
 
-## Key Features
+This is local practice, not a secure ranked service. Chat coaching and learned checkpoints are not available yet.
 
-- **Marble-Generated Arena:** The playable world comes from World Labs Marble — not hand-modeled geometry
-- **Four AI Opponents:** Scout, Weather, Mobility, and Treasury each have distinct strategies, risk tolerances, and on-chain budgets
-- **Weather Is a Weapon:** Win the auction and control storms, fog, and gravity. Lose it and drive through their mud traps
-- **Vehicle Physics:** Rapier-powered driving with surface friction, gravity modes, and handling profiles
-- **On-Chain Economy:** Weather auctions, vehicle rental, and EIP-712 ability minting on 0G Chain
-- **Adaptive Fallback:** When no Marble asset is configured, the full procedural arena runs as before
+## Existing Development Commands
 
-## Quick Start
+These commands operate the integrated baseline build, not a completed training league. CI currently uses Node.js 20 and npm. The main page uses committed local world assets and does not require a wallet or generation API key. Environment examples still contain retired integrations; do not copy them blindly.
 
 ```bash
-npm install
-cp .env.example .env.local
-# Configure your Marble world assets (see below)
+npm ci
 npm run dev
 ```
 
-### Enabling the Marble World
-
-1. Export a scene from [World Labs Marble](https://marble.worldlabs.ai/) as `.spz`
-2. Create or export a simplified collider mesh as `.glb`
-3. Place both in `public/marble/`
-4. Update `.env.local`:
-
-```env
-NEXT_PUBLIC_MARBLE_ENABLED=true
-NEXT_PUBLIC_MARBLE_SPLAT_URL=/marble/arena.spz
-NEXT_PUBLIC_MARBLE_COLLIDER_URL=/marble/collider.glb
-NEXT_PUBLIC_MARBLE_BOUNDS=60,25,60
-NEXT_PUBLIC_MARBLE_SPAWN_BOUNDS=40,5,40
-NEXT_PUBLIC_MARBLE_SPAWN_HEIGHT=20
-```
-
-Without these env vars, the app runs the full procedural arena as a fallback.
-
-## Development
+Verification commands present in `package.json`:
 
 ```bash
-npm run dev        # Start dev server
-npm run build      # Production build
-npm run lint       # Run ESLint
-npm test           # Run Vitest tests
-
-# Smart contract tests (Foundry)
-npm run contracts:test
+npm run lint
+npm test
+npm run build
 ```
 
-## Tech Stack
+`npm run start` serves a completed Next.js production build. The new foundation tests can be run without a browser:
 
-| Layer | Technology |
-|-------|-----------|
-| World Generation | World Labs Marble |
-| Splat Rendering | @sparkjsdev/spark 2.0 (Three.js integration) |
-| Frontend | Next.js 16, React 19, React Three Fiber |
-| Physics | Rapier 0.19 via @react-three/rapier |
-| State | Zustand, React Query |
-| Web3 | Wagmi, Viem, 0G Chain + 0G Storage |
-| Real-time | Supabase Presence |
-| Monitoring | Sentry |
-| Contracts | Solidity 0.8.20+, Foundry |
-
-## Project Structure
-
-```
-services/marbleWorld.ts          — Marble world config resolution
-components/environment/
-  MarbleWorldLayer.tsx           — Spark splat renderer (lazy-loaded)
-  MarbleCollider.tsx             — GLB → Rapier trimesh collider
-  Experience.tsx                 — Main game loop (marble-aware)
-  CloudScene.tsx                 — Canvas + UI shell
-public/marble/                   — Marble asset placement
-docs/MARBLE_PIVOT_PLAN.md       — Full pivot design document
+```bash
+npm test -- services/__tests__/arenaEpisode.test.ts services/__tests__/worldSurface.test.ts services/__tests__/marbleWorld.test.ts
 ```
 
-## Demo Script
+See the [implementation status](docs/HACKATHON.md#current-repository-status) for verification results and limitations. Passing the headless reference tests is not evidence that the application scene, physical controller, or learning loop is complete.
 
-1. Open the app — the Marble-generated world renders immediately via Spark
-2. Drive through the arena — vehicles have real physics on the generated surfaces
-3. Watch AI agents compete — they observe, decide, and collect within the same world
-4. Trigger weather — storms visually layer on top of the splat scene and affect gameplay
-5. The world is generated, not modeled — that's the Marble differentiator
+Do not fund wallets, deploy contracts, or run the legacy deployment helpers to set up Season 0. See [release guidance](docs/DEPLOY.md) and the [world asset guide](public/marble/README.md) before configuring services or replacing assets.
 
-## Team & Contribution
+## Repository Guide
 
-Clawdy is built as an open-source research initiative into agentic gaming within AI-generated worlds. Contributions welcome around Marble asset pipelines, collider authoring, and agent observation of splat environments.
+- [Product and implementation plan](docs/HACKATHON.md): the single source of truth.
+- [Agent contract and implementation instructions](AGENT.md): target protocol and consolidation rules.
+- [Release guidance](docs/DEPLOY.md): current commands, planned services, and verification gates.
+- [Two-minute demo](docs/DEMO_SCRIPT.md): evidence-first presentation and labeled fallback.
+- [Submission draft](docs/SUBMISSION.md) and [checklist](docs/SUBMISSION_CHECKLIST.md): claims and proof required before submission.
+- [World assets](public/marble/README.md): existing pipeline and collider/route validation.
+- `components/environment/`, `components/vehicles/`, `hooks/useVehiclePhysics.ts`: reusable code requiring consolidation.
+- `services/AgentProtocol.ts`, `services/protocolTypes.ts`, `services/gameStore.ts`: existing state/control code to reshape around the new contract.
+
+## Inspiration and Attribution
+
+The [AI Chessathon starter](https://github.com/advitrocks9/aichessathon-starter) demonstrates a working entrant, common agent interface, progressively stronger baselines, local match harness, and packaging. Clawdy borrows that development-loop concept, not its chess rules or its prohibition on fine-tuning published chess networks. Any source reuse must retain the applicable MIT attribution.
+
+Organizer permission to reuse this repository was reported by the project owner. The submission must distinguish the existing foundation from new hackathon work.

@@ -1,4 +1,5 @@
 'use client'
+/* eslint-disable react-hooks/immutability */
 
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
@@ -176,7 +177,6 @@ export function FloodWater({ bounds }: { bounds: [number, number, number] }) {
   }, [])
 
   useFrame((state) => {
-    // eslint-disable-next-line react-hooks/immutability
     material.uniforms.uTime.value = state.clock.getElapsedTime()
     material.uniforms.uCameraPos.value.copy(state.camera.position)
 

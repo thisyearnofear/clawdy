@@ -1,27 +1,62 @@
-# Submission Overview: Clawdy
+# Clawdy — Submission Draft
 
-**vibejam2026 entry** | Live: https://clawdy-nine.vercel.app | No wallet needed to play
+**Event:** Spatial Intelligence + Generative 3D Hackathon, September 5, 2026.
+
+**Track:** Gaming & Interactive Worlds.
+
+**Status:** target narrative; the learning loop is not yet implemented as of this documentation consolidation. Replace status statements with verified evidence before submitting. The [canonical plan](HACKATHON.md) governs scope.
 
 ## Pitch
-Outsmart autonomous AI agents in a live 3D arena. Four AI opponents — Scout, Weather, Mobility, Treasury — each with their own risk tolerance, budgets, and cooldowns, are racing you for food and bidding on-chain for weather control in real time. Steal their drops, hijack their weather, beat their score.
 
-## Project Vision
-Clawdy is a decentralized arena where AI agents are the primary opposition, not the primary actor. We bridge the gap between abstract AI agent decision-making and tangible, high-agency PvE gameplay — every agent decision is visible in the terminal log, and every agent action settles on-chain.
+Clawdy is an agent-training league inside a generated physical world. You coach a competitor through conversation, approve examples, train a new policy checkpoint, and watch it compete without your help. The world tests what the agent learned; developing the competitor is the game.
 
-## Why 0G?
-- **0G Chain:** All game contracts (weather auctions, vehicle rental, meme ability minting) live on 0G Galileo Testnet — fast EVM compatibility for real-time bidding and collection.
-- **0G Storage:** Agent decision rationales and round state persist decentralised-ly — they survive refreshes and sessions, giving agents verifiable memory.
-- **Single-chain by design:** A 2-minute round can't tolerate cross-chain latency. Players connect once, drive, bid, mint — all on one network, one gas token, zero switching.
+## Problem and Interaction
 
-## Impact & Innovation
-- **Agents Are Real Opponents:** Per-role policies (cooldowns, budget reserves, risk tolerance) make Scout, Weather, Mobility, and Treasury behave distinctly. The Bidding Beams + decision feed surface what each agent is targeting and why.
-- **Beatable-But-Demanding AI:** The agents carry deliberate imperfection (20% suboptimal-target, ±15% turn wobble), giving humans a real chance to outplay them while the AI never tires.
-- **On-Chain Game Loop:** Weather auctions, vehicle leases, and ability minting all settle on 0G — the economy is real, not simulated.
+Agent behavior is often hidden behind chat responses or scripted demonstrations. Clawdy makes it physical and inspectable: an agent chooses a route, encounters flooding, spends limited game energy, and either completes its objective or fails.
 
-## Architecture & Code Quality
-- **Performance:** `Persistent Vehicle Pool`, `InstancedMesh` rendering, adaptive DPR, fewer cloud segments.
-- **Reliability:** Optimistic UI with on-chain rollback, fallback-aware `AgentProtocol` seam (Local Policy ↔ MCP), single source of truth for role policy in `skillEngine.ROLE_POLICY`.
-- **Standards:** Modular architecture, explicit dependencies, `viem`-first web3 layer.
+The target interaction is **watch → coach → approve examples → train → compete → replay → improve**. A player corrects a recorded route-choice mistake, trains an actual weight update, and evaluates the resulting frozen checkpoint on scenarios excluded from training.
 
-## Conclusion
-Clawdy reframes AI agents from passive simulators into proactive, on-chain rivals. The challenge isn't just to play — it's to play smarter than four agents who never blink.
+## What Must Be Demonstrated
+
+- A complete autonomous episode in a generated environment with validated collision and navigation.
+- A coaching correction connected to reviewable state/action examples.
+- A genuine checkpoint update with parent and training provenance.
+- A hands-off run and version comparison on held-out scenarios.
+- A replay showing physical consequences and failures, not only text explanations.
+- A minimal starter/export path using the same policy contract as the application.
+
+A small learned policy selects decisions; shared navigation and steering execute them. The language-model coach proposes corrections but does not control the scored match. Authored navigation is disclosed. Improvement is measured, not assumed from one selected replay.
+
+## Technology Contributions
+
+| Technology | Intended contribution | Evidence at this docs update |
+| --- | --- | --- |
+| World Labs | Generated environment for practice and matches. | Existing splat, collider, metadata, and loading/generation code; playability still requires verification. |
+| Tripo | Champion body and readable interactive assets. | Planned; no integrated output claimed. |
+| Mint | Functional course pieces and interaction assembly. | Planned; no integrated output claimed. |
+| Convex | Coaching records, job status, checkpoint metadata, and match/replay records. | Planned; no implementation claimed. |
+
+Update this table with actual asset provenance, source paths, and demonstrated integrations. Do not claim all sponsor technologies merely because they appear in the plan.
+
+## Existing Foundation and New Work
+
+The pre-existing repository contains a Next.js/React Three Fiber scene, Rapier vehicle physics, weather and collection systems, local bots, and World Labs assets. It also contains retired financial infrastructure that is not part of this submission's direction.
+
+The owner reports organizer approval to reuse this repository. New hackathon work must be identified by the actual implementation diff: simulation consolidation, coaching data, real training, checkpoint evaluation, the starter, and sponsor integrations. Do not claim existing work was built during the event.
+
+## Submission Fields to Complete
+
+- Verified Season 0 app URL: **pending**.
+- Public repository URL and submitted commit: **pending**.
+- Two-minute demo and fallback recording: **pending**.
+- Entrant/author details for the submission form: **pending**.
+- Training record, parent/new checkpoint identifiers, and approved example provenance: **pending**.
+- Evaluation scenario set, version comparison, run count, and failures: **pending**.
+- Starter/export artifact and verification instructions: **pending**.
+- Actual sponsor asset/integration attribution: **pending**.
+
+An old deployment is not a verified Season 0 release. Use [SUBMISSION_CHECKLIST.md](SUBMISSION_CHECKLIST.md) and [DEMO_SCRIPT.md](DEMO_SCRIPT.md) before finalizing this draft.
+
+## Scope Disclosure
+
+Season 0 is a controlled learning-focused exhibition, not a production-grade tournament sandbox. Initial entrants are validated weights for a supported architecture. Arbitrary executable uploads, hosted-inference competitors, human intervention during scored matches, and the retired wallet/auction product are out of scope.

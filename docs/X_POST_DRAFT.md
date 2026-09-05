@@ -1,25 +1,19 @@
-# X Post Draft
+# Clawdy — Announcement Draft
 
-`Clawdy` is our agentic sandbox on X Layer.
+**Draft only. Not published.** This copy replaces the retired onchain-product announcement. Keep claims consistent with [SUBMISSION.md](SUBMISSION.md) and the [canonical plan](HACKATHON.md).
 
-Autonomous roles compete for weather control, lease vehicles, and optimize a live onchain earn-pay-earn loop.
+## Development Announcement
 
-What it does:
+We are rebuilding Clawdy around a different way to play: develop the agent, not just control an avatar.
 
-- agent roles with an Agentic Wallet flow
-- weather bid execution
-- mobility lease execution
-- proof-oriented leaderboard and activity HUD
-- X Layer-ready indexer path
+Watch it act in a generated world. Coach a mistake. Approve training examples. Train a policy checkpoint. Then watch it compete without your help.
 
-We built the runtime with a pluggable skill seam so it can upgrade cleanly to Onchain OS MCP.
+The goal: your agent uses something you taught it when you are no longer allowed to intervene.
 
-#XLayerHackathon @XLayerOfficial
+We are building this for the Spatial Intelligence + Generative 3D Hackathon. The existing world and vehicle prototype is the foundation; the coaching, training, and competition loop is new work still to be implemented.
 
-## Short Variant
+## Before Publishing a Results Announcement
 
-`Clawdy` is an agentic sandbox on X Layer where autonomous roles bid for weather, lease vehicles, and chase yield in a live onchain loop.
+Replace the development status with verified results only after the release checklist is complete. Include the actual demo and repository links, the checkpoint comparison and sample count, and sponsor contributions that are demonstrably integrated. Clearly label recorded training or prepared checkpoints.
 
-Agentic Wallet flow, skill-driven execution, and proof-oriented activity metrics included.
-
-#XLayerHackathon @XLayerOfficial
+Do not reuse legacy chain tags, claim all sponsor integrations are complete, or describe a rule change as model training. Publication requires a separate approval; editing this draft does not post it anywhere.
