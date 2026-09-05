@@ -1,7 +1,5 @@
-import { getLogLevel } from './runtimeConfig'
-
 const isDev = typeof process === 'undefined' || process.env?.NODE_ENV !== 'production'
-const logLevel = getLogLevel()
+const logLevel = (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_LOG_LEVEL) || 'info'
 const shouldLogInfo = logLevel === 'debug' || logLevel === 'info'
 const shouldLogDebug = logLevel === 'debug'
 

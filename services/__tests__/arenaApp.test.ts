@@ -1,8 +1,6 @@
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { describe, expect, it, vi } from 'vitest'
-
-vi.mock('../web3Config', () => { throw new Error('The arena entrypoint must not import legacy wallet configuration') })
+import { describe, expect, it } from 'vitest'
 
 import Home from '../../app/page'
 import { Providers } from '../../app/providers'

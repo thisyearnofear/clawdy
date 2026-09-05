@@ -13,8 +13,6 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "node_modules/**",
-    "indexer/**",
-    "foundry/**",
   ]),
 ]);
 
