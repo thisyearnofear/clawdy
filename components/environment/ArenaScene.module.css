@@ -97,9 +97,225 @@
 .replay input { width: 100%; margin: 15px 0 5px; accent-color: #537c52; }
 .replay p { margin: 0; color: var(--muted); font-size: 10px; }
 .footer { display: flex; justify-content: space-between; gap: 25px; padding-top: 15px; font-size: 10px; line-height: 1.7; color: var(--muted); }
-.footer p { margin: 0; }
 .footer strong { font-weight: 600; color: #536b51; }
 .footer > span { display: flex; align-items: center; gap: 8px; font: 9px var(--font-geist-mono), monospace; white-space: nowrap; }
+
+.coachingSection {
+  margin-top: 24px;
+  background: #fafbf4;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.coachingHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 14px;
+}
+
+.coachingHeader h2 {
+  font: normal 22px/1.2 Georgia, serif;
+  margin: 0 0 4px;
+}
+
+.coachingHeader p {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 0;
+}
+
+.checkpointBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #e7eedf;
+  border: 1px solid #cbdbbf;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font: 10px var(--font-geist-mono), monospace;
+  color: #2b4530;
+}
+
+.coachingGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 900px) {
+  .coachingGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.coachingCol {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.coachingCol h3 {
+  font: 600 12px var(--font-geist-sans), sans-serif;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin: 0;
+}
+
+.rulesGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.ruleButton {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  background: #f4f6ec;
+  border: 1px solid var(--line);
+  padding: 10px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.ruleButton:hover:not(:disabled) {
+  background: #e8ede0;
+  border-color: #8da482;
+}
+
+.ruleButton strong {
+  font-size: 11px;
+  color: #233531;
+}
+
+.ruleButton span {
+  font-size: 9px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.promptForm {
+  display: flex;
+  gap: 8px;
+}
+
+.promptInput {
+  flex: 1;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: var(--ink);
+}
+
+.examplesList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: #fff;
+  padding: 8px;
+}
+
+.exampleEmpty {
+  display: grid;
+  place-content: center;
+  height: 80px;
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.exampleCard {
+  border: 1px solid #e2e8dc;
+  border-radius: 4px;
+  padding: 8px 10px;
+  background: #f9faf5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.exampleCard[data-approved="true"] {
+  border-color: #9fbe94;
+  background: #f1f7ed;
+}
+
+.exampleDetails strong {
+  display: block;
+  font-size: 10px;
+  color: #233531;
+  margin-bottom: 2px;
+}
+
+.exampleDetails p {
+  margin: 0;
+  font-size: 9px;
+  color: var(--muted);
+}
+
+.exampleActions {
+  display: flex;
+  gap: 6px;
+}
+
+.approveButton {
+  border: 1px solid #91b585;
+  background: #395c34;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.rejectButton {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  font-size: 9px;
+  padding: 4px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.trainingStatusCard {
+  background: #edf3e6;
+  border: 1px solid #c2d8b7;
+  border-radius: 6px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  font-size: 11px;
+}
+
+.checkpointMeta {
+  display: flex;
+  gap: 16px;
+  font: 9px var(--font-geist-mono), monospace;
+  color: #4b664d;
+}
+
 .boot { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 16px; min-height: 70dvh; max-width: 760px; }
 .boot > p:not(.eyebrow) { font-size: 14px; line-height: 1.8; color: var(--muted); max-width: 540px; }
 .boot small { margin-top: 25px; color: var(--muted); font: 10px var(--font-geist-mono), monospace; }

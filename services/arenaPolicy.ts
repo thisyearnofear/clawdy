@@ -7,8 +7,15 @@ import {
 } from './arenaEpisode'
 
 import type { ArenaMotion } from './arenaPhysics'
+import {
+  type PolicyCheckpoint,
+  SEASON_0_BASE_CHECKPOINT,
+  createLearnedPolicy,
+} from './policyModel'
 
-export type CollectorStrategy = 'safe' | 'greedy' | 'weather'
+export type CollectorStrategy = 'safe' | 'greedy' | 'weather' | 'learned'
+
+export type EntrantPolicyOption = CollectorStrategy | { strategy: 'learned'; checkpoint: PolicyCheckpoint }
 
 type Route = { cost: number; firstEdge: string | null }
 
@@ -45,7 +52,7 @@ export function collectorPolicy(observation: ArenaObservation, strategy: Collect
       available.some(action => action.type === 'drain')) return { type: 'drain' }
   if (observation.self.transit) return wait
   if (available.some(action => action.type === 'bank')) return { type: 'bank' }
-  const home = findArenaRoute(observation, observation.self.baseNode, strategy)
+  const home = findArenaRoute(observation, observation.self.baseNode, strategy === 'learned' ? 'safe' : strategy)
   const shouldBank = observation.self.cargo > 0 && (
     observation.self.cargo >= ARENA_RULES.capacity || observation.resources.length === 0 ||
     (home !== null && observation.remainingTicks <= home.cost + ARENA_RULES.decisionEveryTicks * 2)
@@ -55,7 +62,7 @@ export function collectorPolicy(observation: ArenaObservation, strategy: Collect
   if (collect) return collect
   const targets = observation.resources
     .filter(resource => resource.value + observation.self.cargo <= ARENA_RULES.capacity)
-    .map(resource => ({ resource, route: findArenaRoute(observation, resource.nodeId, strategy) }))
+    .map(resource => ({ resource, route: findArenaRoute(observation, resource.nodeId, strategy === 'learned' ? 'safe' : strategy) }))
     .filter((entry): entry is typeof entry & { route: Route } => entry.route !== null)
     .sort((a, b) => a.route.cost - b.route.cost || (a.resource.id < b.resource.id ? -1 : a.resource.id > b.resource.id ? 1 : 0))
   const route = targets[0]?.route
@@ -65,16 +72,26 @@ export function collectorPolicy(observation: ArenaObservation, strategy: Collect
 
 export class ArenaRunner {
   #episode: ArenaEpisode
-  #strategies: Map<string, CollectorStrategy>
+  #policies: Map<string, (obs: ArenaObservation) => ArenaAction>
   #durationTicks: number
   #accumulatedUs = 0
 
-  constructor(scenario: ArenaScenario, strategies: Record<string, CollectorStrategy>, motion?: ArenaMotion) {
-    this.#strategies = new Map()
+  constructor(scenario: ArenaScenario, strategies: Record<string, EntrantPolicyOption>, motion?: ArenaMotion) {
+    this.#policies = new Map()
     const entrants = scenario.entrants.map(entrant => {
-      const strategy = strategies[entrant.id]
-      if (strategy !== 'safe' && strategy !== 'greedy' && strategy !== 'weather') throw new Error(`Missing or unsupported baseline for ${entrant.id}`)
-      this.#strategies.set(entrant.id, strategy)
+      const option = strategies[entrant.id]
+      const strategy: CollectorStrategy = typeof option === 'string' ? option : option?.strategy
+      if (strategy !== 'safe' && strategy !== 'greedy' && strategy !== 'weather' && strategy !== 'learned') {
+        throw new Error(`Missing or unsupported baseline for ${entrant.id}`)
+      }
+
+      if (strategy === 'learned') {
+        const checkpoint = typeof option === 'object' && 'checkpoint' in option ? option.checkpoint : SEASON_0_BASE_CHECKPOINT
+        this.#policies.set(entrant.id, createLearnedPolicy(checkpoint))
+        return { ...entrant, policyVersion: checkpoint.id }
+      }
+
+      this.#policies.set(entrant.id, (obs: ArenaObservation) => collectorPolicy(obs, strategy))
       return { ...entrant, policyVersion: `baseline.${strategy}.v2` }
     })
     this.#episode = new ArenaEpisode({ ...scenario, entrants }, motion)
@@ -122,10 +139,10 @@ export class ArenaRunner {
     while (advanced < count && !this.#episode.finished) {
       const tick = this.#episode.tick
       const requests = tick % ARENA_RULES.decisionEveryTicks === 0
-        ? [...this.#strategies].map(([agentId, strategy]) => ({
+        ? [...this.#policies].map(([agentId, policy]) => ({
           agentId,
           tick,
-          action: collectorPolicy(this.#episode.observe(agentId), strategy),
+          action: policy(this.#episode.observe(agentId)),
         }))
         : []
       this.#episode.step(requests)
