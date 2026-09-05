@@ -96,6 +96,12 @@
 .replay > div span { font: 10px var(--font-geist-mono), monospace; }
 .replay input { width: 100%; margin: 15px 0 5px; accent-color: #537c52; }
 .replay p { margin: 0; color: var(--muted); font-size: 10px; }
+.replayCoachBar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #cbdbbf; flex-wrap: wrap; }
+.replayCoachBar > span { font-size: 10px; color: #385038; font-family: var(--font-geist-mono), monospace; }
+.replayButtons { display: flex; align-items: center; gap: 6px; }
+.frameCoachButton { border: 1px solid #739d6b; background: #3b5f36; color: #fff; font-size: 10px; font-weight: 600; padding: 5px 11px; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: background 120ms ease; }
+.frameCoachButton:hover:not(:disabled) { background: #2a4626; }
+.frameCoachButton:disabled { opacity: 0.5; cursor: not-allowed; }
 .footer { display: flex; justify-content: space-between; gap: 25px; padding-top: 15px; font-size: 10px; line-height: 1.7; color: var(--muted); }
 .footer strong { font-weight: 600; color: #536b51; }
 .footer > span { display: flex; align-items: center; gap: 8px; font: 9px var(--font-geist-mono), monospace; white-space: nowrap; }
@@ -311,9 +317,36 @@
 
 .checkpointMeta {
   display: flex;
+  align-items: center;
   gap: 16px;
   font: 9px var(--font-geist-mono), monospace;
   color: #4b664d;
+  flex-wrap: wrap;
+}
+
+.checkpointActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.actionButtonSmall {
+  border: 1px solid #cbdbbf;
+  background: #fff;
+  color: #2b4530;
+  font: 10px var(--font-geist-mono), monospace;
+  padding: 5px 9px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 120ms ease;
+}
+
+.actionButtonSmall:hover {
+  background: #e7eedf;
 }
 
 .boot { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 16px; min-height: 70dvh; max-width: 760px; }

@@ -1,6 +1,6 @@
 import type { ArenaCourse } from './arenaCourse'
 import type { ArenaMotion } from './arenaPhysics'
-import type { ArenaRecording, ArenaSnapshot } from './arenaEpisode'
+import { type ArenaObservation, type ArenaRecording, type ArenaSnapshot, observeSnapshot } from './arenaEpisode'
 import { ArenaRunner, type CollectorStrategy, type EntrantPolicyOption } from './arenaPolicy'
 import { type PolicyCheckpoint, SEASON_0_BASE_CHECKPOINT } from './policyModel'
 
@@ -156,9 +156,20 @@ export class ArenaSession {
     this.#publish({ phase: this.#returnPhase, episode: this.#runner.snapshot(), replayIndex: 0, replayLength: 0 })
   }
 
-  observe(agentId: string) {
+  reviewObservation(agentId = 'champion', forceDecision = true): ArenaObservation | null {
     this.#assertActive()
-    return this.#runner.observe(agentId)
+    if (this.#view.phase !== 'review' || !this.#review || !this.#view.episode) return null
+    return observeSnapshot(this.#course.scenario, this.#view.episode, agentId, { forceDecision })
+  }
+
+  observe(agentId: string, options?: { forceDecision?: boolean }): ArenaObservation {
+    this.#assertActive()
+    if (this.#view.phase === 'review' && this.#view.episode) {
+      return observeSnapshot(this.#course.scenario, this.#view.episode, agentId, {
+        forceDecision: options?.forceDecision ?? true,
+      })
+    }
+    return this.#runner.observe(agentId, options)
   }
 
   recording() {

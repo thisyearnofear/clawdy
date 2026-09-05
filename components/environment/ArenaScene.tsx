@@ -1,9 +1,9 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
-import { ArrowRight, CheckCircle2, Download, Eye, Layers, Pause, Play, RotateCcw, Sparkles, XCircle } from 'lucide-react'
-import { ARENA_RULES, type ArenaAgentState } from '../../services/arenaEpisode'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { ArrowRight, CheckCircle2, Download, Eye, Layers, Pause, Play, RotateCcw, Sparkles, Upload, XCircle } from 'lucide-react'
+import { ARENA_RULES, type ArenaAgentState, type ArenaObservation } from '../../services/arenaEpisode'
 import { loadArenaCourse, type ArenaCourse } from '../../services/arenaCourse'
 import { ArenaSession } from '../../services/arenaSession'
 import type { CollectorStrategy } from '../../services/arenaPolicy'
@@ -19,6 +19,14 @@ import {
   COACHING_RULES,
   proposeCorrection,
 } from '../../services/coachingEngine'
+import {
+  downloadCheckpointFile,
+  importCheckpointJson,
+  loadStoredCheckpoints,
+  loadStoredExamples,
+  saveStoredCheckpoints,
+  saveStoredExamples,
+} from '../../services/checkpointStorage'
 import type { ArenaCamera } from './ArenaWorldView'
 import { ErrorBoundary } from '../utils/ErrorBoundary'
 import styles from './ArenaScene.module.css'
@@ -110,6 +118,8 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
   const [promptText, setPromptText] = useState('')
   const [isTraining, setIsTraining] = useState(false)
   const [trainMessage, setTrainMessage] = useState<string | null>(null)
+  const [hasHydrated, setHasHydrated] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const onReady = useCallback(() => setVisualReady(true), [])
   const onError = useCallback((error: Error) => session.fail(error.message), [session])
@@ -121,6 +131,32 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
     document.addEventListener('visibilitychange', onVisibility)
     return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [session])
+
+  useEffect(() => {
+    const storedCheckpoints = loadStoredCheckpoints()
+    const storedExamples = loadStoredExamples()
+    if (storedCheckpoints.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setCheckpoints(storedCheckpoints)
+      setActiveCheckpoint(storedCheckpoints[0])
+      session.setCheckpoint(storedCheckpoints[0])
+      session.selectPolicy('champion', 'learned', storedCheckpoints[0])
+    }
+    if (storedExamples.length > 0) {
+      setExamples(storedExamples)
+    }
+    setHasHydrated(true)
+  }, [session])
+
+  useEffect(() => {
+    if (!hasHydrated) return
+    saveStoredCheckpoints(checkpoints)
+  }, [checkpoints, hasHydrated])
+
+  useEffect(() => {
+    if (!hasHydrated) return
+    saveStoredExamples(examples)
+  }, [examples, hasHydrated])
 
   const primaryAction = () => {
     if (view.phase === 'error') { onRetry(); return }
@@ -139,20 +175,51 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
     setTimeout(() => URL.revokeObjectURL(url), 0)
   }
 
-  const handlePropose = (text: string) => {
+  const handlePropose = (text: string, customObs?: ArenaObservation) => {
     if (!text.trim()) return
-    const champObs = session.observe('champion')
+    const champObs = customObs ?? session.observe('champion')
     const currentAction = champObs.availableActions[0] ?? { type: 'wait' }
     const example = proposeCorrection(text, champObs, currentAction, course.scenario.id)
     if (example) {
-      // Auto-approve quick rules
       example.approved = true
       setExamples(prev => [example, ...prev])
       setPromptText('')
       setTrainMessage(`Proposed correction for tick ${example.tick}: ${example.rationale}`)
     } else {
-      setTrainMessage('Could not find a valid legal action matching that coaching guidance in the current state.')
+      setTrainMessage(`Could not find a valid legal action matching that guidance for tick ${champObs.tick}.`)
     }
+  }
+
+  const handleExportCheckpoint = () => {
+    downloadCheckpointFile(activeCheckpoint)
+    setTrainMessage(`Exported checkpoint file: ${activeCheckpoint.name}`)
+  }
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      try {
+        const imported = importCheckpointJson(reader.result as string)
+        setCheckpoints(prev => {
+          const filtered = prev.filter(c => c.id !== imported.id)
+          return [imported, ...filtered]
+        })
+        setActiveCheckpoint(imported)
+        session.setCheckpoint(imported)
+        session.selectPolicy('champion', 'learned', imported)
+        setTrainMessage(`Successfully imported checkpoint: ${imported.name} (${imported.weightsHash.slice(0, 14)})`)
+      } catch (err) {
+        setTrainMessage(`Import failed: ${err instanceof Error ? err.message : 'Invalid checkpoint file'}`)
+      }
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+    reader.readAsText(file)
   }
 
   const toggleApprove = (id: string) => {
@@ -256,9 +323,26 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
 
       {view.phase === 'review' && (
         <section className={styles.replay} aria-label="Recorded run review">
-          <div><strong>Recorded decisions</strong><span>{(view.episode.tick * ARENA_RULES.stepMs / 1000).toFixed(2)}s · frame {view.replayIndex + 1} / {view.replayLength}</span></div>
+          <div>
+            <strong>Recorded frame review (Tick {view.episode.tick})</strong>
+            <span>{(view.episode.tick * ARENA_RULES.stepMs / 1000).toFixed(2)}s · frame {view.replayIndex + 1} / {view.replayLength}</span>
+          </div>
           <input aria-label="Replay frame" type="range" min={0} max={Math.max(0, view.replayLength - 1)} value={view.replayIndex} onChange={event => session.seek(Number(event.target.value))} />
-          <p>Scrubbing reads recorded state. Propose a coaching correction for this state below to train the next checkpoint.</p>
+          <div className={styles.replayCoachBar}>
+            <span>
+              Frame status: Station <strong>{view.episode.agents.find(a => a.id === 'champion')?.nodeId ?? 'base'}</strong> · Cargo: <strong>{view.episode.agents.find(a => a.id === 'champion')?.cargo ?? 0}</strong> · Weather: <strong>{view.episode.weather.flooded ? 'Submerged (Flooded)' : 'Clear'}</strong>
+            </span>
+            <div className={styles.replayButtons}>
+              <button
+                className={styles.frameCoachButton}
+                onClick={() => handlePropose(view.episode.weather.flooded ? 'take ridge route during flood' : 'prioritize energy core')}
+                title="Propose coaching correction for this exact frame"
+              >
+                <Sparkles size={13} />
+                Coach this frame (Tick {view.episode.tick})
+              </button>
+            </div>
+          </div>
         </section>
       )}
 
@@ -281,6 +365,32 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
                 {checkpoints.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </label>
+            <div className={styles.checkpointActions}>
+              <button
+                type="button"
+                className={styles.actionButtonSmall}
+                onClick={handleExportCheckpoint}
+                title="Download active checkpoint JSON file"
+              >
+                <Download size={13} /> Export JSON
+              </button>
+              <button
+                type="button"
+                className={styles.actionButtonSmall}
+                onClick={handleImportClick}
+                disabled={view.phase === 'running'}
+                title="Import trained checkpoint JSON file"
+              >
+                <Upload size={13} /> Import JSON
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json,application/json"
+                style={{ display: 'none' }}
+                onChange={handleFileChange}
+              />
+            </div>
           </div>
         </div>
 

@@ -253,36 +253,8 @@ export class ArenaEpisode {
     return structuredClone(this.#state)
   }
 
-  observe(agentId: string): ArenaObservation {
-    const state = this.#state
-    const agent = state.agents.find(candidate => candidate.id === agentId)
-    if (!agent) throw new Error(`Unknown entrant: ${agentId}`)
-    const decisionDue = state.status === 'running' && state.tick % ARENA_RULES.decisionEveryTicks === 0
-    const choices: ArenaAction[] = [
-      { type: 'wait' }, { type: 'bank' }, { type: 'drain' },
-      ...this.#scenario.edges.map(edge => ({ type: 'move' as const, edgeId: edge.id })),
-      ...this.#scenario.resources.map(resource => ({ type: 'collect' as const, resourceId: resource.id })),
-    ]
-    return structuredClone({
-      schemaVersion: 'arena-observation-v1',
-      rulesVersion: ARENA_RULES.version,
-      tick: state.tick,
-      remainingTicks: this.#scenario.durationTicks - state.tick,
-      decisionDue,
-      self: agent,
-      rivals: state.agents.filter(candidate => candidate.id !== agentId).map(candidate => ({
-        id: candidate.id, position: candidate.position, cargo: candidate.cargo, banked: candidate.banked,
-      })),
-      nodes: this.#scenario.nodes,
-      edges: this.#scenario.edges.map(edge => ({
-        ...edge,
-        blocked: agent.blockedEdges.includes(edge.id),
-        currentTravelTicks: edge.travelTicks * (edge.floodable && state.weather.flooded ? ARENA_RULES.floodTravelMultiplier : 1),
-      })),
-      resources: state.resources.filter(resource => resource.collectedBy === null).map(({ id, nodeId, value }) => ({ id, nodeId, value })),
-      weather: state.weather,
-      availableActions: decisionDue ? choices.filter(action => this.#rejection(agent, action) === null) : [],
-    } satisfies ArenaObservation)
+  observe(agentId: string, options?: { forceDecision?: boolean }): ArenaObservation {
+    return observeSnapshot(this.#scenario, this.#state, agentId, options)
   }
 
   step(requests: readonly ArenaRequest[] = []): ArenaOutcome[] {
@@ -347,32 +319,11 @@ export class ArenaEpisode {
   }
 
   #isFlooded() {
-    const { tick, weather } = this.#state
-    return weather.drainedUntilTick <= tick && this.#scenario.floods.some(flood => flood.startTick <= tick && tick < flood.endTick)
+    return isScenarioFlooded(this.#scenario, this.#state)
   }
 
   #rejection(agent: ArenaAgentState, action: ArenaAction): ArenaRejection | null {
-    if (action.type === 'wait') return null
-    if (action.type === 'drain') {
-      if (!this.#isFlooded()) return 'no-flood'
-      if (agent.cooldownUntilTick > this.#state.tick) return 'cooldown'
-      return agent.energy < ARENA_RULES.drainCost ? 'insufficient-energy' : null
-    }
-    if (agent.transit) return 'in-transit'
-    if (!agent.grounded) return 'not-grounded'
-    if (action.type === 'move') {
-      const edge = this.#edges.get(action.edgeId)
-      if (agent.blockedEdges.includes(action.edgeId)) return 'movement-blocked'
-      return !edge || (edge.from !== agent.nodeId && edge.to !== agent.nodeId) ? 'unreachable-edge' : null
-    }
-    if (action.type === 'collect') {
-      const resource = this.#state.resources.find(candidate => candidate.id === action.resourceId)
-      if (!resource || resource.collectedBy !== null) return 'resource-unavailable'
-      if (resource.nodeId !== agent.nodeId) return 'unreachable-resource'
-      return agent.cargo + resource.value > ARENA_RULES.capacity ? 'cargo-full' : null
-    }
-    if (agent.nodeId !== agent.baseNode) return 'not-at-base'
-    return agent.cargo === 0 ? 'nothing-to-bank' : null
+    return checkActionRejection(this.#scenario, this.#state, agent, action)
   }
 
   #apply(agent: ArenaAgentState, action: ArenaAction) {
@@ -458,4 +409,74 @@ export class ArenaEpisode {
       }
     }
   }
+}
+
+export function isScenarioFlooded(scenario: ArenaScenario, state: ArenaSnapshot): boolean {
+  const { tick, weather } = state
+  return weather.drainedUntilTick <= tick && scenario.floods.some(flood => flood.startTick <= tick && tick < flood.endTick)
+}
+
+export function checkActionRejection(
+  scenario: ArenaScenario,
+  state: ArenaSnapshot,
+  agent: ArenaAgentState,
+  action: ArenaAction
+): ArenaRejection | null {
+  if (action.type === 'wait') return null
+  if (action.type === 'drain') {
+    if (!isScenarioFlooded(scenario, state)) return 'no-flood'
+    if (agent.cooldownUntilTick > state.tick) return 'cooldown'
+    return agent.energy < ARENA_RULES.drainCost ? 'insufficient-energy' : null
+  }
+  if (agent.transit) return 'in-transit'
+  if (!agent.grounded) return 'not-grounded'
+  if (action.type === 'move') {
+    const edge = scenario.edges.find(candidate => candidate.id === action.edgeId)
+    if (agent.blockedEdges.includes(action.edgeId)) return 'movement-blocked'
+    return !edge || (edge.from !== agent.nodeId && edge.to !== agent.nodeId) ? 'unreachable-edge' : null
+  }
+  if (action.type === 'collect') {
+    const resource = state.resources.find(candidate => candidate.id === action.resourceId)
+    if (!resource || resource.collectedBy !== null) return 'resource-unavailable'
+    if (resource.nodeId !== agent.nodeId) return 'unreachable-resource'
+    return agent.cargo + resource.value > ARENA_RULES.capacity ? 'cargo-full' : null
+  }
+  if (agent.nodeId !== agent.baseNode) return 'not-at-base'
+  return agent.cargo === 0 ? 'nothing-to-bank' : null
+}
+
+export function observeSnapshot(
+  scenario: ArenaScenario,
+  state: ArenaSnapshot,
+  agentId: string,
+  options?: { forceDecision?: boolean }
+): ArenaObservation {
+  const agent = state.agents.find(candidate => candidate.id === agentId)
+  if (!agent) throw new Error(`Unknown entrant: ${agentId}`)
+  const decisionDue = options?.forceDecision ?? (state.status === 'running' && state.tick % ARENA_RULES.decisionEveryTicks === 0)
+  const choices: ArenaAction[] = [
+    { type: 'wait' }, { type: 'bank' }, { type: 'drain' },
+    ...scenario.edges.map(edge => ({ type: 'move' as const, edgeId: edge.id })),
+    ...scenario.resources.map(resource => ({ type: 'collect' as const, resourceId: resource.id })),
+  ]
+  return structuredClone({
+    schemaVersion: 'arena-observation-v1',
+    rulesVersion: ARENA_RULES.version,
+    tick: state.tick,
+    remainingTicks: scenario.durationTicks - state.tick,
+    decisionDue,
+    self: agent,
+    rivals: state.agents.filter(candidate => candidate.id !== agentId).map(candidate => ({
+      id: candidate.id, position: candidate.position, cargo: candidate.cargo, banked: candidate.banked,
+    })),
+    nodes: scenario.nodes,
+    edges: scenario.edges.map(edge => ({
+      ...edge,
+      blocked: agent.blockedEdges.includes(edge.id),
+      currentTravelTicks: edge.travelTicks * (edge.floodable && state.weather.flooded ? ARENA_RULES.floodTravelMultiplier : 1),
+    })),
+    resources: state.resources.filter(resource => resource.collectedBy === null).map(({ id, nodeId, value }) => ({ id, nodeId, value })),
+    weather: state.weather,
+    availableActions: decisionDue ? choices.filter(action => checkActionRejection(scenario, state, agent, action) === null) : [],
+  } satisfies ArenaObservation)
 }

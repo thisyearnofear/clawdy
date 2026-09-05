@@ -106,4 +106,26 @@ describe('application episode session', () => {
     expect(notify).toHaveBeenCalledTimes(1)
     session.dispose()
   })
+
+  it('provides frame-level observations during replay review mode', () => {
+    const { session } = setup()
+    session.start()
+    session.advanceMicroseconds(250000)
+    session.pause()
+    session.review()
+
+    const reviewObs = session.reviewObservation('champion')
+    expect(reviewObs).not.toBeNull()
+    expect(reviewObs?.schemaVersion).toBe('arena-observation-v1')
+    expect(reviewObs?.self.id).toBe('champion')
+    expect(reviewObs?.availableActions.length).toBeGreaterThan(0)
+
+    // session.observe also routes to the reviewed frame snapshot
+    const currentObs = session.observe('champion')
+    expect(currentObs.tick).toBe(session.getSnapshot().episode.tick)
+
+    session.returnToRun()
+    expect(session.reviewObservation('champion')).toBeNull()
+    session.dispose()
+  })
 })

@@ -106,8 +106,8 @@ export class ArenaRunner {
     return this.#episode.snapshot()
   }
 
-  observe(agentId: string) {
-    return this.#episode.observe(agentId)
+  observe(agentId: string, options?: { forceDecision?: boolean }) {
+    return this.#episode.observe(agentId, options)
   }
 
   recording() {

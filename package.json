@@ -9,6 +9,7 @@
     "lint": "eslint",
     "prepare": "git config core.hooksPath .husky",
     "test": "vitest run",
+    "starter:train": "tsx starter/train.ts",
     "marble:generate": "node scripts/marble-generate-world.mjs",
     "postinstall": "node -e \"const v=JSON.parse(require('fs').readFileSync(require.resolve('@dimforge/rapier3d-compat').replace(/\\/[^\\/]*$/,'/package.json'),'utf8')).version;if(!v.startsWith('0.19')){console.error('WRONG rapier:',v);process.exit(1)}console.log('rapier3d-compat:',v)\""
   },
@@ -40,6 +41,7 @@
     "eslint": "^9",
     "eslint-config-next": "^16.3.4",
     "tailwindcss": "^4",
+    "tsx": "^4.23.13",
     "typescript": "^5",
     "vitest": "^4.1.11"
   }

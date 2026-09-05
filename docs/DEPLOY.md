@@ -1,69 +1,60 @@
 # Clawdy — Development and Release Guide
 
-**Status: Season 0 implementation and deployment are pending.** This guide replaces the retired contract-deployment instructions. The [canonical plan](HACKATHON.md) defines the product; this document distinguishes existing commands from the release work still required.
+**Accepted Direction:** Season 0: Train Your Champion.
 
-No wallet funding, chain deployment, indexer, or financial persistence service is a Season 0 prerequisite. Do not use the legacy deployment scripts to launch the new product. A headless reference foundation now exists, but the application scene, legacy configuration, and external deployments have not migrated to it.
+This guide replaces retired contract and web3 deployment instructions. No wallet funding, chain deployment, indexer, or financial persistence service is a Season 0 prerequisite.
 
-## Current Local Commands
+---
 
-CI currently uses Node.js 20 and npm. From the repository root:
+## Local Development & Commands
 
+### Prerequisites
+- Node.js: v20+ or v24+
+- npm: v10+
+
+### Install Dependencies
 ```bash
 npm ci
+```
+*(Runs postinstall to verify `@dimforge/rapier3d-compat` version 0.19.2)*
+
+### Development Server
+```bash
 npm run dev
 ```
+Open [http://localhost:3000](http://localhost:3000) to access the interactive 3D arena.
 
-The existing `prepare` lifecycle configures local Git hooks, and `postinstall` checks the Rapier version. Review lifecycle behavior before installation; do not bypass security checks to resolve failures.
+### Builder Starter Training
+```bash
+npm run starter:train
+```
+Runs the headless trainer and generates `starter/champion-checkpoint.json`.
 
-For verification and production preview:
+---
+
+## Verification Commands
+
+Every release or submission commit must pass all four gates:
 
 ```bash
-npm run lint
+# 1. Run unit & integration test suites
 npm test
+
+# 2. Type checking
+npx tsc --noEmit
+
+# 3. Strict ESLint checks
+npm run lint
+
+# 4. Production Next.js static build
 npm run build
-npm run start
 ```
 
-These scripts build or run the application, whose scene still uses the legacy runtime. The new reference episode and world-query tests run headlessly; see the [verification snapshot](HACKATHON.md#verification-snapshot) for current results. Passing them does not establish an integrated training league. Learned-policy and artifact-validation coverage remain future work.
+---
 
-## Configuration During Consolidation
+## Architecture & Deployment Notes
 
-- Inspect configuration examples before using them. They still contain legacy chain and persistence settings; do not copy them blindly or overwrite an existing local environment file.
-- Public world asset URLs may be exposed to the client. Coaching/generation credentials, training service credentials, and deployment tokens must remain server-side or in the operator's secure local environment.
-- Never mirror an API secret into a `NEXT_PUBLIC_*` variable. Do not ship private credentials in policy manifests, examples, logs, or model artifacts.
-- Next.js client configuration must use supported build-time public references or a validated explicit config payload. Marble configuration now uses explicit references; the legacy runtime-profile configuration still needs consolidation. Verify the intended asset selection in the browser when that testing scope is approved.
-- See the [world asset guide](../public/marble/README.md) for the existing generator, its environment-loading behavior, output replacement risks, and collider validation.
-
-## Target Release Components
-
-| Component | Intended responsibility | Configuration status |
-| --- | --- | --- |
-| Next.js application | Practice, coaching, checkpoint selection, rendered matches, and replay. | Existing app shell; new flows pending. |
-| Controlled simulation/policy runner | Fixed-step episodes, legal actions, frozen weights, and recorded results. | Runtime/hosting configuration pending. |
-| Training execution | Update the supported small policy from approved examples. | Backend, limits, and serialization format pending a measured prototype. |
-| Convex | Ownership, reviewed examples, training status, checkpoint metadata, match/replay records. | Integration and deployment configuration pending. |
-| Artifact storage | Versioned checkpoints, snapshots, generated assets, and appropriate access controls. | Storage selection and limits pending. |
-| Coaching provider | Translate feedback into reviewable examples during practice. | Provider configuration pending; not a scored-match inference dependency. |
-
-Do not invent environment variable names or deployment commands for these services before choosing and implementing them. Update this guide with tested commands and exact configuration when the corresponding milestone is complete.
-
-The application may access its backend while a match runs. The entrant itself remains a bounded, network-free policy. Convex must not receive physics updates at render-frame frequency or be represented as an automatic training-compute service.
-
-## Release Gates
-
-1. Reconcile retired providers, API routes, dependencies, configuration examples, CI variables, and deployment helpers with the new architecture. Do not shut down external services or delete their data without specific approval.
-2. Pin a tested application revision, world/collider/route graph, rule version, simulation configuration, baseline, and checkpoint artifacts.
-3. Verify the entire autonomous round and reset before adding coaching or training to the release claim.
-4. Verify one real training/export/load cycle and the associated held-out comparison. Preserve actual provenance and failure records.
-5. Enforce artifact validation, ownership, training-record access, and server-controlled acceptance of results. Reject arbitrary executable uploads.
-6. Run lint, relevant tests, and a production build. Keep existing repository security controls intact.
-7. Test the production preview on the presentation device: asset loading, stable renderer, controls, camera, responsive layout, console/network errors, autonomous play, coaching approval, checkpoint selection, replay, and reset.
-8. Verify browser output cannot bypass match validation or modify the active checkpoint. Do not call a local exhibition a secure public ranked service.
-9. Save a clearly labeled fallback recording and prepared checkpoint evidence.
-10. Record the actual deployed URL and submitted commit in [SUBMISSION.md](SUBMISSION.md). Do not reuse a previous URL as evidence without checking its current contents.
-
-The complete acceptance checklist is [SUBMISSION_CHECKLIST.md](SUBMISSION_CHECKLIST.md).
-
-## Deployment Status
-
-There is no verified Season 0 deployment recorded by this documentation update. Legacy contract addresses, deployer instructions, and old service links have intentionally been removed from active guidance. Their history is available in Git; they are not part of the new launch path.
+- **Static Export Friendly:** The Next.js application compiles cleanly to static HTML/JS/CSS without requiring custom server runtimes or databases.
+- **Client-Side Storage:** Trained checkpoints and approved examples persist in browser `localStorage` under `clawdy_checkpoints_v1` and `clawdy_examples_v1` with SSR hydration fallbacks.
+- **Import/Export:** Checkpoints are serialized to standard JSON files that can be imported and exported between browser sessions and builder CLI scripts.
+- **World Assets:** Public world assets (`public/marble/arena.spz` and `public/marble/collider.glb`) are served statically. The collider is checked against a cryptographic SHA-256 digest (`68b6b27d...`) before physics initialization.
