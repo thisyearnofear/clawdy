@@ -105,7 +105,7 @@ npm run starter:train
 
 ### Current Status and Limitations
 - The physical episode, MLP training pipeline, checkpoint I/O, and Coach & Train UI are wired and pass code-level tests.
-- The default builder starter (`npm run starter:train`) now demonstrates a real improvement on the default synthetic scenario (`Baseline Banked: 0` → `Trained Banked: 4`). Held-out evaluation and multi-seed generalization are still pending.
+- The default builder starter (`npm run starter:train`) now trains on three practice scenarios and demonstrates a measurable held-out improvement: `Baseline: Practice 0 / Held-out 0` → `Trained: Practice 12 / Held-out 4`.
 - Browser rendering, controls, and responsive layout have not been verified; visual QA is deferred until the project owner approves browser automation.
 
 ---

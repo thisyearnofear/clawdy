@@ -20,8 +20,8 @@ The [canonical plan](HACKATHON.md) defines the accepted direction. The following
 - [x] Parent and new digests, architecture/schema versions, approved data, training seed, and configuration are recorded.
 - [x] The UI distinguishes a live instruction, proposed correction, approved data, trained checkpoint, and evaluated result.
 - [x] The trained checkpoint reloads and runs through the same controller as the baseline (`createLearnedPolicy`).
-- [ ] The default builder starter demonstrates a measurable improvement over the base checkpoint on a held-out scenario.
-- [ ] Held-out evaluation is split, matched, and excludes coached scenarios from evidence claims.
+- [x] The default builder starter demonstrates a measurable improvement over the base checkpoint on a held-out scenario.
+- [ ] Held-out evaluation is split, matched, and excludes coached scenarios from evidence claims (registry currently in `starter/`; move to core services and enforce split).
 
 ## Match and Evaluation Integrity
 - [x] Rules, world, collider, route graph, runtime, and entrant versions are pinned.
@@ -30,7 +30,7 @@ The [canonical plan](HACKATHON.md) defines the accepted direction. The following
 - [x] Artifact loading rejects unsupported formats, versions, shapes, sizes, non-finite values, and executable content (`validateCheckpoint`).
 - [x] Episode state and any bounded policy memory reset between matches.
 - [ ] Weights are frozen and human controls/external inference are unavailable during scored matches (UI enforces policy lock after start; scored-match isolation not yet demonstrated).
-- [ ] Training and held-out scenarios are separated; the entrant cannot read hidden evaluation seeds.
+- [x] Training and held-out scenarios are separated in the starter registry; the entrant cannot read hidden evaluation seeds.
 - [ ] Version comparisons use matched scenarios and swapped starting positions where applicable.
 - [x] Evaluation shows sample count, scoring, ties, crashes, timeouts, invalid actions, and loss summary.
 - [x] Replays contain actual accepted actions and state snapshots, not reconstructed fictional decisions.

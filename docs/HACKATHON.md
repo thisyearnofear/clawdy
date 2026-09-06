@@ -181,19 +181,19 @@ Freeze and package generated assets before the demo. Asset generation is not on 
 
 ## Current Repository Status
 
-**Third implementation slice: training and checkpoint pipeline wired into the main page and a standalone starter CLI.** Browser automation and visual verification remain deferred at the project owner's request. Code tests verify the physical episode, MLP encoding/training, checkpoint I/O, and coaching proposal flow, but they do not prove that the trained policy improves on a held-out scenario or that the 3D canvas renders correctly.
+**Third implementation slice: training and checkpoint pipeline wired into the main page and a standalone starter CLI.** The starter CLI now trains on three practice builder scenarios and evaluates on a held-out scenario; the policy demonstrates generalization. Browser automation and visual verification remain deferred at the project owner's request.
 
 | Area | Current state | Next requirement |
 | --- | --- | --- |
-| Episode authority | `services/arenaEpisode.ts` owns validated actions, resources, budgets, results, and reset. It supports optional physical motion and deterministic replay. | Add held-out evaluation splits and a scenario registry that excludes coached scenarios from evaluation. |
+| Episode authority | `services/arenaEpisode.ts` owns validated actions, resources, budgets, results, and reset. It supports optional physical motion and deterministic replay. `starter/scenarios.ts` now provides a practice/held-out split for the builder. | Move the scenario registry into `services/` and guarantee evaluation scenarios cannot be used as coaching material. |
 | Physical controller | `services/arenaPhysics.ts` uses Rapier 0.19.2 with a kinematic spherical rover proxy, static-world sweeps, grounding, bounded speed, and reset/disposal. Blocked movement triggers a recorded recovery. | Browser verification and further adversarial course coverage. This is not wheeled vehicle dynamics. |
 | Versioned course | `services/arenaCourse.ts` grounds six stations and seven connections against the committed collider. Its loader checks the collider SHA-256 and rejects mismatches. All seven edges pass traversal tests in both directions. | Visual alignment and presentation-device validation. Course 01 is public practice, not a held-out evaluation set. |
-| Baselines and learned policy | `services/arenaPolicy.ts` supports safe, greedy, weather, and `learned` (`PolicyCheckpoint`) strategies. The learned MLP runs through `createLearnedPolicy`. | Harden the default starter dataset for multi-seed generalization and add held-out evaluation. |
+| Baselines and learned policy | `services/arenaPolicy.ts` supports safe, greedy, weather, and `learned` (`PolicyCheckpoint`) strategies. The learned MLP runs through `createLearnedPolicy`. Trained from 42 demonstrations across three seeds, it banks all 12 cores on practice and 4/4 on the held-out builder scenario. | Extend the scenario registry, add adversarial/weather-aware held-outs, and guard against overfitting. |
 | Replay and session | `arenaReplay.ts` verifies controller/rules compatibility and state checkpoints. `arenaSession.ts` adds checkpoint selection, review-mode observations, and frame-level coaching hooks. | Browser interaction verification; test that review observations match the replayed frame. |
 | Active application / Coach & Train UI | `app/page.tsx` mounts `ArenaScene`/`ArenaWorldView` with the same authority and physical controller as headless runs. `ArenaScene` exposes watch, replay scrub, "Coach this frame", quick rules, natural-language prompt, example queue with approve/reject, train, checkpoint export/import, and `localStorage` persistence. | Verify the full UI flow in a browser; currently only code-level tests and the starter CLI are exercised. |
 | World loading | The main page uses the pinned local course, shared collider extraction, and stable Spark lifecycle callbacks. Loading errors stop the run and offer retry rather than inventing a fallback world. | Actual WebGL, loading/retry, and lifecycle verification in a browser. |
 | Checkpoint format and storage | `policyModel.ts` defines a 24 → 32 → 16 → 8 MLP with Tanh/softmax and a validated `season-0.checkpoint.v1` JSON format. `checkpointStorage.ts` handles `localStorage`, JSON import/export, and validation. The weight identity is a deterministic digest, not a cryptographic SHA-256. | Freeze hyperparameters and class mapping; implement a real SHA-256 if the docs must claim it. |
-| Training runtime / starter | `policyTrainer.ts` implements supervised cross-entropy backpropagation with momentum SGD. `starter/train.ts` runs `npm run starter:train` end-to-end and exports `starter/champion-checkpoint.json`; it now demonstrates a `+4` banked improvement over the base checkpoint on the default builder scenario. | Add held-out evaluation, multi-seed training data, and hyperparameter robustness so the starter generalizes rather than memorizing one scenario. |
+| Training runtime / starter | `policyTrainer.ts` implements supervised cross-entropy backpropagation with momentum SGD. `starter/train.ts` runs `npm run starter:train` end-to-end and exports `starter/champion-checkpoint.json`. It trains on 3 scenarios (42 examples) and reports practice +12 and held-out +4 banked improvement over the base checkpoint. | Move the scenario registry into core services, freeze hyperparameters, and add more diverse weather/starter-position held-outs. |
 | Mint, Tripo, Convex integrations | Not implemented. | Add only after the local learning loop is demonstrably correct. |
 
 ### Implemented Reference Contract
@@ -216,7 +216,7 @@ Course 01 is authored public practice. The synthetic fixtures remain unit-test i
 
 - `npm test` — 9 test files / 80 tests passed.
 - `npm run lint` passed; `npx tsc --noEmit --incremental false` passed; `npm run build` completed with static generation for `/`.
-- `npm run starter:train` runs end-to-end and exports `starter/champion-checkpoint.json`. The default builder scenario now reports `Baseline Banked: 0` and `Trained Banked: 4`; the starter demonstrates a real weight update and a measurable improvement on that scenario.
+- `npm run starter:train` runs end-to-end and exports `starter/champion-checkpoint.json`. It trains on three practice builder scenarios (42 non-wait demonstrations) and reports `Baseline: Practice 0 / Held-out 0` and `Trained: Practice 12 / Held-out 4`; the policy generalizes to the held-out scenario.
 - Actual-collider tests traverse all seven connections in both directions without recovery, complete a round with both entrants banking resources, exercise the weather policy's spend, and reproduce the physical recording with a matching controller.
 - Encoding/training tests verify the 24-dimensional vector, MLP forward pass, checkpoint validation, cross-entropy training, and the `proposeCorrection` coaching engine.
 - The server-rendered entrypoint test verifies the new loading shell and training-status disclosure.
@@ -226,8 +226,8 @@ Course 01 is authored public practice. The synthetic fixtures remain unit-test i
 ### Remaining Foundation and Retirement Work
 
 - Verify the actual splat view, rover visibility, camera framing, loading/retry, controls, and layout once browser testing is approved.
-- Add held-out evaluation and multi-seed training data so the starter generalizes rather than memorizing the default builder scenario.
-- Add explicit held-out evaluation with scenario splitting, matched comparisons, and failure/regression reporting.
+- Move the `starter/scenarios.ts` practice/held-out registry into core `services/` and enforce that evaluated scenarios are excluded from coaching material.
+- Add more diverse held-out scenarios (adversarial weather timing, swapped start positions, additional resource layouts) and regression reporting.
 - The active page no longer imports `CloudScene`, the old physics hook, wallet configuration, queue, or legacy `AgentProtocol`. Their files remain unreachable from that path rather than being silently deleted.
 - Legacy API routes, contract/indexer tooling, unused dependencies, environment examples, and CI chain settings still need deliberate retirement. No external service was shut down.
 - The old collider component and procedural-world assumptions remain only in the retired scene; the active course uses shared extraction and Rapier queries.

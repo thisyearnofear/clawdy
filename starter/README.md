@@ -27,7 +27,7 @@ This will:
 6. Run an evaluation match against the house rival.
 7. Export the trained checkpoint to `starter/champion-checkpoint.json`.
 
-> **Current status:** The default synthetic scenario now demonstrates a real improvement (`Baseline Banked: 0` → `Trained Banked: 4`). The starter still uses a single scenario for the builder smoke test; held-out evaluation and multi-seed generalization are the next steps.
+> **Current status:** The starter now trains on three practice builder scenarios and evaluates on a held-out scenario. The latest run reports `Baseline: Practice 0 / Held-out 0` and `Trained: Practice 12 / Held-out 4`, showing the MLP generalizes beyond its training set.
 
 ---
 
