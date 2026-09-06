@@ -11,6 +11,7 @@
     "test": "vitest run",
     "starter:train": "tsx starter/train.ts",
     "marble:generate": "node scripts/marble-generate-world.mjs",
+    "mint:sync": "node .devin/skills/mint-threejs-skills/scripts/sync-mint-assets.mjs",
     "postinstall": "node -e \"const v=JSON.parse(require('fs').readFileSync(require.resolve('@dimforge/rapier3d-compat').replace(/\\/[^\\/]*$/,'/package.json'),'utf8')).version;if(!v.startsWith('0.19')){console.error('WRONG rapier:',v);process.exit(1)}console.log('rapier3d-compat:',v)\""
   },
   "dependencies": {

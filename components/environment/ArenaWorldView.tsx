@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useEffect, useRef } from 'react'
+import { memo, Suspense, useEffect, useRef } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Line, OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
@@ -8,6 +8,8 @@ import type { ArenaCourse } from '../../services/arenaCourse'
 import type { ArenaSession } from '../../services/arenaSession'
 import type { ArenaPosition } from '../../services/arenaEpisode'
 import { MarbleWorldLayer } from './MarbleWorldLayer'
+import { MintModel } from './MintModel'
+import { getMintAsset, getMintModelArtifact, getMintModelTransform, getMintModelUrl } from '../../services/mintAssets'
 
 export type ArenaCamera = 'overview' | 'champion' | 'rival'
 
@@ -45,30 +47,9 @@ function FollowCamera({ session, course, follow }: Pick<WorldProps, 'session' | 
   return null
 }
 
-function Rover({ session, id, color }: { session: ArenaSession; id: string; color: string }) {
-  const group = useRef<THREE.Group>(null)
-  const previous = useRef(new THREE.Vector3())
-  const target = useRef(new THREE.Vector3())
-  const lastTick = useRef(-1)
-  useFrame((_, delta) => {
-    if (!group.current) return
-    const view = session.getSnapshot()
-    const agent = view.episode.agents.find(candidate => candidate.id === id)
-    if (!agent) return
-    target.current.fromArray(agent.position)
-    const dx = target.current.x - previous.current.x
-    const dz = target.current.z - previous.current.z
-    if (lastTick.current >= 0 && Math.hypot(dx, dz) > 0.001) group.current.rotation.y = Math.atan2(dx, dz)
-    if (view.phase !== 'running' || view.episode.tick < lastTick.current || lastTick.current < 0) {
-      group.current.position.copy(target.current)
-    } else {
-      group.current.position.lerp(target.current, 1 - Math.exp(-delta * 24))
-    }
-    previous.current.copy(target.current)
-    lastTick.current = view.episode.tick
-  })
+function RoverGeometry({ color }: { color: string }) {
   return (
-    <group ref={group}>
+    <>
       <mesh position={[0, 0.2, 0]} castShadow>
         <boxGeometry args={[0.34, 0.14, 0.45]} />
         <meshStandardMaterial color={color} roughness={0.35} metalness={0.35} />
@@ -99,6 +80,48 @@ function Rover({ session, id, color }: { session: ArenaSession; id: string; colo
         <ringGeometry args={[0.34, 0.39, 32]} />
         <meshBasicMaterial color={color} transparent opacity={0.65} depthWrite={false} />
       </mesh>
+    </>
+  )
+}
+
+function Rover({ session, id, color }: { session: ArenaSession; id: string; color: string }) {
+  const group = useRef<THREE.Group>(null)
+  const previous = useRef(new THREE.Vector3())
+  const target = useRef(new THREE.Vector3())
+  const lastTick = useRef(-1)
+  useFrame((_, delta) => {
+    if (!group.current) return
+    const view = session.getSnapshot()
+    const agent = view.episode.agents.find(candidate => candidate.id === id)
+    if (!agent) return
+    target.current.fromArray(agent.position)
+    const dx = target.current.x - previous.current.x
+    const dz = target.current.z - previous.current.z
+    if (lastTick.current >= 0 && Math.hypot(dx, dz) > 0.001) group.current.rotation.y = Math.atan2(dx, dz)
+    if (view.phase !== 'running' || view.episode.tick < lastTick.current || lastTick.current < 0) {
+      group.current.position.copy(target.current)
+    } else {
+      group.current.position.lerp(target.current, 1 - Math.exp(-delta * 24))
+    }
+    previous.current.copy(target.current)
+    lastTick.current = view.episode.tick
+  })
+
+  const assetKey = `${id}Rover`
+  const asset = getMintAsset(assetKey)
+  const artifact = asset ? getMintModelArtifact(asset) : undefined
+  const modelUrl = artifact ? getMintModelUrl(artifact) : undefined
+  const transform = asset ? getMintModelTransform(asset) : undefined
+
+  return (
+    <group ref={group}>
+      {modelUrl ? (
+        <Suspense fallback={<RoverGeometry color={color} />}>
+          <MintModel url={modelUrl} transform={transform} />
+        </Suspense>
+      ) : (
+        <RoverGeometry color={color} />
+      )}
     </group>
   )
 }
