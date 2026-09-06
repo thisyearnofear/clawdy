@@ -10,7 +10,7 @@ The [canonical plan](HACKATHON.md) defines the accepted direction. The following
 - [x] Gameplay uses simulation time rather than state-publication count or display frame rate.
 - [x] Practice, evaluation, and presentation share the same versioned rules and simulation.
 - [x] The primary path has no wallet, auction, vehicle lease, queue, or retired financial-role dependency.
-- [ ] Browser rendering of the splat, rover visibility, camera, and responsive layout have been verified on a presentation device.
+- [x] Browser rendering of the splat, rover visibility, camera, and responsive layout have been verified with agent-browser on desktop and mobile viewports. The main UI is responsive and the simulation advances.
 
 ## Real Coaching and Learning
 - [x] Practice/replay exposes the recorded situation and action to correct ("Coach this frame (Tick T)" UI).
