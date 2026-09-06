@@ -2,17 +2,19 @@
 
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { ArrowRight, CheckCircle2, Download, Eye, Layers, Pause, Play, RotateCcw, Sparkles, Upload, XCircle } from 'lucide-react'
-import { ARENA_RULES, type ArenaAgentState, type ArenaObservation } from '../../services/arenaEpisode'
+import { AlertTriangle, ArrowRight, BarChart3, CheckCircle2, Download, Eye, Layers, Pause, Play, RotateCcw, Sparkles, Upload, XCircle } from 'lucide-react'
+import { ARENA_RULES, type ArenaAction, type ArenaAgentState, type ArenaObservation } from '../../services/arenaEpisode'
 import { loadArenaCourse, type ArenaCourse } from '../../services/arenaCourse'
 import { ArenaSession } from '../../services/arenaSession'
-import type { CollectorStrategy } from '../../services/arenaPolicy'
+import { collectorPolicy, type CollectorStrategy } from '../../services/arenaPolicy'
 import {
   type PolicyCheckpoint,
   SEASON_0_BASE_CHECKPOINT,
 } from '../../services/policyModel'
 import {
   type ArenaTrainingExample,
+  type EvaluationResult,
+  evaluatePolicyCheckpoint,
   trainPolicyCheckpoint,
 } from '../../services/policyTrainer'
 import {
@@ -48,6 +50,19 @@ const PHASE_LABELS = {
 }
 
 type LoadedSession = { session: ArenaSession; course: ArenaCourse }
+
+function actionsEqual(a: ArenaAction, b: ArenaAction): boolean {
+  if (a.type !== b.type) return false
+  if (a.type === 'move' && b.type === 'move') return a.edgeId === b.edgeId
+  if (a.type === 'collect' && b.type === 'collect') return a.resourceId === b.resourceId
+  return true
+}
+
+function actionLabel(action: ArenaAction): string {
+  if (action.type === 'move') return `move ${action.edgeId}`
+  if (action.type === 'collect') return `collect ${action.resourceId}`
+  return action.type
+}
 
 export function describeArenaDecision(agent: ArenaAgentState): string {
   if (agent.recoveries > 0 && agent.lastOutcome?.reason === 'movement-blocked') return 'Blocked route. Recovered to the last safe station.'
@@ -118,8 +133,10 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
   const [promptText, setPromptText] = useState('')
   const [isTraining, setIsTraining] = useState(false)
   const [trainMessage, setTrainMessage] = useState<string | null>(null)
+  const [trainResult, setTrainResult] = useState<{ baseline: EvaluationResult; trained: EvaluationResult } | null>(null)
   const [hasHydrated, setHasHydrated] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const exampleCounter = useRef(0)
 
   const onReady = useCallback(() => setVisualReady(true), [])
   const onError = useCallback((error: Error) => session.fail(error.message), [session])
@@ -181,10 +198,9 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
     const currentAction = champObs.availableActions[0] ?? { type: 'wait' }
     const example = proposeCorrection(text, champObs, currentAction, course.scenario.id)
     if (example) {
-      example.approved = true
       setExamples(prev => [example, ...prev])
       setPromptText('')
-      setTrainMessage(`Proposed correction for tick ${example.tick}: ${example.rationale}`)
+      setTrainMessage(`Proposed correction for tick ${example.tick}: ${example.rationale} — approve it to include in training.`)
     } else {
       setTrainMessage(`Could not find a valid legal action matching that guidance for tick ${champObs.tick}.`)
     }
@@ -236,26 +252,61 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
 
     setIsTraining(true)
     setTrainMessage('Optimizing neural policy weights from approved coaching examples…')
+    setTrainResult(null)
 
     setTimeout(() => {
       try {
         const trained = trainPolicyCheckpoint(activeCheckpoint, approved, {
-          epochs: 45,
-          learningRate: 0.04,
+          epochs: 100,
+          learningRate: 0.02,
           name: `Champion v${checkpoints.length} (+${approved.length} examples)`,
         })
+
+        const baselineEval = evaluatePolicyCheckpoint(SEASON_0_BASE_CHECKPOINT, [course.scenario])
+        const trainedEval = evaluatePolicyCheckpoint(trained, [course.scenario])
 
         setCheckpoints(prev => [trained, ...prev])
         setActiveCheckpoint(trained)
         session.setCheckpoint(trained)
         session.selectPolicy('champion', 'learned', trained)
         setIsTraining(false)
-        setTrainMessage(`Training complete! Loss: ${trained.trainingSummary.loss.toFixed(4)} · Weights updated with ${trained.weightsHash.slice(0, 16)}`)
+        setTrainMessage(`Training complete! Loss: ${trained.trainingSummary.loss.toFixed(4)} · Accuracy: ${(trained.trainingSummary.accuracy * 100).toFixed(0)}% · Weights updated.`)
+        setTrainResult({ baseline: baselineEval, trained: trainedEval })
       } catch (err) {
         setIsTraining(false)
         setTrainMessage(`Training failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
       }
     }, 400)
+  }
+
+  const currentMistake = (() => {
+    if (view.phase !== 'review') return null
+    const champObs = session.observe('champion')
+    if (!champObs.decisionDue) return null
+    const champ = view.episode.agents.find(a => a.id === 'champion')
+    const recorded = champ?.lastOutcome?.action
+    if (!recorded) return null
+    const suggested = collectorPolicy(champObs, 'safe')
+    if (actionsEqual(recorded, suggested)) return null
+    return { champObs, recorded, suggested }
+  })()
+
+  const handleAddMistake = () => {
+    if (!currentMistake) return
+    const { champObs, recorded, suggested } = currentMistake
+    exampleCounter.current += 1
+    const example: ArenaTrainingExample = {
+      id: `mistake-${champObs.tick}-${exampleCounter.current.toString(36)}`,
+      sourceEpisodeId: course.scenario.id,
+      tick: champObs.tick,
+      observation: champObs,
+      originalAction: recorded,
+      preferredAction: suggested,
+      rationale: `Safe baseline would ${actionLabel(suggested)} here instead of ${actionLabel(recorded)}.`,
+      approved: false,
+    }
+    setExamples(prev => [example, ...prev])
+    setTrainMessage(`Added tick ${example.tick} to the coaching queue. Approve it to train the correction.`)
   }
 
   const handleSelectCheckpoint = (ckptId: string) => {
@@ -343,6 +394,24 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
               </button>
             </div>
           </div>
+          {currentMistake && (
+            <div className={styles.mistakeBanner} role="status">
+              <div>
+                <AlertTriangle size={14} />
+                <strong>Possible mistake at Tick {view.episode.tick}</strong>
+                <span>Champion chose <em>{actionLabel(currentMistake.recorded)}</em>; safe baseline would <em>{actionLabel(currentMistake.suggested)}</em>.</span>
+              </div>
+              <button className={styles.mistakeCoachButton} onClick={handleAddMistake}>
+                Coach this mistake
+              </button>
+            </div>
+          )}
+          {view.phase === 'review' && !currentMistake && (
+            <div className={styles.frameOk} role="status">
+              <CheckCircle2 size={14} />
+              <span>This decision matches the safe baseline.</span>
+            </div>
+          )}
         </section>
       )}
 
@@ -477,6 +546,35 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
         {trainMessage && (
           <div className={styles.trainingStatusCard} role="status">
             <span>{trainMessage}</span>
+          </div>
+        )}
+
+        {trainResult && (
+          <div className={styles.trainingResultCard} role="status" aria-label="Training evaluation comparison">
+            <div className={styles.trainingResultHeader}>
+              <BarChart3 size={14} />
+              <strong>Checkpoint evaluation on {course.config.name}</strong>
+            </div>
+            <div className={styles.trainingResultGrid}>
+              <div>
+                <span>Base checkpoint</span>
+                <strong>{trainResult.baseline.totalBanked}</strong>
+                <small>banked · {trainResult.baseline.wins}W {trainResult.baseline.losses}L {trainResult.baseline.draws}D</small>
+              </div>
+              <div>
+                <span>Trained checkpoint</span>
+                <strong>{trainResult.trained.totalBanked}</strong>
+                <small>banked · {trainResult.trained.wins}W {trainResult.trained.losses}L {trainResult.trained.draws}D</small>
+              </div>
+              <div>
+                <span>Improvement</span>
+                <strong className={trainResult.trained.totalBanked > trainResult.baseline.totalBanked ? styles.improvementPositive : ''}>
+                  {trainResult.trained.totalBanked - trainResult.baseline.totalBanked >= 0 ? '+' : ''}{trainResult.trained.totalBanked - trainResult.baseline.totalBanked}
+                </strong>
+                <small>resources banked</small>
+              </div>
+            </div>
+            <p className={styles.trainingResultNote}>Evaluation runs the checkpoint against the default house rival on the current course. This is a local benchmark, not a held-out ranked result.</p>
           </div>
         )}
       </section>

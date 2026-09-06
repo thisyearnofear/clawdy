@@ -315,6 +315,127 @@
   font-size: 11px;
 }
 
+.trainingResultCard {
+  background: #f3f7ed;
+  border: 1px solid #c2d8b7;
+  border-radius: 6px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 11px;
+}
+
+.trainingResultHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #2b4530;
+}
+
+.trainingResultGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.trainingResultGrid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid #e2e8dc;
+  border-radius: 4px;
+}
+
+.trainingResultGrid span {
+  font-size: 9px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.trainingResultGrid strong {
+  font: 22px/1 var(--font-geist-mono), monospace;
+  color: var(--ink);
+}
+
+.trainingResultGrid small {
+  font-size: 9px;
+  color: var(--muted);
+}
+
+.improvementPositive {
+  color: #3b7c3a;
+}
+
+.trainingResultNote {
+  margin: 0;
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.mistakeBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: #fdf6e8;
+  border: 1px solid #e8d5a8;
+  border-radius: 5px;
+  font-size: 11px;
+  color: #5a461d;
+}
+
+.mistakeBanner > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.mistakeBanner em {
+  font-style: normal;
+  font-weight: 600;
+  background: #fff3d1;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.mistakeCoachButton {
+  border: 1px solid #b89b4a;
+  background: #735e2a;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 5px 11px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.mistakeCoachButton:hover:not(:disabled) {
+  background: #5a4a20;
+}
+
+.frameOk {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: #eef6ec;
+  border: 1px solid #c2d8b7;
+  border-radius: 5px;
+  font-size: 11px;
+  color: #2b4530;
+}
+
 .checkpointMeta {
   display: flex;
   align-items: center;

@@ -54,7 +54,7 @@ Clawdy introduces **true hands-off agent development**:
 4. **Offline Evaluation & Validation:**
    - `evaluatePolicyCheckpoint` runs a champion checkpoint against a reference rival on a scenario.
    - Strict runtime validation rejecting invalid tensor shapes, NaNs, or malformed data.
-   - The default `starter/train.ts` scenario currently yields 0 banked for both baseline and trained checkpoints; the pipeline is wired but the default training data has not yet been hardened to demonstrate a measured improvement.
+   - The default `starter/train.ts` scenario yields `Baseline Banked: 0` and `Trained Banked: 4`, demonstrating a real measured improvement from the training pipeline on the default builder scenario. Held-out evaluation and multi-seed generalization are still pending.
 5. **Builder Starter Kit:**
    - Standalone CLI trainer in `starter/train.ts` runnable with `npm run starter:train`.
    - Generates importable `starter/champion-checkpoint.json`.

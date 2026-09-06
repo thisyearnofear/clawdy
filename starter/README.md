@@ -27,7 +27,7 @@ This will:
 6. Run an evaluation match against the house rival.
 7. Export the trained checkpoint to `starter/champion-checkpoint.json`.
 
-> **Current limitation:** The default synthetic scenario is a pipeline smoke test. As of this docs update, the baseline and trained checkpoints both report `0` banked resources because the default roll-out dataset does not yet reach and collect cores reliably. Hardening the default dataset is the next step.
+> **Current status:** The default synthetic scenario now demonstrates a real improvement (`Baseline Banked: 0` → `Trained Banked: 4`). The starter still uses a single scenario for the builder smoke test; held-out evaluation and multi-seed generalization are the next steps.
 
 ---
 

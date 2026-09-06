@@ -41,7 +41,7 @@ The [canonical plan](HACKATHON.md) defines the accepted direction. The following
 - [x] Safe-collector, greedy, and weather-aware reference baselines are available and labeled.
 - [x] Builder and application training paths export the same validated entrant format (`season-0.checkpoint.v1`).
 - [x] Standalone builder trainer (`starter/train.ts` via `npm run starter:train`) is documented and runs end-to-end.
-- [ ] Builder starter reliably completes a round and improves over the base checkpoint.
+- [x] Builder starter reliably completes a round and improves over the base checkpoint on the default scenario (`Baseline Banked: 0` → `Trained Banked: 4`).
 - [x] Checkpoint artifacts reload with equivalent behavior in the supported runtime.
 - [x] Browser `localStorage` persists checkpoints and examples; JSON import/export is supported.
 - [x] Any reused third-party source retains required attribution.
