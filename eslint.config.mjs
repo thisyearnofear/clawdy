@@ -13,6 +13,8 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "node_modules/**",
+    // Vendored agent skills are not subject to this repo's lint rules.
+    ".devin/skills/**",
   ]),
 ]);
 

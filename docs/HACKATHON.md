@@ -194,7 +194,7 @@ Freeze and package generated assets before the demo. Asset generation is not on 
 | World loading | The main page uses the pinned local course, shared collider extraction, and stable Spark lifecycle callbacks. Loading errors stop the run and offer retry rather than inventing a fallback world. | Actual WebGL, loading/retry, and lifecycle verification in a browser. |
 | Checkpoint format and storage | `policyModel.ts` defines a 24 → 32 → 16 → 8 MLP with Tanh/softmax and a validated `season-0.checkpoint.v1` JSON format. `checkpointStorage.ts` handles `localStorage`, JSON import/export, and validation. The weight identity is a deterministic digest, not a cryptographic SHA-256. | Freeze hyperparameters and class mapping; implement a real SHA-256 if the docs must claim it. |
 | Training runtime / starter | `policyTrainer.ts` implements supervised cross-entropy backpropagation with momentum SGD. `starter/train.ts` runs `npm run starter:train` end-to-end and exports `starter/champion-checkpoint.json`. It trains on 3 practice scenarios and reports `Practice 0 → 12` and `Held-out 0 → 12` (4/4 on each of 3 held-out variants). | Freeze hyperparameters and add larger-scale held-out course graphs. |
-| Mint, Tripo, Convex integrations | Not implemented. | Add only after the local learning loop is demonstrably correct. |
+| Mint, Tripo, Convex integrations | `mintdotgg/mint-threejs-skills` has been installed into `.devin/skills/mint-threejs-skills/` as an agent skill scaffold; no runtime Mint MCP server is wired. | Wire Mint MCP credentials and generate the first validated asset (collider, rover, or world) only after browser and held-out evaluation are solid. |
 
 ### Implemented Reference Contract
 
