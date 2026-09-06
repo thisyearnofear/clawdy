@@ -185,7 +185,7 @@ Freeze and package generated assets before the demo. Asset generation is not on 
 
 | Area | Current state | Next requirement |
 | --- | --- | --- |
-| Episode authority | `services/arenaEpisode.ts` owns validated actions, resources, budgets, results, and reset. It supports optional physical motion and deterministic replay. `starter/scenarios.ts` now provides a practice/held-out split for the builder. | Move the scenario registry into `services/` and guarantee evaluation scenarios cannot be used as coaching material. |
+| Episode authority | `services/arenaEpisode.ts` owns validated actions, resources, budgets, results, and reset. It supports optional physical motion and deterministic replay. `services/arenaScenarios.ts` now provides the practice/held-out split and `rejectEvaluationExamples` guards it. | Add more diverse evaluation scenarios and enforce the split in the UI coaching flow. |
 | Physical controller | `services/arenaPhysics.ts` uses Rapier 0.19.2 with a kinematic spherical rover proxy, static-world sweeps, grounding, bounded speed, and reset/disposal. Blocked movement triggers a recorded recovery. | Browser verification and further adversarial course coverage. This is not wheeled vehicle dynamics. |
 | Versioned course | `services/arenaCourse.ts` grounds six stations and seven connections against the committed collider. Its loader checks the collider SHA-256 and rejects mismatches. All seven edges pass traversal tests in both directions. | Visual alignment and presentation-device validation. Course 01 is public practice, not a held-out evaluation set. |
 | Baselines and learned policy | `services/arenaPolicy.ts` supports safe, greedy, weather, and `learned` (`PolicyCheckpoint`) strategies. The learned MLP runs through `createLearnedPolicy`. Trained from 42 demonstrations across three seeds, it banks all 12 cores on practice and 4/4 on the held-out builder scenario. | Extend the scenario registry, add adversarial/weather-aware held-outs, and guard against overfitting. |
@@ -226,8 +226,8 @@ Course 01 is authored public practice. The synthetic fixtures remain unit-test i
 ### Remaining Foundation and Retirement Work
 
 - Verify the actual splat view, rover visibility, camera framing, loading/retry, controls, and layout once browser testing is approved.
-- Move the `starter/scenarios.ts` practice/held-out registry into core `services/` and enforce that evaluated scenarios are excluded from coaching material.
 - Add more diverse held-out scenarios (adversarial weather timing, swapped start positions, additional resource layouts) and regression reporting.
+- Enforce the practice/held-out split in the `ArenaScene` coaching flow so reviewed evaluation replays cannot be approved as training data.
 - The active page no longer imports `CloudScene`, the old physics hook, wallet configuration, queue, or legacy `AgentProtocol`. Their files remain unreachable from that path rather than being silently deleted.
 - Legacy API routes, contract/indexer tooling, unused dependencies, environment examples, and CI chain settings still need deliberate retirement. No external service was shut down.
 - The old collider component and procedural-world assumptions remain only in the retired scene; the active course uses shared extraction and Rapier queries.

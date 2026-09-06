@@ -13,7 +13,11 @@ import {
   trainPolicyCheckpoint,
 } from '../services/policyTrainer'
 import { exportCheckpointJson } from '../services/checkpointStorage'
-import { HELD_OUT_SCENARIOS, PRACTICE_SCENARIOS } from './scenarios'
+import {
+  HELD_OUT_SCENARIOS,
+  PRACTICE_SCENARIOS,
+  rejectEvaluationExamples,
+} from '../services/arenaScenarios'
 
 function actionRationale(action: ArenaAction, observation: ArenaObservation): string {
   if (action.type === 'bank') return 'Cargo is available; deliver it to the base to score.'
@@ -99,6 +103,7 @@ async function runBuilderTrainer() {
 
   const uniqueExamples = Array.from(new Map(examples.map(ex => [ex.id, ex])).values())
   console.log(`      Collected ${uniqueExamples.length} distinct approved training examples across practice scenarios.`)
+  rejectEvaluationExamples(uniqueExamples)
 
   // Step 4: Train checkpoint
   console.log('\n[4/6] Training neural policy via supervised momentum SGD...')

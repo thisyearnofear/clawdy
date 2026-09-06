@@ -1,6 +1,6 @@
-import type { ArenaScenario } from '../services/arenaEpisode'
+import type { ArenaScenario } from './arenaEpisode'
 
-const NODES = [
+const NODES: ArenaScenario['nodes'] = [
   { id: 'champion-base', position: [0, 0, 0] as [number, number, number] },
   { id: 'rival-base', position: [14, 0, 8] as [number, number, number] },
   { id: 'low-pass', position: [4, 0, 2] as [number, number, number] },
@@ -8,7 +8,7 @@ const NODES = [
   { id: 'resource-bank', position: [10, 0, 3] as [number, number, number] },
 ]
 
-const EDGES = [
+const EDGES: ArenaScenario['edges'] = [
   { id: 'base-to-low', from: 'champion-base', to: 'low-pass', travelTicks: 25, floodable: true },
   { id: 'base-to-ridge', from: 'champion-base', to: 'ridge-center', travelTicks: 40, floodable: false },
   { id: 'low-to-bank', from: 'low-pass', to: 'resource-bank', travelTicks: 25, floodable: true },
@@ -17,12 +17,12 @@ const EDGES = [
   { id: 'rival-to-bank', from: 'rival-base', to: 'resource-bank', travelTicks: 1000, floodable: false },
 ]
 
-const ENTRANTS = [
+const ENTRANTS: ArenaScenario['entrants'] = [
   { id: 'champion', baseNode: 'champion-base', policyVersion: 'baseline.safe.v2' },
   { id: 'rival', baseNode: 'rival-base', policyVersion: 'reference.greedy.v2' },
 ]
 
-const RESOURCES = [
+const RESOURCES: ArenaScenario['resources'] = [
   { id: 'core-1', nodeId: 'resource-bank', value: 1 },
   { id: 'core-2', nodeId: 'resource-bank', value: 1 },
   { id: 'core-3', nodeId: 'ridge-center', value: 1 },
@@ -53,6 +53,9 @@ function createBuilderScenario(
   }
 }
 
+/**
+ * Practice scenarios used for collecting demonstrations and training.
+ */
 export const PRACTICE_SCENARIOS: ArenaScenario[] = [
   createBuilderScenario('builder-course-01', 20260905, 'practice', 600, [
     { startTick: 50, endTick: 300 },
@@ -68,9 +71,35 @@ export const PRACTICE_SCENARIOS: ArenaScenario[] = [
   ]),
 ]
 
+/**
+ * Held-out evaluation scenarios. These must never be used as training/coaching
+ * data; the registry below exposes helpers to guard against that.
+ */
 export const HELD_OUT_SCENARIOS: ArenaScenario[] = [
   createBuilderScenario('builder-course-heldout-01', 20260910, 'evaluation', 600, [
     { startTick: 60, endTick: 220 },
     { startTick: 320, endTick: 480 },
   ]),
 ]
+
+const ALL_SCENARIOS = [...PRACTICE_SCENARIOS, ...HELD_OUT_SCENARIOS]
+const EVALUATION_IDS = new Set(HELD_OUT_SCENARIOS.map(s => s.id))
+
+export function getScenarioById(id: string): ArenaScenario | undefined {
+  return ALL_SCENARIOS.find(s => s.id === id)
+}
+
+export function isEvaluationScenario(id: string): boolean {
+  return EVALUATION_IDS.has(id)
+}
+
+/**
+ * Throws if any training example was drawn from a held-out evaluation scenario.
+ * Use this in trainer entry points to keep the practice/held-out split honest.
+ */
+export function rejectEvaluationExamples(examples: readonly { sourceEpisodeId?: string }[]): void {
+  const leak = examples.find(ex => ex.sourceEpisodeId && isEvaluationScenario(ex.sourceEpisodeId))
+  if (leak) {
+    throw new Error(`Training data leak: example from held-out scenario "${leak.sourceEpisodeId}" cannot be used for training.`)
+  }
+}
