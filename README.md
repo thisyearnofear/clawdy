@@ -116,3 +116,4 @@ npm run starter:train
 - **Rapier Physics:** Deterministic 3D character controller and collision queries (@dimforge/rapier3d-compat 0.19.2).
 - **React Three Fiber & Three.js:** 3D scene composition and rendering pipeline.
 - **Next.js & React 19:** Application shell, state management, and static build export.
+- **threejs-game-skills** (`https://github.com/majidmanzarpour/threejs-game-skills`): A standalone game-design/QA skill pack (upstream of `mint-threejs-skills`) noted as a future reference for camera/HUD/audio/Playwright polish. It is not installed yet; focus remains on the core training loop.
