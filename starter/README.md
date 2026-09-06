@@ -27,7 +27,7 @@ This will:
 6. Run an evaluation match against the house rival.
 7. Export the trained checkpoint to `starter/champion-checkpoint.json`.
 
-> **Current status:** The starter now trains on three practice builder scenarios and evaluates on a held-out scenario. The latest run reports `Baseline: Practice 0 / Held-out 0` and `Trained: Practice 12 / Held-out 4`, showing the MLP generalizes beyond its training set.
+> **Current status:** The starter now trains on three practice builder scenarios and evaluates on three held-out variants (different seed/flood, swapped start, and long flood). The latest run reports `Baseline: Practice 0 / Held-out 0` and `Trained: Practice 12 / Held-out 12` (4/4 on each held-out), showing the MLP generalizes beyond its training set.
 
 ---
 

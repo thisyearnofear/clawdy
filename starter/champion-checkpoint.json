@@ -1,9 +1,9 @@
 {
   "schemaVersion": "season-0.checkpoint.v1",
-  "id": "checkpoint-mtptynof-9:307b",
+  "id": "checkpoint-mtpuhbg3-9:307b",
   "name": "Builder Champion (Safe Baseline Clone)",
   "parentCheckpointId": "champion-baseline-s0",
-  "createdAt": "2026-09-06T13:11:18.111Z",
+  "createdAt": "2026-09-06T13:25:48.723Z",
   "weightsHash": "w:5c8950a9:307b",
   "trainingSummary": {
     "epochs": 500,

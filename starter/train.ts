@@ -42,7 +42,7 @@ async function runBuilderTrainer() {
   console.log('='.repeat(70))
   console.log()
 
-  console.log(`[1/6] Loading ${PRACTICE_SCENARIOS.length} practice scenarios and ${HELD_OUT_SCENARIOS.length} held-out scenario...`)
+  console.log(`[1/6] Loading ${PRACTICE_SCENARIOS.length} practice scenarios and ${HELD_OUT_SCENARIOS.length} held-out scenarios...`)
   console.log(`      Base checkpoint: ${SEASON_0_BASE_CHECKPOINT.name}`)
   console.log(`      Initial weights hash: ${SEASON_0_BASE_CHECKPOINT.weightsHash.slice(0, 16)}...`)
 
@@ -123,15 +123,24 @@ async function runBuilderTrainer() {
   // Step 5: Evaluate trained checkpoint on both splits
   console.log('\n[5/6] Evaluating newly trained checkpoint...')
   const trainedPracticeEval = evaluatePolicyCheckpoint(trainedCheckpoint, PRACTICE_SCENARIOS)
-  const trainedHeldOutEval = evaluatePolicyCheckpoint(trainedCheckpoint, HELD_OUT_SCENARIOS)
+  console.log(`      Practice (all) — Banked: ${trainedPracticeEval.totalBanked} | Wins: ${trainedPracticeEval.wins} | Losses: ${trainedPracticeEval.losses} | Draws: ${trainedPracticeEval.draws}`)
 
-  console.log(`      Practice — Banked: ${trainedPracticeEval.totalBanked} | Wins: ${trainedPracticeEval.wins} | Losses: ${trainedPracticeEval.losses} | Draws: ${trainedPracticeEval.draws}`)
-  console.log(`      Held-out — Banked: ${trainedHeldOutEval.totalBanked} | Wins: ${trainedHeldOutEval.wins} | Losses: ${trainedHeldOutEval.losses} | Draws: ${trainedHeldOutEval.draws}`)
+  let heldOutTotal = 0
+  let baseHeldOutTotal = 0
+  console.log('      Held-out results:')
+  for (const scenario of HELD_OUT_SCENARIOS) {
+    const baseEval = evaluatePolicyCheckpoint(SEASON_0_BASE_CHECKPOINT, [scenario])
+    const trainedEval = evaluatePolicyCheckpoint(trainedCheckpoint, [scenario])
+    const improvement = trainedEval.totalBanked - baseEval.totalBanked
+    heldOutTotal += trainedEval.totalBanked
+    baseHeldOutTotal += baseEval.totalBanked
+    console.log(`        ${scenario.id} — Banked: ${trainedEval.totalBanked} (base ${baseEval.totalBanked}, ${improvement >= 0 ? '+' : ''}${improvement}) | W:${trainedEval.wins} L:${trainedEval.losses} D:${trainedEval.draws}`)
+  }
 
   const practiceImprovement = trainedPracticeEval.totalBanked - basePracticeEval.totalBanked
-  const heldOutImprovement = trainedHeldOutEval.totalBanked - baseHeldOutEval.totalBanked
+  const heldOutImprovement = heldOutTotal - baseHeldOutTotal
   if (heldOutImprovement > 0) {
-    console.log(`\n      Held-out improvement: +${heldOutImprovement} banked resources over baseline`)
+    console.log(`\n      Held-out improvement: +${heldOutImprovement} banked resources total over baseline`)
   } else if (heldOutImprovement < 0) {
     console.log(`\n      Warning: trained checkpoint banked ${heldOutImprovement} fewer resources on held-out than baseline`)
   } else {

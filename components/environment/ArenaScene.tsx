@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from '
 import { AlertTriangle, ArrowRight, BarChart3, CheckCircle2, Download, Eye, Layers, Pause, Play, RotateCcw, Sparkles, Upload, XCircle } from 'lucide-react'
 import { ARENA_RULES, type ArenaAction, type ArenaAgentState, type ArenaObservation } from '../../services/arenaEpisode'
 import { loadArenaCourse, type ArenaCourse } from '../../services/arenaCourse'
+import { isEvaluationScenario, rejectEvaluationExamples } from '../../services/arenaScenarios'
 import { ArenaSession } from '../../services/arenaSession'
 import { collectorPolicy, type CollectorStrategy } from '../../services/arenaPolicy'
 import {
@@ -142,6 +143,7 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
   const onError = useCallback((error: Error) => session.fail(error.message), [session])
   const remaining = Math.max(0, Math.ceil((course.scenario.durationTicks - view.episode.tick) * ARENA_RULES.stepMs / 1000))
   const clock = `${Math.floor(remaining / 60).toString().padStart(2, '0')}:${(remaining % 60).toString().padStart(2, '0')}`
+  const courseIsEvaluation = isEvaluationScenario(course.scenario.id)
 
   useEffect(() => {
     const onVisibility = () => { if (document.hidden) session.pause() }
@@ -193,6 +195,10 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
   }
 
   const handlePropose = (text: string, customObs?: ArenaObservation) => {
+    if (courseIsEvaluation) {
+      setTrainMessage('This is a held-out evaluation scenario. Coaching and training are disabled.')
+      return
+    }
     if (!text.trim()) return
     const champObs = customObs ?? session.observe('champion')
     const currentAction = champObs.availableActions[0] ?? { type: 'wait' }
@@ -239,7 +245,14 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
   }
 
   const toggleApprove = (id: string) => {
-    setExamples(prev => prev.map(ex => ex.id === id ? { ...ex, approved: !ex.approved } : ex))
+    setExamples(prev => prev.map(ex => {
+      if (ex.id !== id) return ex
+      if (isEvaluationScenario(ex.sourceEpisodeId)) {
+        setTrainMessage(`Cannot approve an example from held-out scenario "${ex.sourceEpisodeId}". It is reserved for evaluation.`)
+        return ex
+      }
+      return { ...ex, approved: !ex.approved }
+    }))
   }
 
   const removeExample = (id: string) => {
@@ -247,8 +260,13 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
   }
 
   const handleTrain = () => {
+    if (courseIsEvaluation) {
+      setTrainMessage('This is a held-out evaluation scenario. Coaching and training are disabled.')
+      return
+    }
     const approved = examples.filter(e => e.approved)
     if (approved.length === 0) return
+    rejectEvaluationExamples(approved)
 
     setIsTraining(true)
     setTrainMessage('Optimizing neural policy weights from approved coaching examples…')
@@ -292,6 +310,10 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
   })()
 
   const handleAddMistake = () => {
+    if (courseIsEvaluation) {
+      setTrainMessage('This is a held-out evaluation scenario. Coaching and training are disabled.')
+      return
+    }
     if (!currentMistake) return
     const { champObs, recorded, suggested } = currentMistake
     exampleCounter.current += 1
@@ -318,7 +340,7 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
     }
   }
 
-  const approvedCount = examples.filter(e => e.approved).length
+  const approvedCount = examples.filter(e => e.approved && !isEvaluationScenario(e.sourceEpisodeId)).length
 
   return (
     <>
@@ -387,7 +409,8 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
               <button
                 className={styles.frameCoachButton}
                 onClick={() => handlePropose(view.episode.weather.flooded ? 'take ridge route during flood' : 'prioritize energy core')}
-                title="Propose coaching correction for this exact frame"
+                disabled={courseIsEvaluation}
+                title={courseIsEvaluation ? 'Coaching disabled for held-out evaluation scenario' : 'Propose coaching correction for this exact frame'}
               >
                 <Sparkles size={13} />
                 Coach this frame (Tick {view.episode.tick})
@@ -401,7 +424,12 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
                 <strong>Possible mistake at Tick {view.episode.tick}</strong>
                 <span>Champion chose <em>{actionLabel(currentMistake.recorded)}</em>; safe baseline would <em>{actionLabel(currentMistake.suggested)}</em>.</span>
               </div>
-              <button className={styles.mistakeCoachButton} onClick={handleAddMistake}>
+              <button
+                className={styles.mistakeCoachButton}
+                onClick={handleAddMistake}
+                disabled={courseIsEvaluation}
+                title={courseIsEvaluation ? 'Coaching disabled for held-out evaluation scenario' : 'Add this correction to the coaching queue'}
+              >
                 Coach this mistake
               </button>
             </div>
@@ -463,6 +491,14 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
           </div>
         </div>
 
+        {courseIsEvaluation && (
+          <div className={styles.evaluationNotice} role="alert">
+            <AlertTriangle size={14} />
+            <strong>Held-out evaluation scenario</strong>
+            <span>Coaching and training are disabled for this scenario. It is reserved for scoring.</span>
+          </div>
+        )}
+
         <div className={styles.coachingGrid}>
           <div className={styles.coachingCol}>
             <h3>1. Propose Coaching Corrections</h3>
@@ -472,7 +508,7 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
                   key={rule.id}
                   className={styles.ruleButton}
                   onClick={() => handlePropose(rule.description)}
-                  disabled={view.phase === 'running'}
+                  disabled={view.phase === 'running' || courseIsEvaluation}
                 >
                   <strong>{rule.label}</strong>
                   <span>{rule.description}</span>
@@ -483,12 +519,12 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
               <input
                 className={styles.promptInput}
                 type="text"
-                placeholder="Or type custom coach guidance (e.g. 'take ridge route during flood')..."
+                placeholder={courseIsEvaluation ? 'Coaching disabled on held-out scenario...' : "Or type custom coach guidance (e.g. 'take ridge route during flood')..."}
                 value={promptText}
-                disabled={view.phase === 'running'}
+                disabled={view.phase === 'running' || courseIsEvaluation}
                 onChange={e => setPromptText(e.target.value)}
               />
-              <button className={styles.secondaryButton} type="submit" disabled={!promptText.trim() || view.phase === 'running'}>
+              <button className={styles.secondaryButton} type="submit" disabled={!promptText.trim() || view.phase === 'running' || courseIsEvaluation}>
                 Propose
               </button>
             </form>
@@ -500,7 +536,7 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
               <button
                 className={styles.primaryButton}
                 style={{ minHeight: 32, fontSize: 10, padding: '0 12px' }}
-                disabled={approvedCount === 0 || isTraining || view.phase === 'running'}
+                disabled={approvedCount === 0 || isTraining || view.phase === 'running' || courseIsEvaluation}
                 onClick={handleTrain}
               >
                 <Sparkles size={13} />
@@ -514,30 +550,34 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
                   No coaching examples yet. Select a rule or enter feedback on the left.
                 </div>
               ) : (
-                examples.map(ex => (
-                  <div key={ex.id} className={styles.exampleCard} data-approved={ex.approved}>
-                    <div className={styles.exampleDetails}>
-                      <strong>Tick {ex.tick}: {ex.preferredAction.type} {('edgeId' in ex.preferredAction) ? `(${(ex.preferredAction as { edgeId: string }).edgeId})` : ''}</strong>
-                      <p>{ex.rationale}</p>
+                examples.map(ex => {
+                  const isEval = isEvaluationScenario(ex.sourceEpisodeId)
+                  return (
+                    <div key={ex.id} className={styles.exampleCard} data-approved={ex.approved} data-evaluation={isEval}>
+                      <div className={styles.exampleDetails}>
+                        <strong>Tick {ex.tick}: {ex.preferredAction.type} {('edgeId' in ex.preferredAction) ? `(${(ex.preferredAction as { edgeId: string }).edgeId})` : ''}{isEval && <span className={styles.evaluationTag}>Held-out</span>}</strong>
+                        <p>{ex.rationale}</p>
+                      </div>
+                      <div className={styles.exampleActions}>
+                        <button
+                          className={ex.approved ? styles.approveButton : styles.rejectButton}
+                          onClick={() => toggleApprove(ex.id)}
+                          disabled={isEval}
+                          title={isEval ? 'Held-out scenario: cannot approve for training' : ex.approved ? 'Approved for training' : 'Click to approve'}
+                        >
+                          {ex.approved ? <CheckCircle2 size={13} /> : 'Approve'}
+                        </button>
+                        <button
+                          className={styles.rejectButton}
+                          onClick={() => removeExample(ex.id)}
+                          title="Remove example"
+                        >
+                          <XCircle size={13} />
+                        </button>
+                      </div>
                     </div>
-                    <div className={styles.exampleActions}>
-                      <button
-                        className={ex.approved ? styles.approveButton : styles.rejectButton}
-                        onClick={() => toggleApprove(ex.id)}
-                        title={ex.approved ? 'Approved for training' : 'Click to approve'}
-                      >
-                        {ex.approved ? <CheckCircle2 size={13} /> : 'Approve'}
-                      </button>
-                      <button
-                        className={styles.rejectButton}
-                        onClick={() => removeExample(ex.id)}
-                        title="Remove example"
-                      >
-                        <XCircle size={13} />
-                      </button>
-                    </div>
-                  </div>
-                ))
+                  )
+                })
               )}
             </div>
           </div>

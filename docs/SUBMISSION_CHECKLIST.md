@@ -21,7 +21,7 @@ The [canonical plan](HACKATHON.md) defines the accepted direction. The following
 - [x] The UI distinguishes a live instruction, proposed correction, approved data, trained checkpoint, and evaluated result.
 - [x] The trained checkpoint reloads and runs through the same controller as the baseline (`createLearnedPolicy`).
 - [x] The default builder starter demonstrates a measurable improvement over the base checkpoint on a held-out scenario.
-- [x] Held-out evaluation is split and matched in `services/arenaScenarios.ts`; `rejectEvaluationExamples` guards the training pipeline. The UI coaching flow still needs to enforce the split.
+- [x] Held-out evaluation is split and matched in `services/arenaScenarios.ts`; `rejectEvaluationExamples` guards the training pipeline and `ArenaScene` disables coaching/training on evaluation scenarios.
 
 ## Match and Evaluation Integrity
 - [x] Rules, world, collider, route graph, runtime, and entrant versions are pinned.
