@@ -244,7 +244,8 @@ export function softmax(logits: Float32Array): Float32Array {
 }
 
 /**
- * Computes a deterministic SHA-256 hash string for policy weights.
+ * Computes a deterministic weight digest string for policy weights.
+ * This is a stable fingerprint used for checkpoint identity, not a cryptographic SHA-256.
  */
 export function computeWeightsHash(weights: PolicyWeights): string {
   const serialized = JSON.stringify([
@@ -262,7 +263,7 @@ export function computeWeightsHash(weights: PolicyWeights): string {
     hash = Math.imul(hash, 0x01000193)
   }
   const hex = (hash >>> 0).toString(16).padStart(8, '0')
-  return `sha256-w:${hex}${serialized.length.toString(16)}`
+  return `w:${hex}:${serialized.length.toString(16)}`
 }
 
 /**

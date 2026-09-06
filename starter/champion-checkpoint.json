@@ -1,10 +1,10 @@
 {
   "schemaVersion": "season-0.checkpoint.v1",
-  "id": "checkpoint-mtowqk72-d530af",
+  "id": "checkpoint-mtph33zc-5:30af",
   "name": "Builder Champion (Flood + Core Aware)",
   "parentCheckpointId": "champion-baseline-s0",
-  "createdAt": "2026-09-05T21:41:13.022Z",
-  "weightsHash": "sha256-w:c7a79cd530af",
+  "createdAt": "2026-09-06T07:10:50.857Z",
+  "weightsHash": "w:c7a79cd5:30af",
   "trainingSummary": {
     "epochs": 60,
     "loss": 0.0001,

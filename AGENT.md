@@ -8,7 +8,7 @@ The loop is **watch → coach → approve examples → train → compete → rep
 
 The old human-driving-first arena, onchain economy, wallet/session permissions, financial agent roles, and separate Marble pivot are retired. Do not extend those products, preserve their APIs for compatibility, or introduce a parallel game. Reuse useful rendering, physics, weather, and state primitives; replace or retire everything else as its dependencies are removed. Historical behavior is available in Git.
 
-This is the target contract and implementation guide. The application entrypoint now runs the physical baseline episode through `ArenaScene` / `ArenaWorldView`, with the same `ArenaEpisode`, `ArenaPhysics`, and `ArenaSession` used in headless tests. It is not a complete learning loop, but it is no longer the legacy prototype. Browser testing is deferred at the project owner's request; continue with code and non-browser tests until that scope changes.
+This is the target contract and implementation guide. The application entrypoint runs `ArenaScene` / `ArenaWorldView` with the same `ArenaEpisode`, `ArenaPhysics`, and `ArenaSession` used in headless tests, plus a `Coach & Train Studio` that proposes examples, trains a small MLP checkpoint in-browser/CLI, and exports/imports `PolicyCheckpoint` artifacts. The full loop is wired, but held-out evaluation, browser rendering, and a starter that produces a measurable improvement are still being hardened. Browser testing is deferred at the project owner's request; continue with code and non-browser tests until that scope changes.
 
 ## Responsibilities
 
@@ -64,7 +64,7 @@ Required properties:
 - Reset any supported bounded policy memory per episode. Freeze weights throughout a scored match.
 - Never present a prompt change, rule patch, or coaching acknowledgment as fine-tuning.
 
-The exact model architecture, loader format, training host, and numerical limits are not selected yet. Validate a minimal real training/export/inference cycle before committing to them. Do not add an unverified framework or claim a training service exists.
+The concrete model is a 2-layer MLP (24 inputs → 32 → 16 → 8 action classes) with Tanh activations, a softmax action distribution, and supervised cross-entropy training with momentum SGD. The `PolicyCheckpoint` format (`season-0.checkpoint.v1`) is JSON data only and is validated for shape, finite values, and schema version before loading. The training host is the same JavaScript runtime as the app/CLI, not a remote GPU service. The exact hyperparameters and action-class mapping must still be frozen and documented; do not change them without bumping the schema/rules versions.
 
 ## Simulation and Evaluation Rules
 
@@ -82,14 +82,19 @@ The exact model architecture, loader format, training host, and numerical limits
 The new reference modules are:
 
 - `services/arenaEpisode.ts`: validated scenario and action types, detached observations, budget/resource rules, round termination, reset, and recording.
-- `services/arenaPolicy.ts`: safe/greedy/weather reference routing and a pinned-baseline `ArenaRunner`, advanced through explicit ticks or integer microseconds.
+- `services/arenaPolicy.ts`: safe/greedy/weather reference routing, a `learned` strategy that loads a `PolicyCheckpoint`, and a pinned `ArenaRunner` advanced through explicit ticks or integer microseconds.
 - `services/arenaReplay.ts`: version-checked replay with mandatory state checkpoints and divergence reporting.
 - `services/worldSurface.ts`: world-space static collider extraction, downward surface queries, and bounded route-grounding checks.
 - `services/arenaPhysics.ts`: Rapier 0.19.2 kinematic spherical rover proxy, static-world collision, grounding, reset, recovery, and controller version tracking.
 - `services/arenaCourse.ts`: authored `Cloudbank / Course 01` loader with pinned collider SHA-256 and scenario construction.
-- `services/arenaSession.ts`: application adapter that wires start/pause/reset, policy locking, bounded frame pumping, replay scrubbing, and JSON export.
+- `services/arenaSession.ts`: application adapter that wires start/pause/reset, policy locking, bounded frame pumping, replay scrubbing, checkpoint selection, and JSON export.
+- `services/policyModel.ts`: `PolicyCheckpoint` schema, 24-dimensional observation encoding, 8-class action mapping, MLP forward/inference, and checkpoint validation.
+- `services/policyTrainer.ts`: supervised cross-entropy backpropagation with momentum SGD, dataset hashing, and scenario evaluation.
+- `services/coachingEngine.ts`: natural-language and rule-based proposal of reviewable `ArenaTrainingExample` corrections.
+- `services/checkpointStorage.ts`: browser `localStorage` persistence, JSON import/export, and validation.
+- `starter/train.ts`: standalone CLI that runs evaluation, collects examples, trains, and exports a checkpoint.
 
-They use `season-0.reference.2`, not finalized competition rules. Motion is now resolved by Rapier from a proposed target along grounded edges; nominal route time is not sufficient for arrival. The runner does not execute uploaded code, learned weights, or hosted inference. Tests cover the actual committed collider and synthetic fixtures. Grounding checks do not certify wheeled dynamics or full swept collision.
+They use `season-0.reference.2` for simulation rules and `season-0.checkpoint.v1` for checkpoint data, not finalized competition rules. Motion is now resolved by Rapier from a proposed target along grounded edges; nominal route time is not sufficient for arrival. The runner does not execute uploaded code or hosted inference, but it does run the in-process learned MLP from a validated checkpoint. Tests cover the actual committed collider, synthetic fixtures, encoding, training, and checkpoint I/O. Grounding checks do not certify wheeled dynamics or full swept collision.
 
 Extend these modules rather than creating a second episode engine. Keep the full recording, including its private scenario seed and weather schedule, separate from the limited policy observation. Do not treat replay-state equality as a cryptographic or anti-cheat guarantee.
 

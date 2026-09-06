@@ -181,52 +181,56 @@ Freeze and package generated assets before the demo. Asset generation is not on 
 
 ## Current Repository Status
 
-**Second implementation slice: physical baseline integrated into the main page.** Browser automation and visual verification remain deferred at the project owner's request. Code tests establish physical traversal and replay behavior, not canvas appearance, splat/collider visual alignment, training, or a secure ranked release.
+**Third implementation slice: training and checkpoint pipeline wired into the main page and a standalone starter CLI.** Browser automation and visual verification remain deferred at the project owner's request. Code tests verify the physical episode, MLP encoding/training, checkpoint I/O, and coaching proposal flow, but they do not prove that the trained policy improves on a held-out scenario or that the 3D canvas renders correctly.
 
 | Area | Current state | Next requirement |
 | --- | --- | --- |
-| Episode authority | `services/arenaEpisode.ts` owns validated actions, resources, budgets, results, and reset. Movement accepts collision-resolved poses from an injected controller before committing arrival. | Add the learned-policy path without creating a second authority. |
-| Physical controller | `services/arenaPhysics.ts` uses Rapier 0.19.2 with a kinematic spherical rover proxy, static-world sweeps, grounding, bounded speed, and reset/disposal. Blocked movement triggers a recorded recovery to the last station and excludes that edge for the entrant. | Browser verification and further adversarial course coverage. This is not wheeled vehicle dynamics. |
-| Versioned course | `services/arenaCourse.ts` grounds six stations and seven connections against the committed collider. Its loader checks the collider's SHA-256 and rejects mismatches. All seven edges pass traversal tests in both directions. | Visual alignment and presentation-device validation. Course 01 is public practice, not held-out evaluation. |
-| Baselines | `services/arenaPolicy.ts` supports safe, greedy, and weather-tactician house policies, pinned per run. | Train and load a genuine supported checkpoint. These baselines are handwritten, not learned. |
-| Replay and session | `arenaReplay.ts` verifies controller/rules compatibility and state checkpoints. `arenaSession.ts` connects start/pause/reset, policy locking, bounded frame pumping, recorded-state review, and export. | Browser interaction verification and training-example selection. State comparison is not anti-cheat proof. |
-| Active application | `app/page.tsx` now mounts `ArenaScene` and `ArenaWorldView`, sharing the same authority and physical controller as headless runs. Wallet configuration, vehicle queues, and the obsolete event widget are off the entrypoint. | Finish the learning workflow; retire unreachable legacy files and API routes separately. |
+| Episode authority | `services/arenaEpisode.ts` owns validated actions, resources, budgets, results, and reset. It supports optional physical motion and deterministic replay. | Add held-out evaluation splits and a scenario registry that excludes coached scenarios from evaluation. |
+| Physical controller | `services/arenaPhysics.ts` uses Rapier 0.19.2 with a kinematic spherical rover proxy, static-world sweeps, grounding, bounded speed, and reset/disposal. Blocked movement triggers a recorded recovery. | Browser verification and further adversarial course coverage. This is not wheeled vehicle dynamics. |
+| Versioned course | `services/arenaCourse.ts` grounds six stations and seven connections against the committed collider. Its loader checks the collider SHA-256 and rejects mismatches. All seven edges pass traversal tests in both directions. | Visual alignment and presentation-device validation. Course 01 is public practice, not a held-out evaluation set. |
+| Baselines and learned policy | `services/arenaPolicy.ts` supports safe, greedy, weather, and `learned` (`PolicyCheckpoint`) strategies. The learned MLP runs through `createLearnedPolicy`. | Harden the default starter dataset so the trained policy reliably improves over the base checkpoint on a measured scenario. |
+| Replay and session | `arenaReplay.ts` verifies controller/rules compatibility and state checkpoints. `arenaSession.ts` adds checkpoint selection, review-mode observations, and frame-level coaching hooks. | Browser interaction verification; test that review observations match the replayed frame. |
+| Active application / Coach & Train UI | `app/page.tsx` mounts `ArenaScene`/`ArenaWorldView` with the same authority and physical controller as headless runs. `ArenaScene` exposes watch, replay scrub, "Coach this frame", quick rules, natural-language prompt, example queue with approve/reject, train, checkpoint export/import, and `localStorage` persistence. | Verify the full UI flow in a browser; currently only code-level tests and the starter CLI are exercised. |
 | World loading | The main page uses the pinned local course, shared collider extraction, and stable Spark lifecycle callbacks. Loading errors stop the run and offer retry rather than inventing a fallback world. | Actual WebGL, loading/retry, and lifecycle verification in a browser. |
-| Training, learned-checkpoint runner, coaching UI, weight submissions, published starter | Not implemented. The UI explicitly labels the build as a physical baseline and states that training is pending. | Core upcoming work. |
-| Mint, Tripo, Convex integrations | Not implemented. | Implement the focused roles above. |
+| Checkpoint format and storage | `policyModel.ts` defines a 24 → 32 → 16 → 8 MLP with Tanh/softmax and a validated `season-0.checkpoint.v1` JSON format. `checkpointStorage.ts` handles `localStorage`, JSON import/export, and validation. The weight identity is a deterministic digest, not a cryptographic SHA-256. | Freeze hyperparameters and class mapping; implement a real SHA-256 if the docs must claim it. |
+| Training runtime / starter | `policyTrainer.ts` implements supervised cross-entropy backpropagation with momentum SGD. `starter/train.ts` runs `npm run starter:train` end-to-end and exports `starter/champion-checkpoint.json`. | Improve the default training data/evaluation so the starter demonstrates a measurable improvement, not only a weight update. |
+| Mint, Tripo, Convex integrations | Not implemented. | Add only after the local learning loop is demonstrably correct. |
 
 ### Implemented Reference Contract
 
-The implementation is now `season-0.reference.2`, not frozen competition rules. It uses 50 ms ticks and a decision every five ticks. Course `marble-038d084c-course-1` runs for 1200 ticks (60 seconds), with twelve cores, two floodable connections, and two scheduled flood windows. Flooding applies a route-speed penalty; the water overlay is not a fluid simulation.
+The simulation uses `season-0.reference.2`; the checkpoint artifact uses `season-0.checkpoint.v1`. Neither is a frozen competition release. It uses 50 ms ticks and a decision every five ticks. Course `marble-038d084c-course-1` runs for 1200 ticks (60 seconds), with twelve cores, two floodable connections, and two scheduled flood windows. Flooding applies a route-speed penalty; the water overlay is not a fluid simulation.
 
-`ArenaRunner` accepts an `ArenaScenario`, fixed safe/greedy/weather baseline selections, and an optional `ArenaMotion` adapter. The main page always supplies `ArenaPhysics`; the route-only adapter remains for isolated tests, not as another playable mode. Nominal route progress proposes a target along a grounded polyline. Actual Rapier-resolved position and grounding determine whether progress and arrival commit. Forty blocked ticks trigger an observable recovery to the last station and mark the edge unavailable for that entrant. Rover bodies collide with the static environment but deliberately do not block one another; resource contention remains authoritative in the episode.
+`ArenaRunner` accepts an `ArenaScenario`, fixed safe/greedy/weather baseline selections, or a `learned` strategy backed by a `PolicyCheckpoint`, plus an optional `ArenaMotion` adapter. The main page always supplies `ArenaPhysics`; the route-only path remains for isolated tests, not as another playable mode. Nominal route progress proposes a target along a grounded polyline. Actual Rapier-resolved position and grounding determine whether progress and arrival commit. Forty blocked ticks trigger an observable recovery to the last station and mark the edge unavailable for that entrant. Rover bodies collide with the static environment but deliberately do not block one another; resource contention remains authoritative in the episode.
+
+The learned policy is a 2-layer MLP: 24 normalized observation features, hidden layers of 32 and 16 with Tanh, and an 8-class action head with softmax. Inference selects the available action whose class has the highest logit. Training is supervised cross-entropy on approved `ArenaTrainingExample` tuples with momentum SGD; it writes a new `PolicyCheckpoint` with a parent reference, training summary, and a deterministic weight digest. Checkpoints are validated for shape, finite values, and schema version before use. `ArenaSession` loads the checkpoint into the runner, and the UI persists checkpoints/examples in `localStorage` with JSON import/export.
 
 `advanceTicks()` and `advanceMicroseconds()` drive the same authority. The latter can bound work per pump without discarding accumulated time. The application session processes at most eight ticks per display pump, pauses local practice when the page is hidden, and disallows policy changes after starting. Camera and replay controls never steer an agent. `observe()`, `snapshot()`, and `recording()` return detached authority data; reset clears episode and timing state.
 
-On each decision boundary, baselines observe the same pre-step state. Requests resolve in a seeded, rotating entrant order, independent of request-array order. Invalid actions are rejected without applying their effect. Invalid envelopes or oversized request batches throw before advancing. This is a trusted in-process runner, not an uploaded-code sandbox or CPU inference-deadline service.
+On each decision boundary, every entrant observes the same pre-step state. Requests resolve in a seeded, rotating entrant order, independent of request-array order. Invalid actions are rejected without applying their effect. Invalid envelopes or oversized request batches throw before advancing. This is a trusted in-process runner, not an uploaded-code sandbox or CPU inference-deadline service.
 
 Recordings include controller and rule versions. Physical replay requires a matching controller built from the same collider data. The replay export contains the full scenario for the owner/evaluator; do not give it to a competitor as its observation. UI review reads recorded checkpoints and does not advance the live world.
 
-Course 01 is authored public practice. The synthetic fixtures remain unit-test inputs. Neither is a held-out learning result. Numerical rules, paths, controller behavior, and world assets must be versioned when they change.
+Course 01 is authored public practice. The synthetic fixtures remain unit-test inputs. Neither is a held-out learning result. Numerical rules, paths, controller behavior, world assets, and checkpoint schema must be versioned when they change.
 
 ### Verification Snapshot
 
-- Before implementation: 85 tests. First headless slice: 136 tests. Physical integration slice: 152 tests across 15 files pass.
+- `npm test` — 9 test files / 80 tests passed.
+- `npm run lint` passed; `npx tsc --noEmit --incremental false` passed; `npm run build` completed with static generation for `/`.
+- `npm run starter:train` runs end-to-end and exports `starter/champion-checkpoint.json`. The current default scenario reports `Baseline Banked: 0` and `Trained Banked: 0`; the pipeline works but the default dataset is not yet producing an improved policy.
 - Actual-collider tests traverse all seven connections in both directions without recovery, complete a round with both entrants banking resources, exercise the weather policy's spend, and reproduce the physical recording with a matching controller.
-- Synthetic obstacle tests cover collision-blocked arrival, recovery, invalid spawns, replay-controller mismatch, and reset. Session tests cover policy locking, bounded pumping without dropped time, pause/resume, review, failure handling, and disposal.
-- A server-rendered entrypoint test fails if legacy wallet configuration is imported and verifies the new loading shell and training-status disclosure.
-- The dependency upgrades made independently by the project owner were retained, including Next.js 16.3.4, React 19.2.8, Spark 2.1.0, and Vitest 4.1.11. Rapier remains pinned at 0.19.2 and is now an explicit dependency for headless control.
-- Remaining warnings: the legacy `ApprovalGate` assertion, a legacy WalletConnect configuration warning in service tests, Rapier's upstream initialization deprecation, and Vitest's future config-loader warning. No security or verification controls were disabled.
-- **Verification run:** `npm test` — 15 files / 152 tests passed; `npm run lint` passed; `npx tsc --noEmit --incremental false` passed; `npm run build` completed with static generation for `/`; `git diff --check` passed. This is not a cross-version or cross-browser matrix.
-- No browser, dev server, screenshot, or visual playtest was started. Canvas rendering, visual alignment, responsive layout, and real browser interactions remain unverified.
+- Encoding/training tests verify the 24-dimensional vector, MLP forward pass, checkpoint validation, cross-entropy training, and the `proposeCorrection` coaching engine.
+- The server-rendered entrypoint test verifies the new loading shell and training-status disclosure.
+- Remaining warnings: Rapier's upstream initialization deprecation and Vitest's future config-loader warning. No security or verification controls were disabled.
+- This is not a cross-version or cross-browser matrix. No browser, dev server, screenshot, or visual playtest was started. Canvas rendering, visual alignment, responsive layout, and real browser interactions remain unverified.
 
 ### Remaining Foundation and Retirement Work
 
 - Verify the actual splat view, rover visibility, camera framing, loading/retry, controls, and layout once browser testing is approved.
-- Add approved coaching examples, a real training step, checkpoint loading, and held-out evaluation. The current interface does not simulate these features.
+- Harden the starter so the default training run produces a checkpoint that banks more resources than the base checkpoint on a held-out scenario; currently it is a pipeline smoke test.
+- Add explicit held-out evaluation with scenario splitting, matched comparisons, and failure/regression reporting.
 - The active page no longer imports `CloudScene`, the old physics hook, wallet configuration, queue, or legacy `AgentProtocol`. Their files remain unreachable from that path rather than being silently deleted.
 - Legacy API routes, contract/indexer tooling, unused dependencies, environment examples, and CI chain settings still need deliberate retirement. No external service was shut down.
-- The old collider component and procedural-world assumptions remain only in the retired scene; the active course uses shared extraction and Rapier queries. Do not extend the retired scene or reintroduce it as a fallback.
+- The old collider component and procedural-world assumptions remain only in the retired scene; the active course uses shared extraction and Rapier queries.
 
 ## Consolidation Policy
 

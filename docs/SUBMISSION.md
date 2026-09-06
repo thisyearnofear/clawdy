@@ -22,7 +22,7 @@ Clawdy introduces **true hands-off agent development**:
 - The coaching engine inspects the exact physical situation and proposes legal state/action training tuples.
 - The user reviews and approves each example in an explicit queue.
 - Training performs real supervised backpropagation with momentum SGD on a 2-layer MLP ($24 \to 32 \to 16 \to 8$).
-- Weights update deterministically with a SHA-256 weight hash (e.g. `sha256-w:...`), creating a versioned checkpoint.
+- Weights update into a new checkpoint with a deterministic weight digest and parent lineage; the checkpoint is validated for shape, finite values, and schema version.
 - Scored matches freeze weights: no prompt interventions, no human driving, no external network calls.
 
 ---
@@ -41,7 +41,7 @@ Clawdy introduces **true hands-off agent development**:
 ## What Is Demonstrated & Verified
 
 1. **Playable Autonomous Episode in a Generated World:**
-   - Authored course on World Labs Gaussian Splat (`arena.spz`) and collision mesh (`collider.glb`) checked with SHA-256 digest (`68b6b27d...`).
+   - Authored course on World Labs Gaussian Splat (`arena.spz`) and collision mesh (`collider.glb`) checked with SHA-256 digest (`25f82036...`).
    - Rapier 3D kinematic rover controller running fixed 50ms steps (20Hz) with grounding, slope limits, and recoveries.
    - Dynamic flooding and drain ability changing physical traversal costs.
 2. **Frame-Level Coaching & Review:**
@@ -49,11 +49,12 @@ Clawdy introduces **true hands-off agent development**:
    - "Coach this frame (Tick T)" extracts exact state vectors, agent positions, and flood conditions to propose structured corrections.
 3. **True Weight Updates via Backpropagation:**
    - Supervised backpropagation with momentum SGD.
-   - Deterministic SHA-256 weight hashes proving weights genuinely changed.
-   - Explicit training summary with cross-entropy loss, epochs, sample count, and parent lineage.
+   - New checkpoint with a deterministic weight digest, parent lineage, and explicit training summary (loss, epochs, sample count).
+   - Runtime validation rejects invalid tensor shapes, NaNs, and malformed data.
 4. **Offline Evaluation & Validation:**
-   - Evaluates checkpoints against baseline reference policies across scenarios.
+   - `evaluatePolicyCheckpoint` runs a champion checkpoint against a reference rival on a scenario.
    - Strict runtime validation rejecting invalid tensor shapes, NaNs, or malformed data.
+   - The default `starter/train.ts` scenario currently yields 0 banked for both baseline and trained checkpoints; the pipeline is wired but the default training data has not yet been hardened to demonstrate a measured improvement.
 5. **Builder Starter Kit:**
    - Standalone CLI trainer in `starter/train.ts` runnable with `npm run starter:train`.
    - Generates importable `starter/champion-checkpoint.json`.

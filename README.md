@@ -19,7 +19,7 @@ Clawdy is an agent-training league inside a generated physical world. Conversati
    - Use natural language guidance (e.g. *"Climb the ridge in floods to avoid submerged routes"*) or one-click tactical rules.
    - Scrub any frame in the replay viewer and click **"Coach this frame (Tick T)"** to correct specific mistakes in context.
 3. **Approve:** Review proposed state/action corrections in the queue; inspect rationale, state vectors, and preferred actions before approving.
-4. **Train Checkpoint:** Run supervised backpropagation with momentum SGD directly in the browser or via CLI. Weights update deterministically with a SHA-256 weight hash.
+4. **Train Checkpoint:** Run supervised backpropagation with momentum SGD directly in the browser or via CLI. Weights update into a new checkpoint with a deterministic weight digest and parent lineage.
 5. **Compete:** Activate your newly trained checkpoint and start an autonomous hands-off run under frozen competitive rules.
 6. **Replay & Export:** Inspect physical consequences in replay scrub, export run recordings, or export your trained checkpoint as JSON.
 
@@ -48,7 +48,7 @@ Both entry paths produce identical `PolicyCheckpoint` artifacts (`clawdy-checkpo
 
 ## Physical Challenge & Simulation Architecture
 
-- **Generated World:** World Labs Gaussian Splat (`public/marble/arena.spz`) and collision mesh (`public/marble/collider.glb`) verified with pinned SHA-256 digest (`68b6b27d...`).
+- **Generated World:** World Labs Gaussian Splat (`public/marble/arena.spz`) and collision mesh (`public/marble/collider.glb`) verified with pinned SHA-256 digest (`25f82036...`).
 - **Physical Dynamics:** Rapier 3D 0.19.2 character controller with grounding, slope limits, and recovery mechanics.
 - **Fixed-Step Clock:** Fixed 50ms (20Hz) simulation steps decoupled from display frame rate. Decisions are locked on a 4-tick cadence.
 - **Strategic Tradeoff:** A fast low-pass valley route and an elevated ridge route. When floods hit, the low route suffers a 4× travel penalty. Rovers can spend finite energy to drain water, opening the low route for both rovers.
@@ -57,7 +57,7 @@ Both entry paths produce identical `PolicyCheckpoint` artifacts (`clawdy-checkpo
 Coaching UI or Builder CLI
   → Reviewed state/action examples (ArenaTrainingExample)
   → Supervised Momentum SGD Backpropagation
-  → Validated checkpoint + deterministic SHA-256 weight hash
+  → Validated checkpoint + deterministic weight digest
   → Frozen policy runner (createLearnedPolicy)
   → Bounded 4-tick decisions
   → Shared Rapier kinematic controller & course topology
@@ -98,7 +98,15 @@ npm run lint
 
 # Production Next.js static build
 npm run build
+
+# Builder starter smoke test
+npm run starter:train
 ```
+
+### Current Status and Limitations
+- The physical episode, MLP training pipeline, checkpoint I/O, and Coach & Train UI are wired and pass code-level tests.
+- The default builder starter (`npm run starter:train`) runs end-to-end but currently reports `0` banked resources for both baseline and trained checkpoints; the training data and evaluation need hardening before claiming a learned improvement.
+- Browser rendering, controls, and responsive layout have not been verified; visual QA is deferred until the project owner approves browser automation.
 
 ---
 
