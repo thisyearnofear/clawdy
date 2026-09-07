@@ -126,6 +126,6 @@ npm run build
 
 CI currently uses Node.js 20 and npm. Legacy chain environment settings in CI and the existing environment examples are consolidation work, not Season 0 requirements. Reference tests now cover episodes, actions, timing, replay, world queries, and public configuration; they do not verify a learned policy or the complete application.
 
-For implementation changes, extend the reference tests and add coverage for training updates, artifact validation, and held-out evaluation as those systems are implemented. Once browser scope is approved, verify the complete presentation-device path, including loading, camera framing, autonomous action, correction approval, checkpoint selection, replay, and reset. Do not start browser automation while the owner's code-only restriction remains active.
+For implementation changes, extend the reference tests and add coverage for training updates, artifact validation, and held-out evaluation as those systems are implemented. Browser scope was approved; `agent-browser` verified the page loads, the splat world renders, the run starts/pauses/reviews, and the layout reflows at 375×812. Remaining browser work: complete the full coaching/training round-trip and stress loading/retry on lower-end devices.
 
 For documentation-only work, check the diff for whitespace errors, local links, contradictory product claims, unsupported commands, and planned-versus-implemented wording. Do not report application tests as passing unless they were run.

@@ -67,6 +67,7 @@ Clawdy introduces **true hands-off agent development**:
 - **Rapier 3D:** Collision detection, raycasting surface queries, and kinematic character controller (@dimforge/rapier3d-compat 0.19.2).
 - **Three.js & React Three Fiber:** 3D rendering pipeline and camera management.
 - **Next.js 16 & React 19:** Application shell, state synchronization, and static deployment build.
+- **mint-threejs-skills / threejs-game-skills:** Agent skill packs noted as references for future game polish, camera/HUD/audio, and release verification. Mint runtime loader is wired; no MCP server is connected yet.
 
 ---
 
@@ -76,3 +77,4 @@ Clawdy introduces **true hands-off agent development**:
 - **Type Checking:** 0 TypeScript errors (`npx tsc --noEmit`).
 - **Linter:** 0 ESLint errors or warnings (`npm run lint`).
 - **Production Build:** Next.js static build clean (< 2s).
+- **Browser QA:** `agent-browser` verified the page loads, the Gaussian-splat world renders, start/pause/review controls work, and the layout reflows at 375×812.
