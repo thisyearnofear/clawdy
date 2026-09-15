@@ -23,10 +23,13 @@ function fixture(wall = false) {
   surface.dispose()
   const scenario: ArenaScenario = {
     id: 'physics-fixture', worldVersion: 'fixture-v1', split: 'practice', seed: 4, durationTicks: 300,
-    nodes: [{ id: 'west', position: [-2, 0, 0] }, { id: 'east', position: [2, 0, 0] }],
-    edges: [{ id: 'road', from: 'west', to: 'east', travelTicks: 40, floodable: true }],
+    nodes: [{ id: 'west', position: [-2, 0, 0] }, { id: 'east', position: [2, 0, 0] }, { id: 'north', position: [-2, 0, 2] }],
+    edges: [
+      { id: 'road', from: 'west', to: 'east', travelTicks: 40, floodable: true },
+      { id: 'road2', from: 'west', to: 'north', travelTicks: 40, floodable: false },
+    ],
     entrants: [{ id: 'champion', baseNode: 'west', policyVersion: 'test' }, { id: 'rival', baseNode: 'east', policyVersion: 'test' }],
-    resources: [{ id: 'core', nodeId: 'east', value: 1 }], floods: [],
+    resources: [{ id: 'core', nodeId: 'east', value: 1 }, { id: 'core2', nodeId: 'north', value: 1 }], floods: [],
   }
   return { data, scenario }
 }

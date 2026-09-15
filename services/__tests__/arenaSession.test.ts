@@ -9,10 +9,13 @@ function setup() {
     center: [0, 0, 0], floodZones: [],
     scenario: {
       id: 'session-fixture', worldVersion: 'fixture-v1', split: 'practice', seed: 1, durationTicks: 20,
-      nodes: [{ id: 'a', position: [0, 0, 0] }, { id: 'b', position: [1, 0, 0] }],
-      edges: [{ id: 'road', from: 'a', to: 'b', travelTicks: 5, floodable: false }],
+      nodes: [{ id: 'a', position: [0, 0, 0] }, { id: 'b', position: [1, 0, 0] }, { id: 'c', position: [0, 0, 1] }],
+      edges: [
+        { id: 'road', from: 'a', to: 'b', travelTicks: 5, floodable: false },
+        { id: 'road2', from: 'a', to: 'c', travelTicks: 5, floodable: false },
+      ],
       entrants: [{ id: 'champion', baseNode: 'a', policyVersion: 'test' }, { id: 'rival', baseNode: 'b', policyVersion: 'test' }],
-      resources: [{ id: 'core', nodeId: 'b', value: 1 }], floods: [],
+      resources: [{ id: 'core', nodeId: 'b', value: 1 }, { id: 'core2', nodeId: 'c', value: 1 }], floods: [],
     },
   }
   const motion: ArenaMotion = {

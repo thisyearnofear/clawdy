@@ -32,7 +32,7 @@ export class ArenaSession {
   #review: ArenaRecording | null = null
   #returnPhase: 'paused' | 'finished' = 'paused'
   #listeners = new Set<() => void>()
-  #eventListeners = new Map<string, Set<ArenaEventListener<any>>>()
+  #eventListeners = new Map<string, Set<ArenaEventListener<ArenaEvent['type']>>>()
   #matchId = makeMatchId()
   #ended = false
   #disposed = false
@@ -106,7 +106,7 @@ export class ArenaSession {
   #emit(event: ArenaEvent) {
     const listeners = this.#eventListeners.get(event.type)
     if (listeners) {
-      for (const listener of listeners) listener(event as any)
+      for (const listener of listeners) listener(event)
     }
   }
 
@@ -131,14 +131,14 @@ export class ArenaSession {
   on<T extends ArenaEvent['type']>(type: T, listener: ArenaEventListener<T>) {
     this.#assertActive()
     if (!this.#eventListeners.has(type)) this.#eventListeners.set(type, new Set())
-    this.#eventListeners.get(type)!.add(listener as ArenaEventListener<any>)
+    this.#eventListeners.get(type)!.add(listener as unknown as ArenaEventListener<ArenaEvent['type']>)
     return () => this.off(type, listener)
   }
 
   off<T extends ArenaEvent['type']>(type: T, listener: ArenaEventListener<T>) {
     this.#assertActive()
     const listeners = this.#eventListeners.get(type)
-    if (listeners) listeners.delete(listener as ArenaEventListener<any>)
+    if (listeners) listeners.delete(listener as unknown as ArenaEventListener<ArenaEvent['type']>)
   }
 
   setScored(scored: boolean) {
