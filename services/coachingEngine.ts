@@ -1,5 +1,5 @@
 import type { ArenaAction, ArenaObservation } from './arenaEpisode'
-import type { ArenaTrainingExample } from './policyTrainer'
+import type { ArenaTrainingExample, TrainingExampleSource } from './policyTrainer'
 
 export interface CoachingRule {
   id: string
@@ -66,6 +66,7 @@ export function proposeCorrection(
           preferredAction: ridgeMove,
           rationale: 'Flooding is active; taking the non-floodable high ridge route avoids a 4x movement delay.',
           approved: false,
+        source: 'draft' as TrainingExampleSource,
         }
       }
 
@@ -81,6 +82,7 @@ export function proposeCorrection(
           preferredAction: drainAction,
           rationale: 'Flooding is active; activating drain ability opens the low route for safe passage.',
           approved: false,
+        source: 'draft' as TrainingExampleSource,
         }
       }
     }
@@ -99,6 +101,7 @@ export function proposeCorrection(
         preferredAction: bankAction,
         rationale: 'Station is base and rover has cargo; deliver banked resources.',
         approved: false,
+        source: 'draft' as TrainingExampleSource,
       }
     }
 
@@ -119,6 +122,7 @@ export function proposeCorrection(
         preferredAction: homeMove,
         rationale: 'Return cargo to base node along shortest path.',
         approved: false,
+        source: 'draft' as TrainingExampleSource,
       }
     }
   }
@@ -136,6 +140,7 @@ export function proposeCorrection(
         preferredAction: collectAction,
         rationale: 'Resource available at station; collect into cargo.',
         approved: false,
+        source: 'draft' as TrainingExampleSource,
       }
     }
   }
@@ -153,6 +158,7 @@ export function proposeCorrection(
         preferredAction: alternateMove,
         rationale: `Manual coach intervention: preferred ${alternateMove.type} over current choice.`,
         approved: false,
+        source: 'draft' as TrainingExampleSource,
       }
     }
   }

@@ -251,7 +251,8 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
         setTrainMessage(`Cannot approve an example from held-out scenario "${ex.sourceEpisodeId}". It is reserved for evaluation.`)
         return ex
       }
-      return { ...ex, approved: !ex.approved }
+      const approved = !ex.approved
+      return { ...ex, approved, source: approved ? 'approved' as const : 'draft' as const }
     }))
   }
 
@@ -326,6 +327,7 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
       preferredAction: suggested,
       rationale: `Safe baseline would ${actionLabel(suggested)} here instead of ${actionLabel(recorded)}.`,
       approved: false,
+      source: 'draft',
     }
     setExamples(prev => [example, ...prev])
     setTrainMessage(`Added tick ${example.tick} to the coaching queue. Approve it to train the correction.`)

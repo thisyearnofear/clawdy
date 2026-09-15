@@ -87,6 +87,7 @@ describe('checkpointStorage', () => {
         preferredAction: { type: 'wait' },
         rationale: 'Avoid water',
         approved: true,
+        source: 'approved',
       },
     ]
 

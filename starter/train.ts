@@ -9,6 +9,8 @@ import {
 } from '../services/policyModel'
 import {
   type ArenaTrainingExample,
+  attachEvaluationRecords,
+  compareCheckpoints,
   evaluatePolicyCheckpoint,
   trainPolicyCheckpoint,
 } from '../services/policyTrainer'
@@ -84,6 +86,7 @@ async function runBuilderTrainer() {
             preferredAction: champAction,
             rationale: actionRationale(champAction, champObs),
             approved: true,
+            source: 'approved',
           })
           localCount += 1
         }
@@ -122,37 +125,36 @@ async function runBuilderTrainer() {
 
   // Step 5: Evaluate trained checkpoint on both splits
   console.log('\n[5/6] Evaluating newly trained checkpoint...')
-  const trainedPracticeEval = evaluatePolicyCheckpoint(trainedCheckpoint, PRACTICE_SCENARIOS)
-  console.log(`      Practice (all) — Banked: ${trainedPracticeEval.totalBanked} | Wins: ${trainedPracticeEval.wins} | Losses: ${trainedPracticeEval.losses} | Draws: ${trainedPracticeEval.draws}`)
+  const practiceComparison = compareCheckpoints(SEASON_0_BASE_CHECKPOINT, trainedCheckpoint, PRACTICE_SCENARIOS)
+  console.log(`      Practice (all) — Banked: ${practiceComparison.candidate.totalBanked} | Wins: ${practiceComparison.candidate.wins} | Losses: ${practiceComparison.candidate.losses} | Draws: ${practiceComparison.candidate.draws}`)
+  if (practiceComparison.improvements.length > 0) console.log(`      Practice improvements: ${practiceComparison.improvements.join(', ')}`)
+  if (practiceComparison.regressions.length > 0) console.log(`      Practice regressions: ${practiceComparison.regressions.join(', ')}`)
 
-  let heldOutTotal = 0
-  let baseHeldOutTotal = 0
+  const heldOutComparison = compareCheckpoints(SEASON_0_BASE_CHECKPOINT, trainedCheckpoint, HELD_OUT_SCENARIOS)
   console.log('      Held-out results:')
-  for (const scenario of HELD_OUT_SCENARIOS) {
-    const baseEval = evaluatePolicyCheckpoint(SEASON_0_BASE_CHECKPOINT, [scenario])
-    const trainedEval = evaluatePolicyCheckpoint(trainedCheckpoint, [scenario])
-    const improvement = trainedEval.totalBanked - baseEval.totalBanked
-    heldOutTotal += trainedEval.totalBanked
-    baseHeldOutTotal += baseEval.totalBanked
-    console.log(`        ${scenario.id} — Banked: ${trainedEval.totalBanked} (base ${baseEval.totalBanked}, ${improvement >= 0 ? '+' : ''}${improvement}) | W:${trainedEval.wins} L:${trainedEval.losses} D:${trainedEval.draws}`)
+  for (const entry of heldOutComparison.perScenario) {
+    const delta = entry.delta
+    console.log(`        ${entry.scenarioId} — Banked: ${entry.candidate.banked} (base ${entry.baseline.banked}, ${delta >= 0 ? '+' : ''}${delta}) | W:${entry.candidate.winner === 'champion' ? 1 : entry.candidate.winner === 'rival' ? 0 : 'D'}`)
   }
 
-  const practiceImprovement = trainedPracticeEval.totalBanked - basePracticeEval.totalBanked
-  const heldOutImprovement = heldOutTotal - baseHeldOutTotal
-  if (heldOutImprovement > 0) {
-    console.log(`\n      Held-out improvement: +${heldOutImprovement} banked resources total over baseline`)
-  } else if (heldOutImprovement < 0) {
-    console.log(`\n      Warning: trained checkpoint banked ${heldOutImprovement} fewer resources on held-out than baseline`)
+  if (heldOutComparison.totalDelta > 0) {
+    console.log(`\n      Held-out improvement: +${heldOutComparison.totalDelta} banked resources total over baseline`)
+  } else if (heldOutComparison.totalDelta < 0) {
+    console.log(`\n      Warning: trained checkpoint banked ${heldOutComparison.totalDelta} fewer resources on held-out than baseline`)
   } else {
     console.log('\n      Note: trained checkpoint matched baseline on held-out; the policy has not yet generalized beyond the practice scenarios.')
   }
-  if (practiceImprovement !== heldOutImprovement) {
-    console.log(`      Practice improvement: ${practiceImprovement >= 0 ? '+' : ''}${practiceImprovement} banked resources`)
+  if (practiceComparison.totalDelta !== heldOutComparison.totalDelta) {
+    console.log(`      Practice improvement: ${practiceComparison.totalDelta >= 0 ? '+' : ''}${practiceComparison.totalDelta} banked resources`)
   }
+
+  // Attach evaluation records to the checkpoint manifest
+  const allScenarios = [...PRACTICE_SCENARIOS, ...HELD_OUT_SCENARIOS]
+  const checkpointWithRecords = attachEvaluationRecords(trainedCheckpoint, allScenarios)
 
   // Step 6: Export checkpoint JSON
   const outputPath = join(process.cwd(), 'starter', 'champion-checkpoint.json')
-  const jsonContent = exportCheckpointJson(trainedCheckpoint)
+  const jsonContent = exportCheckpointJson(checkpointWithRecords)
   writeFileSync(outputPath, jsonContent, 'utf-8')
   console.log(`\n[6/6] Success! Exported trained checkpoint to: ${outputPath}`)
   console.log()

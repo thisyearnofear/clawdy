@@ -8,6 +8,7 @@ import {
 import {
   POLICY_SCHEMA_VERSION,
   OBSERVATION_FEATURE_DIM,
+  type CheckpointEvaluationRecord,
   type PolicyCheckpoint,
   type PolicyWeights,
   encodeObservation,
@@ -19,6 +20,8 @@ import {
   validateCheckpoint,
 } from './policyModel'
 
+export type TrainingExampleSource = 'draft' | 'approved' | 'generated'
+
 export interface ArenaTrainingExample {
   id: string
   sourceEpisodeId: string
@@ -28,6 +31,7 @@ export interface ArenaTrainingExample {
   preferredAction: ArenaAction
   rationale: string
   approved: boolean
+  source: TrainingExampleSource
 }
 
 export interface TrainingOptions {
@@ -233,6 +237,12 @@ export function trainPolicyCheckpoint(
       datasetHash: computeDatasetHash(approvedExamples),
       accuracy: Math.round(accuracy * 1000) / 1000,
     },
+    trainingConfig: {
+      epochs,
+      learningRate: lr,
+      momentum,
+      weightDecay,
+    },
     weights,
   }
 }
@@ -320,4 +330,113 @@ function defaultRivalPolicy(obs: ArenaObservation): ArenaAction {
   const move = available.find(a => a.type === 'move')
   if (move) return move
   return { type: 'wait' }
+}
+
+export interface ScenarioEvaluationBreakdown {
+  scenarioId: string
+  split: 'practice' | 'evaluation'
+  banked: number
+  winner: 'champion' | 'rival' | null
+  recoveries: number
+  weatherDrains: number
+}
+
+export interface CheckpointComparison {
+  baseline: EvaluationResult
+  candidate: EvaluationResult
+  perScenario: { scenarioId: string; baseline: ScenarioEvaluationBreakdown; candidate: ScenarioEvaluationBreakdown; delta: number }[]
+  totalDelta: number
+  regressions: string[]
+  improvements: string[]
+}
+
+/**
+ * Evaluates a single checkpoint on a single scenario and returns a per-scenario breakdown.
+ */
+export function evaluateCheckpointScenario(
+  checkpoint: PolicyCheckpoint,
+  scenario: ArenaScenario
+): ScenarioEvaluationBreakdown {
+  const policy = createLearnedPolicy(checkpoint)
+  const episode = new ArenaEpisode(scenario)
+  let weatherDrains = 0
+
+  while (!episode.finished) {
+    const tick = episode.tick
+    if (tick % ARENA_RULES.decisionEveryTicks === 0) {
+      const champObs = episode.observe('champion')
+      const rivalObs = episode.observe('rival')
+      const champAction = policy(champObs)
+      const rivalAction = defaultRivalPolicy(rivalObs)
+      if (champAction.type === 'drain') weatherDrains++
+      episode.step([
+        { agentId: 'champion', tick, action: champAction },
+        { agentId: 'rival', tick, action: rivalAction },
+      ])
+    } else {
+      episode.step()
+    }
+  }
+
+  const snap = episode.snapshot()
+  const champ = snap.agents.find(a => a.id === 'champion')!
+  return {
+    scenarioId: scenario.id,
+    split: scenario.split,
+    banked: champ.banked,
+    winner: snap.winner as 'champion' | 'rival' | null,
+    recoveries: champ.recoveries,
+    weatherDrains,
+  }
+}
+
+/**
+ * Compares a candidate checkpoint against a baseline on matched scenarios.
+ * Reports per-scenario deltas, total improvement, and explicit regression/improvement lists
+ * so the caller can report failures as well as scores.
+ */
+export function compareCheckpoints(
+  baseline: PolicyCheckpoint,
+  candidate: PolicyCheckpoint,
+  scenarios: readonly ArenaScenario[]
+): CheckpointComparison {
+  const baselineEval = evaluatePolicyCheckpoint(baseline, scenarios)
+  const candidateEval = evaluatePolicyCheckpoint(candidate, scenarios)
+  const perScenario = scenarios.map(scenario => {
+    const base = evaluateCheckpointScenario(baseline, scenario)
+    const cand = evaluateCheckpointScenario(candidate, scenario)
+    return {
+      scenarioId: scenario.id,
+      baseline: base,
+      candidate: cand,
+      delta: cand.banked - base.banked,
+    }
+  })
+  const totalDelta = candidateEval.totalBanked - baselineEval.totalBanked
+  const regressions = perScenario.filter(s => s.delta < 0).map(s => s.scenarioId)
+  const improvements = perScenario.filter(s => s.delta > 0).map(s => s.scenarioId)
+  return { baseline: baselineEval, candidate: candidateEval, perScenario, totalDelta, regressions, improvements }
+}
+
+/**
+ * Attaches evaluation records to a checkpoint, returning a new checkpoint with the records appended.
+ * This makes evaluation evidence part of the artifact manifest, as required by the target contract.
+ */
+export function attachEvaluationRecords(
+  checkpoint: PolicyCheckpoint,
+  scenarios: readonly ArenaScenario[]
+): PolicyCheckpoint {
+  const records: CheckpointEvaluationRecord[] = scenarios.map(scenario => {
+    const breakdown = evaluateCheckpointScenario(checkpoint, scenario)
+    return {
+      scenarioId: breakdown.scenarioId,
+      split: breakdown.split,
+      banked: breakdown.banked,
+      winner: breakdown.winner,
+      recoveries: breakdown.recoveries,
+      weatherDrains: breakdown.weatherDrains,
+      recordedAt: new Date().toISOString(),
+    }
+  })
+  return { ...checkpoint, evaluationRecords: records }
 }

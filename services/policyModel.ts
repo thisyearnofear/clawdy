@@ -25,6 +25,23 @@ export interface CheckpointTrainingSummary {
   accuracy: number
 }
 
+export interface CheckpointTrainingConfig {
+  epochs: number
+  learningRate: number
+  momentum: number
+  weightDecay: number
+}
+
+export interface CheckpointEvaluationRecord {
+  scenarioId: string
+  split: 'practice' | 'evaluation'
+  banked: number
+  winner: 'champion' | 'rival' | null
+  recoveries: number
+  weatherDrains: number
+  recordedAt: string
+}
+
 export interface PolicyCheckpoint {
   schemaVersion: typeof POLICY_SCHEMA_VERSION
   id: string
@@ -33,6 +50,8 @@ export interface PolicyCheckpoint {
   createdAt: string
   weightsHash: string
   trainingSummary: CheckpointTrainingSummary
+  trainingConfig?: CheckpointTrainingConfig
+  evaluationRecords?: CheckpointEvaluationRecord[]
   weights: PolicyWeights
 }
 
@@ -325,6 +344,32 @@ export function validateCheckpoint(checkpoint: PolicyCheckpoint): void {
   ]
   if (!allNumbers.every(Number.isFinite)) {
     throw new Error('Checkpoint weights contain non-finite numbers')
+  }
+
+  if (checkpoint.trainingConfig !== undefined) {
+    const tc = checkpoint.trainingConfig
+    if (typeof tc !== 'object' || tc === null) throw new Error('Invalid trainingConfig')
+    if (!Number.isFinite(tc.epochs) || tc.epochs < 0) throw new Error('Invalid trainingConfig.epochs')
+    if (!Number.isFinite(tc.learningRate) || tc.learningRate <= 0) throw new Error('Invalid trainingConfig.learningRate')
+    if (!Number.isFinite(tc.momentum) || tc.momentum < 0) throw new Error('Invalid trainingConfig.momentum')
+    if (!Number.isFinite(tc.weightDecay) || tc.weightDecay < 0) throw new Error('Invalid trainingConfig.weightDecay')
+  }
+
+  if (checkpoint.evaluationRecords !== undefined) {
+    if (!Array.isArray(checkpoint.evaluationRecords)) throw new Error('Invalid evaluationRecords')
+    for (const rec of checkpoint.evaluationRecords) {
+      if (typeof rec !== 'object' || rec === null) throw new Error('Invalid evaluation record')
+      if (typeof rec.scenarioId !== 'string' || (rec.split !== 'practice' && rec.split !== 'evaluation')) {
+        throw new Error('Invalid evaluation record scenarioId/split')
+      }
+      if (!Number.isFinite(rec.banked) || (rec.winner !== 'champion' && rec.winner !== 'rival' && rec.winner !== null)) {
+        throw new Error('Invalid evaluation record banked/winner')
+      }
+      if (!Number.isFinite(rec.recoveries) || !Number.isFinite(rec.weatherDrains)) {
+        throw new Error('Invalid evaluation record recoveries/weatherDrains')
+      }
+      if (typeof rec.recordedAt !== 'string') throw new Error('Invalid evaluation record recordedAt')
+    }
   }
 }
 

@@ -149,6 +149,7 @@ describe('Supervised Policy Trainer', () => {
         preferredAction: { type: 'move', edgeId: 'ridge-road' },
         rationale: 'Avoid the flooded valley road',
         approved: true,
+        source: 'approved',
       },
     ]
 
