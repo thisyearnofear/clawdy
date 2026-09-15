@@ -153,14 +153,56 @@ function validateScenario(scenario: ArenaScenario) {
   assert(Array.isArray(scenario.floods) && scenario.floods.length <= 32, 'flood schedule')
   assert(scenario.floods.every(flood => integer(flood.startTick, 0, scenario.durationTicks - 1) &&
     integer(flood.endTick, flood.startTick + 1, scenario.durationTicks)), 'flood intervals')
-  const connected = new Set([scenario.nodes[0].id])
-  for (let pass = 0; pass < nodes.size; pass++) {
-    for (const edge of scenario.edges) {
-      if (connected.has(edge.from)) connected.add(edge.to)
-      if (connected.has(edge.to)) connected.add(edge.from)
+  const adjacency = new Map<string, string[]>()
+  const dryAdjacency = new Map<string, string[]>()
+  for (const node of scenario.nodes) {
+    adjacency.set(node.id, [])
+    dryAdjacency.set(node.id, [])
+  }
+  for (const edge of scenario.edges) {
+    adjacency.get(edge.from)!.push(edge.to)
+    adjacency.get(edge.to)!.push(edge.from)
+    if (!edge.floodable) {
+      dryAdjacency.get(edge.from)!.push(edge.to)
+      dryAdjacency.get(edge.to)!.push(edge.from)
     }
   }
-  assert(connected.size === nodes.size, 'disconnected graph')
+  function reachable(start: string, graph: Map<string, string[]>) {
+    const seen = new Set<string>([start])
+    const stack = [start]
+    while (stack.length > 0) {
+      const current = stack.pop()!
+      for (const next of graph.get(current) ?? []) {
+        if (!seen.has(next)) {
+          seen.add(next)
+          stack.push(next)
+        }
+      }
+    }
+    return seen
+  }
+  const resourceNodes = new Set(scenario.resources.map(resource => resource.nodeId))
+  const allConnected = new Set<string>([scenario.nodes[0].id])
+  for (let pass = 0; pass < nodes.size; pass++) {
+    for (const edge of scenario.edges) {
+      if (allConnected.has(edge.from)) allConnected.add(edge.to)
+      if (allConnected.has(edge.to)) allConnected.add(edge.from)
+    }
+  }
+  assert(allConnected.size === nodes.size, 'disconnected graph')
+  for (const entrant of scenario.entrants) {
+    const base = entrant.baseNode
+    assert(adjacency.get(base)!.length > 0, `entrant ${entrant.id} base has no incident edges`)
+    const canReach = reachable(base, adjacency)
+    assert([...canReach].some(node => resourceNodes.has(node)), `entrant ${entrant.id} cannot reach any resource`)
+    const canReachDry = reachable(base, dryAdjacency)
+    assert([...canReachDry].some(node => resourceNodes.has(node)), `entrant ${entrant.id} cannot reach a resource without crossing a floodable edge`)
+  }
+  const champion = scenario.entrants.find(entrant => entrant.id === 'champion')
+  if (champion) {
+    const incident = scenario.edges.filter(edge => edge.from === champion.baseNode || edge.to === champion.baseNode).length
+    assert(incident >= 2, 'champion base must have at least two incident edges')
+  }
 }
 
 export function parseArenaAction(value: unknown): ArenaAction | null {
