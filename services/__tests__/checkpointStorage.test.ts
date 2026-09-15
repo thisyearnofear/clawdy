@@ -73,7 +73,7 @@ describe('checkpointStorage', () => {
           self: {
             id: 'champion', baseNode: 'a', policyVersion: 'test', nodeId: 'a', position: [0, 0, 0],
             transit: null, energy: 3, cargo: 0, banked: 0, cooldownUntilTick: 0, lastOutcome: null,
-            grounded: true, blockedTicks: 0, blockedEdges: [], recoveries: 0,
+            visitedNodes: ['a'], grounded: true, blockedTicks: 0, blockedEdges: [], recoveries: 0,
           },
           rivals: [],
           nodes: [],
@@ -81,6 +81,7 @@ describe('checkpointStorage', () => {
           resources: [],
           weather: { flooded: false, drainedUntilTick: 0 },
           availableActions: [{ type: 'wait' }],
+          fog: { visible: ['a'], remembered: [], hidden: [] },
         },
         originalAction: { type: 'wait' },
         preferredAction: { type: 'wait' },

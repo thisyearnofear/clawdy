@@ -13,6 +13,23 @@ export type ArenaEvent =
     }
   | { type: 'tick'; matchId: string; tick: number; episode: ArenaSnapshot }
   | {
+      type: 'decision'
+      matchId: string
+      agentId: string
+      sequence: number
+      tick: number
+      action: ArenaAction
+    }
+  | {
+      type: 'decision_ack'
+      matchId: string
+      agentId: string
+      sequence: number
+      tick: number
+      accepted: boolean
+      reason: ArenaRejection | null
+    }
+  | {
       type: 'action_result'
       matchId: string
       agentId: string

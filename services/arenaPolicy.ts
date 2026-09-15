@@ -3,6 +3,7 @@ import {
   ArenaEpisode,
   type ArenaAction,
   type ArenaObservation,
+  type ArenaOutcome,
   type ArenaScenario,
 } from './arenaEpisode'
 
@@ -16,6 +17,14 @@ import {
 export type CollectorStrategy = 'safe' | 'greedy' | 'weather' | 'learned'
 
 export type EntrantPolicyOption = CollectorStrategy | { strategy: 'learned'; checkpoint: PolicyCheckpoint }
+
+export interface DecisionLifecycleEvent {
+  agentId: string
+  sequence: number
+  tick: number
+  action: ArenaAction
+  outcome: ArenaOutcome
+}
 
 type Route = { cost: number; firstEdge: string | null }
 
@@ -75,6 +84,8 @@ export class ArenaRunner {
   #policies: Map<string, (obs: ArenaObservation) => ArenaAction>
   #durationTicks: number
   #accumulatedUs = 0
+  #sequence = 0
+  #onDecision: ((event: DecisionLifecycleEvent) => void) | null = null
 
   constructor(scenario: ArenaScenario, strategies: Record<string, EntrantPolicyOption>, motion?: ArenaMotion) {
     this.#policies = new Map()
@@ -98,6 +109,10 @@ export class ArenaRunner {
     this.#durationTicks = scenario.durationTicks
   }
 
+  setDecisionListener(listener: ((event: DecisionLifecycleEvent) => void) | null) {
+    this.#onDecision = listener
+  }
+
   get interpolation() {
     return Math.min(1, this.#accumulatedUs / (ARENA_RULES.stepMs * 1000))
   }
@@ -116,6 +131,7 @@ export class ArenaRunner {
 
   reset() {
     this.#accumulatedUs = 0
+    this.#sequence = 0
     this.#episode.reset()
   }
 
@@ -139,13 +155,28 @@ export class ArenaRunner {
     while (advanced < count && !this.#episode.finished) {
       const tick = this.#episode.tick
       const requests = tick % ARENA_RULES.decisionEveryTicks === 0
-        ? [...this.#policies].map(([agentId, policy]) => ({
-          agentId,
-          tick,
-          action: policy(this.#episode.observe(agentId)),
-        }))
+        ? [...this.#policies].map(([agentId, policy]) => {
+          const observation = this.#episode.observe(agentId)
+          const action = policy(observation)
+          const sequence = ++this.#sequence
+          return { agentId, tick, action, sequence }
+        })
         : []
-      this.#episode.step(requests)
+      const outcomes = this.#episode.step(requests.map(({ agentId, tick, action }) => ({ agentId, tick, action })))
+      if (this.#onDecision && requests.length > 0) {
+        for (const request of requests) {
+          const outcome = outcomes.find(o => o.agentId === request.agentId) ?? null
+          if (outcome) {
+            this.#onDecision({
+              agentId: request.agentId,
+              sequence: request.sequence,
+              tick,
+              action: request.action,
+              outcome,
+            })
+          }
+        }
+      }
       advanced += 1
     }
     if (this.#episode.finished) this.#accumulatedUs = 0

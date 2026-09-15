@@ -52,7 +52,27 @@ export class ArenaSession {
         options[id] = strategy
       }
     }
-    return new ArenaRunner(this.#course.scenario, options, this.#motion)
+    const runner = new ArenaRunner(this.#course.scenario, options, this.#motion)
+    runner.setDecisionListener((event) => {
+      this.#emit({
+        type: 'decision',
+        matchId: this.#matchId,
+        agentId: event.agentId,
+        sequence: event.sequence,
+        tick: event.tick,
+        action: event.action,
+      })
+      this.#emit({
+        type: 'decision_ack',
+        matchId: this.#matchId,
+        agentId: event.agentId,
+        sequence: event.sequence,
+        tick: event.tick,
+        accepted: event.outcome.accepted,
+        reason: event.outcome.reason,
+      })
+    })
+    return runner
   }
 
   #initialView(): ArenaSessionView {

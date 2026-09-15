@@ -90,7 +90,7 @@ export interface ArenaObservation {
   remainingTicks: number
   decisionDue: boolean
   self: ArenaAgentState
-  rivals: { id: string; position: ArenaPosition; cargo: number; banked: number }[]
+  rivals: { id: string; position: ArenaPosition | null; cargo: number | null; banked: number | null; visible: boolean }[]
   nodes: ArenaNode[]
   edges: (ArenaEdge & { currentTravelTicks: number; blocked: boolean })[]
   resources: ArenaResource[]
@@ -506,6 +506,16 @@ export function observeSnapshot(
     ...scenario.edges.map(edge => ({ type: 'move' as const, edgeId: edge.id })),
     ...scenario.resources.map(resource => ({ type: 'collect' as const, resourceId: resource.id })),
   ]
+  const fog = (() => {
+    const visible = new Set<string>([agent.nodeId])
+    for (const edge of scenario.edges) {
+      if (edge.from === agent.nodeId) visible.add(edge.to)
+      if (edge.to === agent.nodeId) visible.add(edge.from)
+    }
+    const remembered = new Set<string>(agent.visitedNodes.filter(node => !visible.has(node)))
+    const hidden = scenario.nodes.filter(node => !visible.has(node.id) && !remembered.has(node.id)).map(node => node.id)
+    return { visible: [...visible].sort(), remembered: [...remembered].sort(), hidden: hidden.sort() }
+  })()
   return structuredClone({
     schemaVersion: 'arena-observation-v1',
     rulesVersion: ARENA_RULES.version,
@@ -513,9 +523,17 @@ export function observeSnapshot(
     remainingTicks: scenario.durationTicks - state.tick,
     decisionDue,
     self: agent,
-    rivals: state.agents.filter(candidate => candidate.id !== agentId).map(candidate => ({
-      id: candidate.id, position: candidate.position, cargo: candidate.cargo, banked: candidate.banked,
-    })),
+    rivals: state.agents.filter(candidate => candidate.id !== agentId).map(candidate => {
+      const isVisible = fog.visible.has(candidate.nodeId)
+      const isRemembered = fog.remembered.has(candidate.nodeId)
+      if (isVisible) {
+        return { id: candidate.id, position: candidate.position, cargo: candidate.cargo, banked: candidate.banked, visible: true }
+      }
+      if (isRemembered) {
+        return { id: candidate.id, position: candidate.position, cargo: null, banked: null, visible: false }
+      }
+      return { id: candidate.id, position: null, cargo: null, banked: null, visible: false }
+    }),
     nodes: scenario.nodes,
     edges: scenario.edges.map(edge => ({
       ...edge,
@@ -525,15 +543,6 @@ export function observeSnapshot(
     resources: state.resources.filter(resource => resource.collectedBy === null).map(({ id, nodeId, value }) => ({ id, nodeId, value })),
     weather: state.weather,
     availableActions: decisionDue ? choices.filter(action => checkActionRejection(scenario, state, agent, action) === null) : [],
-    fog: (() => {
-      const visible = new Set<string>([agent.nodeId])
-      for (const edge of scenario.edges) {
-        if (edge.from === agent.nodeId) visible.add(edge.to)
-        if (edge.to === agent.nodeId) visible.add(edge.from)
-      }
-      const remembered = new Set<string>(agent.visitedNodes.filter(node => !visible.has(node)))
-      const hidden = scenario.nodes.filter(node => !visible.has(node.id) && !remembered.has(node.id)).map(node => node.id)
-      return { visible: [...visible].sort(), remembered: [...remembered].sort(), hidden: hidden.sort() }
-    })(),
+    fog,
   } satisfies ArenaObservation)
 }

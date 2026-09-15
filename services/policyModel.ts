@@ -82,12 +82,12 @@ export function encodeObservation(observation: ArenaObservation): Float32Array {
   vec[18] = nearbyResources.length > 0 ? 1.0 : 0.0
   vec[19] = Math.min(1, nearbyResources.reduce((sum, r) => sum + r.value, 0) / rules.capacity)
 
-  // Rival relative advantage
+  // Rival relative advantage (masked under fog: hidden rivals contribute 0)
   const rival = observation.rivals[0]
-  if (rival) {
-    vec[20] = Math.min(1, rival.cargo / rules.capacity)
-    vec[21] = Math.min(1, rival.banked / 10)
-    vec[22] = rival.banked > self.banked ? 1.0 : rival.banked === self.banked ? 0.5 : 0.0
+  if (rival && rival.visible) {
+    vec[20] = Math.min(1, (rival.cargo ?? 0) / rules.capacity)
+    vec[21] = Math.min(1, (rival.banked ?? 0) / 10)
+    vec[22] = (rival.banked ?? 0) > self.banked ? 1.0 : (rival.banked ?? 0) === self.banked ? 0.5 : 0.0
   } else {
     vec[20] = 0; vec[21] = 0; vec[22] = 0.5
   }

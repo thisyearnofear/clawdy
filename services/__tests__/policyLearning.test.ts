@@ -34,12 +34,13 @@ function mockObservation(overrides: Partial<ArenaObservation> = {}): ArenaObserv
       banked: 0,
       cooldownUntilTick: 0,
       lastOutcome: null,
+      visitedNodes: ['station-west'],
       grounded: true,
       blockedTicks: 0,
       blockedEdges: [],
       recoveries: 0,
     },
-    rivals: [{ id: 'rival', position: [2, 0, 0], cargo: 0, banked: 0 }],
+    rivals: [{ id: 'rival', position: [2, 0, 0], cargo: 0, banked: 0, visible: true }],
     nodes: [
       { id: 'station-west', position: [-2, 0, 0] },
       { id: 'station-east', position: [2, 0, 0] },
@@ -56,6 +57,7 @@ function mockObservation(overrides: Partial<ArenaObservation> = {}): ArenaObserv
       { type: 'move', edgeId: 'ridge-road' },
       { type: 'wait' },
     ],
+    fog: { visible: ['station-west', 'station-east', 'station-ridge'], remembered: [], hidden: [] },
     ...overrides,
   }
 }
