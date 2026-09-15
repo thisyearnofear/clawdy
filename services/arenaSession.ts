@@ -1,5 +1,6 @@
 import type { ArenaCourse } from './arenaCourse'
 import type { ArenaMotion } from './arenaPhysics'
+import type { SurfaceSample } from './worldSurface'
 import { type ArenaObservation, type ArenaRecording, type ArenaSnapshot, observeSnapshot } from './arenaEpisode'
 import { ArenaRunner, type CollectorStrategy, type EntrantPolicyOption } from './arenaPolicy'
 import { type PolicyCheckpoint, SEASON_0_BASE_CHECKPOINT } from './policyModel'
@@ -309,6 +310,12 @@ export class ArenaSession {
       })
     }
     return this.#runner.observe(agentId, options)
+  }
+
+  sampleGround(position: [number, number, number]): SurfaceSample | null {
+    this.#assertActive()
+    if ('sample' in this.#motion) return (this.#motion as { sample: (pos: [number, number, number], maxDistance?: number) => SurfaceSample | null }).sample(position, 20)
+    return null
   }
 
   recording() {

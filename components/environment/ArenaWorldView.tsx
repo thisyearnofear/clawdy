@@ -1,9 +1,10 @@
 'use client'
 
-import { memo, Suspense, useEffect, useRef } from 'react'
+import { memo, Suspense, useEffect, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Line, OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import type { ArenaCourse } from '../../services/arenaCourse'
 import type { ArenaSession } from '../../services/arenaSession'
 import type { ArenaPosition } from '../../services/arenaEpisode'
@@ -47,7 +48,46 @@ function FollowCamera({ session, course, follow }: Pick<WorldProps, 'session' | 
   return null
 }
 
-function RoverGeometry({ color }: { color: string }) {
+/**
+ * Loads the collider GLB and renders it as a semi-transparent overlay so players
+ * can see the drivable surface that the physics engine uses.
+ */
+function ColliderOverlay({ url }: { url: string }) {
+  const [scene, setScene] = useState<THREE.Group | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    new GLTFLoader().load(url, (gltf) => {
+      if (cancelled) return
+      // Make all materials semi-transparent so the splat is visible underneath
+      gltf.scene.traverse((obj) => {
+        if (!(obj instanceof THREE.Mesh)) return
+        const mat = obj.material
+        if (Array.isArray(mat)) {
+          for (const m of mat) {
+            m.transparent = true
+            m.opacity = 0.15
+            m.depthWrite = false
+            m.color = new THREE.Color('#7ec8a0')
+          }
+        } else if (mat) {
+          mat.transparent = true
+          mat.opacity = 0.15
+          mat.depthWrite = false
+          mat.color = new THREE.Color('#7ec8a0')
+        }
+      })
+      setScene(gltf.scene)
+    }, undefined, (err) => {
+      if (!cancelled) console.warn('[ColliderOverlay] Failed to load collider:', err)
+    })
+    return () => { cancelled = true }
+  }, [url])
+
+  if (!scene) return null
+  return <primitive object={scene} />
+}
+
+function RoverGeometry({ color, wheelRefs }: { color: string; wheelRefs: React.RefObject<THREE.Mesh[]> }) {
   return (
     <>
       <mesh position={[0, 0.2, 0]} castShadow>
@@ -58,12 +98,21 @@ function RoverGeometry({ color }: { color: string }) {
         <boxGeometry args={[0.24, 0.12, 0.24]} />
         <meshStandardMaterial color="#17292d" roughness={0.2} metalness={0.6} />
       </mesh>
-      {[-1, 1].flatMap(x => [-1, 1].map(z => (
-        <mesh key={`${x}-${z}`} position={[x * 0.18, 0.105, z * 0.15]} rotation={[0, 0, Math.PI / 2]} castShadow>
-          <cylinderGeometry args={[0.1, 0.1, 0.075, 12]} />
-          <meshStandardMaterial color="#172124" roughness={0.8} />
-        </mesh>
-      )))}
+      {[-1, 1].flatMap((x, xi) => [-1, 1].map((z, zi) => {
+        const index = xi * 2 + zi
+        return (
+          <mesh
+            key={`${x}-${z}`}
+            ref={(mesh) => { if (mesh && wheelRefs.current) wheelRefs.current[index] = mesh }}
+            position={[x * 0.18, 0.105, z * 0.15]}
+            rotation={[0, 0, Math.PI / 2]}
+            castShadow
+          >
+            <cylinderGeometry args={[0.1, 0.1, 0.075, 12]} />
+            <meshStandardMaterial color="#172124" roughness={0.8} />
+          </mesh>
+        )
+      }))}
       <mesh position={[0, 0.23, 0.23]}>
         <boxGeometry args={[0.22, 0.035, 0.015]} />
         <meshBasicMaterial color="#f8f5d9" />
@@ -84,11 +133,39 @@ function RoverGeometry({ color }: { color: string }) {
   )
 }
 
+/**
+ * Contact shadow that sits flat on the ground under the rover.
+ * Follows the rover's x/z position and snaps to the ground y.
+ */
+function RoverShadow({ session, id }: { session: ArenaSession; id: string }) {
+  const meshRef = useRef<THREE.Mesh>(null)
+  useFrame(() => {
+    if (!meshRef.current) return
+    const agent = session.getSnapshot().episode.agents.find(candidate => candidate.id === id)
+    if (!agent) return
+    const ground = session.sampleGround([agent.position[0], agent.position[1] + 2, agent.position[2]])
+    const y = ground ? ground.point[1] + 0.02 : agent.position[1] + 0.02
+    meshRef.current.position.set(agent.position[0], y, agent.position[2])
+  })
+  return (
+    <mesh ref={meshRef} rotation={[-Math.PI / 2, 0, 0]}>
+      <circleGeometry args={[0.38, 24]} />
+      <meshBasicMaterial color="#000000" transparent opacity={0.25} depthWrite={false} />
+    </mesh>
+  )
+}
+
 function Rover({ session, id, color }: { session: ArenaSession; id: string; color: string }) {
   const group = useRef<THREE.Group>(null)
+  const tiltGroup = useRef<THREE.Group>(null)
   const previous = useRef(new THREE.Vector3())
   const target = useRef(new THREE.Vector3())
   const lastTick = useRef(-1)
+  const wheelRefs = useRef<THREE.Mesh[]>([])
+  const normal = useRef(new THREE.Vector3(0, 1, 0))
+  const right = useRef(new THREE.Vector3())
+  const forward = useRef(new THREE.Vector3())
+
   useFrame((_, delta) => {
     if (!group.current) return
     const view = session.getSnapshot()
@@ -97,12 +174,58 @@ function Rover({ session, id, color }: { session: ArenaSession; id: string; colo
     target.current.fromArray(agent.position)
     const dx = target.current.x - previous.current.x
     const dz = target.current.z - previous.current.z
-    if (lastTick.current >= 0 && Math.hypot(dx, dz) > 0.001) group.current.rotation.y = Math.atan2(dx, dz)
+    const horizontalSpeed = Math.hypot(dx, dz) / Math.max(delta, 0.001)
+
+    // Yaw: face direction of travel
+    if (lastTick.current >= 0 && Math.hypot(dx, dz) > 0.001) {
+      group.current.rotation.y = Math.atan2(dx, dz)
+    }
+
+    // Position: snap on reset/teleport, lerp during running
     if (view.phase !== 'running' || view.episode.tick < lastTick.current || lastTick.current < 0) {
       group.current.position.copy(target.current)
     } else {
-      group.current.position.lerp(target.current, 1 - Math.exp(-delta * 24))
+      group.current.position.lerp(target.current, 1 - Math.exp(-delta * 40))
     }
+
+    // Terrain-following pitch/roll: sample ground normal and tilt the rover
+    const ground = session.sampleGround([
+      target.current.x,
+      target.current.y + 2,
+      target.current.z,
+    ])
+    if (ground) {
+      normal.current.set(ground.normal[0], ground.normal[1], ground.normal[2])
+    } else {
+      normal.current.set(0, 1, 0)
+    }
+
+    // Compute pitch/roll from the surface normal relative to the rover's yaw
+    if (tiltGroup.current) {
+      // Get the rover's forward and right vectors based on yaw
+      const yaw = group.current.rotation.y
+      forward.current.set(Math.sin(yaw), 0, Math.cos(yaw))
+      right.current.set(Math.cos(yaw), 0, -Math.sin(yaw))
+
+      // Pitch = how much the normal tilts along the forward axis
+      const pitch = Math.asin(THREE.MathUtils.clamp(forward.current.dot(normal.current), -1, 1))
+      // Roll = how much the normal tilts along the right axis
+      const roll = Math.asin(THREE.MathUtils.clamp(right.current.dot(normal.current), -1, 1))
+
+      // Smoothly interpolate tilt
+      const currentPitch = tiltGroup.current.rotation.x
+      const currentRoll = tiltGroup.current.rotation.z
+      const smooth = 1 - Math.exp(-delta * 8)
+      tiltGroup.current.rotation.x = currentPitch + (pitch - currentPitch) * smooth
+      tiltGroup.current.rotation.z = currentRoll + (roll - currentRoll) * smooth
+    }
+
+    // Wheel rotation: spin wheels based on movement speed
+    const wheelRotation = horizontalSpeed * delta * 8
+    for (const wheel of wheelRefs.current) {
+      if (wheel) wheel.rotation.y += wheelRotation
+    }
+
     previous.current.copy(target.current)
     lastTick.current = view.episode.tick
   })
@@ -114,15 +237,20 @@ function Rover({ session, id, color }: { session: ArenaSession; id: string; colo
   const transform = asset ? getMintModelTransform(asset) : undefined
 
   return (
-    <group ref={group}>
-      {modelUrl ? (
-        <Suspense fallback={<RoverGeometry color={color} />}>
-          <MintModel url={modelUrl} transform={transform} />
-        </Suspense>
-      ) : (
-        <RoverGeometry color={color} />
-      )}
-    </group>
+    <>
+      <RoverShadow session={session} id={id} />
+      <group ref={group}>
+        <group ref={tiltGroup}>
+          {modelUrl ? (
+            <Suspense fallback={<RoverGeometry color={color} wheelRefs={wheelRefs} />}>
+              <MintModel url={modelUrl} transform={transform} />
+            </Suspense>
+          ) : (
+            <RoverGeometry color={color} wheelRefs={wheelRefs} />
+          )}
+        </group>
+      </group>
+    </>
   )
 }
 
@@ -166,8 +294,12 @@ function World({ course, session, follow, onReady, onError }: WorldProps) {
       <EpisodeClock session={session} />
       <color attach="background" args={['#c7d3ce']} />
       <ambientLight intensity={1.2} />
-      <directionalLight position={[8, 16, 4]} intensity={2} />
+      <directionalLight position={[8, 16, 4]} intensity={2} castShadow />
       <MarbleWorldLayer config={course.config} onLoad={onReady} onError={onError} />
+      {/* Semi-transparent collider overlay so players can see the drivable surface */}
+      <Suspense fallback={null}>
+        <ColliderOverlay url={course.config.collider!.url} />
+      </Suspense>
       <OrbitControls makeDefault target={course.center} enabled={follow === 'overview'} minDistance={5} maxDistance={35} maxPolarAngle={Math.PI * 0.47} />
       <FollowCamera course={course} session={session} follow={follow} />
       {course.scenario.edges.map(edge => (
@@ -199,7 +331,7 @@ function World({ course, session, follow, onReady, onError }: WorldProps) {
 
 export default memo(function ArenaWorldView(props: WorldProps) {
   return (
-    <Canvas camera={{ position: [18, 15, 18], fov: 45, near: 0.05, far: 180 }} dpr={[1, 1.5]} gl={{ antialias: false, alpha: false }} fallback={<p role="alert">This device could not create a WebGL view.</p>}>
+    <Canvas shadows camera={{ position: [18, 15, 18], fov: 45, near: 0.05, far: 180 }} dpr={[1, 1.5]} gl={{ antialias: false, alpha: false }} fallback={<p role="alert">This device could not create a WebGL view.</p>}>
       <World {...props} />
     </Canvas>
   )
