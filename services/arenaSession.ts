@@ -181,7 +181,7 @@ export class ArenaSession {
       this.#emit({ type: 'tick', matchId: this.#matchId, tick: episode.tick, episode })
       for (const agent of episode.agents) {
         const outcome = agent.lastOutcome
-        if (outcome) {
+        if (outcome && outcome.tick === episode.tick) {
           this.#emit({
             type: 'action_result',
             matchId: this.#matchId,

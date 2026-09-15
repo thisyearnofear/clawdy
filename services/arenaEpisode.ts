@@ -65,6 +65,7 @@ export interface ArenaAgentState extends ArenaEntrant {
   banked: number
   cooldownUntilTick: number
   lastOutcome: ArenaOutcome | null
+  visitedNodes: string[]
   grounded: boolean
   blockedTicks: number
   blockedEdges: string[]
@@ -95,6 +96,7 @@ export interface ArenaObservation {
   resources: ArenaResource[]
   weather: ArenaSnapshot['weather']
   availableActions: ArenaAction[]
+  fog: { visible: string[]; remembered: string[]; hidden: string[] }
 }
 
 export interface ArenaRecording {
@@ -269,6 +271,7 @@ export class ArenaEpisode {
         banked: 0,
         cooldownUntilTick: 0,
         lastOutcome: null,
+        visitedNodes: [entrant.baseNode],
         grounded: true,
         blockedTicks: 0,
         blockedEdges: [],
@@ -432,6 +435,7 @@ export class ArenaEpisode {
         agent.blockedTicks = 0
         if (transit.progressUnits === transit.requiredUnits) {
           agent.nodeId = transit.to
+          if (!agent.visitedNodes.includes(transit.to)) agent.visitedNodes.push(transit.to)
           agent.transit = null
         }
       } else {
@@ -441,6 +445,7 @@ export class ArenaEpisode {
           this.#motion?.recover(agent.id, [...position])
           agent.position = [...position]
           agent.nodeId = transit.from
+          if (!agent.visitedNodes.includes(transit.from)) agent.visitedNodes.push(transit.from)
           agent.blockedEdges.push(transit.edgeId)
           agent.lastOutcome = { agentId: agent.id, tick: this.#state.tick, action: { type: 'move', edgeId: transit.edgeId }, accepted: false, reason: 'movement-blocked' }
           agent.transit = null
@@ -520,5 +525,15 @@ export function observeSnapshot(
     resources: state.resources.filter(resource => resource.collectedBy === null).map(({ id, nodeId, value }) => ({ id, nodeId, value })),
     weather: state.weather,
     availableActions: decisionDue ? choices.filter(action => checkActionRejection(scenario, state, agent, action) === null) : [],
+    fog: (() => {
+      const visible = new Set<string>([agent.nodeId])
+      for (const edge of scenario.edges) {
+        if (edge.from === agent.nodeId) visible.add(edge.to)
+        if (edge.to === agent.nodeId) visible.add(edge.from)
+      }
+      const remembered = new Set<string>(agent.visitedNodes.filter(node => !visible.has(node)))
+      const hidden = scenario.nodes.filter(node => !visible.has(node.id) && !remembered.has(node.id)).map(node => node.id)
+      return { visible: [...visible].sort(), remembered: [...remembered].sort(), hidden: hidden.sort() }
+    })(),
   } satisfies ArenaObservation)
 }
