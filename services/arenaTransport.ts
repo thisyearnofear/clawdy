@@ -33,7 +33,7 @@ export const TRANSPORT_PROTOCOL_VERSION = 'clawdy:arena.v1' as const
 
 export type ServerMessage =
   | { type: 'hello'; protocolVersion: typeof TRANSPORT_PROTOCOL_VERSION; serverVersion: string }
-  | { type: 'match_start'; matchId: string; scenarioId: string; rulesVersion: string; controllerVersion: string; players: { id: string; policyVersion: string }[]; playerIndex: number }
+  | { type: 'match_start'; matchId: string; scenarioId: string; rulesVersion: string; controllerVersion: string; players: { id: string; policyVersion: string }[]; playerIndex: number; scored: boolean }
   | { type: 'state'; matchId: string; tick: number; totalTicks: number; phase: ArenaPhase; observation: ArenaObservation }
   | { type: 'decision_ack'; matchId: string; agentId: string; sequence: number; tick: number; accepted: boolean; reason: string | null }
   | { type: 'action_result'; matchId: string; agentId: string; tick: number; action: ArenaAction | null; accepted: boolean; reason: string | null }
@@ -123,6 +123,7 @@ export function createArenaTransport(
       controllerVersion: event.controllerVersion,
       players: event.players,
       playerIndex,
+      scored: event.scored,
     })
   })))
 

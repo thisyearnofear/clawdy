@@ -15,6 +15,7 @@ export interface ArenaSessionView {
   replayIndex: number
   replayLength: number
   error: string | null
+  scored: boolean
 }
 
 function makeMatchId(): string {
@@ -35,6 +36,7 @@ export class ArenaSession {
   #matchId = makeMatchId()
   #ended = false
   #disposed = false
+  #scored = false
 
   constructor(course: ArenaCourse, motion: ArenaMotion) {
     this.#course = structuredClone(course)
@@ -84,11 +86,16 @@ export class ArenaSession {
       replayIndex: 0,
       replayLength: 0,
       error: null,
+      scored: this.#scored,
     }
   }
 
   #assertActive() {
     if (this.#disposed) throw new Error('Arena session is disposed')
+  }
+
+  #assertNotScored(action: string) {
+    if (this.#scored) throw new Error(`Cannot ${action} on a scored match`)
   }
 
   #publish(update: Partial<ArenaSessionView>) {
@@ -134,8 +141,20 @@ export class ArenaSession {
     if (listeners) listeners.delete(listener as ArenaEventListener<any>)
   }
 
+  setScored(scored: boolean) {
+    this.#assertActive()
+    if (this.#view.phase !== 'ready') throw new Error('Cannot change scored flag after the match has started')
+    this.#scored = scored
+    this.#publish({ scored })
+  }
+
+  get scored() {
+    return this.#scored
+  }
+
   selectPolicy(agentId: string, strategy: CollectorStrategy, checkpoint?: PolicyCheckpoint) {
     this.#assertActive()
+    this.#assertNotScored('change policy')
     if (this.#view.phase !== 'ready') throw new Error('Policy selection is locked until the episode is reset')
     if (!this.#course.scenario.entrants.some(entrant => entrant.id === agentId)) throw new Error('Unknown entrant')
     const policies = { ...this.#policies, [agentId]: strategy }
@@ -151,6 +170,7 @@ export class ArenaSession {
 
   setCheckpoint(checkpoint: PolicyCheckpoint) {
     this.#assertActive()
+    this.#assertNotScored('change checkpoint')
     if (this.#view.phase !== 'ready') throw new Error('Policy selection is locked until the episode is reset')
     this.#checkpoint = checkpoint
     const runner = this.#createRunner(this.#policies, this.#checkpoint)
@@ -176,6 +196,7 @@ export class ArenaSession {
       rulesVersion: episode.rulesVersion,
       controllerVersion: episode.controllerVersion,
       players,
+      scored: this.#scored,
     })
   }
 
@@ -243,6 +264,7 @@ export class ArenaSession {
     this.#returnPhase = 'paused'
     this.#matchId = makeMatchId()
     this.#ended = false
+    this.#scored = false
     this.#publish(this.#initialView())
   }
 

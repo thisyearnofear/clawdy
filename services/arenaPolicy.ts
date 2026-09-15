@@ -73,7 +73,13 @@ export function collectorPolicy(observation: ArenaObservation, strategy: Collect
     .filter(resource => resource.value + observation.self.cargo <= ARENA_RULES.capacity)
     .map(resource => ({ resource, route: findArenaRoute(observation, resource.nodeId, strategy === 'learned' ? 'safe' : strategy) }))
     .filter((entry): entry is typeof entry & { route: Route } => entry.route !== null)
-    .sort((a, b) => a.route.cost - b.route.cost || (a.resource.id < b.resource.id ? -1 : a.resource.id > b.resource.id ? 1 : 0))
+    .sort((a, b) => {
+      // Prefer visible (certain) resources over stale (uncertain) ones
+      const aStale = 'stale' in a.resource ? (a.resource as { stale: boolean }).stale : false
+      const bStale = 'stale' in b.resource ? (b.resource as { stale: boolean }).stale : false
+      if (aStale !== bStale) return aStale ? 1 : -1
+      return a.route.cost - b.route.cost || (a.resource.id < b.resource.id ? -1 : a.resource.id > b.resource.id ? 1 : 0)
+    })
   const route = targets[0]?.route
   if (route?.firstEdge) return { type: 'move', edgeId: route.firstEdge }
   return observation.self.cargo > 0 && home?.firstEdge ? { type: 'move', edgeId: home.firstEdge } : wait

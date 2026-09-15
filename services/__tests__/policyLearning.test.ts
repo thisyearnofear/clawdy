@@ -35,6 +35,7 @@ function mockObservation(overrides: Partial<ArenaObservation> = {}): ArenaObserv
       cooldownUntilTick: 0,
       lastOutcome: null,
       visitedNodes: ['station-west'],
+      knownResources: [],
       grounded: true,
       blockedTicks: 0,
       blockedEdges: [],
@@ -50,7 +51,7 @@ function mockObservation(overrides: Partial<ArenaObservation> = {}): ArenaObserv
       { id: 'valley-road', from: 'station-west', to: 'station-east', travelTicks: 30, currentTravelTicks: 30, floodable: true, blocked: false },
       { id: 'ridge-road', from: 'station-west', to: 'station-ridge', travelTicks: 45, currentTravelTicks: 45, floodable: false, blocked: false },
     ],
-    resources: [{ id: 'core-1', nodeId: 'station-east', value: 1 }],
+    resources: [{ id: 'core-1', nodeId: 'station-east', value: 1, available: true, visible: true, stale: false }],
     weather: { flooded: false, drainedUntilTick: 0 },
     availableActions: [
       { type: 'move', edgeId: 'valley-road' },

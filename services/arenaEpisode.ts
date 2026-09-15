@@ -66,6 +66,7 @@ export interface ArenaAgentState extends ArenaEntrant {
   cooldownUntilTick: number
   lastOutcome: ArenaOutcome | null
   visitedNodes: string[]
+  knownResources: { id: string; nodeId: string; value: number; available: boolean }[]
   grounded: boolean
   blockedTicks: number
   blockedEdges: string[]
@@ -93,7 +94,7 @@ export interface ArenaObservation {
   rivals: { id: string; position: ArenaPosition | null; cargo: number | null; banked: number | null; visible: boolean }[]
   nodes: ArenaNode[]
   edges: (ArenaEdge & { currentTravelTicks: number; blocked: boolean })[]
-  resources: ArenaResource[]
+  resources: (ArenaResource & { available: boolean; visible: boolean; stale: boolean })[]
   weather: ArenaSnapshot['weather']
   availableActions: ArenaAction[]
   fog: { visible: string[]; remembered: string[]; hidden: string[] }
@@ -272,6 +273,7 @@ export class ArenaEpisode {
         cooldownUntilTick: 0,
         lastOutcome: null,
         visitedNodes: [entrant.baseNode],
+        knownResources: [],
         grounded: true,
         blockedTicks: 0,
         blockedEdges: [],
@@ -299,7 +301,28 @@ export class ArenaEpisode {
   }
 
   observe(agentId: string, options?: { forceDecision?: boolean }): ArenaObservation {
+    this.#updateKnownResources(agentId)
     return observeSnapshot(this.#scenario, this.#state, agentId, options)
+  }
+
+  #updateKnownResources(agentId: string) {
+    const agent = this.#state.agents.find(candidate => candidate.id === agentId)
+    if (!agent) return
+    const visibleNodes = new Set<string>([agent.nodeId])
+    for (const edge of this.#scenario.edges) {
+      if (edge.from === agent.nodeId) visibleNodes.add(edge.to)
+      if (edge.to === agent.nodeId) visibleNodes.add(edge.from)
+    }
+    for (const resource of this.#state.resources) {
+      if (visibleNodes.has(resource.nodeId)) {
+        const existing = agent.knownResources.find(r => r.id === resource.id)
+        if (existing) {
+          existing.available = resource.collectedBy === null
+        } else {
+          agent.knownResources.push({ id: resource.id, nodeId: resource.nodeId, value: resource.value, available: resource.collectedBy === null })
+        }
+      }
+    }
   }
 
   step(requests: readonly ArenaRequest[] = []): ArenaOutcome[] {
@@ -540,7 +563,28 @@ export function observeSnapshot(
       blocked: agent.blockedEdges.includes(edge.id),
       currentTravelTicks: edge.travelTicks * (edge.floodable && state.weather.flooded ? ARENA_RULES.floodTravelMultiplier : 1),
     })),
-    resources: state.resources.filter(resource => resource.collectedBy === null).map(({ id, nodeId, value }) => ({ id, nodeId, value })),
+    resources: (() => {
+      const visibleNodes = new Set(fog.visible)
+      const result: (ArenaResource & { available: boolean; visible: boolean; stale: boolean })[] = []
+      // Currently visible resources: show real-time state
+      for (const resource of state.resources) {
+        if (resource.collectedBy !== null) continue
+        if (visibleNodes.has(resource.nodeId)) {
+          result.push({ id: resource.id, nodeId: resource.nodeId, value: resource.value, available: true, visible: true, stale: false })
+        }
+      }
+      // Remembered resources: show last-known state, marked stale
+      for (const known of agent.knownResources) {
+        if (visibleNodes.has(known.nodeId)) continue // already handled above
+        if (!known.available) continue // was already collected when last seen
+        // Check if it was collected since we last saw it — we can't know, so show as stale
+        const stillExists = state.resources.find(r => r.id === known.id && r.collectedBy === null)
+        if (stillExists) {
+          result.push({ id: known.id, nodeId: known.nodeId, value: known.value, available: true, visible: false, stale: true })
+        }
+      }
+      return result
+    })(),
     weather: state.weather,
     availableActions: decisionDue ? choices.filter(action => checkActionRejection(scenario, state, agent, action) === null) : [],
     fog,

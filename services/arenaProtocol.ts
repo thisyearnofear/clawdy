@@ -10,6 +10,7 @@ export type ArenaEvent =
       rulesVersion: string
       controllerVersion: string
       players: { id: string; policyVersion: string }[]
+      scored: boolean
     }
   | { type: 'tick'; matchId: string; tick: number; episode: ArenaSnapshot }
   | {
