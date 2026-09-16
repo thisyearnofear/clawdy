@@ -87,6 +87,32 @@ function ColliderOverlay({ url }: { url: string }) {
   return <primitive object={scene} />
 }
 
+/**
+ * Loads the HQ textured mesh GLB and renders it as the primary terrain visual.
+ * Falls back silently if the mesh is not yet available.
+ */
+function HqTerrainMesh({ url }: { url: string }) {
+  const [scene, setScene] = useState<THREE.Group | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    new GLTFLoader().load(url, (gltf) => {
+      if (cancelled) return
+      gltf.scene.traverse((obj) => {
+        if (!(obj instanceof THREE.Mesh)) return
+        obj.castShadow = true
+        obj.receiveShadow = true
+      })
+      setScene(gltf.scene)
+    }, undefined, (err) => {
+      if (!cancelled) console.warn('[HqTerrainMesh] Failed to load HQ mesh:', err)
+    })
+    return () => { cancelled = true }
+  }, [url])
+
+  if (!scene) return null
+  return <primitive object={scene} />
+}
+
 function RoverGeometry({ color, wheelRefs }: { color: string; wheelRefs: React.RefObject<THREE.Mesh[]> }) {
   return (
     <>
@@ -261,6 +287,12 @@ function World({ course, session, follow, onReady, onError }: WorldProps) {
       <ambientLight intensity={1.2} />
       <directionalLight position={[8, 16, 4]} intensity={2} castShadow />
       <MarbleWorldLayer config={course.config} onLoad={onReady} onError={onError} />
+      {/* HQ textured mesh as primary terrain visual when available */}
+      {course.config.hqMesh && (
+        <Suspense fallback={null}>
+          <HqTerrainMesh url={course.config.hqMesh.url} />
+        </Suspense>
+      )}
       {/* Semi-transparent collider overlay so players can see the drivable surface */}
       <Suspense fallback={null}>
         <ColliderOverlay url={course.config.collider!.url} />

@@ -14,6 +14,9 @@ export interface MarbleWorldConfig {
   collider: {
     url: string
   } | null
+  hqMesh: {
+    url: string
+  } | null
   bounds: Vector3Tuple
   spawnBounds: Vector3Tuple
   spawnHeight: number
@@ -44,6 +47,7 @@ function readVector(value: string | undefined, fallback: Vector3Tuple): Vector3T
 export function getMarbleWorldConfig(): MarbleWorldConfig {
   const splatUrl = readString(process.env.NEXT_PUBLIC_MARBLE_SPLAT_URL)
   const colliderUrl = readString(process.env.NEXT_PUBLIC_MARBLE_COLLIDER_URL)
+  const hqMeshUrl = readString(process.env.NEXT_PUBLIC_MARBLE_HQ_MESH_URL)
   const enabled = readString(process.env.NEXT_PUBLIC_MARBLE_ENABLED)
   const format = readString(process.env.NEXT_PUBLIC_MARBLE_SPLAT_FORMAT)
 
@@ -54,6 +58,7 @@ export function getMarbleWorldConfig(): MarbleWorldConfig {
     name: readString(process.env.NEXT_PUBLIC_MARBLE_WORLD_NAME) ?? 'Clawdy Marble Arena',
     splat: splatUrl ? { url: splatUrl, format: format === 'rad' || format === 'ply' ? format : 'spz' } : null,
     collider: colliderUrl ? { url: colliderUrl } : null,
+    hqMesh: hqMeshUrl ? { url: hqMeshUrl } : null,
     bounds: readVector(process.env.NEXT_PUBLIC_MARBLE_BOUNDS, DEFAULT_BOUNDS),
     spawnBounds: readVector(process.env.NEXT_PUBLIC_MARBLE_SPAWN_BOUNDS, DEFAULT_SPAWN_BOUNDS),
     spawnHeight: readNumber(process.env.NEXT_PUBLIC_MARBLE_SPAWN_HEIGHT, DEFAULT_SPAWN_HEIGHT),

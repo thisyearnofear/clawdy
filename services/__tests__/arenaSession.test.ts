@@ -5,7 +5,7 @@ import type { ArenaMotion } from '../arenaPhysics'
 
 function setup() {
   const course: ArenaCourse = {
-    config: { enabled: true, configured: true, id: 'fixture', name: 'Fixture', splat: null, collider: null, bounds: [5, 5, 5], spawnBounds: [5, 5, 5], spawnHeight: 1 },
+    config: { enabled: true, configured: true, id: 'fixture', name: 'Fixture', splat: null, collider: null, hqMesh: null, bounds: [5, 5, 5], spawnBounds: [5, 5, 5], spawnHeight: 1 },
     center: [0, 0, 0], floodZones: [],
     scenario: {
       id: 'session-fixture', worldVersion: 'fixture-v1', split: 'practice', seed: 1, durationTicks: 20,

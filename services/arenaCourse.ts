@@ -11,6 +11,7 @@ export const ARENA_WORLD = Object.freeze({
   name: 'Cloudbank / Course 01',
   colliderUrl: '/marble/collider.glb',
   splatUrl: '/marble/arena.spz',
+  hqMeshUrl: '/marble/arena-hq.glb',
   colliderSha256: '25f82036f660641c1d8098e832455c38aa9531161225864079454fbd314b7747',
 })
 
@@ -64,6 +65,7 @@ export function buildArenaCourse(physics: ArenaPhysics): ArenaCourse {
   const config: MarbleWorldConfig = {
     enabled: true, configured: true, id: ARENA_WORLD.id, name: ARENA_WORLD.name,
     splat: { url: ARENA_WORLD.splatUrl, format: 'spz' }, collider: { url: ARENA_WORLD.colliderUrl },
+    hqMesh: { url: ARENA_WORLD.hqMeshUrl },
     bounds: [12, 8, 14], spawnBounds: [6, 2, 8], spawnHeight: 1,
   }
   return {
