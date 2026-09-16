@@ -12,7 +12,7 @@ export interface PolicyLayer {
 }
 
 export interface PolicyWeights {
-  hidden1: { weights: number[][]; biases: number[] } // 24 x 32
+  hidden1: { weights: number[][]; biases: number[] } // 32 x 32
   hidden2: { weights: number[][]; biases: number[] } // 32 x 16
   actionHead: { weights: number[][]; biases: number[] } // 16 x 8
 }
@@ -55,11 +55,11 @@ export interface PolicyCheckpoint {
   weights: PolicyWeights
 }
 
-export const OBSERVATION_FEATURE_DIM = 24
+export const OBSERVATION_FEATURE_DIM = 32
 export const ACTION_CLASSES = 8 // 0: wait, 1: bank, 2: collect, 3: drain, 4: move-low, 5: move-high, 6: move-resource, 7: move-home
 
 /**
- * Encodes an ArenaObservation into a normalized 24-dimensional feature vector.
+ * Encodes an ArenaObservation into a normalized 32-dimensional feature vector.
  */
 export function encodeObservation(observation: ArenaObservation): Float32Array {
   const vec = new Float32Array(OBSERVATION_FEATURE_DIM)
@@ -91,29 +91,90 @@ export function encodeObservation(observation: ArenaObservation): Float32Array {
   const floodable = outgoing.filter(e => e.floodable)
   const nonFloodable = outgoing.filter(e => !e.floodable)
 
-  vec[15] = floodable.length > 0 ? 1.0 : 0.0
-  vec[16] = nonFloodable.length > 0 ? 1.0 : 0.0
+  vec[15] = Math.min(1, floodable.length / 4)
+  vec[16] = Math.min(1, nonFloodable.length / 4)
   vec[17] = floodable.some(e => e.currentTravelTicks > e.travelTicks) ? 1.0 : 0.0 // Is floodable route currently slowed?
+  vec[18] = Math.min(1, outgoing.length / 6) // Degree of current node (how many choices)
 
   // Resource availability at neighboring nodes
   const neighborIds = outgoing.map(e => e.from === currentNode ? e.to : e.from)
-  const nearbyResources = observation.resources.filter(r => neighborIds.includes(r.nodeId))
-  vec[18] = nearbyResources.length > 0 ? 1.0 : 0.0
-  vec[19] = Math.min(1, nearbyResources.reduce((sum, r) => sum + r.value, 0) / rules.capacity)
+  const nearbyResources = observation.resources.filter(r => r.available && neighborIds.includes(r.nodeId))
+  vec[19] = nearbyResources.length > 0 ? 1.0 : 0.0
+  vec[20] = Math.min(1, nearbyResources.reduce((sum, r) => sum + r.value, 0) / rules.capacity)
+
+  // Nearest available resource: distance and value
+  const availableResources = observation.resources.filter(r => r.available)
+  if (availableResources.length > 0 && !self.transit) {
+    const routes = availableResources.map(r => {
+      const route = findShortestRoute(observation, r.nodeId)
+      return { resource: r, cost: route?.cost ?? Infinity, firstEdge: route?.firstEdge ?? null }
+    }).sort((a, b) => a.cost - b.cost)
+    const nearest = routes[0]
+    vec[21] = Math.max(0, Math.min(1, 1 - nearest.cost / 200)) // Closer = higher value
+    vec[22] = Math.min(1, nearest.resource.value / rules.capacity)
+    vec[23] = nearest.cost <= self.energy * 20 ? 1.0 : 0.0 // Energy sufficiency for nearest resource
+  } else {
+    vec[21] = 0; vec[22] = 0; vec[23] = self.transit ? 1.0 : 0.0
+  }
 
   // Rival relative advantage (masked under fog: hidden rivals contribute 0)
   const rival = observation.rivals[0]
   if (rival && rival.visible) {
-    vec[20] = Math.min(1, (rival.cargo ?? 0) / rules.capacity)
-    vec[21] = Math.min(1, (rival.banked ?? 0) / 10)
-    vec[22] = (rival.banked ?? 0) > self.banked ? 1.0 : (rival.banked ?? 0) === self.banked ? 0.5 : 0.0
+    vec[24] = Math.min(1, (rival.cargo ?? 0) / rules.capacity)
+    vec[25] = Math.min(1, (rival.banked ?? 0) / 10)
+    vec[26] = (rival.banked ?? 0) > self.banked ? 1.0 : (rival.banked ?? 0) === self.banked ? 0.5 : 0.0
   } else {
-    vec[20] = 0; vec[21] = 0; vec[22] = 0.5
+    vec[24] = 0; vec[25] = 0; vec[26] = 0.5
   }
 
-  vec[23] = 1.0 // Bias constant
+  // Energy budget awareness
+  vec[27] = self.energy < rules.drainCost ? 1.0 : 0.0 // Too low to drain
+  vec[28] = Math.min(1, outgoing.reduce((sum, e) => sum + Math.ceil(e.travelTicks * rules.moveCostPerTick), 0) / rules.initialEnergy)
+  vec[29] = self.energy < rules.initialEnergy * 0.3 ? 1.0 : 0.0 // Low energy warning
+
+  // Total reachable resource value (within 2 hops)
+  const twoHopNodes = new Set<string>([currentNode])
+  for (const edge of outgoing) {
+    const neighbor = edge.from === currentNode ? edge.to : edge.from
+    twoHopNodes.add(neighbor)
+    for (const edge2 of observation.edges) {
+      if (edge2.blocked) continue
+      const neighbor2 = edge2.from === neighbor ? edge2.to : edge2.from
+      if (neighbor2 !== currentNode) twoHopNodes.add(neighbor2)
+    }
+  }
+  const reachableResources = observation.resources.filter(r => r.available && twoHopNodes.has(r.nodeId))
+  vec[30] = Math.min(1, reachableResources.length / 6)
+  vec[31] = 1.0 // Bias constant
 
   return vec
+}
+
+/**
+ * Finds the shortest route from the agent's current node to a target node.
+ */
+function findShortestRoute(observation: ArenaObservation, target: string): { cost: number; firstEdge: string | null } | null {
+  if (!observation.nodes.some(node => node.id === target)) return null
+  const routes = new Map<string, { cost: number; firstEdge: string | null }>([[observation.self.nodeId, { cost: 0, firstEdge: null }]])
+  const visited = new Set<string>()
+  while (visited.size < observation.nodes.length) {
+    const next = [...routes.entries()]
+      .filter(([id]) => !visited.has(id))
+      .sort(([idA, a], [idB, b]) => a.cost - b.cost || (idA < idB ? -1 : idA > idB ? 1 : 0))[0]
+    if (!next) return null
+    const [nodeId, route] = next
+    if (nodeId === target) return route
+    visited.add(nodeId)
+    for (const edge of observation.edges) {
+      if (edge.blocked || (edge.from !== nodeId && edge.to !== nodeId)) continue
+      const neighbor = edge.from === nodeId ? edge.to : edge.from
+      if (visited.has(neighbor)) continue
+      const cost = route.cost + edge.currentTravelTicks
+      const previous = routes.get(neighbor)
+      if (!previous || cost < previous.cost) routes.set(neighbor, { cost, firstEdge: route.firstEdge ?? edge.id })
+    }
+  }
+  return null
 }
 
 /**

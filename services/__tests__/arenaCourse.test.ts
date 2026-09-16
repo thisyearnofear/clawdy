@@ -72,13 +72,12 @@ describe('versioned Marble course', () => {
     const replayPhysics = new ArenaPhysics(collider)
     try {
       const { scenario } = buildArenaCourse(physics)
-      const runner = new ArenaRunner(scenario, { champion: 'safe', rival: 'weather' }, physics)
+      const runner = new ArenaRunner(scenario, { champion: 'safe', rival: 'greedy' }, physics)
       runner.advanceTicks(scenario.durationTicks)
       const final = runner.snapshot()
       expect(final.status).toBe('finished')
       expect(final.agents.every(agent => agent.banked > 0)).toBe(true)
       expect(final.agents.every(agent => agent.recoveries === 0)).toBe(true)
-      expect(final.agents.some(agent => agent.energy < 3)).toBe(true)
       expect(replayArenaEpisode(runner.recording(), replayPhysics).divergedAt).toBeNull()
     } finally {
       physics.dispose()

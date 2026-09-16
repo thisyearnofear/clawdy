@@ -122,7 +122,7 @@ export function buildArenaCourse(physics: ArenaPhysics): ArenaCourse {
       edges,
       entrants: [
         { id: 'champion', baseNode: 'champion-base', policyVersion: 'baseline.safe.v2' },
-        { id: 'rival', baseNode: 'rival-base', policyVersion: 'baseline.weather.v2' },
+        { id: 'rival', baseNode: 'rival-base', policyVersion: 'baseline.greedy.v2' },
       ],
       resources: [
         // Valley center: high-volume, floodable risk

@@ -66,7 +66,7 @@ Required properties:
 - Reset any supported bounded policy memory per episode. Freeze weights throughout a scored match.
 - Never present a prompt change, rule patch, or coaching acknowledgment as fine-tuning.
 
-The concrete model is a 2-layer MLP (24 inputs → 32 → 16 → 8 action classes) with Tanh activations, a softmax action distribution, and supervised cross-entropy training with momentum SGD. The `PolicyCheckpoint` format (`season-0.checkpoint.v1`) is JSON data only and is validated for shape, finite values, and schema version before loading. The training host is the same JavaScript runtime as the app/CLI, not a remote GPU service. The exact hyperparameters and action-class mapping must still be frozen and documented; do not change them without bumping the schema/rules versions.
+The concrete model is a 2-layer MLP (32 inputs → 32 → 16 → 8 action classes) with Tanh activations, a softmax action distribution, and supervised cross-entropy training with momentum SGD. The `PolicyCheckpoint` format (`season-0.checkpoint.v1`) is JSON data only and is validated for shape, finite values, and schema version before loading. The training host is the same JavaScript runtime as the app/CLI, not a remote GPU service. The exact hyperparameters and action-class mapping must still be frozen and documented; do not change them without bumping the schema/rules versions.
 
 ## Simulation and Evaluation Rules
 
@@ -90,7 +90,7 @@ The new reference modules are:
 - `services/arenaPhysics.ts`: Rapier 0.19.2 kinematic rigid body with terrain-following pitch/roll, wall collision via ray casts, grounding, reset, recovery, and controller version tracking.
 - `services/arenaCourse.ts`: authored `Cloudbank / Course 01` loader with pinned collider SHA-256, scenario construction, and a rich route graph (12+ nodes, 25+ edges, multiple resources, multiple flood zones) embedded in the generated world's terrain.
 - `services/arenaSession.ts`: application adapter that wires start/pause/reset, policy locking, bounded frame pumping, replay scrubbing, checkpoint selection, and JSON export.
-- `services/policyModel.ts`: `PolicyCheckpoint` schema, 24-dimensional observation encoding, 8-class action mapping, MLP forward/inference, and checkpoint validation.
+- `services/policyModel.ts`: `PolicyCheckpoint` schema, 32-dimensional observation encoding, 8-class action mapping, MLP forward/inference, and checkpoint validation.
 - `services/policyTrainer.ts`: supervised cross-entropy backpropagation with momentum SGD, dataset hashing, and scenario evaluation.
 - `services/coachingEngine.ts`: natural-language and rule-based proposal of reviewable `ArenaTrainingExample` corrections.
 - `services/checkpointStorage.ts`: browser `localStorage` persistence, JSON import/export, and validation.

@@ -6,7 +6,8 @@ export const ARENA_RULES = Object.freeze({
   decisionEveryTicks: 5,
   maxDurationTicks: 7200,
   capacity: 3,
-  initialEnergy: 3,
+  initialEnergy: 12,
+  moveCostPerTick: 0.03,
   drainCost: 2,
   drainTicks: 50,
   drainCooldownTicks: 150,
@@ -361,6 +362,15 @@ export class ArenaEpisode {
     if (normalized.length > 0) this.#batches.push({ tick: state.tick, requests: normalized })
     state.weather.flooded = this.#isFlooded()
     this.#moveAgents()
+    // Energy regen: agents not in transit and not taking an accepted action recover energy (capped)
+    for (const agent of state.agents) {
+      if (!agent.transit && agent.energy < ARENA_RULES.initialEnergy) {
+        const actedThisTick = agent.lastOutcome?.tick === state.tick && agent.lastOutcome?.accepted
+        if (!actedThisTick) {
+          agent.energy = Math.min(ARENA_RULES.initialEnergy, agent.energy + 0.1)
+        }
+      }
+    }
     state.tick += 1
     state.weather.flooded = this.#isFlooded()
     this.#updateKnownResources()
@@ -407,6 +417,8 @@ export class ArenaEpisode {
         progressUnits: 0,
         requiredUnits: edge.travelTicks * ARENA_RULES.floodTravelMultiplier,
       }
+      const moveCost = Math.ceil(edge.travelTicks * ARENA_RULES.moveCostPerTick)
+      agent.energy -= moveCost
     } else if (action.type === 'collect') {
       const resource = this.#state.resources.find(candidate => candidate.id === action.resourceId)!
       resource.collectedBy = agent.id
@@ -507,7 +519,9 @@ export function checkActionRejection(
   if (action.type === 'move') {
     const edge = scenario.edges.find(candidate => candidate.id === action.edgeId)
     if (agent.blockedEdges.includes(action.edgeId)) return 'movement-blocked'
-    return !edge || (edge.from !== agent.nodeId && edge.to !== agent.nodeId) ? 'unreachable-edge' : null
+    if (!edge || (edge.from !== agent.nodeId && edge.to !== agent.nodeId)) return 'unreachable-edge'
+    const moveCost = Math.ceil(edge.travelTicks * ARENA_RULES.moveCostPerTick)
+    return agent.energy < moveCost ? 'insufficient-energy' : null
   }
   if (action.type === 'collect') {
     const resource = state.resources.find(candidate => candidate.id === action.resourceId)

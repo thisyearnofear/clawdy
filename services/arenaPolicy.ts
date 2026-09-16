@@ -78,6 +78,12 @@ export function collectorPolicy(observation: ArenaObservation, strategy: Collect
       const aStale = 'stale' in a.resource ? (a.resource as { stale: boolean }).stale : false
       const bStale = 'stale' in b.resource ? (b.resource as { stale: boolean }).stale : false
       if (aStale !== bStale) return aStale ? 1 : -1
+      // Greedy strategy: prefer high value-per-cost ratio (creates resource contention)
+      if (strategy === 'greedy') {
+        const aScore = a.resource.value / Math.max(1, a.route.cost)
+        const bScore = b.resource.value / Math.max(1, b.route.cost)
+        if (bScore !== aScore) return bScore - aScore
+      }
       return a.route.cost - b.route.cost || (a.resource.id < b.resource.id ? -1 : a.resource.id > b.resource.id ? 1 : 0)
     })
   const route = targets[0]?.route

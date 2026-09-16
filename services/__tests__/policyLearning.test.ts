@@ -91,10 +91,10 @@ function testScenario(): ArenaScenario {
 }
 
 describe('Policy Model and Feature Encoding', () => {
-  it('encodes an observation into a normalized 24-element float vector', () => {
+  it('encodes an observation into a normalized 32-element float vector', () => {
     const obs = mockObservation()
     const features = encodeObservation(obs)
-    expect(features).toHaveLength(24)
+    expect(features).toHaveLength(32)
     for (let i = 0; i < features.length; i++) {
       expect(Number.isFinite(features[i])).toBe(true)
     }
