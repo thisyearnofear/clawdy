@@ -9,12 +9,21 @@ This directory currently contains:
 - `arena.spz`: the existing Gaussian splat environment.
 - `collider.glb`: the existing collider mesh export.
 - `world.json`: generation metadata, not a complete Season 0 scenario or rules manifest.
+- `IMMERSIVE_REBUILD.md`: status for the dual-route regenerate + mesh-first readability plan.
 
-The application has a Spark loader, a Rapier collider loader, and `services/marbleWorld.ts` configuration code. Their presence does not establish that loading, alignment, navigation, or the current scene is playable.
+Large visual exports (`terrain.glb`, `terrain-vertex.glb`, `candidates/`) are gitignored; download or rebuild locally when needed.
 
 ## Existing Generation Script
 
 The root script is `scripts/marble-generate-world.mjs`, exposed through `npm run marble:generate`. It requests a World Labs generation, polls for completion, downloads an SPZ and a collider when supplied, and writes metadata.
+
+For the dual-route **readable arena** rebuild (candidates first, then promote), use:
+
+```bash
+npm run marble:rebuild
+```
+
+See [IMMERSIVE_REBUILD.md](./IMMERSIVE_REBUILD.md). Generation spends API credits.
 
 Important operating details verified from the script:
 

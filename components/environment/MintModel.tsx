@@ -13,6 +13,7 @@ dracoLoader.setDecoderPath('https://cdn.mint.gg/runtime/draco/gltf/three-0.184.0
 type MintModelProps = {
   url: string
   transform?: MintAssetTransform
+  tint?: string
 }
 
 function applyTransform(scene: THREE.Group, transform: MintAssetTransform) {
@@ -21,16 +22,29 @@ function applyTransform(scene: THREE.Group, transform: MintAssetTransform) {
   scene.scale.set(...transform.scale)
 }
 
-export function MintModel({ url, transform }: MintModelProps) {
+export function MintModel({ url, transform, tint }: MintModelProps) {
   const gltf = useLoader(GLTFLoader, url, (loader: GLTFLoader) => {
     loader.setDRACOLoader(dracoLoader)
   })
   const scene = useMemo(() => {
-    const cloned = gltf.scene.clone()
-    if (transform) {
-      applyTransform(cloned, transform)
+    const cloned = gltf.scene.clone(true)
+    if (transform) applyTransform(cloned, transform)
+    if (tint) {
+      const tintColor = new THREE.Color(tint)
+      cloned.traverse((obj) => {
+        if (!(obj instanceof THREE.Mesh)) return
+        const source = Array.isArray(obj.material) ? obj.material : [obj.material]
+        const next = source.map((material) => {
+          const clonedMaterial = material.clone()
+          if ('color' in clonedMaterial && clonedMaterial.color instanceof THREE.Color) {
+            clonedMaterial.color.lerp(tintColor, 0.55)
+          }
+          return clonedMaterial
+        })
+        obj.material = next.length === 1 ? next[0] : next
+      })
     }
     return cloned
-  }, [gltf, transform])
+  }, [gltf, tint, transform])
   return <primitive object={scene} />
 }

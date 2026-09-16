@@ -149,6 +149,14 @@ export class ArenaSession {
     this.#publish({ scored })
   }
 
+  setCourse(course: ArenaCourse) {
+    this.#assertActive()
+    if (this.#view.phase !== 'ready') throw new Error('Cannot change the course after the match has started')
+    this.#course = structuredClone(course)
+    this.#runner = this.#createRunner(this.#policies, this.#checkpoint)
+    this.#publish(this.#initialView())
+  }
+
   get scored() {
     return this.#scored
   }
@@ -265,7 +273,6 @@ export class ArenaSession {
     this.#returnPhase = 'paused'
     this.#matchId = makeMatchId()
     this.#ended = false
-    this.#scored = false
     this.#publish(this.#initialView())
   }
 

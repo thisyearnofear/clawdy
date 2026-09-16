@@ -131,4 +131,35 @@ describe('application episode session', () => {
     expect(session.reviewObservation('champion')).toBeNull()
     session.dispose()
   })
+
+  it('swaps the course while ready and keeps scored mode across reset', () => {
+    const { session } = setup()
+    session.setScored(true)
+    session.start()
+    session.advanceMicroseconds(250000)
+    session.reset()
+    expect(session.getSnapshot()).toMatchObject({ phase: 'ready', scored: true, replayLength: 0 })
+    expect(() => session.selectPolicy('champion', 'greedy')).toThrow('scored match')
+    session.setScored(false)
+    const nextCourse: ArenaCourse = {
+      config: { enabled: true, configured: true, id: 'fixture', name: 'Fixture', splat: null, collider: null, hqMesh: null, bounds: [5, 5, 5], spawnBounds: [5, 5, 5], spawnHeight: 1 },
+      center: [0, 0, 0], floodZones: [],
+      scenario: {
+        id: 'cloudbank-compete-01', worldVersion: 'fixture-v1', split: 'evaluation', seed: 2, durationTicks: 20,
+        nodes: [{ id: 'a', position: [0, 0, 0] }, { id: 'b', position: [1, 0, 0] }, { id: 'c', position: [0, 0, 1] }],
+        edges: [
+          { id: 'road', from: 'a', to: 'b', travelTicks: 5, floodable: false },
+          { id: 'road2', from: 'a', to: 'c', travelTicks: 5, floodable: false },
+        ],
+        entrants: [{ id: 'champion', baseNode: 'a', policyVersion: 'test' }, { id: 'rival', baseNode: 'b', policyVersion: 'test' }],
+        resources: [{ id: 'core', nodeId: 'c', value: 2 }], floods: [{ startTick: 2, endTick: 8 }],
+      },
+    }
+    session.setCourse(nextCourse)
+    expect(session.getSnapshot().episode.resources).toHaveLength(1)
+    expect(session.getSnapshot().episode.resources[0]?.nodeId).toBe('c')
+    session.start()
+    expect(() => session.setCourse(nextCourse)).toThrow('after the match')
+    session.dispose()
+  })
 })

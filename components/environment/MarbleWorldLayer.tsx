@@ -21,11 +21,12 @@ let sparkExtended = false
 interface MarbleWorldLayerProps {
   config: MarbleWorldConfig
   visible?: boolean
+  lite?: boolean
   onLoad?: () => void
   onError?: (error: Error) => void
 }
 
-export function MarbleWorldLayer({ config, visible = true, onLoad, onError }: MarbleWorldLayerProps) {
+export function MarbleWorldLayer({ config, visible = true, lite = false, onLoad, onError }: MarbleWorldLayerProps) {
   const { gl, scene } = useThree()
   const sparkRef = useRef<THREE.Object3D | null>(null)
   const splatRef = useRef<THREE.Object3D | null>(null)
@@ -64,8 +65,8 @@ export function MarbleWorldLayer({ config, visible = true, onLoad, onError }: Ma
         // Create SparkRenderer
         const spark = new Spark.SparkRenderer({
           renderer: gl,
-          sortRadial: true,
-          lodSplatScale: 1.0,
+          sortRadial: !lite,
+          lodSplatScale: lite ? 0.7 : 1.0,
         })
         scene.add(spark as unknown as THREE.Object3D)
         sparkRef.current = spark as unknown as THREE.Object3D
@@ -113,7 +114,7 @@ export function MarbleWorldLayer({ config, visible = true, onLoad, onError }: Ma
       sparkRef.current = null
       splatRef.current = null
     }
-  }, [gl, scene, splatFormat, splatUrl])
+  }, [gl, lite, scene, splatFormat, splatUrl])
 
   // Toggle visibility
   useEffect(() => {

@@ -65,9 +65,11 @@ The [canonical plan](HACKATHON.md) defines the accepted direction. The following
 - [x] The [release guide](DEPLOY.md), [README](../README.md), and [submission draft](SUBMISSION.md) have been updated to match current code and verified limitations.
 
 ## Demo and Submission
+- [x] Practice / Match modes and scored coaching lock are reachable in the web UI.
 - [ ] The full [two-minute demo](DEMO_SCRIPT.md) works through one reliable interaction path in a browser.
 - [ ] A real fallback recording and its checkpoint/training evidence are saved.
 - [ ] Prepared checkpoints, recorded training, and replayed matches are explicitly labeled.
 - [ ] Live app URL, submitted commit, starter artifact, evaluation evidence, and demo link are filled in.
 - [x] Organizer approval for repository reuse is reflected in the pre-existing/new-work disclosure.
-- [ ] Confirm submission channel and deadline with organizers; the supplied brief says September 5, 2026, 6:00 PM Pacific.
+- [ ] Confirm submission channel and deadline with organizers (see [TRIPOTHON.md](TRIPOTHON.md) for the active opportunity window).
+- [ ] World Labs dual-route regenerate (`npm run marble:rebuild`) after API credits are available.

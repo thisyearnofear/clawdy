@@ -160,9 +160,8 @@ async function runBuilderTrainer() {
   console.log()
   console.log('To use this trained champion in the live 3D arena:')
   console.log('  1. Open http://localhost:3000 in your browser')
-  console.log('  2. Scroll to the "Coach & Train Studio" section')
-  console.log('  3. Click "Import JSON" and select "starter/champion-checkpoint.json"')
-  console.log('  4. Watch your custom trained champion compete autonomously!')
+  console.log('  2. Click Coach, then Import JSON, and select starter/champion-checkpoint.json')
+  console.log('  3. Press Play, then switch to Match to watch it compete with coaching off')
   console.log('='.repeat(70))
 }
 

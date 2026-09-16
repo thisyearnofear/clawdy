@@ -8,7 +8,7 @@ import { ArenaPhysics, initializeArenaPhysics } from '../arenaPhysics'
 import { ArenaEpisode } from '../arenaEpisode'
 import { ArenaRunner } from '../arenaPolicy'
 import { replayArenaEpisode } from '../arenaReplay'
-import { ARENA_WORLD, buildArenaCourse, loadArenaCourse } from '../arenaCourse'
+import { ARENA_WORLD, applyCourseMode, buildArenaCourse, loadArenaCourse } from '../arenaCourse'
 
 let bytes: Uint8Array<ArrayBuffer>
 let collider: { vertices: Float32Array; indices: Uint32Array }
@@ -107,5 +107,24 @@ describe('versioned Marble course', () => {
     const abort = new AbortController()
     abort.abort()
     await expect(loadArenaCourse(abort.signal)).rejects.toThrow()
+  })
+
+  it('keeps the grounded world and only changes floods and cores in compete mode', () => {
+    const physics = new ArenaPhysics(collider)
+    try {
+      const practice = buildArenaCourse(physics)
+      const compete = applyCourseMode(practice, 'compete')
+      const restored = applyCourseMode(compete, 'practice')
+      expect(compete.scenario.id).toBe('cloudbank-compete-01')
+      expect(compete.scenario.split).toBe('evaluation')
+      expect(compete.scenario.nodes).toEqual(practice.scenario.nodes)
+      expect(compete.scenario.edges.map(edge => edge.id)).toEqual(practice.scenario.edges.map(edge => edge.id))
+      expect(compete.scenario.resources.map(resource => resource.nodeId)).not.toEqual(practice.scenario.resources.map(resource => resource.nodeId))
+      expect(restored.scenario.id).toBe('cloudbank-practice-01')
+      expect(restored.scenario.split).toBe('practice')
+      expect(restored.scenario.floods).toEqual(practice.scenario.floods)
+    } finally {
+      physics.dispose()
+    }
   })
 })

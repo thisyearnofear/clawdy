@@ -11,7 +11,7 @@ export const ARENA_WORLD = Object.freeze({
   name: 'Cloudbank / Course 01',
   colliderUrl: '/marble/collider.glb',
   splatUrl: '/marble/arena.spz',
-  hqMeshUrl: 'https://cdn.marble.worldlabs.ai/operations/8c463adc-9ca3-4a75-817e-bc5d23590b23/9145b0bd.glb',
+  hqMeshUrl: '/marble/terrain.glb',
   colliderSha256: '25f82036f660641c1d8098e832455c38aa9531161225864079454fbd314b7747',
 })
 
@@ -149,6 +149,63 @@ export function buildArenaCourse(physics: ArenaPhysics): ArenaCourse {
       ],
     },
   }
+}
+
+export type CoursePlayMode = 'practice' | 'compete'
+
+/**
+ * Same grounded world, different match. Compete keeps the collider and routes
+ * but shifts floods and cores so the player cannot coach on the scored layout.
+ */
+export function applyCourseMode(base: ArenaCourse, mode: CoursePlayMode): ArenaCourse {
+  const next = structuredClone(base)
+  if (mode === 'practice') {
+    next.scenario.id = 'cloudbank-practice-01'
+    next.scenario.split = 'practice'
+    next.scenario.seed = 20260905
+    next.scenario.floods = [
+      { startTick: 100, endTick: 400 },
+      { startTick: 600, endTick: 900 },
+      { startTick: 1000, endTick: 1200 },
+    ]
+    next.scenario.resources = [
+      { id: 'core-1', nodeId: 'valley-center', value: 1 },
+      { id: 'core-2', nodeId: 'valley-center', value: 1 },
+      { id: 'core-3', nodeId: 'valley-center', value: 1 },
+      { id: 'core-4', nodeId: 'valley-center', value: 1 },
+      { id: 'core-5', nodeId: 'ridge-center', value: 2 },
+      { id: 'core-6', nodeId: 'ridge-center', value: 2 },
+      { id: 'core-7', nodeId: 'cross-n', value: 1 },
+      { id: 'core-8', nodeId: 'cross-n', value: 1 },
+      { id: 'core-9', nodeId: 'cross-s', value: 1 },
+      { id: 'core-10', nodeId: 'cross-s', value: 1 },
+      { id: 'core-11', nodeId: 'ridge-n1', value: 1 },
+      { id: 'core-12', nodeId: 'ridge-s1', value: 1 },
+    ]
+    return next
+  }
+  next.scenario.id = 'cloudbank-compete-01'
+  next.scenario.split = 'evaluation'
+  next.scenario.seed = 20260916
+  next.scenario.floods = [
+    { startTick: 80, endTick: 520 },
+    { startTick: 740, endTick: 1180 },
+  ]
+  next.scenario.resources = [
+    { id: 'core-1', nodeId: 'ridge-north', value: 2 },
+    { id: 'core-2', nodeId: 'ridge-south', value: 2 },
+    { id: 'core-3', nodeId: 'ridge-n1', value: 1 },
+    { id: 'core-4', nodeId: 'ridge-s1', value: 1 },
+    { id: 'core-5', nodeId: 'cross-n', value: 1 },
+    { id: 'core-6', nodeId: 'cross-s', value: 1 },
+    { id: 'core-7', nodeId: 'valley-center', value: 1 },
+    { id: 'core-8', nodeId: 'valley-center', value: 1 },
+    { id: 'core-9', nodeId: 'cross-c', value: 1 },
+    { id: 'core-10', nodeId: 'valley-n1', value: 1 },
+    { id: 'core-11', nodeId: 'valley-s1', value: 1 },
+    { id: 'core-12', nodeId: 'ridge-center', value: 2 },
+  ]
+  return next
 }
 
 export async function loadArenaCourse(signal?: AbortSignal) {

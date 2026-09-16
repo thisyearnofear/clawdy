@@ -35,11 +35,11 @@ This will:
 
 Once you have generated `starter/champion-checkpoint.json`:
 1. Start the web application: `npm run dev` and open [http://localhost:3000](http://localhost:3000).
-2. Scroll to the **Coach & Train Studio** at the bottom of the arena.
+2. Click **Coach**, then **Import JSON**.
 3. Click the **Import JSON** button in the Checkpoint controls.
 4. Select `starter/champion-checkpoint.json`.
 5. The arena will load your checkpoint, validate its layer dimensions and finite weights, and activate it for your Champion rover.
-6. Click **Start autonomous run** to watch your trained policy navigate the physical world with 3D Gaussian splatting and Rapier physics.
+6. Press **Play**. Switch to **Match** to watch it compete with coaching off.
 
 ---
 

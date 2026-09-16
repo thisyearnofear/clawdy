@@ -24,6 +24,11 @@
 # generated training artifacts
 /starter/champion-checkpoint.json
 
+# large Marble visual exports (download via scripts / CDN)
+/public/marble/terrain.glb
+/public/marble/terrain-vertex.glb
+/public/marble/candidates/
+
 # misc
 .DS_Store
 *.pem

@@ -6,18 +6,18 @@
 
 Clawdy lets you coach and train an autonomous competitor in a generated world, then watch it use what it learned when you can no longer intervene. The arena throws variables your bot was never trained on — and you find out in real time whether your coaching held.
 
-Track: **Gaming & Interactive Worlds**. The working experience comes before the implementation explanation.
+Track: present as a **playable training league** first. Event-specific framing lives in [TRIPOTHON.md](TRIPOTHON.md) / [HACKATHON.md](HACKATHON.md).
 
 ## Presentation Sequence
 
 | Time | Show | Say |
 | --- | --- | --- |
-| 0:00–0:15 | A baseline rover navigates the arena — multiple routes, multiple resources, flooding visible. Its checkpoint and target are shown. | "This is my agent, not my avatar. I develop its policy, then it competes without me. The arena has variables I can't control." |
-| 0:15–0:35 | Select its recorded route-choice mistake in practice or replay. Enter a coaching correction. | "When the valley floods and I have energy, drain it and take the shortcut — don't waste time on the ridge." |
-| 0:35–0:55 | Show the situation, original action, preferred legal action, and examples proposed for approval. Approve and start the real training flow, or show a clearly labeled recording of it. | "This correction becomes training data. A saved prompt would not be enough." |
-| 0:55–1:20 | Select the resulting checkpoint. Start or replay a held-out match with different resource placement, flood timing, and rival behavior — visibly labeled as held out. No coaching controls are active. | "These weights are frozen. This scenario is outside the training set. I cannot help it. Let's see what it learned." |
-| 1:20–1:40 | Show the actual route decision and outcome — did it adapt to the unseen flood pattern? Did it pick a different collection sequence? Then the parent/new-version comparison with run counts and failures. | Describe the measured result. If it regressed, say so; if it adapted, show what changed. |
-| 1:40–2:00 | Show the checkpoint-to-match record, sponsor contributions actually used, and reset control. | "The world is the test. Developing the competitor is the game." |
+| 0:00–0:15 | Press **Play**. Overview → follow champion. Amber valley paths and teal ridge ribbons visible; flood hits the valley. | "This is my agent, not my avatar. I develop its policy, then it competes without me." |
+| 0:15–0:35 | Pause / finish → **Replay**. Scrub a bad route choice. | "When the valley floods, take the ridge — don't drown the short path." |
+| 0:35–0:55 | **Coach** panel: propose/approve → **Train**. Or show a labeled prepared checkpoint. | "This correction becomes training data. A saved prompt would not be enough." |
+| 0:55–1:20 | Reset → **Match**. Coaching stays off; different flood/core layout. | "Weights are frozen. This layout is outside practice. I cannot help it." |
+| 1:20–1:40 | Show the outcome and any before/after banked comparison. | Describe the measured result honestly. |
+| 1:40–2:00 | World Labs + Mint credit lines that are actually true; reset. | "The world is the test. Developing the competitor is the game." |
 
 The schedule is presentation pacing, not an estimate of training latency. Benchmark the real workflow before deciding which parts run live.
 

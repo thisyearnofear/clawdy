@@ -2,119 +2,53 @@
 
 **Coach an agent. Train its policy. Unleash it in the arena. Watch it adapt — or fail.**
 
-Clawdy is an agent-training league inside a generated physical world. The arena throws variables your bot was never trained on — flooding, resource scarcity, rival adaptation, terrain costs. You coach your bot through practice, approve training examples, and run real backpropagation to produce a versioned neural policy checkpoint. Then you select a checkpoint, enter a held-out scenario, and the coaching controls go dark. The bot is on its own.
+Clawdy is an agent-training league inside a generated physical world. You coach a rover through practice, approve training examples, run real backpropagation to produce a versioned policy checkpoint, and then unleash that checkpoint in a held-out scenario where the coaching controls go dark. The arena throws variables your bot was never trained on — flooding, resource scarcity, rival adaptation, terrain costs — and you find out whether your coaching held.
 
 > The payoff is watching your agent use something you taught it when you are no longer allowed to help — and finding out whether your coaching held when the arena throws something it has never seen.
 
-**Direction locked September 5, 2026:** this is the sole product direction for the repository and the Spatial Intelligence + Generative 3D Hackathon, in the **Gaming & Interactive Worlds** track.
+## The Loop
 
----
+**Play → Replay → Coach → Train → Match.**
 
-## The Season 0 Loop
-
-**Watch → Coach → Approve Examples → Train Checkpoint → Compete → Replay → Improve**
-
-1. **Watch:** Observe your champion rover compete for energy cores on **Cloudbank / Course 01** against an autonomous house rival.
-2. **Coach:**
-   - Use natural language guidance (e.g. *"Climb the ridge in floods to avoid submerged routes"*) or one-click tactical rules.
-   - Scrub any frame in the replay viewer and click **"Coach this frame (Tick T)"** to correct specific mistakes in context.
-3. **Approve:** Review proposed state/action corrections in the queue; inspect rationale, state vectors, and preferred actions before approving.
-4. **Train Checkpoint:** Run supervised backpropagation with momentum SGD directly in the browser or via CLI. Weights update into a new checkpoint with a deterministic weight digest and parent lineage.
-5. **Compete:** Activate your newly trained checkpoint and start an autonomous hands-off run under frozen competitive rules.
-6. **Replay & Export:** Inspect physical consequences in replay scrub, export run recordings, or export your trained checkpoint as JSON.
-
----
+1. Press **Play** and watch two autonomous rovers race for cores (amber valley paths flood; teal ridge stays dry).
+2. Open **Replay**, scrub a mistake, and queue a fix.
+3. Open **Coach**, approve examples, and train a real checkpoint.
+4. Switch to **Match** for a scored held-out layout with coaching locked.
 
 ## Two Entry Paths, One Entrant Format
 
-Clawdy supports two symmetrical ways to build and train competitors:
+- **Player path** — web app. Practice/Match modes, replay scrub, Coach panel, browser `localStorage` checkpoints, JSON import/export.
+- **Builder path** — `npm run starter:train`. Headless train/eval, export `starter/champion-checkpoint.json`, import in the web app.
 
-1. **Player Path (Interactive Web Application):**
-   - Open the web application at [http://localhost:3000](http://localhost:3000).
-   - Scrub runs, coach frames, approve examples in the studio, and train checkpoints with instant feedback.
-   - Checkpoints persist automatically in browser `localStorage` and can be exported as `.json` or imported at any time.
+Both paths produce the same checkpoint artifact and run under the same match rules.
 
-2. **Builder Path (Standalone Starter Kit):**
-   - Run the headless trainer:
-     ```bash
-     npm run starter:train
-     ```
-   - Executes offline roll-outs, extracts state/action training tuples, trains an MLP checkpoint, evaluates against baselines, and generates `starter/champion-checkpoint.json`.
-   - Click **Import JSON** in the web app to upload and run your builder checkpoint in the 3D physics arena.
+## Quick Start
 
-Both entry paths produce identical `PolicyCheckpoint` artifacts (`clawdy-checkpoint-v1`) adhering to the same 24-dimensional observation vector and 8-action discrete output space.
-
----
-
-## Physical Challenge & Simulation Architecture
-
-- **Generated World:** World Labs Gaussian Splat (`public/marble/arena.spz`), HQ textured mesh (~600k triangles, loaded from World Labs CDN), and collision mesh (`public/marble/collider.glb`) verified with pinned SHA-256 digest (`25f82036...`).
-- **Physical Dynamics:** Rapier 3D 0.19.2 kinematic rigid body controller with terrain-following pitch/roll, wall collision via ray casts, grounding, and recovery mechanics.
-- **Fixed-Step Clock:** Fixed 50ms (20Hz) simulation steps decoupled from display frame rate. Decisions are locked on a 4-tick cadence.
-- **Strategic Tradeoff:** A fast low-pass valley route and an elevated ridge route. When floods hit, the low route suffers a 4× travel penalty. Rovers can spend finite energy to drain water, opening the low route for both rovers.
-
-```text
-Coaching UI or Builder CLI
-  → Reviewed state/action examples (ArenaTrainingExample)
-  → Supervised Momentum SGD Backpropagation
-  → Validated checkpoint + deterministic weight digest
-  → Frozen policy runner (createLearnedPolicy)
-  → Bounded 4-tick decisions
-  → Shared Rapier kinematic controller & course topology
-  → Results & replay records
-  → 3D Splat World & Frame-level Review UI
-```
-
----
-
-## Development & Verification
-
-### Prerequisites
-- Node.js 20+ or 24+
-- npm 10+
-
-### Setup & Dev Server
 ```bash
 npm ci
-npm run dev
-```
-Open [http://localhost:3000](http://localhost:3000).
-
-### Builder Starter Training
-```bash
-npm run starter:train
+npm run dev              # web app at http://localhost:3000
+npm test                 # unit/integration suites
+npm run build            # static Next.js build
+npm run starter:train    # headless trainer, exports a checkpoint
 ```
 
-### Full Verification Suite
-```bash
-# Unit & integration tests (80 tests across 9 suites)
-npm test
+Requires Node.js 20+ and npm 10+.
 
-# Type checking
-npx tsc --noEmit
+**World visuals:** the playable course uses the World Labs splat plus strong path/landmark overlays. Regenerating a clearer dual-route world (when API credits allow) is documented in [public/marble/IMMERSIVE_REBUILD.md](public/marble/IMMERSIVE_REBUILD.md) (`npm run marble:rebuild`).
 
-# Strict ESLint checks
-npm run lint
+## Documentation
 
-# Production Next.js static build
-npm run build
+Product, contract, demo, and submission materials live in `/docs`:
 
-# Builder starter smoke test
-npm run starter:train
-```
+- [Product and implementation plan](docs/HACKATHON.md) — direction, scope, architecture, status.
+- [Implementation contract](AGENT.md) — module boundaries and verification rules.
+- [Current opportunity plan](docs/TRIPOTHON.md) — the active external opportunity, timeline, and risk register.
+- [Submission materials](docs/SUBMISSION.md) and [release checklist](docs/SUBMISSION_CHECKLIST.md).
+- [Two-minute demo script](docs/DEMO_SCRIPT.md).
+- [Immersive world rebuild notes](public/marble/IMMERSIVE_REBUILD.md).
 
-### Current Status and Limitations
-- The physical episode, MLP training pipeline, checkpoint I/O, and Coach & Train UI are wired and pass code-level tests.
-- The default builder starter (`npm run starter:train`) now trains on three practice scenarios and reports `Baseline 0 → Trained 12` on practice and `0 → 12` across three held-out scenarios (4/4 on each).
-- Browser rendering, controls, and responsive layout have been verified with agent-browser on desktop and mobile viewports; the splat view loads and the simulation advances.
+Additional references: [deploy guide](docs/DEPLOY.md), [starter kit notes](docs/MARBLE_STARTER_KIT.md), [Mint integration](docs/MINT_INTEGRATION.md), [inspiration](docs/INSPIRATION.md).
 
----
+## Credits
 
-## Technology Attribution
-
-- **World Labs:** Gaussian splat scene (`arena.spz`), HQ textured mesh (~600k triangles from CDN), and 3D collider (`collider.glb`) providing the physical environment for Course 01.
-- **Mint:** Generated the "Emerald Canopy Rover" GLB model via Mint MCP, loaded as the champion rover visual.
-- **Rapier Physics:** Deterministic 3D kinematic rigid body controller and collision queries (@dimforge/rapier3d-compat 0.19.2).
-- **React Three Fiber & Three.js:** 3D scene composition and rendering pipeline.
-- **Next.js & React 19:** Application shell, state management, and static build export.
-- **threejs-game-skills** (`https://github.com/majidmanzarpour/threejs-game-skills`): A standalone game-design/QA skill pack (upstream of `mint-threejs-skills`) noted as a future reference for camera/HUD/audio/Playwright polish. It is not installed yet; focus remains on the core training loop.
+Assets and tooling used by this project — generated worlds, vehicles, physics, and rendering — are credited in [docs/HACKATHON.md](docs/HACKATHON.md).
