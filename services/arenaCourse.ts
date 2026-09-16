@@ -11,7 +11,7 @@ export const ARENA_WORLD = Object.freeze({
   name: 'Cloudbank / Course 01',
   colliderUrl: '/marble/collider.glb',
   splatUrl: '/marble/arena.spz',
-  hqMeshUrl: '/marble/arena-hq.glb',
+  hqMeshUrl: 'https://cdn.marble.worldlabs.ai/operations/8c463adc-9ca3-4a75-817e-bc5d23590b23/9145b0bd.glb',
   colliderSha256: '25f82036f660641c1d8098e832455c38aa9531161225864079454fbd314b7747',
 })
 
