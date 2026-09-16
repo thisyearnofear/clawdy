@@ -19,6 +19,7 @@ type WorldProps = {
   course: ArenaCourse
   session: ArenaSession
   follow: ArenaCamera
+  coachSuggestion?: { edgeId: string } | null
   onReady: () => void
   onError: (error: Error) => void
 }
@@ -67,7 +68,11 @@ function HqTerrainMesh({
   const [scene, setScene] = useState<THREE.Group | null>(null)
   const { gl } = useThree()
 
+  // R3F idiom: enable clipping before materials with clipping planes are constructed.
+  // Mutating a WebGLRenderer property from a hook callback trips react-hooks/immutability;
+  // this is the documented escape hatch for renderer configuration.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/immutability
     gl.localClippingEnabled = true
   }, [gl])
 
@@ -161,6 +166,75 @@ function RoverGeometry({ color, wheelRefs }: { color: string; wheelRefs: React.R
   )
 }
 
+/**
+ * Distinct procedural geometry for the rival rover: a low, wide tracked cargo
+ * hauler. The silhouette is intentionally different from the champion's cab +
+ * 4-wheel layout so a side-by-side comparison reads as "two distinct vehicles"
+ * rather than "two tinted copies of the same GLB". Used whenever the rival
+ * registry entry is missing.
+ */
+function RivalRoverGeometry({ color, wheelRefs }: { color: string; wheelRefs: React.RefObject<THREE.Mesh[]> }) {
+  return (
+    <>
+      {/* Lower hull */}
+      <mesh position={[0, 0.16, 0]} castShadow>
+        <boxGeometry args={[0.4, 0.18, 0.5]} />
+        <meshStandardMaterial color="#38424d" roughness={0.55} metalness={0.45} />
+      </mesh>
+      {/* Side track housings */}
+      {[-1, 1].map(side => (
+        <mesh key={side} position={[side * 0.27, 0.13, 0]} castShadow>
+          <boxGeometry args={[0.13, 0.18, 0.52]} />
+          <meshStandardMaterial color="#1c2128" roughness={0.75} metalness={0.2} />
+        </mesh>
+      ))}
+      {/* Cargo bay on top */}
+      <mesh position={[0, 0.36, 0.02]} castShadow>
+        <boxGeometry args={[0.36, 0.18, 0.38]} />
+        <meshStandardMaterial color={color} roughness={0.45} metalness={0.3} />
+      </mesh>
+      {/* Cab window at the front */}
+      <mesh position={[0, 0.34, 0.24]} castShadow>
+        <boxGeometry args={[0.28, 0.14, 0.05]} />
+        <meshStandardMaterial color="#6bc8ff" emissive="#1f5b8a" emissiveIntensity={0.4} roughness={0.2} metalness={0.6} />
+      </mesh>
+      {/* Drive wheels: 4 thick cylinders along the side tracks, animated as wheels */}
+      {[-1, 1].flatMap((x, xi) => [-1, 1].map((z, zi) => {
+        const index = xi * 2 + zi
+        return (
+          <mesh
+            key={`${x}-${z}`}
+            ref={(mesh) => { if (mesh && wheelRefs.current) wheelRefs.current[index] = mesh }}
+            position={[x * 0.34, 0.13, z * 0.21]}
+            rotation={[0, 0, Math.PI / 2]}
+            castShadow
+          >
+            <cylinderGeometry args={[0.11, 0.11, 0.1, 12]} />
+            <meshStandardMaterial color="#0e1218" roughness={0.85} metalness={0.3} />
+          </mesh>
+        )
+      }))}
+      {/* Roof crate */}
+      <mesh position={[0, 0.5, 0]} castShadow>
+        <boxGeometry args={[0.2, 0.08, 0.2]} />
+        <meshStandardMaterial color="#7b5526" roughness={0.8} />
+      </mesh>
+      {/* Twin amber warning lights */}
+      {[-1, 1].map(side => (
+        <mesh key={`light-${side}`} position={[side * 0.1, 0.6, 0.16]}>
+          <sphereGeometry args={[0.035, 10, 10]} />
+          <meshBasicMaterial color="#ffb14d" />
+        </mesh>
+      ))}
+      {/* Ground ring */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.025, 0]}>
+        <ringGeometry args={[0.36, 0.42, 32]} />
+        <meshBasicMaterial color={color} transparent opacity={0.55} depthWrite={false} />
+      </mesh>
+    </>
+  )
+}
+
 function RoverShadow({ session, id }: { session: ArenaSession; id: string }) {
   const meshRef = useRef<THREE.Mesh>(null)
   useFrame(() => {
@@ -221,17 +295,18 @@ function Rover({ session, id, color }: { session: ArenaSession; id: string; colo
   const artifact = asset ? getMintModelArtifact(asset) : undefined
   const modelUrl = artifact ? getMintModelUrl(artifact) : undefined
   const transform = asset ? getMintModelTransform(asset) : undefined
+  const ProceduralGeometry = id === 'rival' ? RivalRoverGeometry : RoverGeometry
 
   return (
     <>
       <RoverShadow session={session} id={id} />
       <group ref={group}>
         {modelUrl ? (
-          <Suspense fallback={<RoverGeometry color={color} wheelRefs={wheelRefs} />}>
+          <Suspense fallback={<ProceduralGeometry color={color} wheelRefs={wheelRefs} />}>
             <MintModel url={modelUrl} transform={transform} tint={id === 'rival' ? color : undefined} />
           </Suspense>
         ) : (
-          <RoverGeometry color={color} wheelRefs={wheelRefs} />
+          <ProceduralGeometry color={color} wheelRefs={wheelRefs} />
         )}
       </group>
     </>
@@ -240,19 +315,30 @@ function Rover({ session, id, color }: { session: ArenaSession; id: string; colo
 
 function Resource({ session, id, position }: { session: ArenaSession; id: string; position: ArenaPosition }) {
   const group = useRef<THREE.Group>(null)
+  const outerRingRef = useRef<THREE.Mesh>(null)
+  const innerRingRef = useRef<THREE.Mesh>(null)
   useFrame((_, delta) => {
     if (!group.current) return
     group.current.visible = session.getSnapshot().episode.resources.some(resource => resource.id === id && resource.collectedBy === null)
-    group.current.rotation.y += delta * 0.85
+    if (outerRingRef.current) outerRingRef.current.rotation.y += delta * 0.85
+    if (innerRingRef.current) innerRingRef.current.rotation.x += delta * 0.6
     group.current.position.y = position[1] + Math.sin(performance.now() * 0.003 + position[0]) * 0.04
   })
   return (
     <group ref={group} position={position}>
       <mesh castShadow>
         <octahedronGeometry args={[0.14]} />
+        <meshStandardMaterial color="#ffe08a" emissive="#ff9b3a" emissiveIntensity={0.55} metalness={0.45} roughness={0.2} />
+      </mesh>
+      <mesh ref={outerRingRef} castShadow>
+        <torusGeometry args={[0.22, 0.018, 12, 32]} />
+        <meshStandardMaterial color="#ffb14d" emissive="#ff8c1a" emissiveIntensity={0.65} metalness={0.4} roughness={0.25} />
+      </mesh>
+      <mesh ref={innerRingRef} castShadow>
+        <torusGeometry args={[0.18, 0.012, 10, 24]} />
         <meshStandardMaterial color="#ffe08a" emissive="#c98520" emissiveIntensity={0.55} metalness={0.45} roughness={0.2} />
       </mesh>
-      <pointLight color="#ffcf6b" intensity={0.55} distance={2.4} decay={2} />
+      <pointLight color="#ffcf6b" intensity={0.85} distance={2.6} decay={2} />
     </group>
   )
 }
@@ -279,6 +365,39 @@ function PathRibbon({ points, color, width = 0.22 }: { points: ArenaPosition[]; 
         depthWrite={false}
       />
     </mesh>
+  )
+}
+
+/**
+ * Coach-time ghost ribbon. A translucent emissive stripe along the edge the
+ * safe-baseline policy would have taken at the coach-selected frame. The
+ * visual lives in the same Spark-rendered scene; the "tool synergy" claim
+ * with World Labs / Spark is documented in the build log post rather than
+ * encoded as the runtime class of the overlay.
+ */
+function CoachGhostRibbon({ points, color }: { points: ArenaPosition[]; color: string }) {
+  const geometry = useMemo(() => {
+    if (points.length < 2) return null
+    const curve = new THREE.CatmullRomCurve3(points.map(point => new THREE.Vector3(point[0], point[1] + 0.06, point[2])))
+    return new THREE.TubeGeometry(curve, Math.max(8, points.length * 2), 0.14, 8, false)
+  }, [points])
+
+  useEffect(() => () => { geometry?.dispose() }, [geometry])
+  if (!geometry) return null
+  return (
+    <mesh geometry={geometry} renderOrder={3}>
+      <meshBasicMaterial color={color} transparent opacity={0.72} depthWrite={false} />
+    </mesh>
+  )
+}
+
+function CoachTrailLayer({ course, coachSuggestion }: { course: ArenaCourse; coachSuggestion?: { edgeId: string } | null }) {
+  const edge = coachSuggestion ? course.scenario.edges.find(candidate => candidate.id === coachSuggestion.edgeId) : undefined
+  const points = edge?.path
+  return (
+    <group visible={!!points}>
+      {points && <CoachGhostRibbon points={points} color="#ffd57a" />}
+    </group>
   )
 }
 
@@ -381,7 +500,7 @@ function ReadyOnce({ ready, onReady }: { ready: boolean; onReady: () => void }) 
   return null
 }
 
-function World({ course, session, follow, onReady, onError, lite }: WorldProps & { lite: boolean }) {
+function World({ course, session, follow, coachSuggestion, onReady, onError, lite }: WorldProps & { lite: boolean }) {
   // Cloud-era Marble HQ mesh is full of sky floaters. Keep splat as the scene,
   // optionally layer a clipped mesh underlay, and rely on path/landmark overlays.
   const [splatReady, setSplatReady] = useState(false)
@@ -448,6 +567,7 @@ function World({ course, session, follow, onReady, onError, lite }: WorldProps &
       ))}
 
       <CourseLandmarks course={course} />
+      <CoachTrailLayer course={course} coachSuggestion={coachSuggestion} />
 
       {course.scenario.entrants.map(entrant => {
         const position = course.scenario.nodes.find(node => node.id === entrant.baseNode)!.position
@@ -490,7 +610,7 @@ export default memo(function ArenaWorldView(props: WorldProps) {
       camera={{ position: [16, 12, 16], fov: 42, near: 0.05, far: 180 }}
       dpr={lite ? [1, 1] : [1, 1.5]}
       frameloop={lite ? 'never' : 'always'}
-      gl={{ antialias: false, alpha: false, powerPreference: lite ? 'low-power' : 'high-performance' }}
+      gl={{ antialias: false, alpha: false, powerPreference: lite ? 'low-power' : 'high-performance', preserveDrawingBuffer: true }}
       fallback={<p role="alert">This device could not create a WebGL view.</p>}
     >
       <World {...props} lite={lite} />

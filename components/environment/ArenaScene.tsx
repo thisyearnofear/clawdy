@@ -343,6 +343,10 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
     return { champObs, recorded, suggested }
   })()
 
+  const coachSuggestion = currentMistake && 'edgeId' in currentMistake.suggested
+    ? { edgeId: currentMistake.suggested.edgeId }
+    : null
+
   const handleAddMistake = () => {
     if (coachingLocked) {
       setTrainMessage('This is a scored match. Switch to Practice to coach and train.')
@@ -376,6 +380,31 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
     }
   }
 
+  const handleShareCard = () => {
+    if (typeof document === 'undefined') return
+    const canvas = document.querySelector('canvas')
+    if (!canvas) {
+      setTrainMessage('Could not find the world canvas to capture. Replay a few frames and try again.')
+      return
+    }
+    let dataUrl: string
+    try {
+      dataUrl = (canvas as HTMLCanvasElement).toDataURL('image/png')
+    } catch {
+      setTrainMessage('Browser blocked canvas read-back. Try again from a desktop session.')
+      return
+    }
+    const safeId = activeCourse.scenario.id.replace(/[^a-z0-9-]/gi, '-')
+    const filename = `clawdy-${safeId}-${view.episode.tick}.png`
+    const anchor = document.createElement('a')
+    anchor.href = dataUrl
+    anchor.download = filename
+    document.body.appendChild(anchor)
+    anchor.click()
+    document.body.removeChild(anchor)
+    setTrainMessage(`Saved share card: ${filename}`)
+  }
+
   const approvedCount = examples.filter(e => e.approved && !isEvaluationScenario(e.sourceEpisodeId)).length
 
   return (
@@ -396,7 +425,7 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
         <section className={styles.viewport} aria-label="Generated world and autonomous rovers">
           <div className={styles.canvas}>
             <ErrorBoundary onError={onError} fallback={<div className={styles.canvasError}><h2>The world view could not start.</h2><button onClick={onRetry}>Reload world</button></div>}>
-              <WorldView course={activeCourse} session={session} follow={follow} onReady={onReady} onError={onError} />
+              <WorldView course={activeCourse} session={session} follow={follow} coachSuggestion={coachSuggestion} onReady={onReady} onError={onError} />
             </ErrorBoundary>
           </div>
           <div className={styles.worldTopline}>
@@ -417,13 +446,22 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
               <h2>{view.episode.winner === 'champion' ? 'Your champion takes it.' : view.episode.winner === 'rival' ? 'The house rival wins.' : 'An even contest.'}</h2>
               <p>{coachingLocked ? 'This was a scored match. Coaching stays off — try Practice if you want to teach it.' : 'Watch the replay, then coach the moment it went wrong.'}</p>
               {!coachingLocked && (
-                <button
-                  type="button"
-                  className={styles.primaryButton}
-                  onClick={() => { session.review(); setStudioOpen(true) }}
-                >
-                  <Eye size={16} /> Watch replay
-                </button>
+                <div className={styles.replayButtons}>
+                  <button
+                    type="button"
+                    className={styles.primaryButton}
+                    onClick={() => { session.review(); setStudioOpen(true) }}
+                  >
+                    <Eye size={16} /> Watch replay
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.secondaryButton}
+                    onClick={handleShareCard}
+                  >
+                    <Download size={16} /> Share your world
+                  </button>
+                </div>
               )}
             </div>
           )}

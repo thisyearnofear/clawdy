@@ -18,22 +18,6 @@
         }
       },
       "transform": { "position": [0, 0, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] }
-    },
-    "rivalRover": {
-      "source": { "manifestVersion": 1, "kind": "mint-model", "assetType": "model", "assetId": "ks7dm6kvn4ypwnh93wg9tf5d8h8egvyw" },
-      "artifacts": {
-        "original_glb": {
-          "artifactId": "original_glb",
-          "role": "canonical_model",
-          "format": "glb",
-          "contentType": "model/gltf-binary",
-          "filename": "emerald-canopy-rover-8h8egvyw-original.glb",
-          "localPath": "public/assets/mint/champion-rover.glb",
-          "loaderHint": "gltf",
-          "byteSize": 1225020
-        }
-      },
-      "transform": { "position": [0, 0, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] }
     }
   }
 }

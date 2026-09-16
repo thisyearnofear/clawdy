@@ -11,8 +11,6 @@
 import { mkdir, writeFile, copyFile, readFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 import { dirname, resolve } from 'node:path'
-import { pathToFileURL } from 'node:url'
-
 const API_BASE_URL = 'https://api.worldlabs.ai/marble/v1'
 const WORLD_ID_EXISTING = process.env.MARBLE_REUSE_WORLD_ID || ''
 
