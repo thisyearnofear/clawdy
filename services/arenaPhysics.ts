@@ -3,16 +3,23 @@ import type { ArenaPosition } from './arenaEpisode'
 import type { SurfaceSample } from './worldSurface'
 
 export const ROVER_PHYSICS = Object.freeze({
-  version: 'rapier-kinematic-0.19.2.v1',
-  radius: 0.22,
-  offset: 0.015,
-  gravityPerStep: 0.08,
+  version: 'rapier-kinematic-terrain-0.19.2.v1',
+  // Chassis
+  chassisHalfExtents: { x: 0.28, y: 0.12, z: 0.42 },
+  // Motion
   maxSpeed: 2.4,
-  maxSlope: Math.PI / 4,
+  acceleration: 12.0,
+  turnRate: 4.0,
+  arrivalDistance: 0.05,
+  // Ground query
+  groundProbeOffset: 0.32,
+  canStandProbeOffset: 0.5,
+  groundFollowHeight: 0.32,
+  groundFollowRayDistance: 2.0,
 })
 
 export type ArenaMotionTarget = { id: string; position: ArenaPosition }
-export type ArenaMotionPose = ArenaMotionTarget & { grounded: boolean }
+export type ArenaMotionPose = ArenaMotionTarget & { grounded: boolean; rotation: [number, number, number, number] }
 export interface ArenaMotion {
   readonly version: string
   reset(agents: readonly ArenaMotionTarget[]): void
@@ -31,13 +38,18 @@ export async function initializeArenaPhysics() {
   await initialization
 }
 
+interface KinematicAgent {
+  body: RAPIER.RigidBody
+  yaw: number
+  speed: number
+}
+
 export class ArenaPhysics implements ArenaMotion {
   readonly version = ROVER_PHYSICS.version
   #vertices: Float32Array
   #indices: Uint32Array
   #world: RAPIER.World
-  #controller: RAPIER.KinematicCharacterController
-  #agents = new Map<string, { body: RAPIER.RigidBody; collider: RAPIER.Collider }>()
+  #agents = new Map<string, KinematicAgent>()
   #disposed = false
 
   constructor(data: { vertices: Float32Array; indices: Uint32Array }) {
@@ -48,7 +60,6 @@ export class ArenaPhysics implements ArenaMotion {
     this.#vertices = data.vertices.slice()
     this.#indices = data.indices.slice()
     this.#world = this.#createWorld()
-    this.#controller = this.#createController()
   }
 
   #createWorld() {
@@ -56,15 +67,6 @@ export class ArenaPhysics implements ArenaMotion {
     world.createCollider(RAPIER.ColliderDesc.trimesh(this.#vertices, this.#indices))
     world.step()
     return world
-  }
-
-  #createController() {
-    const controller = this.#world.createCharacterController(ROVER_PHYSICS.offset)
-    controller.setMaxSlopeClimbAngle(ROVER_PHYSICS.maxSlope)
-    controller.setMinSlopeSlideAngle(ROVER_PHYSICS.maxSlope)
-    controller.enableSnapToGround(0.3)
-    controller.disableAutostep()
-    return controller
   }
 
   #assertActive() {
@@ -87,13 +89,22 @@ export class ArenaPhysics implements ArenaMotion {
 
   canStand(position: ArenaPosition) {
     this.#assertActive()
-    const center = this.#center(position)
-    const hit = this.#world.intersectionWithShape(center, { x: 0, y: 0, z: 0, w: 1 }, new RAPIER.Ball(ROVER_PHYSICS.radius), RAPIER.QueryFilterFlags.EXCLUDE_KINEMATIC)
+    const center = { x: position[0], y: position[1] + ROVER_PHYSICS.canStandProbeOffset, z: position[2] }
+    const hit = this.#world.intersectionWithShape(center, { x: 0, y: 0, z: 0, w: 1 }, new RAPIER.Ball(0.3), RAPIER.QueryFilterFlags.EXCLUDE_KINEMATIC)
     return hit === null
   }
 
-  #center(position: ArenaPosition) {
-    return { x: position[0], y: position[1] + ROVER_PHYSICS.radius + ROVER_PHYSICS.offset, z: position[2] }
+  #createAgent(spawnPosition: { x: number; y: number; z: number }): KinematicAgent {
+    const bodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased()
+      .setTranslation(spawnPosition.x, spawnPosition.y, spawnPosition.z)
+    const body = this.#world.createRigidBody(bodyDesc)
+    const colliderDesc = RAPIER.ColliderDesc.cuboid(
+      ROVER_PHYSICS.chassisHalfExtents.x,
+      ROVER_PHYSICS.chassisHalfExtents.y,
+      ROVER_PHYSICS.chassisHalfExtents.z,
+    )
+    this.#world.createCollider(colliderDesc, body)
+    return { body, yaw: 0, speed: 0 }
   }
 
   reset(agents: readonly ArenaMotionTarget[]) {
@@ -104,13 +115,10 @@ export class ArenaPhysics implements ArenaMotion {
     this.#world.free()
     this.#agents.clear()
     this.#world = this.#createWorld()
-    this.#controller = this.#createController()
     for (const agent of agents) {
       if (!this.canStand(agent.position)) throw new Error(`Spawn overlaps the world collider: ${agent.id}`)
-      const center = this.#center(agent.position)
-      const body = this.#world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(center.x, center.y, center.z))
-      const collider = this.#world.createCollider(RAPIER.ColliderDesc.ball(ROVER_PHYSICS.radius), body)
-      this.#agents.set(agent.id, { body, collider })
+      const spawn = { x: agent.position[0], y: agent.position[1] + ROVER_PHYSICS.groundFollowHeight, z: agent.position[2] }
+      this.#agents.set(agent.id, this.#createAgent(spawn))
     }
     this.#world.step()
   }
@@ -123,40 +131,116 @@ export class ArenaPhysics implements ArenaMotion {
       throw new Error('Invalid physics step')
     }
     this.#world.timestep = dtSeconds
-    const grounded = new Map<string, boolean>()
     for (const target of targets) {
-      const { body, collider } = this.#agents.get(target.id)!
+      const agent = this.#agents.get(target.id)!
+      const body = agent.body
       const current = body.translation()
-      const desired = this.#center(target.position)
-      const distance = Math.hypot(desired.x - current.x, desired.z - current.z)
-      const scale = distance > 0 ? Math.min(1, ROVER_PHYSICS.maxSpeed * dtSeconds / distance) : 1
-      this.#controller.computeColliderMovement(collider, {
-        x: (desired.x - current.x) * scale,
-        y: (desired.y - current.y) * scale - ROVER_PHYSICS.gravityPerStep,
-        z: (desired.z - current.z) * scale,
-      }, RAPIER.QueryFilterFlags.EXCLUDE_KINEMATIC | RAPIER.QueryFilterFlags.EXCLUDE_DYNAMIC)
-      const movement = this.#controller.computedMovement()
-      body.setNextKinematicTranslation({ x: current.x + movement.x, y: current.y + movement.y, z: current.z + movement.z })
-      grounded.set(target.id, this.#controller.computedGrounded())
+
+      // Desired direction in the XZ plane
+      const dx = target.position[0] - current.x
+      const dz = target.position[2] - current.z
+      const horizontalDistance = Math.hypot(dx, dz)
+
+      // Snap yaw to face the target directly (kinematic body has no inertia)
+      if (horizontalDistance > 0.001) {
+        agent.yaw = Math.atan2(dx, dz)
+      }
+
+      // Set speed: full when far from target, stop when close
+      agent.speed = horizontalDistance > ROVER_PHYSICS.arrivalDistance ? ROVER_PHYSICS.maxSpeed : 0
+
+      // Move in the direction the chassis is facing
+      const forwardX = Math.sin(agent.yaw)
+      const forwardZ = Math.cos(agent.yaw)
+      const moveX = forwardX * agent.speed * dtSeconds
+      const moveZ = forwardZ * agent.speed * dtSeconds
+      const moveDist = Math.hypot(moveX, moveZ)
+
+      // Check for wall collisions along the movement path using a ray cast
+      let finalX = current.x + moveX
+      let finalZ = current.z + moveZ
+      if (moveDist > 0.001) {
+        const dirX = moveX / moveDist
+        const dirZ = moveZ / moveDist
+        // Cast a ray from the chassis center toward the movement direction
+        const wallRay = new RAPIER.Ray(
+          { x: current.x, y: current.y, z: current.z },
+          { x: dirX, y: 0, z: dirZ },
+        )
+        const wallHit = this.#world.castRay(wallRay, moveDist + ROVER_PHYSICS.chassisHalfExtents.z, true, RAPIER.QueryFilterFlags.EXCLUDE_KINEMATIC)
+        if (wallHit) {
+          const stopDist = Math.max(0, wallHit.timeOfImpact - ROVER_PHYSICS.chassisHalfExtents.z)
+          finalX = current.x + dirX * stopDist
+          finalZ = current.z + dirZ * stopDist
+        }
+      }
+
+      // Sample ground height at the new position for terrain following
+      const groundRay = new RAPIER.Ray({ x: finalX, y: current.y + 0.5, z: finalZ }, { x: 0, y: -1, z: 0 })
+      const groundHit = this.#world.castRayAndGetNormal(groundRay, ROVER_PHYSICS.groundFollowRayDistance, true, RAPIER.QueryFilterFlags.EXCLUDE_KINEMATIC)
+      const groundY = groundHit ? (current.y + 0.5) - groundHit.timeOfImpact + ROVER_PHYSICS.groundFollowHeight : current.y
+
+      // Compute pitch and roll from the surface normal
+      let pitch = 0
+      let roll = 0
+      if (groundHit) {
+        const normal = groundHit.normal
+        // Pitch: rotation around X axis (forward tilt)
+        pitch = Math.atan2(normal.z, normal.y)
+        // Roll: rotation around Z axis (sideways tilt)
+        roll = -Math.atan2(normal.x, normal.y)
+      }
+
+      // Build the quaternion from yaw, pitch, roll (ZYX order)
+      const quat = this.#eulerToQuaternion(pitch, agent.yaw, roll)
+      body.setNextKinematicTranslation({ x: finalX, y: groundY, z: finalZ })
+      body.setNextKinematicRotation(quat)
     }
     this.#world.step()
+
     return targets.map(target => {
-      const position = this.#agents.get(target.id)!.body.translation()
+      const agent = this.#agents.get(target.id)!
+      const position = agent.body.translation()
+      const rotation = agent.body.rotation()
+      // Check if the rover is near the ground
+      const grounded = this.#isGrounded(position)
       return {
         id: target.id,
-        position: [position.x, position.y - ROVER_PHYSICS.radius - ROVER_PHYSICS.offset, position.z] as ArenaPosition,
-        grounded: grounded.get(target.id)!,
+        position: [position.x, position.y - ROVER_PHYSICS.groundFollowHeight, position.z] as ArenaPosition,
+        grounded,
+        rotation: [rotation.x, rotation.y, rotation.z, rotation.w] as [number, number, number, number],
       }
     })
+  }
+
+  #isGrounded(position: { x: number; y: number; z: number }) {
+    const ray = new RAPIER.Ray({ x: position.x, y: position.y, z: position.z }, { x: 0, y: -1, z: 0 })
+    const hit = this.#world.castRay(ray, ROVER_PHYSICS.groundFollowHeight + 0.1, true, RAPIER.QueryFilterFlags.EXCLUDE_KINEMATIC)
+    return hit !== null
+  }
+
+  #eulerToQuaternion(pitch: number, yaw: number, roll: number): RAPIER.Rotation {
+    // ZYX composition: q = qz * qy * qx
+    const cy = Math.cos(yaw * 0.5), sy = Math.sin(yaw * 0.5)
+    const cp = Math.cos(pitch * 0.5), sp = Math.sin(pitch * 0.5)
+    const cr = Math.cos(roll * 0.5), sr = Math.sin(roll * 0.5)
+    return {
+      x: sp * cy * cr - cp * sy * sr,
+      y: cp * sy * cr + sp * cy * sr,
+      z: cp * cy * sr - sp * sy * cr,
+      w: cp * cy * cr + sp * sy * sr,
+    }
   }
 
   recover(id: string, position: ArenaPosition) {
     this.#assertActive()
     const agent = this.#agents.get(id)
-    if (!agent || !position.every(Number.isFinite) || !this.canStand(position)) throw new Error('Invalid recovery position')
-    const center = this.#center(position)
-    agent.body.setTranslation(center, true)
-    agent.body.setNextKinematicTranslation(center)
+    if (!agent || !position.every(Number.isFinite)) throw new Error('Invalid recovery position')
+    const spawn = { x: position[0], y: position[1] + ROVER_PHYSICS.groundFollowHeight, z: position[2] }
+    agent.body.setTranslation(spawn, true)
+    agent.body.setRotation({ x: 0, y: 0, z: 0, w: 1 }, true)
+    agent.yaw = 0
+    agent.speed = 0
     this.#world.propagateModifiedBodyPositionsToColliders()
   }
 

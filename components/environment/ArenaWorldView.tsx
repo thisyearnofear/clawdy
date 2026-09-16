@@ -157,14 +157,11 @@ function RoverShadow({ session, id }: { session: ArenaSession; id: string }) {
 
 function Rover({ session, id, color }: { session: ArenaSession; id: string; color: string }) {
   const group = useRef<THREE.Group>(null)
-  const tiltGroup = useRef<THREE.Group>(null)
   const previous = useRef(new THREE.Vector3())
   const target = useRef(new THREE.Vector3())
+  const targetRot = useRef(new THREE.Quaternion())
   const lastTick = useRef(-1)
   const wheelRefs = useRef<THREE.Mesh[]>([])
-  const normal = useRef(new THREE.Vector3(0, 1, 0))
-  const right = useRef(new THREE.Vector3())
-  const forward = useRef(new THREE.Vector3())
 
   useFrame((_, delta) => {
     if (!group.current) return
@@ -172,55 +169,25 @@ function Rover({ session, id, color }: { session: ArenaSession; id: string; colo
     const agent = view.episode.agents.find(candidate => candidate.id === id)
     if (!agent) return
     target.current.fromArray(agent.position)
-    const dx = target.current.x - previous.current.x
-    const dz = target.current.z - previous.current.z
-    const horizontalSpeed = Math.hypot(dx, dz) / Math.max(delta, 0.001)
 
-    // Yaw: face direction of travel
-    if (lastTick.current >= 0 && Math.hypot(dx, dz) > 0.001) {
-      group.current.rotation.y = Math.atan2(dx, dz)
+    // Apply physics rotation (quaternion) directly from the chassis
+    if (agent.rotation) {
+      targetRot.current.set(agent.rotation[0], agent.rotation[1], agent.rotation[2], agent.rotation[3])
     }
 
     // Position: snap on reset/teleport, lerp during running
     if (view.phase !== 'running' || view.episode.tick < lastTick.current || lastTick.current < 0) {
       group.current.position.copy(target.current)
+      group.current.quaternion.copy(targetRot.current)
     } else {
       group.current.position.lerp(target.current, 1 - Math.exp(-delta * 40))
-    }
-
-    // Terrain-following pitch/roll: sample ground normal and tilt the rover
-    const ground = session.sampleGround([
-      target.current.x,
-      target.current.y + 2,
-      target.current.z,
-    ])
-    if (ground) {
-      normal.current.set(ground.normal[0], ground.normal[1], ground.normal[2])
-    } else {
-      normal.current.set(0, 1, 0)
-    }
-
-    // Compute pitch/roll from the surface normal relative to the rover's yaw
-    if (tiltGroup.current) {
-      // Get the rover's forward and right vectors based on yaw
-      const yaw = group.current.rotation.y
-      forward.current.set(Math.sin(yaw), 0, Math.cos(yaw))
-      right.current.set(Math.cos(yaw), 0, -Math.sin(yaw))
-
-      // Pitch = how much the normal tilts along the forward axis
-      const pitch = Math.asin(THREE.MathUtils.clamp(forward.current.dot(normal.current), -1, 1))
-      // Roll = how much the normal tilts along the right axis
-      const roll = Math.asin(THREE.MathUtils.clamp(right.current.dot(normal.current), -1, 1))
-
-      // Smoothly interpolate tilt
-      const currentPitch = tiltGroup.current.rotation.x
-      const currentRoll = tiltGroup.current.rotation.z
-      const smooth = 1 - Math.exp(-delta * 8)
-      tiltGroup.current.rotation.x = currentPitch + (pitch - currentPitch) * smooth
-      tiltGroup.current.rotation.z = currentRoll + (roll - currentRoll) * smooth
+      group.current.quaternion.slerp(targetRot.current, 1 - Math.exp(-delta * 30))
     }
 
     // Wheel rotation: spin wheels based on movement speed
+    const dx = target.current.x - previous.current.x
+    const dz = target.current.z - previous.current.z
+    const horizontalSpeed = Math.hypot(dx, dz) / Math.max(delta, 0.001)
     const wheelRotation = horizontalSpeed * delta * 8
     for (const wheel of wheelRefs.current) {
       if (wheel) wheel.rotation.y += wheelRotation
@@ -240,15 +207,13 @@ function Rover({ session, id, color }: { session: ArenaSession; id: string; colo
     <>
       <RoverShadow session={session} id={id} />
       <group ref={group}>
-        <group ref={tiltGroup}>
-          {modelUrl ? (
-            <Suspense fallback={<RoverGeometry color={color} wheelRefs={wheelRefs} />}>
-              <MintModel url={modelUrl} transform={transform} />
-            </Suspense>
-          ) : (
-            <RoverGeometry color={color} wheelRefs={wheelRefs} />
-          )}
-        </group>
+        {modelUrl ? (
+          <Suspense fallback={<RoverGeometry color={color} wheelRefs={wheelRefs} />}>
+            <MintModel url={modelUrl} transform={transform} />
+          </Suspense>
+        ) : (
+          <RoverGeometry color={color} wheelRefs={wheelRefs} />
+        )}
       </group>
     </>
   )

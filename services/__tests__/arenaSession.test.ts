@@ -20,7 +20,7 @@ function setup() {
   }
   const motion: ArenaMotion = {
     version: 'test-motion-v1', reset: vi.fn(), recover: vi.fn(), dispose: vi.fn(),
-    step: targets => targets.map(target => ({ ...target, grounded: true })),
+    step: targets => targets.map(target => ({ ...target, grounded: true, rotation: [0, 0, 0, 1] as [number, number, number, number] })),
   }
   const session = new ArenaSession(course, motion)
   return { session, motion }

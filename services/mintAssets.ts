@@ -40,7 +40,7 @@ export interface MintAssetRegistry {
   assets: Record<string, MintAsset>
 }
 
-const typedRegistry = registry as MintAssetRegistry
+const typedRegistry = registry as unknown as MintAssetRegistry
 
 export function getMintRegistry(): MintAssetRegistry {
   return typedRegistry

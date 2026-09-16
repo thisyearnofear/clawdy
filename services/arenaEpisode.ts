@@ -68,6 +68,7 @@ export interface ArenaAgentState extends ArenaEntrant {
   visitedNodes: string[]
   knownResources: { id: string; nodeId: string; value: number; available: boolean }[]
   grounded: boolean
+  rotation: [number, number, number, number]
   blockedTicks: number
   blockedEdges: string[]
   recoveries: number
@@ -275,6 +276,7 @@ export class ArenaEpisode {
         visitedNodes: [entrant.baseNode],
         knownResources: [],
         grounded: true,
+        rotation: [0, 0, 0, 1],
         blockedTicks: 0,
         blockedEdges: [],
         recoveries: 0,
@@ -443,13 +445,14 @@ export class ArenaEpisode {
     })
     const poses = this.#motion
       ? this.#motion.step(desired.map(({ id, position }) => ({ id, position: [...position] })), ARENA_RULES.stepMs / 1000)
-      : desired.map(target => ({ id: target.id, position: target.position, grounded: true }))
+      : desired.map(target => ({ id: target.id, position: target.position, grounded: true, rotation: [0, 0, 0, 1] as [number, number, number, number] }))
     for (const agent of this.#state.agents) {
       const target = desired.find(candidate => candidate.id === agent.id)!
       const pose = poses.find(candidate => candidate.id === agent.id)
       if (!pose || pose.position.length !== 3 || !pose.position.every(Number.isFinite)) throw new Error('Invalid motion-controller result')
       agent.position = [...pose.position]
       agent.grounded = pose.grounded
+      if (pose.rotation) agent.rotation = [...pose.rotation]
       const transit = agent.transit
       if (!transit) continue
       const reached = pose.grounded && Math.hypot(pose.position[0] - target.position[0], pose.position[2] - target.position[2]) <= ARENA_RULES.arrivalTolerance &&

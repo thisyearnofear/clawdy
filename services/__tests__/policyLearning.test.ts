@@ -37,6 +37,7 @@ function mockObservation(overrides: Partial<ArenaObservation> = {}): ArenaObserv
       visitedNodes: ['station-west'],
       knownResources: [],
       grounded: true,
+      rotation: [0, 0, 0, 1],
       blockedTicks: 0,
       blockedEdges: [],
       recoveries: 0,
