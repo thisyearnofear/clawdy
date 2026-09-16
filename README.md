@@ -1,10 +1,10 @@
 # Clawdy — Train Your Champion
 
-**Coach an agent. Train its policy. Watch it compete without you.**
+**Coach an agent. Train its policy. Unleash it in the arena. Watch it adapt — or fail.**
 
-Clawdy is an agent-training league inside a generated physical world. Conversation and replay scrubbing are the coaching interface; real supervised backpropagation turns approved corrections into a versioned neural policy checkpoint. In a scored match, the checkpoint is frozen and the agent acts without human intervention.
+Clawdy is an agent-training league inside a generated physical world. The arena throws variables your bot was never trained on — flooding, resource scarcity, rival adaptation, terrain costs. You coach your bot through practice, approve training examples, and run real backpropagation to produce a versioned neural policy checkpoint. Then you select a checkpoint, enter a held-out scenario, and the coaching controls go dark. The bot is on its own.
 
-> The payoff is watching your agent use something you taught it when you are no longer allowed to help.
+> The payoff is watching your agent use something you taught it when you are no longer allowed to help — and finding out whether your coaching held when the arena throws something it has never seen.
 
 **Direction locked September 5, 2026:** this is the sole product direction for the repository and the Spatial Intelligence + Generative 3D Hackathon, in the **Gaming & Interactive Worlds** track.
 

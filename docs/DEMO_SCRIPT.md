@@ -4,7 +4,7 @@
 
 ## One-Sentence Pitch
 
-Clawdy lets you coach and train an autonomous competitor in a generated world, then watch it use what it learned when you can no longer intervene.
+Clawdy lets you coach and train an autonomous competitor in a generated world, then watch it use what it learned when you can no longer intervene. The arena throws variables your bot was never trained on — and you find out in real time whether your coaching held.
 
 Track: **Gaming & Interactive Worlds**. The working experience comes before the implementation explanation.
 
@@ -12,12 +12,12 @@ Track: **Gaming & Interactive Worlds**. The working experience comes before the 
 
 | Time | Show | Say |
 | --- | --- | --- |
-| 0:00–0:15 | A baseline rover approaches the flooded low route; its checkpoint and target are visible. | “This is my agent, not my avatar. I develop its policy, then it competes without me.” |
-| 0:15–0:35 | Select its recorded route-choice mistake in practice or replay. Enter a coaching correction. | “When the lower passage is flooded, take the ridge, even if it is longer.” |
-| 0:35–0:55 | Show the situation, original action, preferred legal action, and examples proposed for approval. Approve and start the real training flow, or show a clearly labeled recording of it. | “This correction becomes training data. A saved prompt would not be enough.” |
-| 0:55–1:20 | Select the resulting checkpoint. Start or replay a held-out match with different resource placement or weather timing, visibly labeled as such. No coaching controls are active. | “These weights are frozen. This run is outside the training scenarios, and I cannot help it.” |
-| 1:20–1:40 | Show the actual route decision and outcome, then the parent/new-version comparison with run counts and failures. | Describe the measured result. If it regressed, say so; do not invent improvement. |
-| 1:40–2:00 | Show the checkpoint-to-match record, sponsor contributions actually used, and reset control. | “The world is the test. Developing the competitor is the game.” |
+| 0:00–0:15 | A baseline rover navigates the arena — multiple routes, multiple resources, flooding visible. Its checkpoint and target are shown. | "This is my agent, not my avatar. I develop its policy, then it competes without me. The arena has variables I can't control." |
+| 0:15–0:35 | Select its recorded route-choice mistake in practice or replay. Enter a coaching correction. | "When the valley floods and I have energy, drain it and take the shortcut — don't waste time on the ridge." |
+| 0:35–0:55 | Show the situation, original action, preferred legal action, and examples proposed for approval. Approve and start the real training flow, or show a clearly labeled recording of it. | "This correction becomes training data. A saved prompt would not be enough." |
+| 0:55–1:20 | Select the resulting checkpoint. Start or replay a held-out match with different resource placement, flood timing, and rival behavior — visibly labeled as held out. No coaching controls are active. | "These weights are frozen. This scenario is outside the training set. I cannot help it. Let's see what it learned." |
+| 1:20–1:40 | Show the actual route decision and outcome — did it adapt to the unseen flood pattern? Did it pick a different collection sequence? Then the parent/new-version comparison with run counts and failures. | Describe the measured result. If it regressed, say so; if it adapted, show what changed. |
+| 1:40–2:00 | Show the checkpoint-to-match record, sponsor contributions actually used, and reset control. | "The world is the test. Developing the competitor is the game." |
 
 The schedule is presentation pacing, not an estimate of training latency. Benchmark the real workflow before deciding which parts run live.
 
@@ -30,6 +30,7 @@ The schedule is presentation pacing, not an estimate of training latency. Benchm
 - Whether the match is live or replayed and whether its scenario is held out.
 - Frozen weights and disabled human intervention during the scored run.
 - Actual actions and consequences, not only a natural-language decision feed.
+- The arena's variables (flooding, resource layout, rival behavior) and how the bot responded to them.
 - Evaluation sample count, comparison conditions, and failures alongside scores.
 
 ## Sponsor Explanation

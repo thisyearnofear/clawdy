@@ -23,13 +23,26 @@ This document locks the direction; it does not claim the learning loop has been 
 
 ## Product Thesis
 
-The player develops the competitor rather than manually driving through a conventional game with AI opponents. The loop is:
+Clawdy is what happens when you take the strategic depth of a civilization builder, the visceral energy of an arena shooter, and replace the joystick with a training loop. The player does not control their competitor — they develop it, then unleash it.
+
+The loop is:
 
 **Watch → coach → approve examples → train → compete → replay → improve.**
 
-Conversation is the coaching interface. Training makes approved coaching persist in the policy. The physical world provides consequences, constraints, and a visible test of competence.
+Conversation is the coaching interface. Training makes approved coaching persist in the policy. The physical world provides consequences, constraints, and a visible test of competence. The arena throws variables — flooding, resource scarcity, rival adaptation, terrain costs — that the trained bot must navigate without its coach.
 
-The distinguishing moment is not an agent saying it understands. It is a new checkpoint behaving differently in an unseen scenario, without another instruction. A changed route, a successful recovery, or a better-timed weather intervention is the evidence.
+The distinguishing moment is not an agent saying it understands. It is a new checkpoint behaving differently in an unseen scenario, without another instruction. A changed route, a successful recovery, a better-timed intervention, or a fundamentally different collection sequence is the evidence. The drama is watching whether your training held — or whether the arena exposed something your bot was never coached for.
+
+### The Experience
+
+The player's emotional arc:
+
+1. **Investment:** You coach your bot through practice runs, watching it make mistakes you can correct. You approve examples. You train. You feel ownership over a policy that is genuinely different from the one you started with.
+2. **Unleashing:** You select a checkpoint and enter a held-out scenario. The coaching controls go dark. The bot is on its own. The arena is live.
+3. **Discovery:** The bot encounters a situation it was never trained on — a flood pattern it has not seen, a rival taking an unexpected route, a resource layout that breaks its usual collection sequence. It adapts, or it doesn't. You find out in real time.
+4. **Iteration:** You review what happened, identify what the bot should have done differently, and the loop continues.
+
+This is not a game where you win by playing well. It is a game where you win by coaching well. The bot's performance in the arena is a reflection of the quality of your training, not your reflexes.
 
 ### Product Modes
 
@@ -51,24 +64,41 @@ Both produce the same validated policy artifact and use the same match rules. Bu
 
 ## Season 0 Scope
 
-Season 0 is a learning-focused exhibition and starter, not a production tournament platform.
+Season 0 is a learning-focused exhibition and starter, not a production tournament platform. But it must be a compelling exhibition. A toy graph with one binary decision is not an exhibition — it is a proof of concept. Season 0 must deliver an experience that is genuinely exciting to watch and participate in, even if the scope is bounded.
 
 ### The Physical Challenge
 
-Start with one compact, validated world, one coached rover, and one autonomous rival. Resources must be collected and returned to a base before the round ends. A short low route and a longer elevated route create a tradeoff as flooding changes traversal. One temporary drain ability costs finite in-game energy and can open the low route for either competitor.
+The arena is a generated 3D world with real terrain, real collision, and real consequences. The competitor navigates a rich route graph embedded in the world's geometry — not a toy overlay, but a network of paths that traverse slopes, valleys, ridges, and floodable terrain. Multiple resources are distributed across the arena, creating collection routing decisions. The rival competitor is also navigating the same world, creating contention and adaptation pressure.
+
+The arena variables that make each match different:
+
+- **Flooding:** Multiple independent flood zones can activate and deactivate on different schedules. A route that was safe may become impassable mid-match. The drain ability can open a flooded route but costs finite energy.
+- **Resource distribution:** Resources are placed at varied positions across the arena. Some are close to base but low-value. Others are distant but high-value. The optimal collection sequence depends on the layout, which changes across scenarios.
+- **Energy budget:** Every action costs energy. Longer routes cost more. The drain ability costs energy. The competitor must manage its budget or risk being unable to act late in the match.
+- **Rival behavior:** The rival is not static. It collects, banks, and may compete for the same resources. The competitor must adapt to the rival's choices, not just execute a fixed plan.
+- **Terrain costs:** Routes that traverse slopes or rough terrain cost more energy than flat routes. Shortcuts exist but may be riskier. The world's geometry creates tradeoffs, not just a graph.
 
 - The result is based on banked resource value at the deadline; equal scores are a draw.
 - Vehicle capabilities, initial budgets, collection rules, and ability costs are common to competitors.
 - Resources and energy are game values, not tokens or real money.
-- The initial learned behavior is route selection conditioned on flooding and the objective.
+- The learned behavior is multi-factor route and resource selection conditioned on flooding, energy, rival state, and the objective — not a single binary flood/no-flood decision.
 - The first round length, resource values, energy costs, and decision budgets must be measured and frozen in versioned rules before evaluation results are compared.
 - The course is a testbed for learning. It is not a separate Storm Run product or a commitment to build a large racing game.
 
-Do not implement every possible mechanic. The first acceptance target is one decision that can genuinely improve through training. Additional learned targets or weather strategies come only after that loop works.
+### Scope Discipline
+
+The constraints below protect the integrity of the learning loop, not the minimalism of the implementation. Do not confuse them:
+
+- **Keep:** the authored graph, the shared controller, the edge-based action contract, the small MLP, the deterministic replay, the frozen-weight match boundary, and the structured observation encoder. These are engineering protections that make the learning genuine and the replay trustworthy.
+- **Do not minimize the arena to the point where the learning is trivial.** A graph with 6 nodes and one flood flag produces a lookup table, not a trained policy. The arena must be rich enough that a trained checkpoint visibly outperforms an untrained one on held-out scenarios. If a human can solve the optimal policy by inspection, the arena is too simple.
+- **Do not add mechanics that bypass the learning loop.** Peripheral features (cosmetics, social, leaderboards) come after the core loop works. But the core loop must work on a rich enough arena that "works" means something.
+- **The first acceptance target is a decision complex enough that training genuinely improves it.** Route selection with multiple resources, multiple flood zones, energy budgeting, and rival contention is that kind of decision. A single flood-gated fork is not.
 
 ### Learning Contract
 
 Use a small, fixed-architecture decision policy, a shared starting checkpoint, and supervised updates from approved state/action examples for the first implementation. Fine-tuning the shared starting policy is explicitly allowed. A builder should not need hosted inference or a GPU to enter a scored match.
+
+The policy architecture is deliberately small (a 2-layer MLP) so that training runs in-browser and the learning loop is transparent. The small architecture is a constraint on the model, not on the arena. The arena should be rich enough that the small model has something non-trivial to learn — if a 24-feature encoder and 8-class action head can solve the arena by inspection, the arena is too simple, not the model too small.
 
 Select the concrete architecture, training runtime, serialization format, tensor limits, and training resource budget through a minimal training/inference experiment. These are implementation decisions still to be made, not installed capabilities. Freeze them before producing compatible entrant artifacts. Do not start by fine-tuning an LLM or training steering from pixels.
 
@@ -260,21 +290,21 @@ Audit imports, callers, tests, scripts, and deployment configuration when retiri
 
 ### 1. Establish One Playable Simulation
 
-Simplify the active scene, reproduce the foundation failures, align the generated world and collider, and separate simulation time from rendering. Remove the retired product from the active onboarding and gameplay path as its dependencies are disentangled.
+Simplify the active scene, reproduce the foundation failures, align the generated world and collider, and separate simulation time from rendering. Remove the retired product from the active onboarding and gameplay path as its dependencies are disentangled. Author a rich route graph (12+ nodes, 25+ edges, multiple resources, multiple flood zones) embedded in the generated world's terrain.
 
-**Acceptance:** a baseline rover can spawn, traverse both routes, collect, bank, experience the weather effect, finish, and reset without a wallet or manual rescue. Changing camera or display frame rate does not change the intended rules. A diagnostic plain scene may isolate bugs but must not become a second product.
+**Acceptance:** a baseline rover can spawn, traverse multiple routes, collect from multiple resource nodes, bank, experience flooding and terrain effects, finish, and reset without a wallet or manual rescue. The arena has enough spatial variety that two routes to the same destination present genuinely different tradeoffs. Changing camera or display frame rate does not change the intended rules. A diagnostic plain scene may isolate bugs but must not become a second product.
 
 ### 2. Freeze the Episode and Policy Contract
 
-Implement structured observations, legal actions, bounded decision cadence, common navigation/controller behavior, scoring, termination, and run records. Establish the reference baselines and replay.
+Implement structured observations, legal actions, bounded decision cadence, common navigation/controller behavior, scoring, termination, and run records. Establish the reference baselines and replay. The observation encoder and action vocabulary must accommodate the richer arena — multiple resource targets, multiple flood zones, and energy budgeting — not just a single binary flood flag.
 
-**Acceptance:** a full autonomous round runs with no human intervention; invalid actions and timeouts have explicit, tested outcomes; repeated evaluations use the same versioned rules.
+**Acceptance:** a full autonomous round runs with no human intervention; invalid actions and timeouts have explicit, tested outcomes; repeated evaluations use the same versioned rules. A trained checkpoint visibly outperforms an untrained one on held-out scenarios with different resource layouts and flood schedules.
 
 ### 3. Prove a Real Learning Update
 
-Choose and benchmark the small policy architecture and training runtime. Start with a reviewed correction to flood-conditioned route choice. Train, export, validate, and load a new checkpoint. Evaluate it against its parent on held-out scenarios.
+Choose and benchmark the small policy architecture and training runtime. Start with a reviewed correction to a multi-factor decision (route choice under flooding + energy + rival contention). Train, export, validate, and load a new checkpoint. Evaluate it against its parent on held-out scenarios with varied resource placement, flood timing, and rival behavior.
 
-**Acceptance:** weights genuinely change, a manifest identifies the training inputs, and the new checkpoint produces observable behavior under frozen inference. Report measured results even if performance regresses. Do not replace a failed learning experiment with a hidden rule edit.
+**Acceptance:** weights genuinely change, a manifest identifies the training inputs, and the new checkpoint produces observable behavior under frozen inference. The improvement must be non-trivial — the trained policy should handle scenarios the untrained policy fails on, not just memorize a single flood flag. Report measured results even if performance regresses. Do not replace a failed learning experiment with a hidden rule edit.
 
 ### 4. Connect Coaching and Review
 
@@ -294,7 +324,7 @@ Deliver a minimal working starter and data-only export path using the same polic
 
 **Acceptance:** the unchanged starter completes a round; an exported checkpoint reloads with equivalent behavior in the supported runtime; the full demo path and reset work on the presentation device.
 
-Milestones are dependencies, not promises about elapsed time. If scope must shrink, reduce world size, asset count, policies, or scenario variety. Do not drop the real training step or revert to the old wallet/arena thesis and call it this product.
+Milestones are dependencies, not promises about elapsed time. If scope must shrink, reduce asset polish, peripheral UI, or the number of held-out scenarios — not the richness of the arena graph. A trivial arena with a working training loop is not a success condition. Do not drop the real training step or revert to the old wallet/arena thesis and call it this product.
 
 ## Release Gates and Claim Boundaries
 

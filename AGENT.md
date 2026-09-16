@@ -39,7 +39,7 @@ Do not expose evaluation seeds, future state, another policy's private memory, c
 
 ## Target Action Contract
 
-The first learned action is a route choice conditioned on the observed world and objective. The bounded action vocabulary should support:
+The learned action is a route or target choice conditioned on the observed world, objective, and arena state. The bounded action vocabulary should support:
 
 - selecting a legal target or returning to base;
 - selecting a route or waypoint for the shared controller;
@@ -47,6 +47,8 @@ The first learned action is a route choice conditioned on the observed world and
 - continuing or waiting when no new action is required.
 
 These are design requirements, not existing method names. Freeze the exact vocabulary, identifiers, schema, and decision budget with the initial policy architecture. All competitors use the same contract and controller.
+
+The action vocabulary must be rich enough to express the arena's decision space. With multiple resources, multiple flood zones, and energy budgeting, the policy must be able to select between meaningfully different targets and routes — not just "take the low road" vs "take the high road." If the action vocabulary can be reduced to a binary choice, the arena is too simple. The vocabulary should be frozen before evaluation, but it should be frozen at a level of expressiveness that matches the arena's complexity, not at a minimal level that makes the learning trivial.
 
 The authority validates actions against the applicable tick, target validity, energy, cooldowns, and ownership. Stale, malformed, illegal, or late actions need documented deterministic handling and must not silently bypass limits. Choose and test the failure policy before evaluating entrants.
 
@@ -86,7 +88,7 @@ The new reference modules are:
 - `services/arenaReplay.ts`: version-checked replay with mandatory state checkpoints and divergence reporting.
 - `services/worldSurface.ts`: world-space static collider extraction, downward surface queries, and bounded route-grounding checks.
 - `services/arenaPhysics.ts`: Rapier 0.19.2 kinematic rigid body with terrain-following pitch/roll, wall collision via ray casts, grounding, reset, recovery, and controller version tracking.
-- `services/arenaCourse.ts`: authored `Cloudbank / Course 01` loader with pinned collider SHA-256 and scenario construction.
+- `services/arenaCourse.ts`: authored `Cloudbank / Course 01` loader with pinned collider SHA-256, scenario construction, and a rich route graph (12+ nodes, 25+ edges, multiple resources, multiple flood zones) embedded in the generated world's terrain.
 - `services/arenaSession.ts`: application adapter that wires start/pause/reset, policy locking, bounded frame pumping, replay scrubbing, checkpoint selection, and JSON export.
 - `services/policyModel.ts`: `PolicyCheckpoint` schema, 24-dimensional observation encoding, 8-class action mapping, MLP forward/inference, and checkpoint validation.
 - `services/policyTrainer.ts`: supervised cross-entropy backpropagation with momentum SGD, dataset hashing, and scenario evaluation.
