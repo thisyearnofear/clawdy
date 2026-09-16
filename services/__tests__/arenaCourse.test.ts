@@ -30,8 +30,8 @@ describe('versioned Marble course', () => {
     try {
       const course = buildArenaCourse(physics)
       expect(course.scenario.worldVersion).toBe(ARENA_WORLD.version)
-      expect(course.scenario.nodes).toHaveLength(6)
-      expect(course.scenario.edges.filter(edge => edge.floodable)).toHaveLength(2)
+      expect(course.scenario.nodes).toHaveLength(13)
+      expect(course.scenario.edges.filter(edge => edge.floodable)).toHaveLength(10)
       for (const node of course.scenario.nodes) expect(physics.canStand(node.position)).toBe(true)
       for (const edge of course.scenario.edges) {
         expect(edge.path!.length).toBeGreaterThan(2)

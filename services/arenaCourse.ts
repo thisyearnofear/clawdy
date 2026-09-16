@@ -23,22 +23,60 @@ export interface ArenaCourse {
 }
 
 const STATIONS = [
+  // Valley corridor (X=4) — floodable low route
   { id: 'champion-base', x: 4, z: 0 },
+  { id: 'valley-n1', x: 4, z: 1.5 },
+  { id: 'valley-center', x: 4, z: 4 },
+  { id: 'valley-s1', x: 4, z: 6.5 },
   { id: 'rival-base', x: 4, z: 8 },
-  { id: 'resource-bank', x: 4, z: 4 },
+  // Ridge corridor (X=10) — safe high route
   { id: 'ridge-north', x: 10, z: 0 },
+  { id: 'ridge-n1', x: 10, z: 1.5 },
   { id: 'ridge-center', x: 10, z: 4 },
+  { id: 'ridge-s1', x: 10, z: 6.5 },
   { id: 'ridge-south', x: 10, z: 8 },
+  // Cross-route junctions (X=7) — mid-elevation connections
+  { id: 'cross-n', x: 7, z: 2 },
+  { id: 'cross-c', x: 7, z: 4 },
+  { id: 'cross-s', x: 7, z: 6 },
 ] as const
 
 const CONNECTIONS = [
-  { id: 'north-low', from: 'champion-base', to: 'resource-bank', floodable: true },
-  { id: 'south-low', from: 'rival-base', to: 'resource-bank', floodable: true },
-  { id: 'north-rise', from: 'champion-base', to: 'ridge-north', floodable: false },
-  { id: 'south-rise', from: 'rival-base', to: 'ridge-south', floodable: false },
-  { id: 'north-ridge', from: 'ridge-north', to: 'ridge-center', floodable: false },
-  { id: 'south-ridge', from: 'ridge-south', to: 'ridge-center', floodable: false },
-  { id: 'ridge-bank', from: 'ridge-center', to: 'resource-bank', floodable: false },
+  // Valley corridor (floodable low route)
+  { id: 'valley-cb-n1', from: 'champion-base', to: 'valley-n1', floodable: true },
+  { id: 'valley-n1-vc', from: 'valley-n1', to: 'valley-center', floodable: true },
+  { id: 'valley-vc-s1', from: 'valley-center', to: 'valley-s1', floodable: true },
+  { id: 'valley-s1-rb', from: 'valley-s1', to: 'rival-base', floodable: true },
+  // Ridge corridor (safe high route)
+  { id: 'ridge-rn-r1', from: 'ridge-north', to: 'ridge-n1', floodable: false },
+  { id: 'ridge-r1-rc', from: 'ridge-n1', to: 'ridge-center', floodable: false },
+  { id: 'ridge-rc-r1s', from: 'ridge-center', to: 'ridge-s1', floodable: false },
+  { id: 'ridge-r1s-rs', from: 'ridge-s1', to: 'ridge-south', floodable: false },
+  // Base-to-ridge direct connections
+  { id: 'base-cb-rn', from: 'champion-base', to: 'ridge-north', floodable: false },
+  { id: 'base-rb-rs', from: 'rival-base', to: 'ridge-south', floodable: false },
+  // Cross-route connections (mid-elevation)
+  { id: 'cross-vn-cn', from: 'valley-n1', to: 'cross-n', floodable: false },
+  { id: 'cross-cn-r1', from: 'cross-n', to: 'ridge-n1', floodable: false },
+  { id: 'cross-vc-cc', from: 'valley-center', to: 'cross-c', floodable: false },
+  { id: 'cross-cc-rc', from: 'cross-c', to: 'ridge-center', floodable: false },
+  { id: 'cross-vs-cs', from: 'valley-s1', to: 'cross-s', floodable: false },
+  { id: 'cross-cs-r1s', from: 'cross-s', to: 'ridge-s1', floodable: false },
+  // Cross-route internal connections
+  { id: 'cross-cn-cc', from: 'cross-n', to: 'cross-c', floodable: false },
+  { id: 'cross-cc-cs', from: 'cross-c', to: 'cross-s', floodable: false },
+  // Floodable shortcuts (risky but fast)
+  { id: 'shortcut-cb-cn', from: 'champion-base', to: 'cross-n', floodable: true },
+  { id: 'shortcut-rb-cs', from: 'rival-base', to: 'cross-s', floodable: true },
+  // Long diagonal shortcuts (floodable, high risk)
+  { id: 'diag-vn-rn', from: 'valley-n1', to: 'ridge-north', floodable: true },
+  { id: 'diag-vs-rs', from: 'valley-s1', to: 'ridge-south', floodable: true },
+  // Valley long jumps (floodable, skip intermediate nodes)
+  { id: 'valley-cb-vc', from: 'champion-base', to: 'valley-center', floodable: true },
+  { id: 'valley-rb-vc', from: 'rival-base', to: 'valley-center', floodable: true },
+  // Ridge long jumps (dry, skip intermediate nodes)
+  { id: 'ridge-rn-rc', from: 'ridge-north', to: 'ridge-center', floodable: false },
+  { id: 'ridge-rs-rc', from: 'ridge-south', to: 'ridge-center', floodable: false },
 ] as const
 
 export function buildArenaCourse(physics: ArenaPhysics): ArenaCourse {
@@ -74,6 +112,8 @@ export function buildArenaCourse(physics: ArenaPhysics): ArenaCourse {
     floodZones: [
       { position: [4, 1.02, 2], size: [1.35, 3.2] },
       { position: [4, 1.02, 6], size: [1.35, 3.2] },
+      { position: [7, 1.02, 2], size: [1.0, 2.0] },
+      { position: [7, 1.02, 6], size: [1.0, 2.0] },
     ],
     scenario: {
       id: 'cloudbank-practice-01', worldVersion: ARENA_WORLD.version, split: 'practice', seed: 20260905,
@@ -84,10 +124,29 @@ export function buildArenaCourse(physics: ArenaPhysics): ArenaCourse {
         { id: 'champion', baseNode: 'champion-base', policyVersion: 'baseline.safe.v2' },
         { id: 'rival', baseNode: 'rival-base', policyVersion: 'baseline.weather.v2' },
       ],
-      resources: Array.from({ length: 12 }, (_, index) => ({
-        id: `core-${index + 1}`, nodeId: index < 8 ? 'resource-bank' : 'ridge-center', value: 1,
-      })),
-      floods: [{ startTick: 100, endTick: 500 }, { startTick: 700, endTick: 1100 }],
+      resources: [
+        // Valley center: high-volume, floodable risk
+        { id: 'core-1', nodeId: 'valley-center', value: 1 },
+        { id: 'core-2', nodeId: 'valley-center', value: 1 },
+        { id: 'core-3', nodeId: 'valley-center', value: 1 },
+        { id: 'core-4', nodeId: 'valley-center', value: 1 },
+        // Ridge center: safe, high-value
+        { id: 'core-5', nodeId: 'ridge-center', value: 2 },
+        { id: 'core-6', nodeId: 'ridge-center', value: 2 },
+        // Cross-route junctions: medium, safe
+        { id: 'core-7', nodeId: 'cross-n', value: 1 },
+        { id: 'core-8', nodeId: 'cross-n', value: 1 },
+        { id: 'core-9', nodeId: 'cross-s', value: 1 },
+        { id: 'core-10', nodeId: 'cross-s', value: 1 },
+        // Ridge junctions: safe, low-value, spread out
+        { id: 'core-11', nodeId: 'ridge-n1', value: 1 },
+        { id: 'core-12', nodeId: 'ridge-s1', value: 1 },
+      ],
+      floods: [
+        { startTick: 100, endTick: 400 },
+        { startTick: 600, endTick: 900 },
+        { startTick: 1000, endTick: 1200 },
+      ],
     },
   }
 }
