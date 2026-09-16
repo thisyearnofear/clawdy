@@ -47,10 +47,10 @@ The [canonical plan](HACKATHON.md) defines the accepted direction. The following
 - [x] Any reused third-party source retains required attribution.
 
 ## Technology Contributions
-- [x] World Labs asset provenance and the validated playable route are documented (`arena.spz` and `collider.glb`, SHA-256 `25f82036...`).
+- [x] World Labs asset provenance and the validated playable route are documented (`arena.spz`, HQ textured mesh from CDN, and `collider.glb`, SHA-256 `25f82036...`).
 - [x] Rapier 3D 0.19.2 physics integration with deterministic queries.
 - [ ] Tripo-generated assets are integrated and performance-tested.
-- [ ] Mint-created content or assembly work has a functional, visible contribution.
+- [x] Mint-created content or assembly work has a functional, visible contribution (champion rover GLB generated via Mint MCP and loaded in `ArenaWorldView`).
 - [ ] Convex connects approved examples, training status, checkpoint metadata, and match/replay records.
 - [x] Submission claims name only verified integrations and distinguish pre-existing from new work.
 

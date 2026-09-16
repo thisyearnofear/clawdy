@@ -1,6 +1,6 @@
 # Mint Three.js Skills Integration
 
-The `mintdotgg/mint-threejs-skills` agent skill has been installed into `.devin/skills/mint-threejs-skills/`. Runtime wiring is now in place so the first generated asset can be dropped in and loaded automatically; no Mint MCP server is connected yet.
+The `mintdotgg/mint-threejs-skills` agent skill has been installed into `.devin/skills/mint-threejs-skills/`. Runtime wiring is in place and the first generated asset — the "Emerald Canopy Rover" — has been produced via Mint MCP and synced into the project.
 
 ## What is installed
 
@@ -24,17 +24,23 @@ The `mintdotgg/mint-threejs-skills` agent skill has been installed into `.devin/
 
 ## How to generate the first asset
 
-1. Get a [Mint MCP](https://mcp.mint.gg) account connected to this workspace.
-2. Ask the agent to generate a rover for the active player (champion), e.g.:
+The champion rover has already been generated and synced. To generate additional assets (rival rover, course props):
+
+1. Connect a [Mint MCP](https://mcp.mint.gg) account to this workspace.
+2. Ask the agent to generate a model, e.g.:
    ```
-   Read .devin/skills/mint-threejs-skills/SKILL.md and generate a low-poly sci-fi rover model for the Clawdy champion, then sync it into the mint-assets.json registry under the key "championRover".
+   Read .devin/skills/mint-threejs-skills/SKILL.md and generate a low-poly sci-fi rival rover model for the Clawdy rival, then sync it into the mint-assets.json registry under the key "rivalRover".
    ```
 3. The agent should:
    - Resolve or create a Mint Project.
    - Start a `model` generation with project/chat IDs.
    - Follow `nextSteps` until the manifest is ready.
-   - Save the manifest and run `npm run mint:sync -- --manifest <manifest.json> --key championRover`.
-4. The runtime will then load `/assets/mint/championRover/<artifactId>.glb` automatically on the next page load.
+   - Save the manifest and run `npm run mint:sync -- --manifest <manifest.json> --key rivalRover`.
+4. The runtime will then load `/assets/mint/rivalRover/<artifactId>.glb` automatically on the next page load.
+
+## Generated assets
+
+- **championRover** — "Emerald Canopy Rover" (4,745 triangles, PBR textures, 1.2MB GLB). Generated via Mint MCP and synced to `public/assets/mint/champion-rover.glb`. Loaded as the champion rover visual in `ArenaWorldView.tsx`.
 
 ## Important constraints
 

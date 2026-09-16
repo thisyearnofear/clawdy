@@ -85,7 +85,7 @@ The new reference modules are:
 - `services/arenaPolicy.ts`: safe/greedy/weather reference routing, a `learned` strategy that loads a `PolicyCheckpoint`, and a pinned `ArenaRunner` advanced through explicit ticks or integer microseconds.
 - `services/arenaReplay.ts`: version-checked replay with mandatory state checkpoints and divergence reporting.
 - `services/worldSurface.ts`: world-space static collider extraction, downward surface queries, and bounded route-grounding checks.
-- `services/arenaPhysics.ts`: Rapier 0.19.2 kinematic spherical rover proxy, static-world collision, grounding, reset, recovery, and controller version tracking.
+- `services/arenaPhysics.ts`: Rapier 0.19.2 kinematic rigid body with terrain-following pitch/roll, wall collision via ray casts, grounding, reset, recovery, and controller version tracking.
 - `services/arenaCourse.ts`: authored `Cloudbank / Course 01` loader with pinned collider SHA-256 and scenario construction.
 - `services/arenaSession.ts`: application adapter that wires start/pause/reset, policy locking, bounded frame pumping, replay scrubbing, checkpoint selection, and JSON export.
 - `services/policyModel.ts`: `PolicyCheckpoint` schema, 24-dimensional observation encoding, 8-class action mapping, MLP forward/inference, and checkpoint validation.

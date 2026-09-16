@@ -48,8 +48,8 @@ Both entry paths produce identical `PolicyCheckpoint` artifacts (`clawdy-checkpo
 
 ## Physical Challenge & Simulation Architecture
 
-- **Generated World:** World Labs Gaussian Splat (`public/marble/arena.spz`) and collision mesh (`public/marble/collider.glb`) verified with pinned SHA-256 digest (`25f82036...`).
-- **Physical Dynamics:** Rapier 3D 0.19.2 character controller with grounding, slope limits, and recovery mechanics.
+- **Generated World:** World Labs Gaussian Splat (`public/marble/arena.spz`), HQ textured mesh (~600k triangles, loaded from World Labs CDN), and collision mesh (`public/marble/collider.glb`) verified with pinned SHA-256 digest (`25f82036...`).
+- **Physical Dynamics:** Rapier 3D 0.19.2 kinematic rigid body controller with terrain-following pitch/roll, wall collision via ray casts, grounding, and recovery mechanics.
 - **Fixed-Step Clock:** Fixed 50ms (20Hz) simulation steps decoupled from display frame rate. Decisions are locked on a 4-tick cadence.
 - **Strategic Tradeoff:** A fast low-pass valley route and an elevated ridge route. When floods hit, the low route suffers a 4× travel penalty. Rovers can spend finite energy to drain water, opening the low route for both rovers.
 
@@ -112,8 +112,9 @@ npm run starter:train
 
 ## Technology Attribution
 
-- **World Labs:** Gaussian splat scene (`arena.spz`) and 3D collider (`collider.glb`) providing the physical environment for Course 01.
-- **Rapier Physics:** Deterministic 3D character controller and collision queries (@dimforge/rapier3d-compat 0.19.2).
+- **World Labs:** Gaussian splat scene (`arena.spz`), HQ textured mesh (~600k triangles from CDN), and 3D collider (`collider.glb`) providing the physical environment for Course 01.
+- **Mint:** Generated the "Emerald Canopy Rover" GLB model via Mint MCP, loaded as the champion rover visual.
+- **Rapier Physics:** Deterministic 3D kinematic rigid body controller and collision queries (@dimforge/rapier3d-compat 0.19.2).
 - **React Three Fiber & Three.js:** 3D scene composition and rendering pipeline.
 - **Next.js & React 19:** Application shell, state management, and static build export.
 - **threejs-game-skills** (`https://github.com/majidmanzarpour/threejs-game-skills`): A standalone game-design/QA skill pack (upstream of `mint-threejs-skills`) noted as a future reference for camera/HUD/audio/Playwright polish. It is not installed yet; focus remains on the core training loop.

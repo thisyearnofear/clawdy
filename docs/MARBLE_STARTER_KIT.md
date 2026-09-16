@@ -106,7 +106,7 @@ These are example worlds downloadable as `.rad`, `.spz`, and `.ply`. They do **n
    The [Splat Collider Builder](https://splat-collider-builder.netlify.app) is the best-known browser tool for drawing `.glb` colliders over a splat. We can point builders to it, or eventually integrate a similar volume-authoring step into the Clawdy world editor.
 
 3. **Marble mesh export is an alternative to runtime collider extraction.**  
-   Instead of deriving collision from the splat in code, we can ask Marble to export a collider mesh and validate it against the committed course graph. This is likely more reliable than a hand-rolled splat → surface heuristic.
+   Instead of deriving collision from the splat in code, we can ask Marble to export a collider mesh and validate it against the committed course graph. This is likely more reliable than a hand-rolled splat → surface heuristic. The HQ textured mesh export (~600k triangles) is also available via `POST /marble/v1/worlds/{world_id}:export` with `{"asset_type":"mesh","format":"glb"}` and is loaded from the World Labs CDN as the primary terrain visual in Clawdy.
 
 4. **The Spark + Rapier + Three.js examples validate our stack.**  
    The third-person controller and `spark-physics` demo prove the exact combination we are using (Spark splat rendering + Rapier physics) works. We can use them as a debugging reference if the rover/camera interaction in `ArenaWorldView` misbehaves.

@@ -41,8 +41,9 @@ Clawdy introduces **true hands-off agent development**:
 ## What Is Demonstrated & Verified
 
 1. **Playable Autonomous Episode in a Generated World:**
-   - Authored course on World Labs Gaussian Splat (`arena.spz`) and collision mesh (`collider.glb`) checked with SHA-256 digest (`25f82036...`).
-   - Rapier 3D kinematic rover controller running fixed 50ms steps (20Hz) with grounding, slope limits, and recoveries.
+   - Authored course on World Labs Gaussian Splat (`arena.spz`), HQ textured mesh (~600k triangles, loaded from World Labs CDN), and collision mesh (`collider.glb`) checked with SHA-256 digest (`25f82036...`).
+   - Rapier 3D kinematic rigid body controller running fixed 50ms steps (20Hz) with terrain-following pitch/roll, wall collision via ray casts, grounding, and recoveries.
+   - Mint-generated "Emerald Canopy Rover" GLB model loaded as the champion rover visual.
    - Dynamic flooding and drain ability changing physical traversal costs.
 2. **Frame-Level Coaching & Review:**
    - Scrub through 1,200-tick recordings.
@@ -63,11 +64,11 @@ Clawdy introduces **true hands-off agent development**:
 
 ## Technology Attribution
 
-- **World Labs:** Generated 3D Gaussian Splat (`public/marble/arena.spz`) and collider mesh (`public/marble/collider.glb`) defining the competition environment (Cloudbank Course 01).
-- **Rapier 3D:** Collision detection, raycasting surface queries, and kinematic character controller (@dimforge/rapier3d-compat 0.19.2).
+- **World Labs:** Generated 3D Gaussian Splat (`public/marble/arena.spz`), HQ textured mesh (~600k triangles, loaded from World Labs CDN), and collider mesh (`public/marble/collider.glb`) defining the competition environment (Cloudbank Course 01).
+- **Mint:** Generated the "Emerald Canopy Rover" GLB model (`public/assets/mint/champion-rover.glb`) via Mint MCP, loaded as the champion rover visual.
+- **Rapier 3D:** Collision detection, raycasting surface queries, terrain following, and kinematic rigid body controller (@dimforge/rapier3d-compat 0.19.2).
 - **Three.js & React Three Fiber:** 3D rendering pipeline and camera management.
 - **Next.js 16 & React 19:** Application shell, state synchronization, and static deployment build.
-- **mint-threejs-skills / threejs-game-skills:** Agent skill packs noted as references for future game polish, camera/HUD/audio, and release verification. Mint runtime loader is wired; no MCP server is connected yet.
 
 ---
 
