@@ -343,7 +343,11 @@ export function computeWeightsHash(weights: PolicyWeights): string {
     hash = Math.imul(hash, 0x01000193)
   }
   const hex = (hash >>> 0).toString(16).padStart(8, '0')
-  return `w:${hex}:${serialized.length.toString(16)}`
+  const sizeHex = Math.min(0xffff, serialized.length).toString(16).padStart(4, '0')
+  // No colons: weightsHash flows into scenario entrant.policyVersion, which is
+  // validated against the identifier pattern [a-zA-Z0-9._-] in
+  // services/arenaEpisode.ts.
+  return `${hex}${sizeHex}`
 }
 
 /**

@@ -111,7 +111,10 @@ export class ArenaRunner {
       if (strategy === 'learned') {
         const checkpoint = typeof option === 'object' && 'checkpoint' in option ? option.checkpoint : SEASON_0_BASE_CHECKPOINT
         this.#policies.set(entrant.id, createLearnedPolicy(checkpoint))
-        return { ...entrant, policyVersion: checkpoint.id }
+        // Scenario validation requires policyVersion to match the identifier
+        // pattern (no colons), so we expose a sanitized view of the checkpoint
+        // id rather than its raw value.
+        return { ...entrant, policyVersion: `learned.${checkpoint.weightsHash.slice(0, 12)}` }
       }
 
       this.#policies.set(entrant.id, (obs: ArenaObservation) => collectorPolicy(obs, strategy))

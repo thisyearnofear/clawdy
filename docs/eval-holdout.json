@@ -1,0 +1,570 @@
+{
+  "generatedAt": "2026-09-17T09:45:01.520Z",
+  "baseCheckpoint": {
+    "id": "champion-baseline-s0",
+    "weightsHash": "76abc03737ac",
+    "note": "Randomly initialized base; safe collector is the meaningful baseline."
+  },
+  "trainedCheckpoint": {
+    "id": "checkpoint-mu5cfqwg-24391c",
+    "name": "Champion v1 (+75 synthetic examples)",
+    "weightsHash": "6a9f2e24391c",
+    "trainingSummary": {
+      "epochs": 60,
+      "loss": 0.0018,
+      "sampleCount": 75,
+      "datasetHash": "ds:bc78e99b:75",
+      "accuracy": 1
+    }
+  },
+  "examples": [
+    {
+      "id": "distill-builder-course-01-0",
+      "sourceEpisodeId": "builder-course-01",
+      "tick": 0,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-01-25",
+      "sourceEpisodeId": "builder-course-01",
+      "tick": 25,
+      "rationale": "Safe collector would collect."
+    },
+    {
+      "id": "distill-builder-course-01-30",
+      "sourceEpisodeId": "builder-course-01",
+      "tick": 30,
+      "rationale": "Safe collector would collect."
+    },
+    {
+      "id": "distill-builder-course-01-35",
+      "sourceEpisodeId": "builder-course-01",
+      "tick": 35,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-01-50",
+      "sourceEpisodeId": "builder-course-01",
+      "tick": 50,
+      "rationale": "Safe collector would collect."
+    },
+    {
+      "id": "distill-builder-course-01-55",
+      "sourceEpisodeId": "builder-course-01",
+      "tick": 55,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-01-75",
+      "sourceEpisodeId": "builder-course-01",
+      "tick": 75,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-01-110",
+      "sourceEpisodeId": "builder-course-01",
+      "tick": 110,
+      "rationale": "Safe collector would bank."
+    },
+    {
+      "id": "distill-builder-course-01-115",
+      "sourceEpisodeId": "builder-course-01",
+      "tick": 115,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-01-150",
+      "sourceEpisodeId": "builder-course-01",
+      "tick": 150,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-01-190",
+      "sourceEpisodeId": "builder-course-01",
+      "tick": 190,
+      "rationale": "Safe collector would collect."
+    },
+    {
+      "id": "distill-builder-course-01-195",
+      "sourceEpisodeId": "builder-course-01",
+      "tick": 195,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-01-220",
+      "sourceEpisodeId": "builder-course-01",
+      "tick": 220,
+      "rationale": "Safe collector would collect."
+    },
+    {
+      "id": "distill-builder-course-01-225",
+      "sourceEpisodeId": "builder-course-01",
+      "tick": 225,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-01-250",
+      "sourceEpisodeId": "builder-course-01",
+      "tick": 250,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-01-290",
+      "sourceEpisodeId": "builder-course-01",
+      "tick": 290,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-01-335",
+      "sourceEpisodeId": "builder-course-01",
+      "tick": 335,
+      "rationale": "Safe collector would bank."
+    },
+    {
+      "id": "distill-builder-course-01-340",
+      "sourceEpisodeId": "builder-course-01",
+      "tick": 340,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-01-345",
+      "sourceEpisodeId": "builder-course-01",
+      "tick": 345,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-01-385",
+      "sourceEpisodeId": "builder-course-01",
+      "tick": 385,
+      "rationale": "Safe collector would collect."
+    },
+    {
+      "id": "distill-builder-course-01-390",
+      "sourceEpisodeId": "builder-course-01",
+      "tick": 390,
+      "rationale": "Safe collector would collect."
+    },
+    {
+      "id": "distill-builder-course-01-395",
+      "sourceEpisodeId": "builder-course-01",
+      "tick": 395,
+      "rationale": "Safe collector would collect."
+    },
+    {
+      "id": "distill-builder-course-01-400",
+      "sourceEpisodeId": "builder-course-01",
+      "tick": 400,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-01-425",
+      "sourceEpisodeId": "builder-course-01",
+      "tick": 425,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-01-450",
+      "sourceEpisodeId": "builder-course-01",
+      "tick": 450,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-02-0",
+      "sourceEpisodeId": "builder-course-02",
+      "tick": 0,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-02-25",
+      "sourceEpisodeId": "builder-course-02",
+      "tick": 25,
+      "rationale": "Safe collector would collect."
+    },
+    {
+      "id": "distill-builder-course-02-30",
+      "sourceEpisodeId": "builder-course-02",
+      "tick": 30,
+      "rationale": "Safe collector would collect."
+    },
+    {
+      "id": "distill-builder-course-02-35",
+      "sourceEpisodeId": "builder-course-02",
+      "tick": 35,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-02-50",
+      "sourceEpisodeId": "builder-course-02",
+      "tick": 50,
+      "rationale": "Safe collector would collect."
+    },
+    {
+      "id": "distill-builder-course-02-55",
+      "sourceEpisodeId": "builder-course-02",
+      "tick": 55,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-02-70",
+      "sourceEpisodeId": "builder-course-02",
+      "tick": 70,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-02-95",
+      "sourceEpisodeId": "builder-course-02",
+      "tick": 95,
+      "rationale": "Safe collector would bank."
+    },
+    {
+      "id": "distill-builder-course-02-100",
+      "sourceEpisodeId": "builder-course-02",
+      "tick": 100,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-02-135",
+      "sourceEpisodeId": "builder-course-02",
+      "tick": 135,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-02-175",
+      "sourceEpisodeId": "builder-course-02",
+      "tick": 175,
+      "rationale": "Safe collector would collect."
+    },
+    {
+      "id": "distill-builder-course-02-180",
+      "sourceEpisodeId": "builder-course-02",
+      "tick": 180,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-02-205",
+      "sourceEpisodeId": "builder-course-02",
+      "tick": 205,
+      "rationale": "Safe collector would collect."
+    },
+    {
+      "id": "distill-builder-course-02-210",
+      "sourceEpisodeId": "builder-course-02",
+      "tick": 210,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-02-235",
+      "sourceEpisodeId": "builder-course-02",
+      "tick": 235,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-02-275",
+      "sourceEpisodeId": "builder-course-02",
+      "tick": 275,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-02-310",
+      "sourceEpisodeId": "builder-course-02",
+      "tick": 310,
+      "rationale": "Safe collector would bank."
+    },
+    {
+      "id": "distill-builder-course-02-315",
+      "sourceEpisodeId": "builder-course-02",
+      "tick": 315,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-02-320",
+      "sourceEpisodeId": "builder-course-02",
+      "tick": 320,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-02-390",
+      "sourceEpisodeId": "builder-course-02",
+      "tick": 390,
+      "rationale": "Safe collector would collect."
+    },
+    {
+      "id": "distill-builder-course-02-395",
+      "sourceEpisodeId": "builder-course-02",
+      "tick": 395,
+      "rationale": "Safe collector would collect."
+    },
+    {
+      "id": "distill-builder-course-02-400",
+      "sourceEpisodeId": "builder-course-02",
+      "tick": 400,
+      "rationale": "Safe collector would collect."
+    },
+    {
+      "id": "distill-builder-course-02-405",
+      "sourceEpisodeId": "builder-course-02",
+      "tick": 405,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-02-425",
+      "sourceEpisodeId": "builder-course-02",
+      "tick": 425,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-02-455",
+      "sourceEpisodeId": "builder-course-02",
+      "tick": 455,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-03-0",
+      "sourceEpisodeId": "builder-course-03",
+      "tick": 0,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-03-25",
+      "sourceEpisodeId": "builder-course-03",
+      "tick": 25,
+      "rationale": "Safe collector would collect."
+    },
+    {
+      "id": "distill-builder-course-03-30",
+      "sourceEpisodeId": "builder-course-03",
+      "tick": 30,
+      "rationale": "Safe collector would collect."
+    },
+    {
+      "id": "distill-builder-course-03-35",
+      "sourceEpisodeId": "builder-course-03",
+      "tick": 35,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-03-50",
+      "sourceEpisodeId": "builder-course-03",
+      "tick": 50,
+      "rationale": "Safe collector would collect."
+    },
+    {
+      "id": "distill-builder-course-03-55",
+      "sourceEpisodeId": "builder-course-03",
+      "tick": 55,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-03-70",
+      "sourceEpisodeId": "builder-course-03",
+      "tick": 70,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-03-155",
+      "sourceEpisodeId": "builder-course-03",
+      "tick": 155,
+      "rationale": "Safe collector would bank."
+    },
+    {
+      "id": "distill-builder-course-03-160",
+      "sourceEpisodeId": "builder-course-03",
+      "tick": 160,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-03-195",
+      "sourceEpisodeId": "builder-course-03",
+      "tick": 195,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-03-235",
+      "sourceEpisodeId": "builder-course-03",
+      "tick": 235,
+      "rationale": "Safe collector would collect."
+    },
+    {
+      "id": "distill-builder-course-03-240",
+      "sourceEpisodeId": "builder-course-03",
+      "tick": 240,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-03-265",
+      "sourceEpisodeId": "builder-course-03",
+      "tick": 265,
+      "rationale": "Safe collector would collect."
+    },
+    {
+      "id": "distill-builder-course-03-270",
+      "sourceEpisodeId": "builder-course-03",
+      "tick": 270,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-03-295",
+      "sourceEpisodeId": "builder-course-03",
+      "tick": 295,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-03-335",
+      "sourceEpisodeId": "builder-course-03",
+      "tick": 335,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-03-370",
+      "sourceEpisodeId": "builder-course-03",
+      "tick": 370,
+      "rationale": "Safe collector would bank."
+    },
+    {
+      "id": "distill-builder-course-03-375",
+      "sourceEpisodeId": "builder-course-03",
+      "tick": 375,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-03-380",
+      "sourceEpisodeId": "builder-course-03",
+      "tick": 380,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-03-425",
+      "sourceEpisodeId": "builder-course-03",
+      "tick": 425,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-03-430",
+      "sourceEpisodeId": "builder-course-03",
+      "tick": 430,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-03-435",
+      "sourceEpisodeId": "builder-course-03",
+      "tick": 435,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-03-485",
+      "sourceEpisodeId": "builder-course-03",
+      "tick": 485,
+      "rationale": "Safe collector would collect."
+    },
+    {
+      "id": "distill-builder-course-03-490",
+      "sourceEpisodeId": "builder-course-03",
+      "tick": 490,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-builder-course-03-515",
+      "sourceEpisodeId": "builder-course-03",
+      "tick": 515,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    }
+  ],
+  "perScenario": [
+    {
+      "scenarioId": "builder-course-heldout-01",
+      "baseline": {
+        "scenarioId": "builder-course-heldout-01",
+        "split": "evaluation",
+        "banked": 8,
+        "winner": "champion",
+        "recoveries": 0,
+        "weatherDrains": 0
+      },
+      "candidate": {
+        "scenarioId": "builder-course-heldout-01",
+        "split": "evaluation",
+        "banked": 3,
+        "winner": "rival",
+        "recoveries": 0,
+        "weatherDrains": 1
+      },
+      "delta": -5
+    },
+    {
+      "scenarioId": "builder-course-heldout-02",
+      "baseline": {
+        "scenarioId": "builder-course-heldout-02",
+        "split": "evaluation",
+        "banked": 5,
+        "winner": "champion",
+        "recoveries": 0,
+        "weatherDrains": 0
+      },
+      "candidate": {
+        "scenarioId": "builder-course-heldout-02",
+        "split": "evaluation",
+        "banked": 0,
+        "winner": "rival",
+        "recoveries": 0,
+        "weatherDrains": 1
+      },
+      "delta": -5
+    },
+    {
+      "scenarioId": "builder-course-heldout-03",
+      "baseline": {
+        "scenarioId": "builder-course-heldout-03",
+        "split": "evaluation",
+        "banked": 5,
+        "winner": "champion",
+        "recoveries": 0,
+        "weatherDrains": 0
+      },
+      "candidate": {
+        "scenarioId": "builder-course-heldout-03",
+        "split": "evaluation",
+        "banked": 3,
+        "winner": "champion",
+        "recoveries": 0,
+        "weatherDrains": 2
+      },
+      "delta": -2
+    },
+    {
+      "scenarioId": "builder-course-heldout-04",
+      "baseline": {
+        "scenarioId": "builder-course-heldout-04",
+        "split": "evaluation",
+        "banked": 5,
+        "winner": "champion",
+        "recoveries": 0,
+        "weatherDrains": 0
+      },
+      "candidate": {
+        "scenarioId": "builder-course-heldout-04",
+        "split": "evaluation",
+        "banked": 5,
+        "winner": "champion",
+        "recoveries": 0,
+        "weatherDrains": 1
+      },
+      "delta": 0
+    }
+  ],
+  "aggregate": {
+    "baselineTotal": 23,
+    "candidateTotal": 11,
+    "totalDelta": -12,
+    "scenariosWonByTrained": 0,
+    "scenariosWonByBaseline": 3,
+    "draws": 1,
+    "candidateBeatsRival": 2,
+    "baselineBeatsRival": 4
+  },
+  "notes": [
+    "Baseline uses the rule-based safe collector; rival uses the rule-based greedy collector.",
+    "Training data is drawn from the first practice scenario only.",
+    "No held-out scenario is used for training. The split is enforced by services/arenaScenarios.ts.",
+    "Numbers are reproducible: same base seed + same examples → same weightsHash → same evaluation output."
+  ]
+}
