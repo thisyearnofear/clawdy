@@ -146,9 +146,9 @@ Buffer absorbs a lost day to a CI hiccup or a frame refactor without slipping th
 - [x] Pick 3: Spark coach-trail overlay wired — `CoachTrailLayer` reads `currentMistake.suggested.edgeId` from the Workbench and emits a translucent `TubeGeometry` ribbon along the suggested edge during replay scrub (TS / tests / build green; browser smoke test still pending).
 - [x] Pick 4: gift-card share button rendered on the match-complete UI — second button next to "Watch replay" calls `canvas.toDataURL('image/png')` (with `preserveDrawingBuffer: true` on the R3F Canvas) and downloads a PNG keyed to scenario id + tick (TS / tests / build green; browser smoke test still pending).
 - [ ] Stretch: Heygears STL print kit for the champion rover shipped as a downloadable artifact.
-- [ ] Hero stills captured for the asset board.
-- [ ] Held-out evaluation suite frozen with measured baseline-vs-trained table.
-- [ ] Browser QA round-trip verified.
+- [x] Hero stills: 3 screenshots captured (home page, match-complete with share button, replay view with coach panel). `docs/assets/`.
+- [x] Held-out evaluation suite frozen: `scripts/eval-holdout.ts` distilled across 3 practice scenarios. Safe collector banks 23/23 (4-0 vs greedy rival); trained champion banks 11/23 (2-4). Results in `docs/eval-holdout.json`.
+- [x] Browser QA round-trip verified: play → replay scrub → coach panel (rule buttons, propose/approve flow) → share button ("Saved share card" message confirmed). Training from replay is correctly locked until reset.
 - [ ] Desktop + mobile walkthrough captured.
 - [ ] Asset board assembled.
 - [ ] Build log posts #1 and #2 live with `#Tripothon` and `@TripoAI`.

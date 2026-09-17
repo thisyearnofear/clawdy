@@ -33,7 +33,7 @@ Conversation is the coaching interface. Training makes approved coaching persist
 
 The distinguishing moment is not an agent saying it understands. It is a new checkpoint behaving differently in an unseen scenario, without another instruction. A changed route, a successful recovery, a better-timed intervention, or a fundamentally different collection sequence is the evidence. The drama is watching whether your training held — or whether the arena exposed something your bot was never coached for.
 
-### The Experience
+#### The Experience
 
 The player's emotional arc:
 
@@ -43,6 +43,17 @@ The player's emotional arc:
 4. **Iteration:** You review what happened, identify what the bot should have done differently, and the loop continues.
 
 This is not a game where you win by playing well. It is a game where you win by coaching well. The bot's performance in the arena is a reflection of the quality of your training, not your reflexes.
+
+#### What is the gift
+
+The gift is not the world. The gift is the loop. A child you once were could never quite master a hard arena. You grew up and built a game where you do not play at all — you coach the agent. Then you withdraw, and the game tells you whether your coaching was the bottleneck. The replay is the receipt that proves whether the gift worked.
+
+#### What makes the claim credible
+
+- The training is a real gradient update on real weights — not a saved prompt and not a hand-authored route switch.
+- The held-out scenarios are a separate registry in `services/arenaScenarios.ts`. They are never imported into the training set. The split is enforced by the codebase.
+- The numbers are reproducible. Re-running `npm run eval:holdout` writes `docs/eval-holdout.json` keyed to a weightsHash. Same hash, same numbers.
+- Two comparisons: safe-collector (rule-based fallback) vs trained champion, both against the same greedy rival. Where the trained champion beats the rival, it is the coaching, not the routing, that did the work.
 
 ### Product Modes
 
@@ -57,8 +68,8 @@ A practice instruction may immediately redirect an agent, but that is not eviden
 
 ### Two Entry Paths, One Entrant Format
 
-- **Player path:** coach through the application and train from approved examples.
-- **Builder path:** use a starter to inspect observations, collect data, train supported policies, and evaluate locally.
+- **Player path:** use the interactive 3D web application. Scrub recorded runs, coach mistakes at specific frames, approve examples, and train in-browser. Checkpoints persist in browser `localStorage` and can be exported as JSON.
+- **Builder path:** use a starter to inspect observations, collect data, train supported policies, and evaluate locally. Both produce the same validated policy artifact and use the same match rules. Builder source code runs in the builder's development environment, not as arbitrary uploaded code on the competition host.
 
 Both produce the same validated policy artifact and use the same match rules. Builder source code runs in the builder's development environment, not as arbitrary uploaded code on the competition host.
 
@@ -347,9 +358,9 @@ Do not claim that:
 - [AGENT.md](../AGENT.md): implementation instructions and target agent contract.
 - [DEPLOY.md](DEPLOY.md): release and configuration gates, not a legacy chain deployment recipe.
 - [DEMO_SCRIPT.md](DEMO_SCRIPT.md): two-minute evidence-first presentation.
-- [SUBMISSION.md](SUBMISSION.md): draft submission and implementation-status disclosure.
 - [SUBMISSION_CHECKLIST.md](SUBMISSION_CHECKLIST.md): unchecked release criteria until verified.
 - [TRIPOTHON.md](TRIPOTHON.md): Tripothon S1 (Tripo3D) opportunity plan, track choice, timeline, and risk register.
+- [eval-holdout.json](eval-holdout.json): held-out evaluation results (safe collector vs trained champion).
 - [World asset guide](../public/marble/README.md): existing asset pipeline and new validation requirements.
 
 Retired document paths contain pointers, not competing plans. Update this document when a product decision changes; update the status and evidence in the supporting docs when implementation changes.

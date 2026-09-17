@@ -62,7 +62,7 @@ The [canonical plan](HACKATHON.md) defines the accepted direction. The following
 - [x] `npm run lint`, `npm test`, and `npm run build` run successfully on the intended commit, with relevant new tests added.
 - [x] `npm run starter:train` runs and exports a checkpoint.
 - [ ] Production preview is verified on the presentation device (asset loading, stable renderer, controls, camera, resize, console errors, reset, coaching, checkpoint selection, replay, and training).
-- [x] The [release guide](DEPLOY.md), [README](../README.md), and [submission draft](SUBMISSION.md) have been updated to match current code and verified limitations.
+- [x] The [release guide](DEPLOY.md), [README](../README.md), and [release checklist](SUBMISSION_CHECKLIST.md) have been updated to match current code and verified limitations.
 
 ## Demo and Submission
 - [x] Practice / Match modes and scored coaching lock are reachable in the web UI.

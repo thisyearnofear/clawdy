@@ -43,7 +43,7 @@ Product, contract, demo, and submission materials live in `/docs`:
 - [Product and implementation plan](docs/HACKATHON.md) — direction, scope, architecture, status.
 - [Implementation contract](AGENT.md) — module boundaries and verification rules.
 - [Current opportunity plan](docs/TRIPOTHON.md) — the active external opportunity, timeline, and risk register.
-- [Submission materials](docs/SUBMISSION.md) and [release checklist](docs/SUBMISSION_CHECKLIST.md).
+- [Submission materials](docs/SUBMISSION_CHECKLIST.md).
 - [Two-minute demo script](docs/DEMO_SCRIPT.md).
 - [Immersive world rebuild notes](public/marble/IMMERSIVE_REBUILD.md).
 
