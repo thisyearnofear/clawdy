@@ -232,7 +232,7 @@ Freeze and package generated assets before the demo. Asset generation is not on 
 | Physical controller | `services/arenaPhysics.ts` uses Rapier 0.19.2 with a kinematic rigid body that terrain-follows via downward ray casts, computes pitch/roll from surface normals, blocks on walls via horizontal ray casts, and outputs a full quaternion. Blocked movement triggers a recorded recovery. Course edges pass traversal tests in both directions with zero recoveries. | Further adversarial course coverage and deeper mobile physics testing. This is not wheeled vehicle dynamics. |
 | Versioned course | `services/arenaCourse.ts` grounds Course 01 against the included Sandstone Basin terrain GLB (SHA pinned, shared by render and collider via `services/arenaTerrain.ts`). `applyCourseMode` switches Practice vs Match flood/resource layouts on the same world. | Browser round-trip QA once browser testing resumes. |
 | Baselines and learned policy | `services/arenaPolicy.ts` supports safe, greedy, weather, and `learned` (`PolicyCheckpoint`) strategies. The learned MLP runs through `createLearnedPolicy`. Trained from 68 demonstrations across three practice scenarios, it banks 11 on practice (3 wins) and +7 over baseline across four held-out scenarios. | Add more diverse held-outs and verify the MLP on non-builder course graphs. |
-| Replay and session | `arenaReplay.ts` verifies controller/rules compatibility and state checkpoints. `arenaSession.ts` adds checkpoint selection, review-mode observations, `setCourse` / scored flag, and frame-level coaching hooks. | Complete a full coaching/training round-trip recording for demo fallback. |
+| Replay and session | `arenaReplay.ts` verifies controller/rules compatibility and state checkpoints. `arenaSession.ts` adds checkpoint selection, review-mode observations, `setCourse` / scored flag, and frame-level coaching hooks. `arenaCinematic.ts` plans a deterministic storyboard from the recording (establish/flood/collect/bank/recovery/finish) rendered by the review-mode replay-cam — see `docs/SCENES.md`. | Complete a full coaching/training round-trip recording for demo fallback. |
 | Active application UI | Play-first workbench: Play/Pause/Replay/Coach, Practice↔Match toggle, path ribbons + landmarks, rival tint, Coach panel collapsed by default. Coaching locked on Match. | Mobile layout polish; Mint-auth for a distinct rival GLB. |
 | World loading / visuals | Single pinned Blender terrain GLB (`/terrain/sandstone-basin.glb`, SHA-256 enforced) rendered directly in both lite and full modes; flat route ribbons, low landmarks, warm basin lighting. Marble splat/HQ assets retained but no longer rendered. | Visual pass and low-end device checks when browser scope resumes. |
 | Checkpoint format and storage | `policyModel.ts` defines a 32 → 32 → 16 → 8 MLP with Tanh/softmax and a validated `season-0.checkpoint.v1` JSON format. `checkpointStorage.ts` handles `localStorage`, JSON import/export, and validation. The weight identity is a deterministic digest, not a cryptographic SHA-256. | Freeze hyperparameters and class mapping; implement a real SHA-256 if the docs must claim it. |
@@ -257,19 +257,20 @@ Course 01 is authored public practice. The synthetic fixtures remain unit-test i
 
 ### Verification Snapshot
 
-- `npm test` — 12 test files / 96 tests passed.
+- `npm test` — 13 test files / 102 tests passed.
 - `npm run lint` passed; `npx tsc --noEmit --incremental false` passed; `npm run build` completed with static generation for `/`.
 - `npm run starter:train` runs end-to-end and exports `starter/champion-checkpoint.json`. It trains on three practice builder scenarios (68 non-wait demonstrations) and reports `Baseline: Practice 0 / Held-out 0` and `Trained: Practice 11` (3 wins) `/ Held-out +7` banked across four held-out variants.
 - Actual-collider tests traverse all 26 connections in both directions without recovery, complete practice and match rounds with both entrants banking resources, exercise the weather policy's spend, and reproduce the physical recording with a matching controller.
 - Terrain tests pin the Sandstone GLB SHA-256 and size, verify every route sample is grounded on the collider with traversable normals, check bottom-cap winding, exercise loader abort/hash/size/cancellation paths with deduplicated disposal, and validate flat route-ribbon geometry.
 - Encoding/training tests verify the 32-dimensional vector, MLP forward pass, checkpoint validation, cross-entropy training, and the `proposeCorrection` coaching engine.
+- Cinematic tests verify the storyboard partitions every recording into contiguous shots, emits event shots only for recorded facts (flood, collect/bank, finish), and stays deterministic.
 - The server-rendered entrypoint test verifies the new loading shell and training-status disclosure.
 - Remaining warnings: Rapier's upstream initialization deprecation and Vitest's future config-loader warning. No security or verification controls were disabled.
 - This is not a cross-version or cross-browser matrix. No browser, dev server, screenshot, or visual playtest was started for the Sandstone terrain pass. Canvas rendering, visual alignment, responsive layout, and real browser interactions remain unverified.
 
 ### Remaining Foundation and Retirement Work
 
-- Verify the actual terrain view, rover visibility, camera framing, loading/retry, controls, and layout once browser testing is approved.
+- Verify the actual terrain view, rover visibility, camera framing, replay-cam cinematic behavior, loading/retry, controls, and layout once browser testing is approved.
 - Add more diverse held-out scenarios (adversarial weather timing, swapped start positions, additional resource layouts) and regression reporting.
 - Verify the `ArenaScene` held-out guard works in a browser once visual testing is approved.
 - The active page no longer imports `CloudScene`, the old physics hook, wallet configuration, queue, or legacy `AgentProtocol`. Their files remain unreachable from that path rather than being silently deleted.

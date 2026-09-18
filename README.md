@@ -11,7 +11,7 @@ Clawdy is an agent-training league inside a physical world. You coach a rover th
 **Play → Replay → Coach → Train → Match.**
 
 1. Press **Play** and watch two autonomous rovers race for cores (highlighted amber routes are flood-sensitive).
-2. Open **Replay**, scrub a mistake, and queue a fix.
+2. Open **Replay** — watch it back as an event-driven cinematic, or scrub a mistake and queue a fix.
 3. Open **Coach**, approve examples, and train a real checkpoint.
 4. Switch to **Match** for a scored held-out layout with coaching locked.
 
@@ -44,6 +44,7 @@ Product, contract, demo, and submission materials live in `/docs`:
 - [Implementation contract](AGENT.md) — module boundaries and verification rules.
 - [Current opportunity plan](docs/TRIPOTHON.md) — the active external opportunity, timeline, and risk register.
 - [Submission materials](docs/SUBMISSION_CHECKLIST.md).
+- [Scene layer architecture](docs/SCENES.md) — how recorded matches become replay cinematics and, later, generated scenes.
 - [Two-minute demo script](docs/DEMO_SCRIPT.md).
 - [Immersive world rebuild notes](public/marble/IMMERSIVE_REBUILD.md).
 

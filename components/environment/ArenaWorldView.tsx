@@ -9,6 +9,7 @@ import type { ArenaSession } from '../../services/arenaSession'
 import type { ArenaPosition } from '../../services/arenaEpisode'
 import { disposeArenaTerrain, loadArenaTerrain } from '../../services/arenaTerrain'
 import { createRouteRibbonGeometry } from '../../services/arenaPresentation'
+import { planCinematicShots, shotAt, type CinematicShot } from '../../services/arenaCinematic'
 import { MintModel } from './MintModel'
 import FrameLimiter from '../utils/FrameLimiter'
 import { getMintAsset, getMintModelArtifact, getMintModelTransform, getMintModelUrl } from '../../services/mintAssets'
@@ -19,6 +20,7 @@ type WorldProps = {
   course: ArenaCourse
   session: ArenaSession
   follow: ArenaCamera
+  cinematic?: boolean
   coachSuggestion?: { edgeId: string } | null
   onReady: () => void
   onError: (error: Error) => void
@@ -45,6 +47,79 @@ function FollowCamera({ session, course, follow }: Pick<WorldProps, 'session' | 
     desired.current.set(agent.position[0] + 3.2, agent.position[1] + 3.8, agent.position[2] + 4.6)
     lookAt.current.set(agent.position[0], agent.position[1] + 0.35, agent.position[2])
     camera.position.lerp(desired.current, 1 - Math.exp(-delta * 5))
+    camera.lookAt(lookAt.current)
+  })
+  return null
+}
+
+/** Replay checkpoints advanced per second of playback (2x real-time). */
+const CINEMATIC_FPS = 8
+
+/**
+ * Advances the replay frame while a cinematic is playing. The recording is
+ * the authority — this only scrubs `session.seek()`, never the simulation.
+ */
+function CinematicPlayback({ session }: { session: ArenaSession }) {
+  const carry = useRef(0)
+  useFrame((_, delta) => {
+    carry.current += delta * CINEMATIC_FPS
+    const frames = Math.floor(carry.current)
+    if (frames < 1) return
+    carry.current -= frames
+    const view = session.getSnapshot()
+    if (view.phase !== 'review') return
+    const next = Math.min(view.replayIndex + frames, view.replayLength - 1)
+    if (next !== view.replayIndex) session.seek(next)
+  })
+  return null
+}
+
+/**
+ * Camera director for replay cinematics. The storyboard is a deterministic
+ * function of the recording (see docs/SCENES.md); shots hard-cut on their
+ * boundaries and drift gently inside a span.
+ */
+function CinematicCamera({ session, course }: Pick<WorldProps, 'session' | 'course'>) {
+  const { camera } = useThree()
+  const shots = useMemo(() => planCinematicShots(session.recording()), [session])
+  const lastShot = useRef<CinematicShot | null>(null)
+  const desired = useRef(new THREE.Vector3())
+  const lookAt = useRef(new THREE.Vector3())
+  const elapsed = useRef(0)
+  useFrame((_, delta) => {
+    elapsed.current += delta
+    const view = session.getSnapshot()
+    const shot = shotAt(shots, view.replayIndex) ?? shots.at(-1)
+    if (!shot) return
+    const focus = view.episode.agents.find(agent => agent.id === shot.agentId)
+    const floodZone = course.floodZones[0]?.position ?? course.center
+    switch (shot.kind) {
+      case 'flood':
+        desired.current.set(floodZone[0] + 5.5, floodZone[1] + 5, floodZone[2] + 5.5)
+        lookAt.current.set(floodZone[0], floodZone[1] + 0.2, floodZone[2])
+        break
+      case 'finish': {
+        const angle = elapsed.current * 0.25
+        desired.current.set(course.center[0] + Math.cos(angle) * 9, course.center[1] + 6.5, course.center[2] + Math.sin(angle) * 9)
+        lookAt.current.set(course.center[0], course.center[1] + 0.4, course.center[2])
+        break
+      }
+      case 'establish':
+        desired.current.set(course.center[0] + 10, course.center[1] + 8, course.center[2] + 12)
+        lookAt.current.set(course.center[0], course.center[1] + 0.4, course.center[2])
+        break
+      default: {
+        const position = focus?.position ?? course.center
+        desired.current.set(position[0] + 3, position[1] + 3, position[2] + 4)
+        lookAt.current.set(position[0], position[1] + 0.35, position[2])
+      }
+    }
+    if (lastShot.current !== shot) {
+      camera.position.copy(desired.current)
+      lastShot.current = shot
+    } else {
+      camera.position.lerp(desired.current, 1 - Math.exp(-delta * 4))
+    }
     camera.lookAt(lookAt.current)
   })
   return null
@@ -260,7 +335,7 @@ function Rover({ session, id, color }: { session: ArenaSession; id: string; colo
       targetRot.current.set(agent.rotation[0], agent.rotation[1], agent.rotation[2], agent.rotation[3])
     }
 
-    if (view.phase !== 'running' || view.episode.tick < lastTick.current || lastTick.current < 0) {
+    if ((view.phase !== 'running' && view.phase !== 'review') || view.episode.tick < lastTick.current || lastTick.current < 0) {
       group.current.position.copy(target.current)
       group.current.quaternion.copy(targetRot.current)
     } else {
@@ -471,7 +546,7 @@ function ReadyOnce({ ready, onReady }: { ready: boolean; onReady: () => void }) 
   return null
 }
 
-function World({ course, session, follow, coachSuggestion, onReady, onError, lite }: WorldProps & { lite: boolean }) {
+function World({ course, session, follow, cinematic = false, coachSuggestion, onReady, onError, lite }: WorldProps & { lite: boolean }) {
   // Mesh terrain is the same authored GLB the collider extracts from, so the
   // scene needs no splat layer or fallback mesh.
   const [terrainReady, setTerrainReady] = useState(false)
@@ -513,13 +588,20 @@ function World({ course, session, follow, coachSuggestion, onReady, onError, lit
       <OrbitControls
         makeDefault
         target={course.center}
-        enabled={follow === 'overview'}
+        enabled={follow === 'overview' && !cinematic}
         minDistance={6}
         maxDistance={26}
         minPolarAngle={0.2}
         maxPolarAngle={Math.PI * 0.43}
       />
-      <FollowCamera course={course} session={session} follow={follow} />
+      {cinematic ? (
+        <>
+          <CinematicPlayback session={session} />
+          <CinematicCamera course={course} session={session} />
+        </>
+      ) : (
+        <FollowCamera course={course} session={session} follow={follow} />
+      )}
 
       {course.scenario.edges.map(edge => (
         <PathRibbon

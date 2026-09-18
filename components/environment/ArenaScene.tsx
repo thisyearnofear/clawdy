@@ -143,6 +143,7 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
   const view = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot)
   const [visualReady, setVisualReady] = useState(false)
   const [follow, setFollow] = useState<ArenaCamera>('overview')
+  const [cinematic, setCinematic] = useState(false)
   const [playMode, setPlayMode] = useState<CoursePlayMode>('practice')
   const [activeCourse, setActiveCourse] = useState(course)
   const [studioOpen, setStudioOpen] = useState(false)
@@ -199,7 +200,7 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
 
   const primaryAction = () => {
     if (view.phase === 'error') { onRetry(); return }
-    if (view.phase === 'review') { session.returnToRun(); return }
+    if (view.phase === 'review') { setCinematic(false); session.returnToRun(); return }
     if (view.phase === 'running') { session.pause(); return }
     if (view.phase === 'finished') session.reset()
     setHintOpen(false)
@@ -425,7 +426,7 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
         <section className={styles.viewport} aria-label="Generated world and autonomous rovers">
           <div className={styles.canvas}>
             <ErrorBoundary onError={onError} fallback={<div className={styles.canvasError}><h2>The world view could not start.</h2><button onClick={onRetry}>Reload world</button></div>}>
-              <WorldView course={activeCourse} session={session} follow={follow} coachSuggestion={coachSuggestion} onReady={onReady} onError={onError} />
+              <WorldView course={activeCourse} session={session} follow={follow} cinematic={cinematic && view.phase === 'review'} coachSuggestion={coachSuggestion} onReady={onReady} onError={onError} />
             </ErrorBoundary>
           </div>
           <div className={styles.worldTopline}>
@@ -468,7 +469,7 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
           <div className={styles.worldBottomline}>
             <div className={styles.cameraButtons} role="group" aria-label="Camera view">
               {(['overview', 'champion', 'rival'] as const).map(camera => (
-                <button key={camera} aria-pressed={follow === camera} onClick={() => setFollow(camera)}>{CAMERA_LABELS[camera]}</button>
+                <button key={camera} aria-pressed={follow === camera} onClick={() => { setFollow(camera); setCinematic(false) }}>{CAMERA_LABELS[camera]}</button>
               ))}
             </div>
             <span className={styles.weather} data-flooded={view.episode.weather.flooded}>{view.episode.weather.flooded ? 'Flood · valley slowed' : 'Clear · all routes open'}</span>
@@ -500,7 +501,7 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
       <div className={styles.controlBar}>
         <div className={styles.mainControls}>
           <button className={styles.primaryButton} onClick={primaryAction} disabled={!visualReady && view.phase !== 'error'}>{view.phase === 'running' ? <Pause size={16} /> : <Play size={16} />}{primaryLabel}</button>
-          <button className={styles.secondaryButton} onClick={() => session.reset()} disabled={!visualReady || view.phase === 'error'}><RotateCcw size={15} />Reset</button>
+          <button className={styles.secondaryButton} onClick={() => { setCinematic(false); session.reset() }} disabled={!visualReady || view.phase === 'error'}><RotateCcw size={15} />Reset</button>
           <button className={styles.secondaryButton} onClick={() => session.review()} disabled={view.phase !== 'paused' && view.phase !== 'finished'}><Eye size={16} />Replay</button>
           <button
             className={styles.secondaryButton}
@@ -519,8 +520,18 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
           <div>
             <strong>Replay · { (view.episode.tick * ARENA_RULES.stepMs / 1000).toFixed(1) }s</strong>
             <span>Frame {view.replayIndex + 1} / {view.replayLength}</span>
+            <button
+              type="button"
+              className={styles.frameCoachButton}
+              aria-pressed={cinematic}
+              onClick={() => setCinematic(on => !on)}
+              title="Play the recording back as an event-driven camera reel"
+            >
+              <Play size={13} />
+              {cinematic ? 'Stop cinematic' : 'Play cinematic'}
+            </button>
           </div>
-          <input aria-label="Replay frame" type="range" min={0} max={Math.max(0, view.replayLength - 1)} value={view.replayIndex} onChange={event => session.seek(Number(event.target.value))} />
+          <input aria-label="Replay frame" type="range" min={0} max={Math.max(0, view.replayLength - 1)} value={view.replayIndex} onChange={event => { setCinematic(false); session.seek(Number(event.target.value)) }} />
           <div className={styles.replayCoachBar}>
             <span>
               Frame status: Station <strong>{view.episode.agents.find(a => a.id === 'champion')?.nodeId ?? 'base'}</strong> · Cargo: <strong>{view.episode.agents.find(a => a.id === 'champion')?.cargo ?? 0}</strong> · Weather: <strong>{view.episode.weather.flooded ? 'Submerged (Flooded)' : 'Clear'}</strong>
