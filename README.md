@@ -17,7 +17,7 @@ Clawdy is an agent-training league inside a physical world. You coach a rover th
 
 ## Two Entry Paths, One Entrant Format
 
-- **Player path** — web app. Practice/Match modes, replay scrub, Coach panel, browser `localStorage` checkpoints, JSON import/export.
+- **Player path** — web app. Practice/Match modes, replay scrub + cinematic reel, seeded tournament brackets vs the house field, Coach panel, browser `localStorage` checkpoints, JSON import/export.
 - **Builder path** — `npm run starter:train`. Headless train/eval, export `starter/champion-checkpoint.json`, import in the web app.
 
 Both paths produce the same checkpoint artifact and run under the same match rules.

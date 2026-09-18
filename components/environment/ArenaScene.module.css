@@ -113,6 +113,12 @@
 .frameCoachButton { border: 1px solid #739d6b; background: #3b5f36; color: #fff; font-size: 10px; font-weight: 600; padding: 5px 11px; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: background 120ms ease; }
 .frameCoachButton:hover:not(:disabled) { background: #2a4626; }
 .frameCoachButton:disabled { opacity: 0.5; cursor: not-allowed; }
+.frameCoachButton[aria-pressed="true"] { background: #6b4f1d; border-color: #a8834a; }
+.replay > .bracketRound { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; padding-top: 10px; border-top: 1px dashed #cbdbbf; }
+.replay > .bracketRound > strong { font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: #385038; }
+.bracketMatch { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.bracketMatch > span { font: 10px var(--font-geist-mono), monospace; color: #385038; }
+.bracketMatch > span:first-child { font-weight: 600; }
 .footer { display: flex; justify-content: space-between; gap: 25px; padding-top: 15px; font-size: 10px; line-height: 1.7; color: var(--muted); }
 .footer strong { font-weight: 600; color: #536b51; }
 .footer > span { display: flex; align-items: center; gap: 8px; font: 9px var(--font-geist-mono), monospace; white-space: nowrap; }

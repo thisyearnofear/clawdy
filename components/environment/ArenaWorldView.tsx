@@ -81,7 +81,9 @@ function CinematicPlayback({ session }: { session: ArenaSession }) {
  */
 function CinematicCamera({ session, course }: Pick<WorldProps, 'session' | 'course'>) {
   const { camera } = useThree()
-  const shots = useMemo(() => planCinematicShots(session.recording()), [session])
+  // Replan when the recording under review changes (e.g. a different
+  // tournament match is loaded while the cinematic stays mounted).
+  const storyboard = useRef<{ recording: unknown; shots: CinematicShot[] } | null>(null)
   const lastShot = useRef<CinematicShot | null>(null)
   const desired = useRef(new THREE.Vector3())
   const lookAt = useRef(new THREE.Vector3())
@@ -89,6 +91,13 @@ function CinematicCamera({ session, course }: Pick<WorldProps, 'session' | 'cour
   useFrame((_, delta) => {
     elapsed.current += delta
     const view = session.getSnapshot()
+    if (view.phase !== 'review') return
+    const recording = session.activeRecording()
+    if (storyboard.current?.recording !== recording) {
+      storyboard.current = { recording, shots: planCinematicShots(recording) }
+      lastShot.current = null
+    }
+    const shots = storyboard.current.shots
     const shot = shotAt(shots, view.replayIndex) ?? shots.at(-1)
     if (!shot) return
     const focus = view.episode.agents.find(agent => agent.id === shot.agentId)

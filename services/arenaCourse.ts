@@ -211,13 +211,17 @@ export async function loadArenaCourse(signal?: AbortSignal) {
     signal?.throwIfAborted()
     const surface = createWorldSurface(scene)
     try {
-      physics = new ArenaPhysics(surface.colliderData())
+      const collider = surface.colliderData()
+      physics = new ArenaPhysics(collider)
+      const course = buildArenaCourse(physics)
+      const loadedPhysics = physics
+      // Tournament matches each get an isolated physics world built from the
+      // same pinned collider; callers dispose the returned motion themselves.
+      const createMotion = () => new ArenaPhysics(collider)
+      return { course, physics: loadedPhysics, createMotion, dispose: () => loadedPhysics.dispose() }
     } finally {
       surface.dispose()
     }
-    const course = buildArenaCourse(physics)
-    const loadedPhysics = physics
-    return { course, physics: loadedPhysics, dispose: () => loadedPhysics.dispose() }
   } catch (error) {
     physics?.dispose()
     throw error

@@ -1,6 +1,6 @@
 # Scene Layer: Match Authority → Storyboard → Cinematic
 
-Status: **partially implemented**. The deterministic storyboard planner and replay-cam renderer exist (`services/arenaCinematic.ts`, `components/environment/ArenaWorldView.tsx`). AI-generated video scenes are a designed extension point, not implemented or budgeted. No browser QA has run on the cinematic pass.
+Status: **partially implemented**. The deterministic storyboard planner and replay-cam renderer exist (`services/arenaCinematic.ts`, `components/environment/ArenaWorldView.tsx`). The tournament layer (`services/arenaTournament.ts`) runs seeded single-elimination brackets of fully recorded headless matches; `ArenaSession.reviewFrom` loads any match recording into review, where the replay-cam plays it as a cinematic. AI-generated video scenes are a designed extension point, not implemented or budgeted. No browser QA has run on the cinematic or tournament pass.
 
 This document defines how Clawdy turns recorded matches into immersive scenes for live tournament presentation. The reference architecture is the Pocket Battle Lab pattern: **the match authority owns the outcome; the scene layer owns the presentation.**
 

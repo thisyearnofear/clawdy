@@ -2,12 +2,14 @@
 
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { AlertTriangle, ArrowRight, BarChart3, CheckCircle2, Download, Eye, Layers, Pause, Play, RotateCcw, Sparkles, Upload, XCircle } from 'lucide-react'
+import { AlertTriangle, ArrowRight, BarChart3, CheckCircle2, Download, Eye, Layers, Pause, Play, RotateCcw, Sparkles, Trophy, Upload, XCircle } from 'lucide-react'
 import { ARENA_RULES, type ArenaAction, type ArenaAgentState, type ArenaObservation } from '../../services/arenaEpisode'
 import { loadArenaCourse, applyCourseMode, type ArenaCourse, type CoursePlayMode } from '../../services/arenaCourse'
 import { isEvaluationScenario, rejectEvaluationExamples } from '../../services/arenaScenarios'
 import { ArenaSession } from '../../services/arenaSession'
+import type { ArenaMotion } from '../../services/arenaPhysics'
 import { collectorPolicy, type CollectorStrategy } from '../../services/arenaPolicy'
+import { createTournament, runTournament, type ArenaTournament, type TournamentEntrant, type TournamentMatch } from '../../services/arenaTournament'
 import {
   type PolicyCheckpoint,
   SEASON_0_BASE_CHECKPOINT,
@@ -55,7 +57,7 @@ const CAMERA_LABELS: Record<ArenaCamera, string> = {
   rival: 'Follow rival',
 }
 
-type LoadedSession = { session: ArenaSession; course: ArenaCourse }
+type LoadedSession = { session: ArenaSession; course: ArenaCourse; createMotion: () => ArenaMotion }
 
 function actionsEqual(a: ArenaAction, b: ArenaAction): boolean {
   if (a.type !== b.type) return false
@@ -139,11 +141,13 @@ function AgentCard({ agent, policy, unlocked, onPolicy }: {
   )
 }
 
-function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () => void }) {
+function Workbench({ session, course, createMotion, onRetry }: LoadedSession & { onRetry: () => void }) {
   const view = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot)
   const [visualReady, setVisualReady] = useState(false)
   const [follow, setFollow] = useState<ArenaCamera>('overview')
   const [cinematic, setCinematic] = useState(false)
+  const [tournament, setTournament] = useState<ArenaTournament | null>(null)
+  const [tournamentRunning, setTournamentRunning] = useState(false)
   const [playMode, setPlayMode] = useState<CoursePlayMode>('practice')
   const [activeCourse, setActiveCourse] = useState(course)
   const [studioOpen, setStudioOpen] = useState(false)
@@ -197,6 +201,33 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
     if (!hasHydrated) return
     saveStoredExamples(examples)
   }, [examples, hasHydrated])
+
+  const entrantName = (id: string | null) => id === null ? 'bye' : (tournament?.entrants.find(entrant => entrant.id === id)?.name ?? id)
+
+  /** Single-elimination bracket: your trained champion vs the house field, run headlessly on the live layout. */
+  const runBracket = () => {
+    if (tournamentRunning) return
+    const entrants: TournamentEntrant[] = [
+      { id: 'you', name: activeCheckpoint.name, policy: { strategy: 'learned', checkpoint: activeCheckpoint }, policyVersion: 'learned.you' },
+      { id: 'house-careful', name: 'House · Careful', policy: 'safe', policyVersion: 'baseline.safe.v2' },
+      { id: 'house-greedy', name: 'House · Greedy', policy: 'greedy', policyVersion: 'baseline.greedy.v2' },
+      { id: 'house-weather', name: 'House · Weather', policy: 'weather', policyVersion: 'baseline.weather.v2' },
+    ]
+    const bracket = createTournament(entrants, Math.floor(Math.random() * 0x7fffffff))
+    setTournament(bracket)
+    setTournamentRunning(true)
+    void runTournament(bracket, activeCourse.scenario, createMotion, () => setTournament({ ...bracket }))
+      .then(() => setTournament({ ...bracket }))
+      .catch(() => setTrainMessage('The tournament stopped unexpectedly.'))
+      .finally(() => setTournamentRunning(false))
+  }
+
+  /** Load a finished bracket match into review and play its cinematic reel. */
+  const watchMatch = (match: TournamentMatch) => {
+    if (!match.recording || view.phase === 'running') return
+    setCinematic(true)
+    session.reviewFrom(match.recording)
+  }
 
   const primaryAction = () => {
     if (view.phase === 'error') { onRetry(); return }
@@ -515,6 +546,57 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
         <div className={styles.runMeta}><span>{view.episode.tick} / {activeCourse.scenario.durationTicks}</span><button onClick={download} disabled={view.episode.tick === 0} aria-label="Download recorded run"><Download size={16} />Save run</button></div>
       </div>
 
+      <section className={styles.replay} aria-label="Tournament bracket">
+        <div>
+          <strong>Tournament · single elimination</strong>
+          <span>
+            {tournamentRunning
+              ? 'Running bracket…'
+              : tournament?.status === 'done'
+                ? `Champion: ${entrantName(tournament.champion)}`
+                : 'Your trained champion vs the house field'}
+          </span>
+          <button
+            type="button"
+            className={styles.frameCoachButton}
+            onClick={runBracket}
+            disabled={tournamentRunning || !visualReady}
+            title="Run a seeded bracket on the current layout; every match is fully recorded"
+          >
+            <Trophy size={13} />
+            {tournament ? 'Run again' : 'Run bracket'}
+          </button>
+        </div>
+        {tournament && tournament.rounds.map((round, roundIndex) => (
+          <div key={roundIndex} className={styles.bracketRound}>
+            <strong>{roundIndex === tournament.rounds.length - 1 ? 'Final' : `Round ${roundIndex + 1}`}</strong>
+            {round.map(match => (
+              <div key={match.id} className={styles.bracketMatch}>
+                <span>{entrantName(match.slotA)} vs {entrantName(match.slotB)}</span>
+                <span>
+                  {match.status === 'done'
+                    ? match.recording
+                      ? `${match.banked[match.slotA!] ?? 0}–${match.banked[match.slotB!] ?? 0} · ${entrantName(match.winner)}`
+                      : `${entrantName(match.winner)} · bye`
+                    : 'pending'}
+                </span>
+                {match.recording && (
+                  <button
+                    type="button"
+                    className={styles.frameCoachButton}
+                    onClick={() => watchMatch(match)}
+                    disabled={view.phase === 'running'}
+                    title="Replay this match with the cinematic camera"
+                  >
+                    <Play size={13} /> Watch
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        ))}
+      </section>
+
       {view.phase === 'review' && (
         <section className={styles.replay} aria-label="Recorded run review">
           <div>
@@ -770,7 +852,7 @@ export default function ArenaScene() {
       if (abort.signal.aborted) { bundle.dispose(); return }
       try {
         owned = new ArenaSession(bundle.course, bundle.physics)
-        setLoaded({ session: owned, course: bundle.course })
+        setLoaded({ session: owned, course: bundle.course, createMotion: bundle.createMotion })
       } catch (cause) {
         bundle.dispose()
         throw cause

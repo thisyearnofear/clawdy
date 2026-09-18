@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ArenaSession } from '../arenaSession'
+import { ArenaRunner } from '../arenaPolicy'
 import type { ArenaCourse } from '../arenaCourse'
 import type { ArenaMotion } from '../arenaPhysics'
 
@@ -79,6 +80,39 @@ describe('application episode session', () => {
     session.reset()
     expect(session.getSnapshot()).toMatchObject({ phase: 'ready', replayLength: 0, replayIndex: 0, error: null })
     expect(session.getSnapshot().episode.tick).toBe(0)
+    session.dispose()
+  })
+
+  it('reviews an external recording (tournament match) and returns to the prior phase', () => {
+    const { session } = setup()
+    // Build a recording outside the session — the same shape a bracket match produces.
+    const runner = new ArenaRunner({
+      id: 'external-match', worldVersion: 'fixture-v1', split: 'evaluation', seed: 3, durationTicks: 20,
+      nodes: [{ id: 'a', position: [0, 0, 0] }, { id: 'b', position: [1, 0, 0] }, { id: 'c', position: [0, 0, 1] }],
+      edges: [
+        { id: 'road', from: 'a', to: 'b', travelTicks: 5, floodable: false },
+        { id: 'road2', from: 'a', to: 'c', travelTicks: 5, floodable: false },
+      ],
+      entrants: [{ id: 'champion', baseNode: 'a', policyVersion: 'test' }, { id: 'rival', baseNode: 'b', policyVersion: 'test' }],
+      resources: [{ id: 'core', nodeId: 'b', value: 1 }, { id: 'core2', nodeId: 'c', value: 1 }], floods: [],
+    }, { champion: 'safe', rival: 'greedy' })
+    runner.advanceTicks(20)
+    const external = runner.recording()
+
+    // From 'ready': reviewFrom presents the external recording, then returns to 'ready'.
+    expect(session.getSnapshot().phase).toBe('ready')
+    session.reviewFrom(external)
+    expect(session.getSnapshot().phase).toBe('review')
+    expect(session.getSnapshot().replayLength).toBe(external.checkpoints.length)
+    expect(session.activeRecording()).toBe(external)
+    session.seek(external.checkpoints.length - 1)
+    expect(session.getSnapshot().episode.status).toBe('finished')
+    session.returnToRun()
+    expect(session.getSnapshot().phase).toBe('ready')
+
+    // Invalid recordings are rejected without changing state.
+    expect(() => session.reviewFrom({ schemaVersion: 'arena-recording-v1', checkpoints: [] } as never)).toThrow('Invalid or empty')
+    expect(session.getSnapshot().phase).toBe('ready')
     session.dispose()
   })
 

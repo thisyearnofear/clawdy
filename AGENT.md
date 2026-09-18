@@ -94,7 +94,8 @@ The new reference modules are:
 - `services/arenaTerrain.ts`: shared validated loader for the pinned terrain GLB (fetch, size budget, SHA-256, parse, abort disposal) used identically by physics collider extraction and rendering.
 - `services/arenaPresentation.ts`: pure geometry helpers for route ribbons used by the scene and tests.
 - `services/arenaCinematic.ts`: deterministic storyboard planner that partitions a recording into event-driven shots (establish/flood/collect/bank/recovery/follow/finish) for the review-mode replay-cam; see `docs/SCENES.md`.
-- `services/arenaSession.ts`: application adapter that wires start/pause/reset, policy locking, bounded frame pumping, replay scrubbing, checkpoint selection, and JSON export.
+- `services/arenaSession.ts`: application adapter that wires start/pause/reset, policy locking, bounded frame pumping, replay scrubbing, checkpoint selection, external-recording review (`reviewFrom`), and JSON export.
+- `services/arenaTournament.ts`: seeded single-elimination bracket over headless matches; entrants map onto champion/rival slots, each match runs on isolated physics and keeps its own `ArenaRecording` for cinematic review.
 - `services/policyModel.ts`: `PolicyCheckpoint` schema, 32-dimensional observation encoding, 8-class action mapping, MLP forward/inference, and checkpoint validation.
 - `services/policyTrainer.ts`: supervised cross-entropy backpropagation with momentum SGD, dataset hashing, and scenario evaluation.
 - `services/coachingEngine.ts`: natural-language and rule-based proposal of reviewable `ArenaTrainingExample` corrections.
@@ -131,7 +132,7 @@ npm test
 npm run build
 ```
 
-CI currently uses Node.js 20 and npm. Legacy chain environment settings in CI and the existing environment examples are consolidation work, not Season 0 requirements. Reference tests now cover episodes, actions, timing, replay, world queries, terrain loading and grounding, route-ribbon geometry, cinematic storyboards, scenario guards, encoding/training, checkpoint I/O, and public configuration; they do not verify the complete application in a browser.
+CI currently uses Node.js 20 and npm. Legacy chain environment settings in CI and the existing environment examples are consolidation work, not Season 0 requirements. Reference tests now cover episodes, actions, timing, replay, world queries, terrain loading and grounding, route-ribbon geometry, cinematic storyboards, seeded tournament brackets and external-recording review, scenario guards, encoding/training, checkpoint I/O, and public configuration; they do not verify the complete application in a browser.
 
 For implementation changes, extend the reference tests and add coverage for training updates, artifact validation, and held-out evaluation as those systems are implemented. Earlier `agent-browser` checks (page load, splat world render, start/pause/review, 375×812 reflow) applied to the retired Marble world. No browser QA ran for the Sandstone Basin pass; re-verify loading, framing, and layout when browser scope resumes. Remaining browser work: complete the full coaching/training round-trip and stress loading/retry on lower-end devices.
 

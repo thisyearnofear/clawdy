@@ -31,7 +31,7 @@ export class ArenaSession {
   #checkpoint: PolicyCheckpoint = SEASON_0_BASE_CHECKPOINT
   #view: ArenaSessionView
   #review: ArenaRecording | null = null
-  #returnPhase: 'paused' | 'finished' = 'paused'
+  #returnPhase: 'ready' | 'paused' | 'finished' = 'paused'
   #listeners = new Set<() => void>()
   #eventListeners = new Map<string, Set<ArenaEventListener<ArenaEvent['type']>>>()
   #matchId = makeMatchId()
@@ -284,6 +284,30 @@ export class ArenaSession {
     this.#review = this.#runner.recording()
     this.#publish({ phase: 'review', episode: structuredClone(this.#review.checkpoints[0].state), replayIndex: 0, replayLength: this.#review.checkpoints.length })
     this.#emitPhase(previous, 'review')
+  }
+
+  /**
+   * Review an external recording (e.g. a tournament match that did not run in
+   * this session). The recording is presented, never re-simulated.
+   */
+  reviewFrom(recording: ArenaRecording) {
+    this.#assertActive()
+    if (this.#view.phase === 'running') throw new Error('Pause the run before reviewing a recorded match')
+    if (recording?.schemaVersion !== 'arena-recording-v1' || !Array.isArray(recording.checkpoints) ||
+        recording.checkpoints.length === 0 || !recording.checkpoints[0]?.state?.agents?.length) {
+      throw new Error('Invalid or empty arena recording')
+    }
+    const previous = this.#view.phase
+    if (previous !== 'review') this.#returnPhase = previous === 'error' ? 'paused' : previous
+    this.#review = recording
+    this.#publish({ phase: 'review', episode: structuredClone(recording.checkpoints[0].state), replayIndex: 0, replayLength: recording.checkpoints.length })
+    this.#emitPhase(previous, 'review')
+  }
+
+  /** The recording under review, or the live run's recording when not reviewing. */
+  activeRecording(): ArenaRecording {
+    this.#assertActive()
+    return this.#review ?? this.#runner.recording()
   }
 
   seek(index: number) {
