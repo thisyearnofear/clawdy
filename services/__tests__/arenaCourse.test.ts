@@ -15,7 +15,7 @@ let collider: { vertices: Float32Array; indices: Uint32Array }
 
 beforeAll(async () => {
   await initializeArenaPhysics()
-  bytes = new Uint8Array(await readFile(resolve(process.cwd(), 'public/marble/collider.glb')))
+  bytes = new Uint8Array(await readFile(resolve(process.cwd(), 'public/terrain/sandstone-basin.glb')))
   const gltf = await new GLTFLoader().parseAsync(bytes.buffer, '')
   const surface = createWorldSurface(gltf.scene)
   collider = surface.colliderData()
@@ -23,20 +23,35 @@ beforeAll(async () => {
 })
 afterEach(() => vi.unstubAllGlobals())
 
-describe('versioned Marble course', () => {
-  it('pins the course to the committed collider and grounds its nodes and paths', () => {
+describe('versioned Sandstone Basin course', () => {
+  it('pins the course to the committed terrain and grounds its nodes and paths', () => {
+    expect(ARENA_WORLD.terrainUrl).toBe(ARENA_WORLD.colliderUrl)
     expect(createHash('sha256').update(bytes).digest('hex')).toBe(ARENA_WORLD.colliderSha256)
     const physics = new ArenaPhysics(collider)
     try {
       const course = buildArenaCourse(physics)
+      expect(course.config.terrain.url).toBe(ARENA_WORLD.terrainUrl)
+      expect(course.config.terrain.sha256).toBe(ARENA_WORLD.colliderSha256)
       expect(course.scenario.worldVersion).toBe(ARENA_WORLD.version)
       expect(course.scenario.nodes).toHaveLength(13)
+      expect(course.scenario.edges).toHaveLength(26)
       expect(course.scenario.edges.filter(edge => edge.floodable)).toHaveLength(10)
+      const ridge = course.scenario.nodes.find(node => node.id === 'ridge-center')!.position
+      const valley = course.scenario.nodes.find(node => node.id === 'valley-center')!.position
+      expect(ridge[1] - valley[1]).toBeGreaterThanOrEqual(0.8)
+      expect(course.floodZones).toHaveLength(2)
+      for (const zone of course.floodZones) expect(zone.size).toEqual([1.35, 2.4])
       for (const node of course.scenario.nodes) expect(physics.canStand(node.position)).toBe(true)
       for (const edge of course.scenario.edges) {
         expect(edge.path!.length).toBeGreaterThan(2)
         expect(edge.path![0]).toEqual(course.scenario.nodes.find(node => node.id === edge.from)!.position)
         expect(edge.path!.at(-1)).toEqual(course.scenario.nodes.find(node => node.id === edge.to)!.position)
+        for (const point of edge.path!) {
+          const sample = physics.sample([point[0], point[1] + 1, point[2]], 4)
+          expect(sample, `${edge.id} ungrounded sample`).not.toBeNull()
+          expect(Math.abs(sample!.point[1] - point[1]), `${edge.id} sample drop`).toBeLessThan(1e-4)
+          expect(sample!.normal[1], `${edge.id} steep sample`).toBeGreaterThanOrEqual(0.7)
+        }
       }
     } finally {
       physics.dispose()
@@ -88,7 +103,7 @@ describe('versioned Marble course', () => {
   it('loads the pinned course and disposes its physics without any browser', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(bytes)))
     const loaded = await loadArenaCourse()
-    expect(loaded.course.config.splat?.url).toBe('/marble/arena.spz')
+    expect(loaded.course.config.terrain.url).toBe('/terrain/sandstone-basin.glb')
     expect(loaded.course.scenario.worldVersion).toBe(ARENA_WORLD.version)
     loaded.dispose()
     expect(() => loaded.physics.sample([0, 10, 0])).toThrow('disposed')
@@ -109,18 +124,40 @@ describe('versioned Marble course', () => {
     await expect(loadArenaCourse(abort.signal)).rejects.toThrow()
   })
 
+  it('completes and replays both practice and compete modes on the sandstone terrain', () => {
+    const physics = new ArenaPhysics(collider)
+    const replayPhysics = new ArenaPhysics(collider)
+    try {
+      const practice = buildArenaCourse(physics)
+      for (const mode of ['practice', 'compete'] as const) {
+        const { scenario } = applyCourseMode(practice, mode)
+        expect(scenario.id).toBe(`sandstone-${mode}-01`)
+        const runner = new ArenaRunner(scenario, { champion: 'safe', rival: 'greedy' }, physics)
+        runner.advanceTicks(scenario.durationTicks)
+        const final = runner.snapshot()
+        expect(final.status, mode).toBe('finished')
+        expect(final.agents.every(agent => agent.banked > 0), mode).toBe(true)
+        expect(final.agents.every(agent => agent.recoveries === 0), mode).toBe(true)
+        expect(replayArenaEpisode(runner.recording(), replayPhysics).divergedAt, mode).toBeNull()
+      }
+    } finally {
+      physics.dispose()
+      replayPhysics.dispose()
+    }
+  }, 60000)
+
   it('keeps the grounded world and only changes floods and cores in compete mode', () => {
     const physics = new ArenaPhysics(collider)
     try {
       const practice = buildArenaCourse(physics)
       const compete = applyCourseMode(practice, 'compete')
       const restored = applyCourseMode(compete, 'practice')
-      expect(compete.scenario.id).toBe('cloudbank-compete-01')
+      expect(compete.scenario.id).toBe('sandstone-compete-01')
       expect(compete.scenario.split).toBe('evaluation')
       expect(compete.scenario.nodes).toEqual(practice.scenario.nodes)
       expect(compete.scenario.edges.map(edge => edge.id)).toEqual(practice.scenario.edges.map(edge => edge.id))
       expect(compete.scenario.resources.map(resource => resource.nodeId)).not.toEqual(practice.scenario.resources.map(resource => resource.nodeId))
-      expect(restored.scenario.id).toBe('cloudbank-practice-01')
+      expect(restored.scenario.id).toBe('sandstone-practice-01')
       expect(restored.scenario.split).toBe('practice')
       expect(restored.scenario.floods).toEqual(practice.scenario.floods)
     } finally {

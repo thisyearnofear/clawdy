@@ -1,5 +1,7 @@
 # Immersive course rebuild
 
+> **Superseded September 18, 2026.** The owner approved a mesh-first playable ground: the active terrain is the Blender-authored `public/terrain/sandstone-basin.glb` (explicit rebuild `blender --background --factory-startup --python scripts/build-arena-terrain.py -- --force`), used identically for rendering and collision. The Marble world, this rebuild strategy, and the synced Mint terrain candidate are retained for reference but are not active. The notes below are kept as history.
+
 ## Status
 
 - **Phase A (shipped):** splat-primary with strong path ribbons, flood volumes, landmarks, lighting/fog, follow-camera on Play. HQ mesh is optional and **clipped** to the playable AABB because this cloud world exports sky floaters as solid geometry.

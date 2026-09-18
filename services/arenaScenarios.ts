@@ -214,7 +214,7 @@ export function getScenarioById(id: string): ArenaScenario | undefined {
 }
 
 export function isEvaluationScenario(id: string): boolean {
-  return EVALUATION_IDS.has(id) || id.startsWith('cloudbank-compete')
+  return EVALUATION_IDS.has(id) || id.startsWith('cloudbank-compete') || id.startsWith('sandstone-compete')
 }
 
 /**

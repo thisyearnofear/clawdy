@@ -4,11 +4,11 @@ import { memo, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import type { ArenaCourse } from '../../services/arenaCourse'
 import type { ArenaSession } from '../../services/arenaSession'
 import type { ArenaPosition } from '../../services/arenaEpisode'
-import { MarbleWorldLayer } from './MarbleWorldLayer'
+import { disposeArenaTerrain, loadArenaTerrain } from '../../services/arenaTerrain'
+import { createRouteRibbonGeometry } from '../../services/arenaPresentation'
 import { MintModel } from './MintModel'
 import FrameLimiter from '../utils/FrameLimiter'
 import { getMintAsset, getMintModelArtifact, getMintModelTransform, getMintModelUrl } from '../../services/mintAssets'
@@ -51,70 +51,60 @@ function FollowCamera({ session, course, follow }: Pick<WorldProps, 'session' | 
 }
 
 /**
- * Primary terrain: HQ textured mesh, clipped to the playable volume so Marble
- * sky/background floaters do not dominate the frame.
+ * Primary terrain: the authored Sandstone Basin GLB, the same file the physics
+ * collider is extracted from, so no clipping or fallback layer is needed.
  */
-function HqTerrainMesh({
+function TerrainMesh({
   url,
-  clipBox,
+  sha256,
   onReady,
   onError,
 }: {
   url: string
-  clipBox: { min: THREE.Vector3; max: THREE.Vector3 }
+  sha256: string
   onReady?: () => void
   onError?: (error: Error) => void
 }) {
   const [scene, setScene] = useState<THREE.Group | null>(null)
-  const { gl } = useThree()
-
-  // R3F idiom: enable clipping before materials with clipping planes are constructed.
-  // Mutating a WebGLRenderer property from a hook callback trips react-hooks/immutability;
-  // this is the documented escape hatch for renderer configuration.
+  // The effect owns the loaded scene lifetime (abort + dispose); callbacks go
+  // through refs so prop identity changes never trigger a reload.
+  const onReadyRef = useRef(onReady)
+  const onErrorRef = useRef(onError)
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/immutability
-    gl.localClippingEnabled = true
-  }, [gl])
+    onReadyRef.current = onReady
+    onErrorRef.current = onError
+  })
 
   useEffect(() => {
-    let cancelled = false
-    new GLTFLoader().load(
-      url,
-      (gltf) => {
-        if (cancelled) return
-        const planes = [
-          new THREE.Plane(new THREE.Vector3(1, 0, 0), -clipBox.min.x),
-          new THREE.Plane(new THREE.Vector3(-1, 0, 0), clipBox.max.x),
-          new THREE.Plane(new THREE.Vector3(0, 1, 0), -clipBox.min.y),
-          new THREE.Plane(new THREE.Vector3(0, -1, 0), clipBox.max.y),
-          new THREE.Plane(new THREE.Vector3(0, 0, 1), -clipBox.min.z),
-          new THREE.Plane(new THREE.Vector3(0, 0, -1), clipBox.max.z),
-        ]
-        gltf.scene.traverse((obj) => {
-          if (!(obj instanceof THREE.Mesh)) return
-          obj.castShadow = false
-          obj.receiveShadow = true
-          const materials = Array.isArray(obj.material) ? obj.material : [obj.material]
-          for (const material of materials) {
-            if (!material) continue
-            material.side = THREE.FrontSide
-            material.clippingPlanes = planes
-            material.clipShadows = true
-            if ('envMapIntensity' in material) material.envMapIntensity = 0.25
-          }
+    const abort = new AbortController()
+    let loaded: THREE.Group | null = null
+    loadArenaTerrain(url, sha256, abort.signal)
+      .then(scene => {
+        if (abort.signal.aborted) {
+          disposeArenaTerrain(scene)
+          return
+        }
+        scene.traverse(object => {
+          if (!(object instanceof THREE.Mesh)) return
+          object.receiveShadow = true
+          object.castShadow = object.name.startsWith('Rock')
         })
-        setScene(gltf.scene)
-        onReady?.()
-      },
-      undefined,
-      (err) => {
-        if (cancelled) return
-        console.warn('[HqTerrainMesh] Failed to load HQ mesh:', err)
-        onError?.(err instanceof Error ? err : new Error('Terrain mesh failed to load'))
-      },
-    )
-    return () => { cancelled = true }
-  }, [clipBox.max.x, clipBox.max.y, clipBox.max.z, clipBox.min.x, clipBox.min.y, clipBox.min.z, onError, onReady, url])
+        loaded = scene
+        setScene(scene)
+      })
+      .catch(error => {
+        if (abort.signal.aborted) return
+        onErrorRef.current?.(error instanceof Error ? error : new Error('Terrain mesh failed to load'))
+      })
+    return () => {
+      abort.abort()
+      if (loaded) disposeArenaTerrain(loaded)
+    }
+  }, [url, sha256])
+
+  useEffect(() => {
+    if (scene) onReadyRef.current?.()
+  }, [scene])
 
   if (!scene) return null
   return <primitive object={scene} />
@@ -328,65 +318,51 @@ function Resource({ session, id, position }: { session: ArenaSession; id: string
     <group ref={group} position={position}>
       <mesh castShadow>
         <octahedronGeometry args={[0.14]} />
-        <meshStandardMaterial color="#ffe08a" emissive="#ff9b3a" emissiveIntensity={0.55} metalness={0.45} roughness={0.2} />
+        <meshStandardMaterial color="#ffe08a" emissive="#ff9b3a" emissiveIntensity={0.25} metalness={0.45} roughness={0.2} />
       </mesh>
       <mesh ref={outerRingRef} castShadow>
         <torusGeometry args={[0.22, 0.018, 12, 32]} />
-        <meshStandardMaterial color="#ffb14d" emissive="#ff8c1a" emissiveIntensity={0.65} metalness={0.4} roughness={0.25} />
+        <meshStandardMaterial color="#ffb14d" emissive="#ff8c1a" emissiveIntensity={0.25} metalness={0.4} roughness={0.25} />
       </mesh>
       <mesh ref={innerRingRef} castShadow>
         <torusGeometry args={[0.18, 0.012, 10, 24]} />
-        <meshStandardMaterial color="#ffe08a" emissive="#c98520" emissiveIntensity={0.55} metalness={0.45} roughness={0.2} />
+        <meshStandardMaterial color="#ffe08a" emissive="#c98520" emissiveIntensity={0.25} metalness={0.45} roughness={0.2} />
       </mesh>
-      <pointLight color="#ffcf6b" intensity={0.85} distance={2.6} decay={2} />
     </group>
   )
 }
 
-function PathRibbon({ points, color, width = 0.22 }: { points: ArenaPosition[]; color: string; width?: number }) {
-  const geometry = useMemo(() => {
-    if (points.length < 2) return null
-    const curve = new THREE.CatmullRomCurve3(points.map(point => new THREE.Vector3(point[0], point[1] + 0.04, point[2])))
-    return new THREE.TubeGeometry(curve, Math.max(8, points.length * 2), width / 2, 6, false)
-  }, [points, width])
+function PathRibbon({ session, edgeId, points, color }: { session: ArenaSession; edgeId: string; points: ArenaPosition[]; color: string }) {
+  const group = useRef<THREE.Group>(null)
+  const geometry = useMemo(() => createRouteRibbonGeometry(points, 0.09, 0.025), [points])
 
   useEffect(() => () => { geometry?.dispose() }, [geometry])
+  useFrame(() => {
+    if (!group.current) return
+    group.current.visible = session.getSnapshot().episode.agents.some(agent => agent.transit?.edgeId === edgeId)
+  })
   if (!geometry) return null
   return (
-    <mesh geometry={geometry} renderOrder={2}>
-      <meshStandardMaterial
-        color={color}
-        emissive={color}
-        emissiveIntensity={0.28}
-        transparent
-        opacity={0.88}
-        roughness={0.45}
-        metalness={0.1}
-        depthWrite={false}
-      />
-    </mesh>
+    <group ref={group} visible={false}>
+      <mesh geometry={geometry} renderOrder={2}>
+        <meshBasicMaterial color={color} transparent opacity={0.65} depthWrite={false} side={THREE.DoubleSide} />
+      </mesh>
+    </group>
   )
 }
 
 /**
- * Coach-time ghost ribbon. A translucent emissive stripe along the edge the
- * safe-baseline policy would have taken at the coach-selected frame. The
- * visual lives in the same Spark-rendered scene; the "tool synergy" claim
- * with World Labs / Spark is documented in the build log post rather than
- * encoded as the runtime class of the overlay.
+ * Coach-time ghost ribbon. A translucent stripe along the edge the
+ * safe-baseline policy would have taken at the coach-selected frame.
  */
 function CoachGhostRibbon({ points, color }: { points: ArenaPosition[]; color: string }) {
-  const geometry = useMemo(() => {
-    if (points.length < 2) return null
-    const curve = new THREE.CatmullRomCurve3(points.map(point => new THREE.Vector3(point[0], point[1] + 0.06, point[2])))
-    return new THREE.TubeGeometry(curve, Math.max(8, points.length * 2), 0.14, 8, false)
-  }, [points])
+  const geometry = useMemo(() => createRouteRibbonGeometry(points, 0.18, 0.035), [points])
 
   useEffect(() => () => { geometry?.dispose() }, [geometry])
   if (!geometry) return null
   return (
     <mesh geometry={geometry} renderOrder={3}>
-      <meshBasicMaterial color={color} transparent opacity={0.72} depthWrite={false} />
+      <meshBasicMaterial color={color} transparent opacity={0.7} depthWrite={false} side={THREE.DoubleSide} />
     </mesh>
   )
 }
@@ -435,41 +411,36 @@ function CourseLandmarks({ course }: { course: ArenaCourse }) {
 
   return (
     <group>
-      {/* Central orientation spire */}
+      {/* Central orientation marker */}
       <group position={[course.center[0], course.center[1], course.center[2]]}>
-        <mesh position={[0, 1.6, 0]} castShadow>
-          <cylinderGeometry args={[0.08, 0.22, 3.2, 6]} />
-          <meshStandardMaterial color="#9fd6ef" emissive="#3d7ea2" emissiveIntensity={0.4} metalness={0.55} roughness={0.2} />
+        <mesh position={[0, 0.2, 0]} castShadow>
+          <cylinderGeometry args={[0.1, 0.24, 0.4, 6]} />
+          <meshStandardMaterial color="#8a7a5f" emissive="#4a3f2c" emissiveIntensity={0.2} metalness={0.3} roughness={0.6} />
         </mesh>
-        <mesh position={[0, 3.35, 0]} castShadow>
-          <octahedronGeometry args={[0.38]} />
-          <meshStandardMaterial color="#e8fbff" emissive="#6eb8d8" emissiveIntensity={0.65} metalness={0.4} roughness={0.15} />
-        </mesh>
-        <pointLight color="#9ad7f0" intensity={1.1} distance={10} decay={2} position={[0, 2.8, 0]} />
       </group>
 
       {ridgeCenter && (
         <group position={ridgeCenter}>
-          <mesh position={[0, 0.9, 0]} castShadow>
-            <boxGeometry args={[0.28, 1.8, 0.28]} />
+          <mesh position={[0, 0.22, 0]} castShadow>
+            <boxGeometry args={[0.24, 0.45, 0.24]} />
             <meshStandardMaterial color="#3d4a52" emissive="#1f2a30" emissiveIntensity={0.15} metalness={0.3} roughness={0.55} />
           </mesh>
-          <mesh position={[0, 1.95, 0]}>
-            <boxGeometry args={[0.5, 0.12, 0.5]} />
-            <meshStandardMaterial color="#5f8f7a" emissive="#2f5d48" emissiveIntensity={0.35} />
+          <mesh position={[0, 0.41, 0]}>
+            <boxGeometry args={[0.4, 0.08, 0.4]} />
+            <meshStandardMaterial color="#5f8f7a" emissive="#2f5d48" emissiveIntensity={0.3} />
           </mesh>
         </group>
       )}
 
       {valleyCenter && (
         <group position={valleyCenter}>
-          <mesh position={[0, 0.55, 0]} castShadow>
-            <cylinderGeometry args={[0.18, 0.28, 1.1, 8]} />
+          <mesh position={[0, 0.2, 0]} castShadow>
+            <cylinderGeometry args={[0.16, 0.24, 0.4, 8]} />
             <meshStandardMaterial color="#c4a16a" emissive="#6d4d24" emissiveIntensity={0.2} roughness={0.7} />
           </mesh>
-          <mesh position={[0, 1.2, 0]}>
-            <sphereGeometry args={[0.2, 12, 12]} />
-            <meshStandardMaterial color="#f0c27a" emissive="#b8732a" emissiveIntensity={0.35} />
+          <mesh position={[0, 0.4, 0]}>
+            <sphereGeometry args={[0.05, 12, 12]} />
+            <meshStandardMaterial color="#f0c27a" emissive="#b8732a" emissiveIntensity={0.3} />
           </mesh>
         </group>
       )}
@@ -477,13 +448,13 @@ function CourseLandmarks({ course }: { course: ArenaCourse }) {
       {championBase && (
         <mesh position={[championBase[0], championBase[1] + 0.03, championBase[2]]} rotation={[-Math.PI / 2, 0, 0]}>
           <circleGeometry args={[0.95, 40]} />
-          <meshStandardMaterial color="#9ccc63" emissive="#4d7a28" emissiveIntensity={0.35} transparent opacity={0.55} depthWrite={false} />
+          <meshStandardMaterial color="#9ccc63" emissive="#4d7a28" emissiveIntensity={0.35} transparent opacity={0.35} depthWrite={false} />
         </mesh>
       )}
       {rivalBase && (
         <mesh position={[rivalBase[0], rivalBase[1] + 0.03, rivalBase[2]]} rotation={[-Math.PI / 2, 0, 0]}>
           <circleGeometry args={[0.95, 40]} />
-          <meshStandardMaterial color="#efad68" emissive="#8a5520" emissiveIntensity={0.35} transparent opacity={0.55} depthWrite={false} />
+          <meshStandardMaterial color="#efad68" emissive="#8a5520" emissiveIntensity={0.35} transparent opacity={0.35} depthWrite={false} />
         </mesh>
       )}
     </group>
@@ -501,68 +472,62 @@ function ReadyOnce({ ready, onReady }: { ready: boolean; onReady: () => void }) 
 }
 
 function World({ course, session, follow, coachSuggestion, onReady, onError, lite }: WorldProps & { lite: boolean }) {
-  // Cloud-era Marble HQ mesh is full of sky floaters. Keep splat as the scene,
-  // optionally layer a clipped mesh underlay, and rely on path/landmark overlays.
-  const [splatReady, setSplatReady] = useState(false)
-  const [meshFailed, setMeshFailed] = useState(false)
-  const useClippedMesh = Boolean(course.config.hqMesh) && !lite && !meshFailed
-  const clipBox = useMemo(() => {
-    const xs = course.scenario.nodes.map(node => node.position[0])
-    const ys = course.scenario.nodes.map(node => node.position[1])
-    const zs = course.scenario.nodes.map(node => node.position[2])
-    return {
-      min: new THREE.Vector3(Math.min(...xs) - 3, Math.min(...ys) - 1.5, Math.min(...zs) - 3),
-      max: new THREE.Vector3(Math.max(...xs) + 3, Math.max(...ys) + 4, Math.max(...zs) + 3),
-    }
-  }, [course.scenario.nodes])
+  // Mesh terrain is the same authored GLB the collider extracts from, so the
+  // scene needs no splat layer or fallback mesh.
+  const [terrainReady, setTerrainReady] = useState(false)
 
   return (
     <>
       {lite && <FrameLimiter fps={30} />}
       <EpisodeClock session={session} />
-      <ReadyOnce ready={splatReady} onReady={onReady} />
-      <color attach="background" args={['#5d7278']} />
-      <fog attach="fog" args={['#5d7278', 22, 55]} />
-      <hemisphereLight args={['#d7e6ef', '#2f3b34', lite ? 0.9 : 0.65]} />
-      <ambientLight intensity={lite ? 0.75 : 0.55} />
+      <ReadyOnce ready={terrainReady} onReady={onReady} />
+      <color attach="background" args={['#d9d4c6']} />
+      <fog attach="fog" args={['#d9d4c6', 32, 65]} />
+      <hemisphereLight args={['#edf2ef', '#8c7259', 1.1]} />
+      <ambientLight intensity={0.35} />
       <directionalLight
-        position={[10, 18, 6]}
-        intensity={lite ? 1.55 : 1.9}
+        position={[4, 16, -5]}
+        intensity={2}
+        color="#fff1d6"
         castShadow={!lite}
         shadow-mapSize-width={1024}
         shadow-mapSize-height={1024}
+        shadow-camera-left={-13}
+        shadow-camera-right={13}
+        shadow-camera-top={13}
+        shadow-camera-bottom={-13}
+        shadow-camera-near={1}
+        shadow-camera-far={40}
+        shadow-bias={-0.0002}
       />
-      <directionalLight position={[-8, 8, -4]} intensity={0.5} color="#b7d4ea" />
+      <directionalLight position={[-8, 8, -4]} intensity={0.35} />
 
-      {course.config.splat && (
-        <MarbleWorldLayer
-          config={course.config}
-          lite={lite}
-          visible
-          onLoad={() => setSplatReady(true)}
-          onError={onError}
-        />
-      )}
+      <TerrainMesh
+        key={`${course.config.terrain.url}:${course.config.terrain.sha256}`}
+        url={course.config.terrain.url}
+        sha256={course.config.terrain.sha256}
+        onReady={() => setTerrainReady(true)}
+        onError={onError}
+      />
 
-      {useClippedMesh && course.config.hqMesh && (
-        <Suspense fallback={null}>
-          <HqTerrainMesh
-            url={course.config.hqMesh.url}
-            clipBox={clipBox}
-            onError={() => setMeshFailed(true)}
-          />
-        </Suspense>
-      )}
-
-      <OrbitControls makeDefault target={course.center} enabled={follow === 'overview'} minDistance={5} maxDistance={35} maxPolarAngle={Math.PI * 0.47} />
+      <OrbitControls
+        makeDefault
+        target={course.center}
+        enabled={follow === 'overview'}
+        minDistance={6}
+        maxDistance={26}
+        minPolarAngle={0.2}
+        maxPolarAngle={Math.PI * 0.43}
+      />
       <FollowCamera course={course} session={session} follow={follow} />
 
       {course.scenario.edges.map(edge => (
         <PathRibbon
           key={edge.id}
+          session={session}
+          edgeId={edge.id}
           points={edge.path!}
           color={edge.floodable ? '#e29a45' : '#4f9d86'}
-          width={edge.floodable ? 0.26 : 0.3}
         />
       ))}
 
@@ -576,7 +541,7 @@ function World({ course, session, follow, coachSuggestion, onReady, onError, lit
           <group key={entrant.id}>
             <mesh position={[position[0], position[1] + 0.05, position[2]]} rotation={[-Math.PI / 2, 0, 0]}>
               <ringGeometry args={[0.62, 0.82, 40]} />
-              <meshBasicMaterial color={color} side={THREE.DoubleSide} transparent opacity={0.9} />
+              <meshBasicMaterial color={color} side={THREE.DoubleSide} transparent opacity={0.7} />
             </mesh>
             <Rover session={session} id={entrant.id} color={color} />
           </group>
@@ -584,8 +549,9 @@ function World({ course, session, follow, coachSuggestion, onReady, onError, lit
       })}
       {course.scenario.resources.map((resource, index) => {
         const node = course.scenario.nodes.find(candidate => candidate.id === resource.nodeId)!
-        const angle = index * Math.PI / 2
-        const position: ArenaPosition = [node.position[0] + Math.cos(angle) * 0.42, node.position[1] + 0.55 + Math.floor(index / 4) * 0.22, node.position[2] + Math.sin(angle) * 0.42]
+        const localIndex = course.scenario.resources.slice(0, index).filter(candidate => candidate.nodeId === resource.nodeId).length
+        const angle = (localIndex % 4) * Math.PI / 2
+        const position: ArenaPosition = [node.position[0] + Math.cos(angle) * 0.42, node.position[1] + 0.45 + Math.floor(localIndex / 4) * 0.22, node.position[2] + Math.sin(angle) * 0.42]
         return <Resource key={resource.id} session={session} id={resource.id} position={position} />
       })}
       <Flood course={course} session={session} />
@@ -610,7 +576,7 @@ export default memo(function ArenaWorldView(props: WorldProps) {
       camera={{ position: [16, 12, 16], fov: 42, near: 0.05, far: 180 }}
       dpr={lite ? [1, 1] : [1, 1.5]}
       frameloop={lite ? 'never' : 'always'}
-      gl={{ antialias: false, alpha: false, powerPreference: lite ? 'low-power' : 'high-performance', preserveDrawingBuffer: true }}
+      gl={{ antialias: true, alpha: false, powerPreference: lite ? 'low-power' : 'high-performance', preserveDrawingBuffer: false }}
       fallback={<p role="alert">This device could not create a WebGL view.</p>}
     >
       <World {...props} lite={lite} />

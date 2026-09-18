@@ -1,23 +1,20 @@
-import * as THREE from 'three'
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { ARENA_RULES, type ArenaPosition, type ArenaScenario } from './arenaEpisode'
 import { ArenaPhysics, initializeArenaPhysics } from './arenaPhysics'
+import { disposeArenaTerrain, loadArenaTerrain } from './arenaTerrain'
 import { createWorldSurface } from './worldSurface'
-import type { MarbleWorldConfig } from './marbleWorld'
 
 export const ARENA_WORLD = Object.freeze({
-  version: 'marble-038d084c-course-1',
-  id: '038d084c-2f7c-4839-b083-84e7ebef03ca',
-  name: 'Cloudbank / Course 01',
-  colliderUrl: '/marble/collider.glb',
-  splatUrl: '/marble/arena.spz',
-  hqMeshUrl: '/marble/terrain.glb',
-  colliderSha256: '25f82036f660641c1d8098e832455c38aa9531161225864079454fbd314b7747',
+  version: 'sandstone-basin-course-1',
+  id: 'sandstone-basin',
+  name: 'Sandstone Basin / Course 01',
+  colliderUrl: '/terrain/sandstone-basin.glb',
+  terrainUrl: '/terrain/sandstone-basin.glb',
+  colliderSha256: '81965008bc2d15b0db8ae06de69ee0c131d50508ca0aadcc17d1a8c234dc05f6',
 })
 
 export interface ArenaCourse {
   scenario: ArenaScenario
-  config: MarbleWorldConfig
+  config: { id: string; name: string; terrain: { url: string; sha256: string } }
   center: ArenaPosition
   floodZones: { position: ArenaPosition; size: [number, number] }[]
 }
@@ -100,23 +97,20 @@ export function buildArenaCourse(physics: ArenaPhysics): ArenaCourse {
     const length = path.slice(1).reduce((sum, point, index) => sum + Math.hypot(...point.map((value, axis) => value - path[index][axis])), 0)
     return { ...connection, path, travelTicks: Math.ceil(length / (1.8 * ARENA_RULES.stepMs / 1000)) }
   })
-  const config: MarbleWorldConfig = {
-    enabled: true, configured: true, id: ARENA_WORLD.id, name: ARENA_WORLD.name,
-    splat: { url: ARENA_WORLD.splatUrl, format: 'spz' }, collider: { url: ARENA_WORLD.colliderUrl },
-    hqMesh: { url: ARENA_WORLD.hqMeshUrl },
-    bounds: [12, 8, 14], spawnBounds: [6, 2, 8], spawnHeight: 1,
+  const config: ArenaCourse['config'] = {
+    id: ARENA_WORLD.id,
+    name: ARENA_WORLD.name,
+    terrain: { url: ARENA_WORLD.terrainUrl, sha256: ARENA_WORLD.colliderSha256 },
   }
   return {
     config,
-    center: [7, 1, 4],
-    floodZones: [
-      { position: [4, 1.02, 2], size: [1.35, 3.2] },
-      { position: [4, 1.02, 6], size: [1.35, 3.2] },
-      { position: [7, 1.02, 2], size: [1.0, 2.0] },
-      { position: [7, 1.02, 6], size: [1.0, 2.0] },
-    ],
+    center: [7, 0.55, 4],
+    floodZones: [2, 6].map(z => {
+      const [x, y, depth] = groundedPoint(4, z)
+      return { position: [x, y + 0.09, depth] as ArenaPosition, size: [1.35, 2.4] as [number, number] }
+    }),
     scenario: {
-      id: 'cloudbank-practice-01', worldVersion: ARENA_WORLD.version, split: 'practice', seed: 20260905,
+      id: 'sandstone-practice-01', worldVersion: ARENA_WORLD.version, split: 'practice', seed: 20260905,
       durationTicks: 1200,
       nodes,
       edges,
@@ -160,7 +154,7 @@ export type CoursePlayMode = 'practice' | 'compete'
 export function applyCourseMode(base: ArenaCourse, mode: CoursePlayMode): ArenaCourse {
   const next = structuredClone(base)
   if (mode === 'practice') {
-    next.scenario.id = 'cloudbank-practice-01'
+    next.scenario.id = 'sandstone-practice-01'
     next.scenario.split = 'practice'
     next.scenario.seed = 20260905
     next.scenario.floods = [
@@ -184,7 +178,7 @@ export function applyCourseMode(base: ArenaCourse, mode: CoursePlayMode): ArenaC
     ]
     return next
   }
-  next.scenario.id = 'cloudbank-compete-01'
+  next.scenario.id = 'sandstone-compete-01'
   next.scenario.split = 'evaluation'
   next.scenario.seed = 20260916
   next.scenario.floods = [
@@ -209,21 +203,13 @@ export function applyCourseMode(base: ArenaCourse, mode: CoursePlayMode): ArenaC
 }
 
 export async function loadArenaCourse(signal?: AbortSignal) {
-  signal?.throwIfAborted()
-  const response = await fetch(ARENA_WORLD.colliderUrl, { signal })
-  if (!response.ok) throw new Error(`Collider request failed (${response.status})`)
-  const buffer = await response.arrayBuffer()
-  if (buffer.byteLength === 0 || buffer.byteLength > 4_000_000) throw new Error('Collider size is outside the course budget')
-  const digest = await crypto.subtle.digest('SHA-256', buffer)
-  const hash = [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, '0')).join('')
-  if (hash !== ARENA_WORLD.colliderSha256) throw new Error('Collider hash does not match the versioned course')
-  signal?.throwIfAborted()
-  await initializeArenaPhysics()
-  const gltf = await new GLTFLoader().parseAsync(buffer, '')
+  const scene = await loadArenaTerrain(ARENA_WORLD.colliderUrl, ARENA_WORLD.colliderSha256, signal)
   let physics: ArenaPhysics | undefined
   try {
     signal?.throwIfAborted()
-    const surface = createWorldSurface(gltf.scene)
+    await initializeArenaPhysics()
+    signal?.throwIfAborted()
+    const surface = createWorldSurface(scene)
     try {
       physics = new ArenaPhysics(surface.colliderData())
     } finally {
@@ -236,11 +222,7 @@ export async function loadArenaCourse(signal?: AbortSignal) {
     physics?.dispose()
     throw error
   } finally {
-    gltf.scene.traverse(object => {
-      if (!(object instanceof THREE.Mesh)) return
-      object.geometry.dispose()
-      for (const material of Array.isArray(object.material) ? object.material : [object.material]) material.dispose()
-    })
+    disposeArenaTerrain(scene)
   }
 }
 

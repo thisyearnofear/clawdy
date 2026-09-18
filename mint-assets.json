@@ -1,10 +1,80 @@
 {
   "registryVersion": 1,
-  "mintProject": { "projectId": "zd7ee82m07ywc492ays7brv2td8egtaf", "name": "Clawdy" },
+  "mintProject": {
+    "projectId": "zd7ee82m07ywc492ays7brv2td8egtaf",
+    "name": "Clawdy"
+  },
   "assetRoot": "public/assets/mint",
   "assets": {
+    "arena-terrain-candidate": {
+      "source": {
+        "manifestVersion": 1,
+        "kind": "asset",
+        "assetType": "world",
+        "assetId": "j979c50m7vj0rzxv6nfn9xthh18eny3b"
+      },
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "mode": "remote_stream",
+      "runtime": {
+        "artifactId": "world_runtime_rad",
+        "role": "environment",
+        "format": "rad",
+        "runtimeUrl": "https://cdn.mint.gg/rad/sandstone-rover-proving-ground-e11d92f8837ee09d-lod.rad",
+        "renderer": "@sparkjsdev/spark",
+        "loaderHint": {
+          "renderer": "SparkRenderer",
+          "mesh": "SplatMesh",
+          "paged": true,
+          "lod": false
+        },
+        "collider": {
+          "artifactId": "world_collider",
+          "role": "physics_collider",
+          "format": "glb",
+          "runtimeUrl": "https://cdn.mint.gg/worlds/sandstone-rover-proving-ground-collider-1757ae19e9156d44.glb",
+          "loaderHint": "gltf",
+          "visible": false,
+          "requiredForPhysics": true
+        },
+        "byteSize": 34219192
+      },
+      "artifacts": {
+        "preview_image": {
+          "artifactId": "preview_image",
+          "role": "preview_image",
+          "format": "webp",
+          "contentType": "image/webp",
+          "filename": "sandstone-rover-proving-ground-h18eny3b-preview.webp",
+          "localPath": "public/assets/mint/arena-terrain-candidate/preview_image.webp",
+          "loaderHint": "image",
+          "byteSize": 34496
+        }
+      },
+      "thumbnailUrl": "public/assets/mint/arena-terrain-candidate/preview_image.webp"
+    },
     "championRover": {
-      "source": { "manifestVersion": 1, "kind": "mint-model", "assetType": "model", "assetId": "ks7dm6kvn4ypwnh93wg9tf5d8h8egvyw" },
+      "source": {
+        "manifestVersion": 1,
+        "kind": "mint-model",
+        "assetType": "model",
+        "assetId": "ks7dm6kvn4ypwnh93wg9tf5d8h8egvyw"
+      },
       "artifacts": {
         "original_glb": {
           "artifactId": "original_glb",
@@ -17,7 +87,23 @@
           "byteSize": 1225020
         }
       },
-      "transform": { "position": [0, 0, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] }
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
     }
   }
 }

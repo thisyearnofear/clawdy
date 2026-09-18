@@ -2,7 +2,7 @@
 
 **Coach an agent. Train its policy. Unleash it in the arena. Watch it adapt — or fail.**
 
-Clawdy is an agent-training league inside a generated physical world. You coach a rover through practice, approve training examples, run real backpropagation to produce a versioned policy checkpoint, and then unleash that checkpoint in a held-out scenario where the coaching controls go dark. The arena throws variables your bot was never trained on — flooding, resource scarcity, rival adaptation, terrain costs — and you find out whether your coaching held.
+Clawdy is an agent-training league inside a physical world. You coach a rover through practice, approve training examples, run real backpropagation to produce a versioned policy checkpoint, and then unleash that checkpoint in a held-out scenario where the coaching controls go dark. The arena throws variables your bot was never trained on — flooding, resource scarcity, rival adaptation, terrain costs — and you find out whether your coaching held.
 
 > The payoff is watching your agent use something you taught it when you are no longer allowed to help — and finding out whether your coaching held when the arena throws something it has never seen.
 
@@ -10,7 +10,7 @@ Clawdy is an agent-training league inside a generated physical world. You coach 
 
 **Play → Replay → Coach → Train → Match.**
 
-1. Press **Play** and watch two autonomous rovers race for cores (amber valley paths flood; teal ridge stays dry).
+1. Press **Play** and watch two autonomous rovers race for cores (highlighted amber routes are flood-sensitive).
 2. Open **Replay**, scrub a mistake, and queue a fix.
 3. Open **Coach**, approve examples, and train a real checkpoint.
 4. Switch to **Match** for a scored held-out layout with coaching locked.
@@ -34,7 +34,7 @@ npm run starter:train    # headless trainer, exports a checkpoint
 
 Requires Node.js 20+ and npm 10+.
 
-**World visuals:** the playable course uses the World Labs splat plus strong path/landmark overlays. Regenerating a clearer dual-route world (when API credits allow) is documented in [public/marble/IMMERSIVE_REBUILD.md](public/marble/IMMERSIVE_REBUILD.md) (`npm run marble:rebuild`).
+**World visuals:** since September 18 the playable course is a mesh-first Blender-authored terrain (`public/terrain/sandstone-basin.glb` — included, no Blender needed to run the app; explicit rebuild `blender --background --factory-startup --python scripts/build-arena-terrain.py -- --force` with Blender 4.5 LTS on PATH, then re-pin the printed SHA in `services/arenaCourse.ts`), used identically for rendering and physics collision, plus path/landmark overlays. The earlier generated-world strategy is superseded — see [public/marble/IMMERSIVE_REBUILD.md](public/marble/IMMERSIVE_REBUILD.md); Marble and Mint candidate assets are retained but not active.
 
 ## Documentation
 

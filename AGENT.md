@@ -2,11 +2,13 @@
 
 ## Binding Direction
 
-As of September 5, 2026, Clawdy is an **agent-training league in a generated physical world**. The authoritative product and execution plan is [docs/HACKATHON.md](docs/HACKATHON.md).
+As of September 5, 2026, Clawdy is an **agent-training league in a physical world**. The authoritative product and execution plan is [docs/HACKATHON.md](docs/HACKATHON.md).
 
 The loop is **watch → coach → approve examples → train → compete → replay → improve**. Chat is the coaching interface. A real policy update makes coaching persist. Frozen checkpoints compete without human help.
 
 The old human-driving-first arena, onchain economy, wallet/session permissions, financial agent roles, and separate Marble pivot are retired. Do not extend those products, preserve their APIs for compatibility, or introduce a parallel game. Reuse useful rendering, physics, weather, and state primitives; replace or retire everything else as its dependencies are removed. Historical behavior is available in Git.
+
+**September 18 addendum:** the owner approved a mesh-first playable ground built locally instead of a generated world. The active terrain is a Blender-authored uncompressed GLB at `public/terrain/sandstone-basin.glb` (assets included; `npm run terrain:build` checks the overwrite guard — regenerate with `blender --background --factory-startup --python scripts/build-arena-terrain.py -- --force` using Blender 4.5 LTS on PATH, then re-pin the printed GLB SHA in `arenaCourse.ts`), used identically for rendering and collider extraction. The prior Marble world and the synced Mint terrain candidate are retained in the repo but are not active. No browser QA was run for this pass; code and non-browser checks only.
 
 This is the target contract and implementation guide. The application entrypoint runs `ArenaScene` / `ArenaWorldView` with the same `ArenaEpisode`, `ArenaPhysics`, and `ArenaSession` used in headless tests, plus a `Coach & Train Studio` that proposes examples, trains a small MLP checkpoint in-browser/CLI, and exports/imports `PolicyCheckpoint` artifacts. The full loop is wired, but held-out evaluation, browser rendering, and a starter that produces a measurable improvement are still being hardened. Browser testing is deferred at the project owner's request; continue with code and non-browser tests until that scope changes.
 
@@ -88,7 +90,9 @@ The new reference modules are:
 - `services/arenaReplay.ts`: version-checked replay with mandatory state checkpoints and divergence reporting.
 - `services/worldSurface.ts`: world-space static collider extraction, downward surface queries, and bounded route-grounding checks.
 - `services/arenaPhysics.ts`: Rapier 0.19.2 kinematic rigid body with terrain-following pitch/roll, wall collision via ray casts, grounding, reset, recovery, and controller version tracking.
-- `services/arenaCourse.ts`: authored `Cloudbank / Course 01` loader with pinned collider SHA-256, scenario construction, and a rich route graph (12+ nodes, 25+ edges, multiple resources, multiple flood zones) embedded in the generated world's terrain.
+- `services/arenaCourse.ts`: authored `Sandstone Basin / Course 01` loader with pinned terrain SHA-256, scenario construction, and a rich route graph (12+ nodes, 25+ edges, multiple resources, multiple flood zones) embedded in the terrain.
+- `services/arenaTerrain.ts`: shared validated loader for the pinned terrain GLB (fetch, size budget, SHA-256, parse, abort disposal) used identically by physics collider extraction and rendering.
+- `services/arenaPresentation.ts`: pure geometry helpers for route ribbons used by the scene and tests.
 - `services/arenaSession.ts`: application adapter that wires start/pause/reset, policy locking, bounded frame pumping, replay scrubbing, checkpoint selection, and JSON export.
 - `services/policyModel.ts`: `PolicyCheckpoint` schema, 32-dimensional observation encoding, 8-class action mapping, MLP forward/inference, and checkpoint validation.
 - `services/policyTrainer.ts`: supervised cross-entropy backpropagation with momentum SGD, dataset hashing, and scenario evaluation.
@@ -126,8 +130,8 @@ npm test
 npm run build
 ```
 
-CI currently uses Node.js 20 and npm. Legacy chain environment settings in CI and the existing environment examples are consolidation work, not Season 0 requirements. Reference tests now cover episodes, actions, timing, replay, world queries, and public configuration; they do not verify a learned policy or the complete application.
+CI currently uses Node.js 20 and npm. Legacy chain environment settings in CI and the existing environment examples are consolidation work, not Season 0 requirements. Reference tests now cover episodes, actions, timing, replay, world queries, terrain loading and grounding, route-ribbon geometry, scenario guards, encoding/training, checkpoint I/O, and public configuration; they do not verify the complete application in a browser.
 
-For implementation changes, extend the reference tests and add coverage for training updates, artifact validation, and held-out evaluation as those systems are implemented. Browser scope was approved; `agent-browser` verified the page loads, the splat world renders, the run starts/pauses/reviews, and the layout reflows at 375×812. Remaining browser work: complete the full coaching/training round-trip and stress loading/retry on lower-end devices.
+For implementation changes, extend the reference tests and add coverage for training updates, artifact validation, and held-out evaluation as those systems are implemented. Earlier `agent-browser` checks (page load, splat world render, start/pause/review, 375×812 reflow) applied to the retired Marble world. No browser QA ran for the Sandstone Basin pass; re-verify loading, framing, and layout when browser scope resumes. Remaining browser work: complete the full coaching/training round-trip and stress loading/retry on lower-end devices.
 
 For documentation-only work, check the diff for whitespace errors, local links, contradictory product claims, unsupported commands, and planned-versus-implemented wording. Do not report application tests as passing unless they were run.

@@ -13,6 +13,7 @@
     "marble:generate": "node scripts/marble-generate-world.mjs",
     "marble:rebuild": "node scripts/marble-rebuild-immersive.mjs",
     "eval:holdout": "tsx scripts/eval-holdout.ts",
+    "terrain:build": "blender --background --factory-startup --python scripts/build-arena-terrain.py",
     "mint:sync": "node .devin/skills/mint-threejs-skills/scripts/sync-mint-assets.mjs",
     "postinstall": "node -e \"const v=JSON.parse(require('fs').readFileSync(require.resolve('@dimforge/rapier3d-compat').replace(/\\/[^\\/]*$/,'/package.json'),'utf8')).version;if(!v.startsWith('0.19')){console.error('WRONG rapier:',v);process.exit(1)}console.log('rapier3d-compat:',v)\""
   },

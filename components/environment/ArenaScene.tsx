@@ -436,7 +436,7 @@ function Workbench({ session, course, onRetry }: LoadedSession & { onRetry: () =
           {view.error && <div className={styles.worldNotice} role="alert"><strong>Run stopped</strong><p>{view.error}</p><button onClick={onRetry}>Retry world loading</button></div>}
           {visualReady && hintOpen && view.phase === 'ready' && (
             <div className={styles.playHint} role="status">
-              <p>Press Play. Follow your green champion — amber valley paths flood; teal ridge stays dry.</p>
+              <p>Press Play. Follow your green champion — amber marked routes are flood-sensitive.</p>
               <button type="button" onClick={() => setHintOpen(false)} aria-label="Dismiss hint">Got it</button>
             </div>
           )}

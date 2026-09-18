@@ -5,7 +5,7 @@ import type { ArenaMotion } from '../arenaPhysics'
 
 function setup() {
   const course: ArenaCourse = {
-    config: { enabled: true, configured: true, id: 'fixture', name: 'Fixture', splat: null, collider: null, hqMesh: null, bounds: [5, 5, 5], spawnBounds: [5, 5, 5], spawnHeight: 1 },
+    config: { id: 'fixture', name: 'Fixture', terrain: { url: '/fixture-terrain.glb', sha256: 'fixture' } },
     center: [0, 0, 0], floodZones: [],
     scenario: {
       id: 'session-fixture', worldVersion: 'fixture-v1', split: 'practice', seed: 1, durationTicks: 20,
@@ -142,7 +142,7 @@ describe('application episode session', () => {
     expect(() => session.selectPolicy('champion', 'greedy')).toThrow('scored match')
     session.setScored(false)
     const nextCourse: ArenaCourse = {
-      config: { enabled: true, configured: true, id: 'fixture', name: 'Fixture', splat: null, collider: null, hqMesh: null, bounds: [5, 5, 5], spawnBounds: [5, 5, 5], spawnHeight: 1 },
+      config: { id: 'fixture', name: 'Fixture', terrain: { url: '/fixture-terrain.glb', sha256: 'fixture' } },
       center: [0, 0, 0], floodZones: [],
       scenario: {
         id: 'cloudbank-compete-01', worldVersion: 'fixture-v1', split: 'evaluation', seed: 2, durationTicks: 20,
