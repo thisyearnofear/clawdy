@@ -33,13 +33,13 @@ describe('versioned Sandstone Basin course', () => {
       expect(course.config.terrain.url).toBe(ARENA_WORLD.terrainUrl)
       expect(course.config.terrain.sha256).toBe(ARENA_WORLD.colliderSha256)
       expect(course.scenario.worldVersion).toBe(ARENA_WORLD.version)
-      expect(course.scenario.nodes).toHaveLength(13)
-      expect(course.scenario.edges).toHaveLength(26)
-      expect(course.scenario.edges.filter(edge => edge.floodable)).toHaveLength(10)
+      expect(course.scenario.nodes).toHaveLength(19)
+      expect(course.scenario.edges).toHaveLength(36)
+      expect(course.scenario.edges.filter(edge => edge.floodable)).toHaveLength(12)
       const ridge = course.scenario.nodes.find(node => node.id === 'ridge-center')!.position
       const valley = course.scenario.nodes.find(node => node.id === 'valley-center')!.position
       expect(ridge[1] - valley[1]).toBeGreaterThanOrEqual(0.8)
-      expect(course.floodZones).toHaveLength(2)
+      expect(course.floodZones).toHaveLength(3)
       for (const zone of course.floodZones) expect(zone.size).toEqual([1.35, 2.4])
       for (const node of course.scenario.nodes) expect(physics.canStand(node.position)).toBe(true)
       for (const edge of course.scenario.edges) {

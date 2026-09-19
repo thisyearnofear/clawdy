@@ -20,8 +20,8 @@ def smoothstep(a, b, value):
 
 def ground_height(x, z):
     ridge = 0.9 * smoothstep(5.2, 9.2, x)
-    channels = sum(0.08 * math.exp(-((x - 4.0) / 0.8) ** 4 - ((z - c) / 1.25) ** 4) for c in (2.0, 6.0))
-    outside = max(2.5 - x, x - 11.5, -1.5 - z, z - 9.5, 0.0)
+    channels = sum(0.08 * math.exp(-((x - 4.0) / 0.8) ** 4 - ((z - c) / 1.25) ** 4) for c in (2.0, 6.0, 10.5, 14.5))
+    outside = max(2.5 - x, x - 11.5, -1.5 - z, z - 17.5, 0.0)
     rim = 1.4 * smoothstep(0.0, 3.0, outside) * (0.85 + 0.15 * math.sin(0.7 * x + 0.9 * z))
     return 0.12 + ridge - channels + rim
 
@@ -70,10 +70,10 @@ def setup_materials():
 
 def is_road(x, z):
     if 3.5 <= x <= 10.5:
-        for c in (0.0, 2.0, 4.0, 6.0, 8.0):
+        for c in (0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0):
             if abs(z - c) < 0.55:
                 return True
-    if -0.5 <= z <= 8.5 and (abs(x - 4.0) < 0.7 or abs(x - 10.0) < 0.7):
+    if -0.5 <= z <= 16.5 and (abs(x - 4.0) < 0.7 or abs(x - 10.0) < 0.7):
         return True
     return False
 
@@ -85,7 +85,7 @@ def face_material_name(x, z, face_index):
         return "basalt_v" if face_index % 7 == 0 else "basalt"
     if x >= 7.5:
         return "taupe"
-    for cz in (2.0, 6.0):
+    for cz in (2.0, 6.0, 10.5, 14.5):
         if (x - 4.0) ** 2 + (z - cz) ** 2 < 1.1 ** 2:
             return "sediment_v" if face_index % 7 == 0 else "sediment"
     return "sandstone_v" if face_index % 7 == 0 else "sandstone"
@@ -93,7 +93,7 @@ def face_material_name(x, z, face_index):
 
 def build_terrain():
     xs = [x * 0.25 for x in range(-12, 69)]
-    zs = [z * 0.25 for z in range(-24, 57)]
+    zs = [z * 0.25 for z in range(-24, 89)]
     nx, nz = len(xs), len(zs)
 
     verts = [(x, -z, ground_height(x, z)) for z in zs for x in xs]
@@ -151,16 +151,16 @@ def build_terrain():
 
 
 def inside_clearance(x, z, margin=0.6):
-    return (2.5 - margin) <= x <= (11.5 + margin) and (-1.5 - margin) <= z <= (9.5 + margin)
+    return (2.5 - margin) <= x <= (11.5 + margin) and (-1.5 - margin) <= z <= (17.5 + margin)
 
 
 def build_rocks():
     rng = random.Random(SEED)
     spots = []
     north = [(rng.uniform(-2.5, 16.5), rng.uniform(-4.0, -2.5)) for _ in range(4)]
-    south = [(rng.uniform(-2.5, 16.5), rng.uniform(11.0, 13.0)) for _ in range(4)]
-    west = [(rng.uniform(0.0, 1.0), rng.uniform(-1.0, 9.0)) for _ in range(3)]
-    east = [(rng.uniform(13.0, 15.0), rng.uniform(-1.0, 9.0)) for _ in range(3)]
+    south = [(rng.uniform(-2.5, 16.5), rng.uniform(19.0, 21.0)) for _ in range(4)]
+    west = [(rng.uniform(0.0, 1.0), rng.uniform(-1.0, 17.0)) for _ in range(3)]
+    east = [(rng.uniform(13.0, 15.0), rng.uniform(-1.0, 17.0)) for _ in range(3)]
     for x, z in north + south + west + east:
         if inside_clearance(x, z):
             continue
@@ -170,7 +170,7 @@ def build_rocks():
     rocks = []
     for index, (x, z) in enumerate(spots):
         base_h = ground_height(x, z)
-        tall = z < -1.5 or z > 9.5
+        tall = z < -1.5 or z > 17.5
         layers = rng.randint(2, 3)
         objects = []
         for layer in range(layers):
