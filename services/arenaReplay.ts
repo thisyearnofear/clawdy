@@ -2,10 +2,16 @@ import { ARENA_RULES, ArenaEpisode, type ArenaRecording } from './arenaEpisode'
 import type { ArenaMotion } from './arenaPhysics'
 
 export function replayArenaEpisode(recording: ArenaRecording, motion?: ArenaMotion) {
-  if (recording.schemaVersion !== 'arena-recording-v1' || recording.rulesVersion !== ARENA_RULES.version) {
-    throw new Error('Incompatible arena recording version')
+  if (recording.schemaVersion !== 'arena-recording-v1') {
+    throw new Error(`recording-schema-mismatch (got ${recording.schemaVersion}, want arena-recording-v1)`)
   }
-  if (recording.controllerVersion !== (motion?.version ?? 'route-reference-v2')) throw new Error('Replay requires the matching motion controller')
+  if (recording.rulesVersion !== ARENA_RULES.version) {
+    throw new Error(`rules-mismatch (recording pinned ${recording.rulesVersion}, runtime ${ARENA_RULES.version})`)
+  }
+  const wantController = motion?.version ?? 'route-reference-v2'
+  if (recording.controllerVersion !== wantController) {
+    throw new Error(`controller-mismatch (got ${recording.controllerVersion}, want ${wantController})`)
+  }
   const episode = new ArenaEpisode(recording.scenario, motion)
   if (!Number.isSafeInteger(recording.finalTick) || recording.finalTick < 0 || recording.finalTick > recording.scenario.durationTicks) {
     throw new Error('Invalid replay length')

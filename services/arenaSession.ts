@@ -295,6 +295,9 @@ export class ArenaSession {
     if (this.#view.phase === 'running') throw new Error('Pause the run before reviewing a recorded match')
     if (recording?.schemaVersion !== 'arena-recording-v1' || !Array.isArray(recording.checkpoints) ||
         recording.checkpoints.length === 0 || !recording.checkpoints[0]?.state?.agents?.length) {
+      if (recording?.schemaVersion !== 'arena-recording-v1') {
+        throw new Error(`recording-schema-mismatch (got ${recording?.schemaVersion}, want arena-recording-v1)`)
+      }
       throw new Error('Invalid or empty arena recording')
     }
     const previous = this.#view.phase

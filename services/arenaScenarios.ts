@@ -95,7 +95,9 @@ function createBuilderScenario(
 ): ArenaScenario {
   return {
     id,
-    worldVersion: 'course-01-v2',
+    // Abstract topology fixtures for headless training/eval — illustrative
+    // positions only, never collider-grounded. See docs/COMPATIBILITY.md §4.
+    worldVersion: 'builder-abstract-v1',
     split,
     seed,
     durationTicks,
@@ -214,7 +216,7 @@ export function getScenarioById(id: string): ArenaScenario | undefined {
 }
 
 export function isEvaluationScenario(id: string): boolean {
-  return EVALUATION_IDS.has(id) || id.startsWith('cloudbank-compete') || id.startsWith('sandstone-compete')
+  return EVALUATION_IDS.has(id) || id.startsWith('cloudbank-compete') || id.startsWith('sandstone-compete') || id.startsWith('sandstone-family')
 }
 
 /**

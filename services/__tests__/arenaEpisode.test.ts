@@ -296,7 +296,7 @@ describe('baseline execution and replay', () => {
 
   it('rejects incompatible versions and incomplete checkpoints', () => {
     const replay = new ArenaEpisode(scenario()).recording()
-    expect(() => replayArenaEpisode({ ...replay, rulesVersion: 'different' })).toThrow('version')
+    expect(() => replayArenaEpisode({ ...replay, rulesVersion: 'different' })).toThrow('rules-mismatch')
     expect(() => replayArenaEpisode({ ...replay, checkpoints: [] })).toThrow('checkpoints')
   })
 })
