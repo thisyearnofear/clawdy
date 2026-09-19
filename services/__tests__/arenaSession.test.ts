@@ -153,7 +153,7 @@ describe('application episode session', () => {
 
     const reviewObs = session.reviewObservation('champion')
     expect(reviewObs).not.toBeNull()
-    expect(reviewObs?.schemaVersion).toBe('arena-observation-v1')
+    expect(reviewObs?.schemaVersion).toBe('arena-observation-v2')
     expect(reviewObs?.self.id).toBe('champion')
     expect(reviewObs?.availableActions.length).toBeGreaterThan(0)
 

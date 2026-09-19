@@ -40,8 +40,9 @@ export function loadStoredCheckpoints(): PolicyCheckpoint[] {
     }
 
     if (validCheckpoints.length === 0) return [SEASON_0_BASE_CHECKPOINT]
-    // Ensure base checkpoint is present in the list
-    if (!validCheckpoints.some(c => c.id === SEASON_0_BASE_CHECKPOINT.id)) {
+    // Ensure base checkpoint is present in the list, matched by id AND schema:
+    // a legacy v1 base must not shadow the executable v2 base.
+    if (!validCheckpoints.some(c => c.id === SEASON_0_BASE_CHECKPOINT.id && c.schemaVersion === SEASON_0_BASE_CHECKPOINT.schemaVersion)) {
       validCheckpoints.push(SEASON_0_BASE_CHECKPOINT)
     }
     return validCheckpoints

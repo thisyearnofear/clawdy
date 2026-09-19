@@ -86,8 +86,13 @@ export interface ArenaSnapshot {
   weather: { flooded: boolean; drainedUntilTick: number }
 }
 
+export const OBSERVATION_SCHEMA_VERSION = 'arena-observation-v2' as const
+export const OBSERVATION_SCHEMA_V1 = 'arena-observation-v1' as const
+
 export interface ArenaObservation {
-  schemaVersion: 'arena-observation-v1'
+  // v1 observations remain valid data; v2 additionally discloses rival banked
+  // as a public scoreboard (cargo/position stay fog-masked).
+  schemaVersion: typeof OBSERVATION_SCHEMA_VERSION | typeof OBSERVATION_SCHEMA_V1
   rulesVersion: string
   tick: number
   remainingTicks: number
@@ -563,7 +568,7 @@ export function observeSnapshot(
     hidden: fogSets.hidden.sort(),
   }
   return structuredClone({
-    schemaVersion: 'arena-observation-v1',
+    schemaVersion: OBSERVATION_SCHEMA_VERSION,
     rulesVersion: ARENA_RULES.version,
     tick: state.tick,
     remainingTicks: scenario.durationTicks - state.tick,
@@ -572,13 +577,15 @@ export function observeSnapshot(
     rivals: state.agents.filter(candidate => candidate.id !== agentId).map(candidate => {
       const isVisible = fogSets.visible.has(candidate.nodeId)
       const isRemembered = fogSets.remembered.has(candidate.nodeId)
+      // Banked totals are a public scoreboard (generals-style): disclosed at
+      // every visibility level. Cargo and position stay fog-masked.
       if (isVisible) {
         return { id: candidate.id, position: candidate.position, cargo: candidate.cargo, banked: candidate.banked, visible: true }
       }
       if (isRemembered) {
-        return { id: candidate.id, position: candidate.position, cargo: null, banked: null, visible: false }
+        return { id: candidate.id, position: candidate.position, cargo: null, banked: candidate.banked, visible: false }
       }
-      return { id: candidate.id, position: null, cargo: null, banked: null, visible: false }
+      return { id: candidate.id, position: null, cargo: null, banked: candidate.banked, visible: false }
     }),
     nodes: scenario.nodes,
     edges: scenario.edges.map(edge => ({

@@ -7,6 +7,7 @@ import {
 } from './arenaEpisode'
 import {
   POLICY_SCHEMA_VERSION,
+  CHECKPOINT_SCHEMA_V1,
   OBSERVATION_FEATURE_DIM,
   type CheckpointEvaluationRecord,
   type PolicyCheckpoint,
@@ -95,6 +96,11 @@ export function trainPolicyCheckpoint(
   options: TrainingOptions = {}
 ): PolicyCheckpoint {
   validateCheckpoint(parent)
+  if (parent.schemaVersion === CHECKPOINT_SCHEMA_V1) {
+    throw new Error(
+      `checkpoint-execution-mismatch (cannot fine-tune v1 parent under the v2 encoder — start from the v2 base and re-train its examples)`,
+    )
+  }
 
   const approvedExamples = examples.filter(e => e.approved)
   if (approvedExamples.length === 0) {

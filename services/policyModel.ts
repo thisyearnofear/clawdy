@@ -4,7 +4,8 @@ import {
   type ArenaObservation,
 } from './arenaEpisode'
 
-export const POLICY_SCHEMA_VERSION = 'season-0.checkpoint.v1' as const
+export const POLICY_SCHEMA_VERSION = 'season-0.checkpoint.v2' as const
+export const CHECKPOINT_SCHEMA_V1 = 'season-0.checkpoint.v1' as const
 
 export interface PolicyLayer {
   weights: number[][]
@@ -43,7 +44,9 @@ export interface CheckpointEvaluationRecord {
 }
 
 export interface PolicyCheckpoint {
-  schemaVersion: typeof POLICY_SCHEMA_VERSION
+  // Readable across v1 (legacy, metadata-only) and v2 (executable).
+  // Execution requires v2 — see createLearnedPolicy.
+  schemaVersion: typeof POLICY_SCHEMA_VERSION | typeof CHECKPOINT_SCHEMA_V1
   id: string
   name: string
   parentCheckpointId: string | null
@@ -55,7 +58,9 @@ export interface PolicyCheckpoint {
   weights: PolicyWeights
 }
 
-export const OBSERVATION_FEATURE_DIM = 32
+export const OBSERVATION_FEATURE_DIM = 36
+export const ENCODER_VERSION = 'season-0.encoder.v2' as const
+export const ENCODER_V1_DIM = 32
 export const ACTION_CLASSES = 8 // 0: wait, 1: bank, 2: collect, 3: drain, 4: move-low, 5: move-high, 6: move-resource, 7: move-home
 
 /**
@@ -117,7 +122,8 @@ export function encodeObservation(observation: ArenaObservation): Float32Array {
     vec[21] = 0; vec[22] = 0; vec[23] = self.transit ? 1.0 : 0.0
   }
 
-  // Rival relative advantage (masked under fog: hidden rivals contribute 0)
+  // Rival relative advantage (legacy visible-gated semantics, frozen: hidden
+  // rivals contribute 0 here; the public scoreboard lives in vec[32]).
   const rival = observation.rivals[0]
   if (rival && rival.visible) {
     vec[24] = Math.min(1, (rival.cargo ?? 0) / rules.capacity)
@@ -146,6 +152,20 @@ export function encodeObservation(observation: ArenaObservation): Float32Array {
   const reachableResources = observation.resources.filter(r => r.available && twoHopNodes.has(r.nodeId))
   vec[30] = Math.min(1, reachableResources.length / 6)
   vec[31] = 1.0 // Bias constant
+
+  // Encoder v2 memory + scoreboard features (docs/COMPATIBILITY.md Rule 3).
+  // vec[0..31] semantics are frozen; these four are additive.
+  const rivalBanked = rival?.banked ?? 0
+  vec[32] = Math.min(1, rivalBanked / 10) // Public scoreboard: rival banked, unmasked
+  const staleValue = observation.resources
+    .filter(r => r.available && !r.visible)
+    .reduce((sum, r) => sum + r.value, 0)
+  vec[33] = Math.max(0, Math.min(1, staleValue / rules.capacity)) // Remembered-but-unseen resource value
+  const nodeCount = Math.max(1, observation.nodes.length)
+  const hiddenCount = observation.fog?.hidden.length ?? 0
+  const rememberedCount = observation.fog?.remembered.length ?? 0
+  vec[34] = Math.min(1, hiddenCount / nodeCount) // Exploration pressure
+  vec[35] = Math.min(1, rememberedCount / nodeCount) // Coverage from memory
 
   return vec
 }
@@ -355,6 +375,11 @@ export function computeWeightsHash(weights: PolicyWeights): string {
  */
 export function createLearnedPolicy(checkpoint: PolicyCheckpoint): (observation: ArenaObservation) => ArenaAction {
   validateCheckpoint(checkpoint)
+  if (checkpoint.schemaVersion !== POLICY_SCHEMA_VERSION) {
+    throw new Error(
+      `checkpoint-execution-mismatch (got ${checkpoint.schemaVersion}, want ${POLICY_SCHEMA_VERSION} — re-train its examples to upgrade)`,
+    )
+  }
   return (observation: ArenaObservation): ArenaAction => {
     if (!observation.decisionDue) return { type: 'wait' }
     if (observation.availableActions.length === 0) return { type: 'wait' }
@@ -384,13 +409,20 @@ export function createLearnedPolicy(checkpoint: PolicyCheckpoint): (observation:
  */
 export function validateCheckpoint(checkpoint: PolicyCheckpoint): void {
   if (!checkpoint || typeof checkpoint !== 'object') throw new Error('Invalid checkpoint object')
-  if (checkpoint.schemaVersion !== POLICY_SCHEMA_VERSION) throw new Error(`Unsupported checkpoint schema: ${checkpoint.schemaVersion}`)
+  // v1 checkpoints remain metadata-readable (lineage, eval records) but no
+  // longer execute — see createLearnedPolicy. Never silently reinterpret.
+  const expectedInputDim = checkpoint.schemaVersion === CHECKPOINT_SCHEMA_V1
+    ? ENCODER_V1_DIM
+    : OBSERVATION_FEATURE_DIM
+  if (checkpoint.schemaVersion !== POLICY_SCHEMA_VERSION && checkpoint.schemaVersion !== CHECKPOINT_SCHEMA_V1) {
+    throw new Error(`Unsupported checkpoint schema: ${checkpoint.schemaVersion}`)
+  }
   if (!checkpoint.id || typeof checkpoint.id !== 'string') throw new Error('Checkpoint requires an id')
   if (!checkpoint.weights) throw new Error('Checkpoint missing weights')
 
   const { hidden1, hidden2, actionHead } = checkpoint.weights
-  if (hidden1.weights.length !== OBSERVATION_FEATURE_DIM || hidden1.weights[0]?.length !== 32) {
-    throw new Error(`Invalid hidden1 layer shape: expected ${OBSERVATION_FEATURE_DIM}x32`)
+  if (hidden1.weights.length !== expectedInputDim || hidden1.weights[0]?.length !== 32) {
+    throw new Error(`Invalid hidden1 layer shape: expected ${expectedInputDim}x32`)
   }
   if (hidden2.weights.length !== 32 || hidden2.weights[0]?.length !== 16) {
     throw new Error('Invalid hidden2 layer shape: expected 32x16')
