@@ -1,17 +1,17 @@
 {
-  "generatedAt": "2026-09-17T09:45:01.520Z",
+  "generatedAt": "2026-09-19T18:39:57.200Z",
   "baseCheckpoint": {
     "id": "champion-baseline-s0",
-    "weightsHash": "76abc03737ac",
+    "weightsHash": "74866b9f3bce",
     "note": "Randomly initialized base; safe collector is the meaningful baseline."
   },
   "trainedCheckpoint": {
-    "id": "checkpoint-mu5cfqwg-24391c",
+    "id": "checkpoint-mu8qfdep-7f3d3d",
     "name": "Champion v1 (+75 synthetic examples)",
-    "weightsHash": "6a9f2e24391c",
+    "weightsHash": "4d7b4f7f3d3d",
     "trainingSummary": {
       "epochs": 60,
-      "loss": 0.0018,
+      "loss": 0.0022,
       "sampleCount": 75,
       "datasetHash": "ds:bc78e99b:75",
       "accuracy": 1

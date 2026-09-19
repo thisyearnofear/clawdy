@@ -1,0 +1,6571 @@
+{
+  "version": 1,
+  "pinnedFrom": {
+    "weightsHash": "4d7b4f7f3d3d",
+    "datasetHash": "ds:bc78e99b:75",
+    "note": "Passing subset pin — guards against change, does not claim capability. Extend as coaching improves."
+  },
+  "frames": [
+    {
+      "id": "frame-builder-course-01-t0",
+      "scenarioId": "builder-course-01",
+      "tick": 0,
+      "observation": {
+        "schemaVersion": "arena-observation-v2",
+        "rulesVersion": "season-0.reference.2",
+        "tick": 0,
+        "remainingTicks": 800,
+        "decisionDue": true,
+        "self": {
+          "id": "champion",
+          "baseNode": "champion-base",
+          "policyVersion": "baseline.safe.v2",
+          "nodeId": "champion-base",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "transit": null,
+          "energy": 12,
+          "cargo": 0,
+          "banked": 0,
+          "cooldownUntilTick": 0,
+          "lastOutcome": null,
+          "visitedNodes": [
+            "champion-base"
+          ],
+          "knownResources": [
+            {
+              "id": "core-1",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-2",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-3",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-4",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-7",
+              "nodeId": "cross-n",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-8",
+              "nodeId": "cross-n",
+              "value": 1,
+              "available": true
+            }
+          ],
+          "grounded": true,
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "blockedTicks": 0,
+          "blockedEdges": [],
+          "recoveries": 0
+        },
+        "rivals": [
+          {
+            "id": "rival",
+            "position": null,
+            "cargo": null,
+            "banked": 0,
+            "visible": false
+          }
+        ],
+        "nodes": [
+          {
+            "id": "champion-base",
+            "position": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "id": "valley-n1",
+            "position": [
+              0,
+              0,
+              2
+            ]
+          },
+          {
+            "id": "valley-center",
+            "position": [
+              0,
+              0,
+              5
+            ]
+          },
+          {
+            "id": "valley-s1",
+            "position": [
+              0,
+              0,
+              8
+            ]
+          },
+          {
+            "id": "rival-base",
+            "position": [
+              0,
+              0,
+              10
+            ]
+          },
+          {
+            "id": "ridge-north",
+            "position": [
+              8,
+              3,
+              0
+            ]
+          },
+          {
+            "id": "ridge-n1",
+            "position": [
+              8,
+              3,
+              2
+            ]
+          },
+          {
+            "id": "ridge-center",
+            "position": [
+              8,
+              3,
+              5
+            ]
+          },
+          {
+            "id": "ridge-s1",
+            "position": [
+              8,
+              3,
+              8
+            ]
+          },
+          {
+            "id": "ridge-south",
+            "position": [
+              8,
+              3,
+              10
+            ]
+          },
+          {
+            "id": "cross-n",
+            "position": [
+              4,
+              1,
+              2
+            ]
+          },
+          {
+            "id": "cross-c",
+            "position": [
+              4,
+              1,
+              5
+            ]
+          },
+          {
+            "id": "cross-s",
+            "position": [
+              4,
+              1,
+              8
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "id": "valley-cb-n1",
+            "from": "champion-base",
+            "to": "valley-n1",
+            "travelTicks": 20,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "valley-n1-vc",
+            "from": "valley-n1",
+            "to": "valley-center",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "valley-vc-s1",
+            "from": "valley-center",
+            "to": "valley-s1",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "valley-s1-rb",
+            "from": "valley-s1",
+            "to": "rival-base",
+            "travelTicks": 20,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "ridge-rn-r1",
+            "from": "ridge-north",
+            "to": "ridge-n1",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "ridge-r1-rc",
+            "from": "ridge-n1",
+            "to": "ridge-center",
+            "travelTicks": 25,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "ridge-rc-r1s",
+            "from": "ridge-center",
+            "to": "ridge-s1",
+            "travelTicks": 25,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "ridge-r1s-rs",
+            "from": "ridge-s1",
+            "to": "ridge-south",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "base-cb-rn",
+            "from": "champion-base",
+            "to": "ridge-north",
+            "travelTicks": 35,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 35
+          },
+          {
+            "id": "base-rb-rs",
+            "from": "rival-base",
+            "to": "ridge-south",
+            "travelTicks": 35,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 35
+          },
+          {
+            "id": "cross-vn-cn",
+            "from": "valley-n1",
+            "to": "cross-n",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cn-r1",
+            "from": "cross-n",
+            "to": "ridge-n1",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-vc-cc",
+            "from": "valley-center",
+            "to": "cross-c",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cc-rc",
+            "from": "cross-c",
+            "to": "ridge-center",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-vs-cs",
+            "from": "valley-s1",
+            "to": "cross-s",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cs-r1s",
+            "from": "cross-s",
+            "to": "ridge-s1",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cn-cc",
+            "from": "cross-n",
+            "to": "cross-c",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "cross-cc-cs",
+            "from": "cross-c",
+            "to": "cross-s",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "shortcut-cb-cn",
+            "from": "champion-base",
+            "to": "cross-n",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "shortcut-rb-cs",
+            "from": "rival-base",
+            "to": "cross-s",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "diag-vn-rn",
+            "from": "valley-n1",
+            "to": "ridge-north",
+            "travelTicks": 30,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 30
+          },
+          {
+            "id": "diag-vs-rs",
+            "from": "valley-s1",
+            "to": "ridge-south",
+            "travelTicks": 30,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 30
+          },
+          {
+            "id": "valley-cb-vc",
+            "from": "champion-base",
+            "to": "valley-center",
+            "travelTicks": 40,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "valley-rb-vc",
+            "from": "rival-base",
+            "to": "valley-center",
+            "travelTicks": 40,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "ridge-rn-rc",
+            "from": "ridge-north",
+            "to": "ridge-center",
+            "travelTicks": 40,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "ridge-rs-rc",
+            "from": "ridge-south",
+            "to": "ridge-center",
+            "travelTicks": 40,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 40
+          }
+        ],
+        "resources": [
+          {
+            "id": "core-1",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-2",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-3",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-4",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-7",
+            "nodeId": "cross-n",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-8",
+            "nodeId": "cross-n",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          }
+        ],
+        "weather": {
+          "flooded": false,
+          "drainedUntilTick": 0
+        },
+        "availableActions": [
+          {
+            "type": "wait"
+          },
+          {
+            "type": "move",
+            "edgeId": "valley-cb-n1"
+          },
+          {
+            "type": "move",
+            "edgeId": "base-cb-rn"
+          },
+          {
+            "type": "move",
+            "edgeId": "shortcut-cb-cn"
+          },
+          {
+            "type": "move",
+            "edgeId": "valley-cb-vc"
+          }
+        ],
+        "fog": {
+          "visible": [
+            "champion-base",
+            "cross-n",
+            "ridge-north",
+            "valley-center",
+            "valley-n1"
+          ],
+          "remembered": [],
+          "hidden": [
+            "cross-c",
+            "cross-s",
+            "ridge-center",
+            "ridge-n1",
+            "ridge-s1",
+            "ridge-south",
+            "rival-base",
+            "valley-s1"
+          ]
+        }
+      },
+      "expectedAction": {
+        "type": "move",
+        "edgeId": "shortcut-cb-cn"
+      },
+      "expectedClass": 6,
+      "provenance": "safe collector on builder-course-01 at tick 0"
+    },
+    {
+      "id": "frame-builder-course-01-t25",
+      "scenarioId": "builder-course-01",
+      "tick": 25,
+      "observation": {
+        "schemaVersion": "arena-observation-v2",
+        "rulesVersion": "season-0.reference.2",
+        "tick": 25,
+        "remainingTicks": 775,
+        "decisionDue": true,
+        "self": {
+          "id": "champion",
+          "baseNode": "champion-base",
+          "policyVersion": "baseline.safe.v2",
+          "nodeId": "cross-n",
+          "position": [
+            4,
+            1,
+            2
+          ],
+          "transit": null,
+          "energy": 11.1,
+          "cargo": 0,
+          "banked": 0,
+          "cooldownUntilTick": 0,
+          "lastOutcome": {
+            "agentId": "champion",
+            "tick": 20,
+            "action": {
+              "type": "wait"
+            },
+            "accepted": true,
+            "reason": null
+          },
+          "visitedNodes": [
+            "champion-base",
+            "cross-n"
+          ],
+          "knownResources": [
+            {
+              "id": "core-1",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-2",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-3",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-4",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-7",
+              "nodeId": "cross-n",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-8",
+              "nodeId": "cross-n",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-11",
+              "nodeId": "ridge-n1",
+              "value": 1,
+              "available": true
+            }
+          ],
+          "grounded": true,
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "blockedTicks": 0,
+          "blockedEdges": [],
+          "recoveries": 0
+        },
+        "rivals": [
+          {
+            "id": "rival",
+            "position": null,
+            "cargo": null,
+            "banked": 0,
+            "visible": false
+          }
+        ],
+        "nodes": [
+          {
+            "id": "champion-base",
+            "position": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "id": "valley-n1",
+            "position": [
+              0,
+              0,
+              2
+            ]
+          },
+          {
+            "id": "valley-center",
+            "position": [
+              0,
+              0,
+              5
+            ]
+          },
+          {
+            "id": "valley-s1",
+            "position": [
+              0,
+              0,
+              8
+            ]
+          },
+          {
+            "id": "rival-base",
+            "position": [
+              0,
+              0,
+              10
+            ]
+          },
+          {
+            "id": "ridge-north",
+            "position": [
+              8,
+              3,
+              0
+            ]
+          },
+          {
+            "id": "ridge-n1",
+            "position": [
+              8,
+              3,
+              2
+            ]
+          },
+          {
+            "id": "ridge-center",
+            "position": [
+              8,
+              3,
+              5
+            ]
+          },
+          {
+            "id": "ridge-s1",
+            "position": [
+              8,
+              3,
+              8
+            ]
+          },
+          {
+            "id": "ridge-south",
+            "position": [
+              8,
+              3,
+              10
+            ]
+          },
+          {
+            "id": "cross-n",
+            "position": [
+              4,
+              1,
+              2
+            ]
+          },
+          {
+            "id": "cross-c",
+            "position": [
+              4,
+              1,
+              5
+            ]
+          },
+          {
+            "id": "cross-s",
+            "position": [
+              4,
+              1,
+              8
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "id": "valley-cb-n1",
+            "from": "champion-base",
+            "to": "valley-n1",
+            "travelTicks": 20,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "valley-n1-vc",
+            "from": "valley-n1",
+            "to": "valley-center",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "valley-vc-s1",
+            "from": "valley-center",
+            "to": "valley-s1",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "valley-s1-rb",
+            "from": "valley-s1",
+            "to": "rival-base",
+            "travelTicks": 20,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "ridge-rn-r1",
+            "from": "ridge-north",
+            "to": "ridge-n1",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "ridge-r1-rc",
+            "from": "ridge-n1",
+            "to": "ridge-center",
+            "travelTicks": 25,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "ridge-rc-r1s",
+            "from": "ridge-center",
+            "to": "ridge-s1",
+            "travelTicks": 25,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "ridge-r1s-rs",
+            "from": "ridge-s1",
+            "to": "ridge-south",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "base-cb-rn",
+            "from": "champion-base",
+            "to": "ridge-north",
+            "travelTicks": 35,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 35
+          },
+          {
+            "id": "base-rb-rs",
+            "from": "rival-base",
+            "to": "ridge-south",
+            "travelTicks": 35,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 35
+          },
+          {
+            "id": "cross-vn-cn",
+            "from": "valley-n1",
+            "to": "cross-n",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cn-r1",
+            "from": "cross-n",
+            "to": "ridge-n1",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-vc-cc",
+            "from": "valley-center",
+            "to": "cross-c",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cc-rc",
+            "from": "cross-c",
+            "to": "ridge-center",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-vs-cs",
+            "from": "valley-s1",
+            "to": "cross-s",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cs-r1s",
+            "from": "cross-s",
+            "to": "ridge-s1",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cn-cc",
+            "from": "cross-n",
+            "to": "cross-c",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "cross-cc-cs",
+            "from": "cross-c",
+            "to": "cross-s",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "shortcut-cb-cn",
+            "from": "champion-base",
+            "to": "cross-n",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "shortcut-rb-cs",
+            "from": "rival-base",
+            "to": "cross-s",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "diag-vn-rn",
+            "from": "valley-n1",
+            "to": "ridge-north",
+            "travelTicks": 30,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 30
+          },
+          {
+            "id": "diag-vs-rs",
+            "from": "valley-s1",
+            "to": "ridge-south",
+            "travelTicks": 30,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 30
+          },
+          {
+            "id": "valley-cb-vc",
+            "from": "champion-base",
+            "to": "valley-center",
+            "travelTicks": 40,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "valley-rb-vc",
+            "from": "rival-base",
+            "to": "valley-center",
+            "travelTicks": 40,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "ridge-rn-rc",
+            "from": "ridge-north",
+            "to": "ridge-center",
+            "travelTicks": 40,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "ridge-rs-rc",
+            "from": "ridge-south",
+            "to": "ridge-center",
+            "travelTicks": 40,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 40
+          }
+        ],
+        "resources": [
+          {
+            "id": "core-7",
+            "nodeId": "cross-n",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-8",
+            "nodeId": "cross-n",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-11",
+            "nodeId": "ridge-n1",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-1",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          },
+          {
+            "id": "core-2",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          },
+          {
+            "id": "core-3",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          },
+          {
+            "id": "core-4",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          }
+        ],
+        "weather": {
+          "flooded": false,
+          "drainedUntilTick": 0
+        },
+        "availableActions": [
+          {
+            "type": "wait"
+          },
+          {
+            "type": "move",
+            "edgeId": "cross-vn-cn"
+          },
+          {
+            "type": "move",
+            "edgeId": "cross-cn-r1"
+          },
+          {
+            "type": "move",
+            "edgeId": "cross-cn-cc"
+          },
+          {
+            "type": "move",
+            "edgeId": "shortcut-cb-cn"
+          },
+          {
+            "type": "collect",
+            "resourceId": "core-7"
+          },
+          {
+            "type": "collect",
+            "resourceId": "core-8"
+          }
+        ],
+        "fog": {
+          "visible": [
+            "champion-base",
+            "cross-c",
+            "cross-n",
+            "ridge-n1",
+            "valley-n1"
+          ],
+          "remembered": [],
+          "hidden": [
+            "cross-s",
+            "ridge-center",
+            "ridge-north",
+            "ridge-s1",
+            "ridge-south",
+            "rival-base",
+            "valley-center",
+            "valley-s1"
+          ]
+        }
+      },
+      "expectedAction": {
+        "type": "collect",
+        "resourceId": "core-7"
+      },
+      "expectedClass": 2,
+      "provenance": "safe collector on builder-course-01 at tick 25"
+    },
+    {
+      "id": "frame-builder-course-01-t30",
+      "scenarioId": "builder-course-01",
+      "tick": 30,
+      "observation": {
+        "schemaVersion": "arena-observation-v2",
+        "rulesVersion": "season-0.reference.2",
+        "tick": 30,
+        "remainingTicks": 770,
+        "decisionDue": true,
+        "self": {
+          "id": "champion",
+          "baseNode": "champion-base",
+          "policyVersion": "baseline.safe.v2",
+          "nodeId": "cross-n",
+          "position": [
+            4,
+            1,
+            2
+          ],
+          "transit": null,
+          "energy": 11.499999999999998,
+          "cargo": 1,
+          "banked": 0,
+          "cooldownUntilTick": 0,
+          "lastOutcome": {
+            "agentId": "champion",
+            "tick": 25,
+            "action": {
+              "type": "collect",
+              "resourceId": "core-7"
+            },
+            "accepted": true,
+            "reason": null
+          },
+          "visitedNodes": [
+            "champion-base",
+            "cross-n"
+          ],
+          "knownResources": [
+            {
+              "id": "core-1",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-2",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-3",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-4",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-7",
+              "nodeId": "cross-n",
+              "value": 1,
+              "available": false
+            },
+            {
+              "id": "core-8",
+              "nodeId": "cross-n",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-11",
+              "nodeId": "ridge-n1",
+              "value": 1,
+              "available": true
+            }
+          ],
+          "grounded": true,
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "blockedTicks": 0,
+          "blockedEdges": [],
+          "recoveries": 0
+        },
+        "rivals": [
+          {
+            "id": "rival",
+            "position": null,
+            "cargo": null,
+            "banked": 0,
+            "visible": false
+          }
+        ],
+        "nodes": [
+          {
+            "id": "champion-base",
+            "position": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "id": "valley-n1",
+            "position": [
+              0,
+              0,
+              2
+            ]
+          },
+          {
+            "id": "valley-center",
+            "position": [
+              0,
+              0,
+              5
+            ]
+          },
+          {
+            "id": "valley-s1",
+            "position": [
+              0,
+              0,
+              8
+            ]
+          },
+          {
+            "id": "rival-base",
+            "position": [
+              0,
+              0,
+              10
+            ]
+          },
+          {
+            "id": "ridge-north",
+            "position": [
+              8,
+              3,
+              0
+            ]
+          },
+          {
+            "id": "ridge-n1",
+            "position": [
+              8,
+              3,
+              2
+            ]
+          },
+          {
+            "id": "ridge-center",
+            "position": [
+              8,
+              3,
+              5
+            ]
+          },
+          {
+            "id": "ridge-s1",
+            "position": [
+              8,
+              3,
+              8
+            ]
+          },
+          {
+            "id": "ridge-south",
+            "position": [
+              8,
+              3,
+              10
+            ]
+          },
+          {
+            "id": "cross-n",
+            "position": [
+              4,
+              1,
+              2
+            ]
+          },
+          {
+            "id": "cross-c",
+            "position": [
+              4,
+              1,
+              5
+            ]
+          },
+          {
+            "id": "cross-s",
+            "position": [
+              4,
+              1,
+              8
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "id": "valley-cb-n1",
+            "from": "champion-base",
+            "to": "valley-n1",
+            "travelTicks": 20,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "valley-n1-vc",
+            "from": "valley-n1",
+            "to": "valley-center",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "valley-vc-s1",
+            "from": "valley-center",
+            "to": "valley-s1",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "valley-s1-rb",
+            "from": "valley-s1",
+            "to": "rival-base",
+            "travelTicks": 20,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "ridge-rn-r1",
+            "from": "ridge-north",
+            "to": "ridge-n1",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "ridge-r1-rc",
+            "from": "ridge-n1",
+            "to": "ridge-center",
+            "travelTicks": 25,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "ridge-rc-r1s",
+            "from": "ridge-center",
+            "to": "ridge-s1",
+            "travelTicks": 25,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "ridge-r1s-rs",
+            "from": "ridge-s1",
+            "to": "ridge-south",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "base-cb-rn",
+            "from": "champion-base",
+            "to": "ridge-north",
+            "travelTicks": 35,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 35
+          },
+          {
+            "id": "base-rb-rs",
+            "from": "rival-base",
+            "to": "ridge-south",
+            "travelTicks": 35,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 35
+          },
+          {
+            "id": "cross-vn-cn",
+            "from": "valley-n1",
+            "to": "cross-n",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cn-r1",
+            "from": "cross-n",
+            "to": "ridge-n1",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-vc-cc",
+            "from": "valley-center",
+            "to": "cross-c",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cc-rc",
+            "from": "cross-c",
+            "to": "ridge-center",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-vs-cs",
+            "from": "valley-s1",
+            "to": "cross-s",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cs-r1s",
+            "from": "cross-s",
+            "to": "ridge-s1",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cn-cc",
+            "from": "cross-n",
+            "to": "cross-c",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "cross-cc-cs",
+            "from": "cross-c",
+            "to": "cross-s",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "shortcut-cb-cn",
+            "from": "champion-base",
+            "to": "cross-n",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "shortcut-rb-cs",
+            "from": "rival-base",
+            "to": "cross-s",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "diag-vn-rn",
+            "from": "valley-n1",
+            "to": "ridge-north",
+            "travelTicks": 30,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 30
+          },
+          {
+            "id": "diag-vs-rs",
+            "from": "valley-s1",
+            "to": "ridge-south",
+            "travelTicks": 30,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 30
+          },
+          {
+            "id": "valley-cb-vc",
+            "from": "champion-base",
+            "to": "valley-center",
+            "travelTicks": 40,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "valley-rb-vc",
+            "from": "rival-base",
+            "to": "valley-center",
+            "travelTicks": 40,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "ridge-rn-rc",
+            "from": "ridge-north",
+            "to": "ridge-center",
+            "travelTicks": 40,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "ridge-rs-rc",
+            "from": "ridge-south",
+            "to": "ridge-center",
+            "travelTicks": 40,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 40
+          }
+        ],
+        "resources": [
+          {
+            "id": "core-8",
+            "nodeId": "cross-n",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-11",
+            "nodeId": "ridge-n1",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-1",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          },
+          {
+            "id": "core-2",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          },
+          {
+            "id": "core-3",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          },
+          {
+            "id": "core-4",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          }
+        ],
+        "weather": {
+          "flooded": false,
+          "drainedUntilTick": 0
+        },
+        "availableActions": [
+          {
+            "type": "wait"
+          },
+          {
+            "type": "move",
+            "edgeId": "cross-vn-cn"
+          },
+          {
+            "type": "move",
+            "edgeId": "cross-cn-r1"
+          },
+          {
+            "type": "move",
+            "edgeId": "cross-cn-cc"
+          },
+          {
+            "type": "move",
+            "edgeId": "shortcut-cb-cn"
+          },
+          {
+            "type": "collect",
+            "resourceId": "core-8"
+          }
+        ],
+        "fog": {
+          "visible": [
+            "champion-base",
+            "cross-c",
+            "cross-n",
+            "ridge-n1",
+            "valley-n1"
+          ],
+          "remembered": [],
+          "hidden": [
+            "cross-s",
+            "ridge-center",
+            "ridge-north",
+            "ridge-s1",
+            "ridge-south",
+            "rival-base",
+            "valley-center",
+            "valley-s1"
+          ]
+        }
+      },
+      "expectedAction": {
+        "type": "collect",
+        "resourceId": "core-8"
+      },
+      "expectedClass": 2,
+      "provenance": "safe collector on builder-course-01 at tick 30"
+    },
+    {
+      "id": "frame-builder-course-01-t35",
+      "scenarioId": "builder-course-01",
+      "tick": 35,
+      "observation": {
+        "schemaVersion": "arena-observation-v2",
+        "rulesVersion": "season-0.reference.2",
+        "tick": 35,
+        "remainingTicks": 765,
+        "decisionDue": true,
+        "self": {
+          "id": "champion",
+          "baseNode": "champion-base",
+          "policyVersion": "baseline.safe.v2",
+          "nodeId": "cross-n",
+          "position": [
+            4,
+            1,
+            2
+          ],
+          "transit": null,
+          "energy": 11.899999999999997,
+          "cargo": 2,
+          "banked": 0,
+          "cooldownUntilTick": 0,
+          "lastOutcome": {
+            "agentId": "champion",
+            "tick": 30,
+            "action": {
+              "type": "collect",
+              "resourceId": "core-8"
+            },
+            "accepted": true,
+            "reason": null
+          },
+          "visitedNodes": [
+            "champion-base",
+            "cross-n"
+          ],
+          "knownResources": [
+            {
+              "id": "core-1",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-2",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-3",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-4",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-7",
+              "nodeId": "cross-n",
+              "value": 1,
+              "available": false
+            },
+            {
+              "id": "core-8",
+              "nodeId": "cross-n",
+              "value": 1,
+              "available": false
+            },
+            {
+              "id": "core-11",
+              "nodeId": "ridge-n1",
+              "value": 1,
+              "available": true
+            }
+          ],
+          "grounded": true,
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "blockedTicks": 0,
+          "blockedEdges": [],
+          "recoveries": 0
+        },
+        "rivals": [
+          {
+            "id": "rival",
+            "position": null,
+            "cargo": null,
+            "banked": 0,
+            "visible": false
+          }
+        ],
+        "nodes": [
+          {
+            "id": "champion-base",
+            "position": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "id": "valley-n1",
+            "position": [
+              0,
+              0,
+              2
+            ]
+          },
+          {
+            "id": "valley-center",
+            "position": [
+              0,
+              0,
+              5
+            ]
+          },
+          {
+            "id": "valley-s1",
+            "position": [
+              0,
+              0,
+              8
+            ]
+          },
+          {
+            "id": "rival-base",
+            "position": [
+              0,
+              0,
+              10
+            ]
+          },
+          {
+            "id": "ridge-north",
+            "position": [
+              8,
+              3,
+              0
+            ]
+          },
+          {
+            "id": "ridge-n1",
+            "position": [
+              8,
+              3,
+              2
+            ]
+          },
+          {
+            "id": "ridge-center",
+            "position": [
+              8,
+              3,
+              5
+            ]
+          },
+          {
+            "id": "ridge-s1",
+            "position": [
+              8,
+              3,
+              8
+            ]
+          },
+          {
+            "id": "ridge-south",
+            "position": [
+              8,
+              3,
+              10
+            ]
+          },
+          {
+            "id": "cross-n",
+            "position": [
+              4,
+              1,
+              2
+            ]
+          },
+          {
+            "id": "cross-c",
+            "position": [
+              4,
+              1,
+              5
+            ]
+          },
+          {
+            "id": "cross-s",
+            "position": [
+              4,
+              1,
+              8
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "id": "valley-cb-n1",
+            "from": "champion-base",
+            "to": "valley-n1",
+            "travelTicks": 20,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "valley-n1-vc",
+            "from": "valley-n1",
+            "to": "valley-center",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "valley-vc-s1",
+            "from": "valley-center",
+            "to": "valley-s1",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "valley-s1-rb",
+            "from": "valley-s1",
+            "to": "rival-base",
+            "travelTicks": 20,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "ridge-rn-r1",
+            "from": "ridge-north",
+            "to": "ridge-n1",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "ridge-r1-rc",
+            "from": "ridge-n1",
+            "to": "ridge-center",
+            "travelTicks": 25,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "ridge-rc-r1s",
+            "from": "ridge-center",
+            "to": "ridge-s1",
+            "travelTicks": 25,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "ridge-r1s-rs",
+            "from": "ridge-s1",
+            "to": "ridge-south",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "base-cb-rn",
+            "from": "champion-base",
+            "to": "ridge-north",
+            "travelTicks": 35,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 35
+          },
+          {
+            "id": "base-rb-rs",
+            "from": "rival-base",
+            "to": "ridge-south",
+            "travelTicks": 35,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 35
+          },
+          {
+            "id": "cross-vn-cn",
+            "from": "valley-n1",
+            "to": "cross-n",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cn-r1",
+            "from": "cross-n",
+            "to": "ridge-n1",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-vc-cc",
+            "from": "valley-center",
+            "to": "cross-c",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cc-rc",
+            "from": "cross-c",
+            "to": "ridge-center",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-vs-cs",
+            "from": "valley-s1",
+            "to": "cross-s",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cs-r1s",
+            "from": "cross-s",
+            "to": "ridge-s1",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cn-cc",
+            "from": "cross-n",
+            "to": "cross-c",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "cross-cc-cs",
+            "from": "cross-c",
+            "to": "cross-s",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "shortcut-cb-cn",
+            "from": "champion-base",
+            "to": "cross-n",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "shortcut-rb-cs",
+            "from": "rival-base",
+            "to": "cross-s",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "diag-vn-rn",
+            "from": "valley-n1",
+            "to": "ridge-north",
+            "travelTicks": 30,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 30
+          },
+          {
+            "id": "diag-vs-rs",
+            "from": "valley-s1",
+            "to": "ridge-south",
+            "travelTicks": 30,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 30
+          },
+          {
+            "id": "valley-cb-vc",
+            "from": "champion-base",
+            "to": "valley-center",
+            "travelTicks": 40,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "valley-rb-vc",
+            "from": "rival-base",
+            "to": "valley-center",
+            "travelTicks": 40,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "ridge-rn-rc",
+            "from": "ridge-north",
+            "to": "ridge-center",
+            "travelTicks": 40,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "ridge-rs-rc",
+            "from": "ridge-south",
+            "to": "ridge-center",
+            "travelTicks": 40,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 40
+          }
+        ],
+        "resources": [
+          {
+            "id": "core-11",
+            "nodeId": "ridge-n1",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-1",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          },
+          {
+            "id": "core-2",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          },
+          {
+            "id": "core-3",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          },
+          {
+            "id": "core-4",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          }
+        ],
+        "weather": {
+          "flooded": false,
+          "drainedUntilTick": 0
+        },
+        "availableActions": [
+          {
+            "type": "wait"
+          },
+          {
+            "type": "move",
+            "edgeId": "cross-vn-cn"
+          },
+          {
+            "type": "move",
+            "edgeId": "cross-cn-r1"
+          },
+          {
+            "type": "move",
+            "edgeId": "cross-cn-cc"
+          },
+          {
+            "type": "move",
+            "edgeId": "shortcut-cb-cn"
+          }
+        ],
+        "fog": {
+          "visible": [
+            "champion-base",
+            "cross-c",
+            "cross-n",
+            "ridge-n1",
+            "valley-n1"
+          ],
+          "remembered": [],
+          "hidden": [
+            "cross-s",
+            "ridge-center",
+            "ridge-north",
+            "ridge-s1",
+            "ridge-south",
+            "rival-base",
+            "valley-center",
+            "valley-s1"
+          ]
+        }
+      },
+      "expectedAction": {
+        "type": "move",
+        "edgeId": "cross-cn-r1"
+      },
+      "expectedClass": 6,
+      "provenance": "safe collector on builder-course-01 at tick 35"
+    },
+    {
+      "id": "frame-builder-course-02-t0",
+      "scenarioId": "builder-course-02",
+      "tick": 0,
+      "observation": {
+        "schemaVersion": "arena-observation-v2",
+        "rulesVersion": "season-0.reference.2",
+        "tick": 0,
+        "remainingTicks": 800,
+        "decisionDue": true,
+        "self": {
+          "id": "champion",
+          "baseNode": "champion-base",
+          "policyVersion": "baseline.safe.v2",
+          "nodeId": "champion-base",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "transit": null,
+          "energy": 12,
+          "cargo": 0,
+          "banked": 0,
+          "cooldownUntilTick": 0,
+          "lastOutcome": null,
+          "visitedNodes": [
+            "champion-base"
+          ],
+          "knownResources": [
+            {
+              "id": "core-1",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-2",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-3",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-4",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-7",
+              "nodeId": "cross-n",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-8",
+              "nodeId": "cross-n",
+              "value": 1,
+              "available": true
+            }
+          ],
+          "grounded": true,
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "blockedTicks": 0,
+          "blockedEdges": [],
+          "recoveries": 0
+        },
+        "rivals": [
+          {
+            "id": "rival",
+            "position": null,
+            "cargo": null,
+            "banked": 0,
+            "visible": false
+          }
+        ],
+        "nodes": [
+          {
+            "id": "champion-base",
+            "position": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "id": "valley-n1",
+            "position": [
+              0,
+              0,
+              2
+            ]
+          },
+          {
+            "id": "valley-center",
+            "position": [
+              0,
+              0,
+              5
+            ]
+          },
+          {
+            "id": "valley-s1",
+            "position": [
+              0,
+              0,
+              8
+            ]
+          },
+          {
+            "id": "rival-base",
+            "position": [
+              0,
+              0,
+              10
+            ]
+          },
+          {
+            "id": "ridge-north",
+            "position": [
+              8,
+              3,
+              0
+            ]
+          },
+          {
+            "id": "ridge-n1",
+            "position": [
+              8,
+              3,
+              2
+            ]
+          },
+          {
+            "id": "ridge-center",
+            "position": [
+              8,
+              3,
+              5
+            ]
+          },
+          {
+            "id": "ridge-s1",
+            "position": [
+              8,
+              3,
+              8
+            ]
+          },
+          {
+            "id": "ridge-south",
+            "position": [
+              8,
+              3,
+              10
+            ]
+          },
+          {
+            "id": "cross-n",
+            "position": [
+              4,
+              1,
+              2
+            ]
+          },
+          {
+            "id": "cross-c",
+            "position": [
+              4,
+              1,
+              5
+            ]
+          },
+          {
+            "id": "cross-s",
+            "position": [
+              4,
+              1,
+              8
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "id": "valley-cb-n1",
+            "from": "champion-base",
+            "to": "valley-n1",
+            "travelTicks": 20,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "valley-n1-vc",
+            "from": "valley-n1",
+            "to": "valley-center",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "valley-vc-s1",
+            "from": "valley-center",
+            "to": "valley-s1",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "valley-s1-rb",
+            "from": "valley-s1",
+            "to": "rival-base",
+            "travelTicks": 20,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "ridge-rn-r1",
+            "from": "ridge-north",
+            "to": "ridge-n1",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "ridge-r1-rc",
+            "from": "ridge-n1",
+            "to": "ridge-center",
+            "travelTicks": 25,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "ridge-rc-r1s",
+            "from": "ridge-center",
+            "to": "ridge-s1",
+            "travelTicks": 25,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "ridge-r1s-rs",
+            "from": "ridge-s1",
+            "to": "ridge-south",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "base-cb-rn",
+            "from": "champion-base",
+            "to": "ridge-north",
+            "travelTicks": 35,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 35
+          },
+          {
+            "id": "base-rb-rs",
+            "from": "rival-base",
+            "to": "ridge-south",
+            "travelTicks": 35,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 35
+          },
+          {
+            "id": "cross-vn-cn",
+            "from": "valley-n1",
+            "to": "cross-n",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cn-r1",
+            "from": "cross-n",
+            "to": "ridge-n1",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-vc-cc",
+            "from": "valley-center",
+            "to": "cross-c",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cc-rc",
+            "from": "cross-c",
+            "to": "ridge-center",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-vs-cs",
+            "from": "valley-s1",
+            "to": "cross-s",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cs-r1s",
+            "from": "cross-s",
+            "to": "ridge-s1",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cn-cc",
+            "from": "cross-n",
+            "to": "cross-c",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "cross-cc-cs",
+            "from": "cross-c",
+            "to": "cross-s",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "shortcut-cb-cn",
+            "from": "champion-base",
+            "to": "cross-n",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "shortcut-rb-cs",
+            "from": "rival-base",
+            "to": "cross-s",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "diag-vn-rn",
+            "from": "valley-n1",
+            "to": "ridge-north",
+            "travelTicks": 30,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 30
+          },
+          {
+            "id": "diag-vs-rs",
+            "from": "valley-s1",
+            "to": "ridge-south",
+            "travelTicks": 30,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 30
+          },
+          {
+            "id": "valley-cb-vc",
+            "from": "champion-base",
+            "to": "valley-center",
+            "travelTicks": 40,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "valley-rb-vc",
+            "from": "rival-base",
+            "to": "valley-center",
+            "travelTicks": 40,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "ridge-rn-rc",
+            "from": "ridge-north",
+            "to": "ridge-center",
+            "travelTicks": 40,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "ridge-rs-rc",
+            "from": "ridge-south",
+            "to": "ridge-center",
+            "travelTicks": 40,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 40
+          }
+        ],
+        "resources": [
+          {
+            "id": "core-1",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-2",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-3",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-4",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-7",
+            "nodeId": "cross-n",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-8",
+            "nodeId": "cross-n",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          }
+        ],
+        "weather": {
+          "flooded": false,
+          "drainedUntilTick": 0
+        },
+        "availableActions": [
+          {
+            "type": "wait"
+          },
+          {
+            "type": "move",
+            "edgeId": "valley-cb-n1"
+          },
+          {
+            "type": "move",
+            "edgeId": "base-cb-rn"
+          },
+          {
+            "type": "move",
+            "edgeId": "shortcut-cb-cn"
+          },
+          {
+            "type": "move",
+            "edgeId": "valley-cb-vc"
+          }
+        ],
+        "fog": {
+          "visible": [
+            "champion-base",
+            "cross-n",
+            "ridge-north",
+            "valley-center",
+            "valley-n1"
+          ],
+          "remembered": [],
+          "hidden": [
+            "cross-c",
+            "cross-s",
+            "ridge-center",
+            "ridge-n1",
+            "ridge-s1",
+            "ridge-south",
+            "rival-base",
+            "valley-s1"
+          ]
+        }
+      },
+      "expectedAction": {
+        "type": "move",
+        "edgeId": "shortcut-cb-cn"
+      },
+      "expectedClass": 6,
+      "provenance": "safe collector on builder-course-02 at tick 0"
+    },
+    {
+      "id": "frame-builder-course-02-t25",
+      "scenarioId": "builder-course-02",
+      "tick": 25,
+      "observation": {
+        "schemaVersion": "arena-observation-v2",
+        "rulesVersion": "season-0.reference.2",
+        "tick": 25,
+        "remainingTicks": 775,
+        "decisionDue": true,
+        "self": {
+          "id": "champion",
+          "baseNode": "champion-base",
+          "policyVersion": "baseline.safe.v2",
+          "nodeId": "cross-n",
+          "position": [
+            4,
+            1,
+            2
+          ],
+          "transit": null,
+          "energy": 11.1,
+          "cargo": 0,
+          "banked": 0,
+          "cooldownUntilTick": 0,
+          "lastOutcome": {
+            "agentId": "champion",
+            "tick": 20,
+            "action": {
+              "type": "wait"
+            },
+            "accepted": true,
+            "reason": null
+          },
+          "visitedNodes": [
+            "champion-base",
+            "cross-n"
+          ],
+          "knownResources": [
+            {
+              "id": "core-1",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-2",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-3",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-4",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-7",
+              "nodeId": "cross-n",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-8",
+              "nodeId": "cross-n",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-11",
+              "nodeId": "ridge-n1",
+              "value": 1,
+              "available": true
+            }
+          ],
+          "grounded": true,
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "blockedTicks": 0,
+          "blockedEdges": [],
+          "recoveries": 0
+        },
+        "rivals": [
+          {
+            "id": "rival",
+            "position": null,
+            "cargo": null,
+            "banked": 0,
+            "visible": false
+          }
+        ],
+        "nodes": [
+          {
+            "id": "champion-base",
+            "position": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "id": "valley-n1",
+            "position": [
+              0,
+              0,
+              2
+            ]
+          },
+          {
+            "id": "valley-center",
+            "position": [
+              0,
+              0,
+              5
+            ]
+          },
+          {
+            "id": "valley-s1",
+            "position": [
+              0,
+              0,
+              8
+            ]
+          },
+          {
+            "id": "rival-base",
+            "position": [
+              0,
+              0,
+              10
+            ]
+          },
+          {
+            "id": "ridge-north",
+            "position": [
+              8,
+              3,
+              0
+            ]
+          },
+          {
+            "id": "ridge-n1",
+            "position": [
+              8,
+              3,
+              2
+            ]
+          },
+          {
+            "id": "ridge-center",
+            "position": [
+              8,
+              3,
+              5
+            ]
+          },
+          {
+            "id": "ridge-s1",
+            "position": [
+              8,
+              3,
+              8
+            ]
+          },
+          {
+            "id": "ridge-south",
+            "position": [
+              8,
+              3,
+              10
+            ]
+          },
+          {
+            "id": "cross-n",
+            "position": [
+              4,
+              1,
+              2
+            ]
+          },
+          {
+            "id": "cross-c",
+            "position": [
+              4,
+              1,
+              5
+            ]
+          },
+          {
+            "id": "cross-s",
+            "position": [
+              4,
+              1,
+              8
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "id": "valley-cb-n1",
+            "from": "champion-base",
+            "to": "valley-n1",
+            "travelTicks": 20,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "valley-n1-vc",
+            "from": "valley-n1",
+            "to": "valley-center",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "valley-vc-s1",
+            "from": "valley-center",
+            "to": "valley-s1",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "valley-s1-rb",
+            "from": "valley-s1",
+            "to": "rival-base",
+            "travelTicks": 20,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "ridge-rn-r1",
+            "from": "ridge-north",
+            "to": "ridge-n1",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "ridge-r1-rc",
+            "from": "ridge-n1",
+            "to": "ridge-center",
+            "travelTicks": 25,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "ridge-rc-r1s",
+            "from": "ridge-center",
+            "to": "ridge-s1",
+            "travelTicks": 25,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "ridge-r1s-rs",
+            "from": "ridge-s1",
+            "to": "ridge-south",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "base-cb-rn",
+            "from": "champion-base",
+            "to": "ridge-north",
+            "travelTicks": 35,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 35
+          },
+          {
+            "id": "base-rb-rs",
+            "from": "rival-base",
+            "to": "ridge-south",
+            "travelTicks": 35,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 35
+          },
+          {
+            "id": "cross-vn-cn",
+            "from": "valley-n1",
+            "to": "cross-n",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cn-r1",
+            "from": "cross-n",
+            "to": "ridge-n1",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-vc-cc",
+            "from": "valley-center",
+            "to": "cross-c",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cc-rc",
+            "from": "cross-c",
+            "to": "ridge-center",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-vs-cs",
+            "from": "valley-s1",
+            "to": "cross-s",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cs-r1s",
+            "from": "cross-s",
+            "to": "ridge-s1",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cn-cc",
+            "from": "cross-n",
+            "to": "cross-c",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "cross-cc-cs",
+            "from": "cross-c",
+            "to": "cross-s",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "shortcut-cb-cn",
+            "from": "champion-base",
+            "to": "cross-n",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "shortcut-rb-cs",
+            "from": "rival-base",
+            "to": "cross-s",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "diag-vn-rn",
+            "from": "valley-n1",
+            "to": "ridge-north",
+            "travelTicks": 30,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 30
+          },
+          {
+            "id": "diag-vs-rs",
+            "from": "valley-s1",
+            "to": "ridge-south",
+            "travelTicks": 30,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 30
+          },
+          {
+            "id": "valley-cb-vc",
+            "from": "champion-base",
+            "to": "valley-center",
+            "travelTicks": 40,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "valley-rb-vc",
+            "from": "rival-base",
+            "to": "valley-center",
+            "travelTicks": 40,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "ridge-rn-rc",
+            "from": "ridge-north",
+            "to": "ridge-center",
+            "travelTicks": 40,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "ridge-rs-rc",
+            "from": "ridge-south",
+            "to": "ridge-center",
+            "travelTicks": 40,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 40
+          }
+        ],
+        "resources": [
+          {
+            "id": "core-7",
+            "nodeId": "cross-n",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-8",
+            "nodeId": "cross-n",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-11",
+            "nodeId": "ridge-n1",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-1",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          },
+          {
+            "id": "core-2",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          },
+          {
+            "id": "core-3",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          },
+          {
+            "id": "core-4",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          }
+        ],
+        "weather": {
+          "flooded": false,
+          "drainedUntilTick": 0
+        },
+        "availableActions": [
+          {
+            "type": "wait"
+          },
+          {
+            "type": "move",
+            "edgeId": "cross-vn-cn"
+          },
+          {
+            "type": "move",
+            "edgeId": "cross-cn-r1"
+          },
+          {
+            "type": "move",
+            "edgeId": "cross-cn-cc"
+          },
+          {
+            "type": "move",
+            "edgeId": "shortcut-cb-cn"
+          },
+          {
+            "type": "collect",
+            "resourceId": "core-7"
+          },
+          {
+            "type": "collect",
+            "resourceId": "core-8"
+          }
+        ],
+        "fog": {
+          "visible": [
+            "champion-base",
+            "cross-c",
+            "cross-n",
+            "ridge-n1",
+            "valley-n1"
+          ],
+          "remembered": [],
+          "hidden": [
+            "cross-s",
+            "ridge-center",
+            "ridge-north",
+            "ridge-s1",
+            "ridge-south",
+            "rival-base",
+            "valley-center",
+            "valley-s1"
+          ]
+        }
+      },
+      "expectedAction": {
+        "type": "collect",
+        "resourceId": "core-7"
+      },
+      "expectedClass": 2,
+      "provenance": "safe collector on builder-course-02 at tick 25"
+    },
+    {
+      "id": "frame-builder-course-02-t30",
+      "scenarioId": "builder-course-02",
+      "tick": 30,
+      "observation": {
+        "schemaVersion": "arena-observation-v2",
+        "rulesVersion": "season-0.reference.2",
+        "tick": 30,
+        "remainingTicks": 770,
+        "decisionDue": true,
+        "self": {
+          "id": "champion",
+          "baseNode": "champion-base",
+          "policyVersion": "baseline.safe.v2",
+          "nodeId": "cross-n",
+          "position": [
+            4,
+            1,
+            2
+          ],
+          "transit": null,
+          "energy": 11.499999999999998,
+          "cargo": 1,
+          "banked": 0,
+          "cooldownUntilTick": 0,
+          "lastOutcome": {
+            "agentId": "champion",
+            "tick": 25,
+            "action": {
+              "type": "collect",
+              "resourceId": "core-7"
+            },
+            "accepted": true,
+            "reason": null
+          },
+          "visitedNodes": [
+            "champion-base",
+            "cross-n"
+          ],
+          "knownResources": [
+            {
+              "id": "core-1",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-2",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-3",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-4",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-7",
+              "nodeId": "cross-n",
+              "value": 1,
+              "available": false
+            },
+            {
+              "id": "core-8",
+              "nodeId": "cross-n",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-11",
+              "nodeId": "ridge-n1",
+              "value": 1,
+              "available": true
+            }
+          ],
+          "grounded": true,
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "blockedTicks": 0,
+          "blockedEdges": [],
+          "recoveries": 0
+        },
+        "rivals": [
+          {
+            "id": "rival",
+            "position": null,
+            "cargo": null,
+            "banked": 0,
+            "visible": false
+          }
+        ],
+        "nodes": [
+          {
+            "id": "champion-base",
+            "position": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "id": "valley-n1",
+            "position": [
+              0,
+              0,
+              2
+            ]
+          },
+          {
+            "id": "valley-center",
+            "position": [
+              0,
+              0,
+              5
+            ]
+          },
+          {
+            "id": "valley-s1",
+            "position": [
+              0,
+              0,
+              8
+            ]
+          },
+          {
+            "id": "rival-base",
+            "position": [
+              0,
+              0,
+              10
+            ]
+          },
+          {
+            "id": "ridge-north",
+            "position": [
+              8,
+              3,
+              0
+            ]
+          },
+          {
+            "id": "ridge-n1",
+            "position": [
+              8,
+              3,
+              2
+            ]
+          },
+          {
+            "id": "ridge-center",
+            "position": [
+              8,
+              3,
+              5
+            ]
+          },
+          {
+            "id": "ridge-s1",
+            "position": [
+              8,
+              3,
+              8
+            ]
+          },
+          {
+            "id": "ridge-south",
+            "position": [
+              8,
+              3,
+              10
+            ]
+          },
+          {
+            "id": "cross-n",
+            "position": [
+              4,
+              1,
+              2
+            ]
+          },
+          {
+            "id": "cross-c",
+            "position": [
+              4,
+              1,
+              5
+            ]
+          },
+          {
+            "id": "cross-s",
+            "position": [
+              4,
+              1,
+              8
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "id": "valley-cb-n1",
+            "from": "champion-base",
+            "to": "valley-n1",
+            "travelTicks": 20,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "valley-n1-vc",
+            "from": "valley-n1",
+            "to": "valley-center",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "valley-vc-s1",
+            "from": "valley-center",
+            "to": "valley-s1",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "valley-s1-rb",
+            "from": "valley-s1",
+            "to": "rival-base",
+            "travelTicks": 20,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "ridge-rn-r1",
+            "from": "ridge-north",
+            "to": "ridge-n1",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "ridge-r1-rc",
+            "from": "ridge-n1",
+            "to": "ridge-center",
+            "travelTicks": 25,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "ridge-rc-r1s",
+            "from": "ridge-center",
+            "to": "ridge-s1",
+            "travelTicks": 25,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "ridge-r1s-rs",
+            "from": "ridge-s1",
+            "to": "ridge-south",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "base-cb-rn",
+            "from": "champion-base",
+            "to": "ridge-north",
+            "travelTicks": 35,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 35
+          },
+          {
+            "id": "base-rb-rs",
+            "from": "rival-base",
+            "to": "ridge-south",
+            "travelTicks": 35,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 35
+          },
+          {
+            "id": "cross-vn-cn",
+            "from": "valley-n1",
+            "to": "cross-n",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cn-r1",
+            "from": "cross-n",
+            "to": "ridge-n1",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-vc-cc",
+            "from": "valley-center",
+            "to": "cross-c",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cc-rc",
+            "from": "cross-c",
+            "to": "ridge-center",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-vs-cs",
+            "from": "valley-s1",
+            "to": "cross-s",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cs-r1s",
+            "from": "cross-s",
+            "to": "ridge-s1",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cn-cc",
+            "from": "cross-n",
+            "to": "cross-c",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "cross-cc-cs",
+            "from": "cross-c",
+            "to": "cross-s",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "shortcut-cb-cn",
+            "from": "champion-base",
+            "to": "cross-n",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "shortcut-rb-cs",
+            "from": "rival-base",
+            "to": "cross-s",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "diag-vn-rn",
+            "from": "valley-n1",
+            "to": "ridge-north",
+            "travelTicks": 30,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 30
+          },
+          {
+            "id": "diag-vs-rs",
+            "from": "valley-s1",
+            "to": "ridge-south",
+            "travelTicks": 30,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 30
+          },
+          {
+            "id": "valley-cb-vc",
+            "from": "champion-base",
+            "to": "valley-center",
+            "travelTicks": 40,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "valley-rb-vc",
+            "from": "rival-base",
+            "to": "valley-center",
+            "travelTicks": 40,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "ridge-rn-rc",
+            "from": "ridge-north",
+            "to": "ridge-center",
+            "travelTicks": 40,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "ridge-rs-rc",
+            "from": "ridge-south",
+            "to": "ridge-center",
+            "travelTicks": 40,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 40
+          }
+        ],
+        "resources": [
+          {
+            "id": "core-8",
+            "nodeId": "cross-n",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-11",
+            "nodeId": "ridge-n1",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-1",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          },
+          {
+            "id": "core-2",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          },
+          {
+            "id": "core-3",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          },
+          {
+            "id": "core-4",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          }
+        ],
+        "weather": {
+          "flooded": false,
+          "drainedUntilTick": 0
+        },
+        "availableActions": [
+          {
+            "type": "wait"
+          },
+          {
+            "type": "move",
+            "edgeId": "cross-vn-cn"
+          },
+          {
+            "type": "move",
+            "edgeId": "cross-cn-r1"
+          },
+          {
+            "type": "move",
+            "edgeId": "cross-cn-cc"
+          },
+          {
+            "type": "move",
+            "edgeId": "shortcut-cb-cn"
+          },
+          {
+            "type": "collect",
+            "resourceId": "core-8"
+          }
+        ],
+        "fog": {
+          "visible": [
+            "champion-base",
+            "cross-c",
+            "cross-n",
+            "ridge-n1",
+            "valley-n1"
+          ],
+          "remembered": [],
+          "hidden": [
+            "cross-s",
+            "ridge-center",
+            "ridge-north",
+            "ridge-s1",
+            "ridge-south",
+            "rival-base",
+            "valley-center",
+            "valley-s1"
+          ]
+        }
+      },
+      "expectedAction": {
+        "type": "collect",
+        "resourceId": "core-8"
+      },
+      "expectedClass": 2,
+      "provenance": "safe collector on builder-course-02 at tick 30"
+    },
+    {
+      "id": "frame-builder-course-02-t35",
+      "scenarioId": "builder-course-02",
+      "tick": 35,
+      "observation": {
+        "schemaVersion": "arena-observation-v2",
+        "rulesVersion": "season-0.reference.2",
+        "tick": 35,
+        "remainingTicks": 765,
+        "decisionDue": true,
+        "self": {
+          "id": "champion",
+          "baseNode": "champion-base",
+          "policyVersion": "baseline.safe.v2",
+          "nodeId": "cross-n",
+          "position": [
+            4,
+            1,
+            2
+          ],
+          "transit": null,
+          "energy": 11.899999999999997,
+          "cargo": 2,
+          "banked": 0,
+          "cooldownUntilTick": 0,
+          "lastOutcome": {
+            "agentId": "champion",
+            "tick": 30,
+            "action": {
+              "type": "collect",
+              "resourceId": "core-8"
+            },
+            "accepted": true,
+            "reason": null
+          },
+          "visitedNodes": [
+            "champion-base",
+            "cross-n"
+          ],
+          "knownResources": [
+            {
+              "id": "core-1",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-2",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-3",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-4",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-7",
+              "nodeId": "cross-n",
+              "value": 1,
+              "available": false
+            },
+            {
+              "id": "core-8",
+              "nodeId": "cross-n",
+              "value": 1,
+              "available": false
+            },
+            {
+              "id": "core-11",
+              "nodeId": "ridge-n1",
+              "value": 1,
+              "available": true
+            }
+          ],
+          "grounded": true,
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "blockedTicks": 0,
+          "blockedEdges": [],
+          "recoveries": 0
+        },
+        "rivals": [
+          {
+            "id": "rival",
+            "position": null,
+            "cargo": null,
+            "banked": 0,
+            "visible": false
+          }
+        ],
+        "nodes": [
+          {
+            "id": "champion-base",
+            "position": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "id": "valley-n1",
+            "position": [
+              0,
+              0,
+              2
+            ]
+          },
+          {
+            "id": "valley-center",
+            "position": [
+              0,
+              0,
+              5
+            ]
+          },
+          {
+            "id": "valley-s1",
+            "position": [
+              0,
+              0,
+              8
+            ]
+          },
+          {
+            "id": "rival-base",
+            "position": [
+              0,
+              0,
+              10
+            ]
+          },
+          {
+            "id": "ridge-north",
+            "position": [
+              8,
+              3,
+              0
+            ]
+          },
+          {
+            "id": "ridge-n1",
+            "position": [
+              8,
+              3,
+              2
+            ]
+          },
+          {
+            "id": "ridge-center",
+            "position": [
+              8,
+              3,
+              5
+            ]
+          },
+          {
+            "id": "ridge-s1",
+            "position": [
+              8,
+              3,
+              8
+            ]
+          },
+          {
+            "id": "ridge-south",
+            "position": [
+              8,
+              3,
+              10
+            ]
+          },
+          {
+            "id": "cross-n",
+            "position": [
+              4,
+              1,
+              2
+            ]
+          },
+          {
+            "id": "cross-c",
+            "position": [
+              4,
+              1,
+              5
+            ]
+          },
+          {
+            "id": "cross-s",
+            "position": [
+              4,
+              1,
+              8
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "id": "valley-cb-n1",
+            "from": "champion-base",
+            "to": "valley-n1",
+            "travelTicks": 20,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "valley-n1-vc",
+            "from": "valley-n1",
+            "to": "valley-center",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "valley-vc-s1",
+            "from": "valley-center",
+            "to": "valley-s1",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "valley-s1-rb",
+            "from": "valley-s1",
+            "to": "rival-base",
+            "travelTicks": 20,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "ridge-rn-r1",
+            "from": "ridge-north",
+            "to": "ridge-n1",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "ridge-r1-rc",
+            "from": "ridge-n1",
+            "to": "ridge-center",
+            "travelTicks": 25,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "ridge-rc-r1s",
+            "from": "ridge-center",
+            "to": "ridge-s1",
+            "travelTicks": 25,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "ridge-r1s-rs",
+            "from": "ridge-s1",
+            "to": "ridge-south",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "base-cb-rn",
+            "from": "champion-base",
+            "to": "ridge-north",
+            "travelTicks": 35,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 35
+          },
+          {
+            "id": "base-rb-rs",
+            "from": "rival-base",
+            "to": "ridge-south",
+            "travelTicks": 35,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 35
+          },
+          {
+            "id": "cross-vn-cn",
+            "from": "valley-n1",
+            "to": "cross-n",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cn-r1",
+            "from": "cross-n",
+            "to": "ridge-n1",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-vc-cc",
+            "from": "valley-center",
+            "to": "cross-c",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cc-rc",
+            "from": "cross-c",
+            "to": "ridge-center",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-vs-cs",
+            "from": "valley-s1",
+            "to": "cross-s",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cs-r1s",
+            "from": "cross-s",
+            "to": "ridge-s1",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cn-cc",
+            "from": "cross-n",
+            "to": "cross-c",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "cross-cc-cs",
+            "from": "cross-c",
+            "to": "cross-s",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "shortcut-cb-cn",
+            "from": "champion-base",
+            "to": "cross-n",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "shortcut-rb-cs",
+            "from": "rival-base",
+            "to": "cross-s",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "diag-vn-rn",
+            "from": "valley-n1",
+            "to": "ridge-north",
+            "travelTicks": 30,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 30
+          },
+          {
+            "id": "diag-vs-rs",
+            "from": "valley-s1",
+            "to": "ridge-south",
+            "travelTicks": 30,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 30
+          },
+          {
+            "id": "valley-cb-vc",
+            "from": "champion-base",
+            "to": "valley-center",
+            "travelTicks": 40,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "valley-rb-vc",
+            "from": "rival-base",
+            "to": "valley-center",
+            "travelTicks": 40,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "ridge-rn-rc",
+            "from": "ridge-north",
+            "to": "ridge-center",
+            "travelTicks": 40,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "ridge-rs-rc",
+            "from": "ridge-south",
+            "to": "ridge-center",
+            "travelTicks": 40,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 40
+          }
+        ],
+        "resources": [
+          {
+            "id": "core-11",
+            "nodeId": "ridge-n1",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-1",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          },
+          {
+            "id": "core-2",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          },
+          {
+            "id": "core-3",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          },
+          {
+            "id": "core-4",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          }
+        ],
+        "weather": {
+          "flooded": false,
+          "drainedUntilTick": 0
+        },
+        "availableActions": [
+          {
+            "type": "wait"
+          },
+          {
+            "type": "move",
+            "edgeId": "cross-vn-cn"
+          },
+          {
+            "type": "move",
+            "edgeId": "cross-cn-r1"
+          },
+          {
+            "type": "move",
+            "edgeId": "cross-cn-cc"
+          },
+          {
+            "type": "move",
+            "edgeId": "shortcut-cb-cn"
+          }
+        ],
+        "fog": {
+          "visible": [
+            "champion-base",
+            "cross-c",
+            "cross-n",
+            "ridge-n1",
+            "valley-n1"
+          ],
+          "remembered": [],
+          "hidden": [
+            "cross-s",
+            "ridge-center",
+            "ridge-north",
+            "ridge-s1",
+            "ridge-south",
+            "rival-base",
+            "valley-center",
+            "valley-s1"
+          ]
+        }
+      },
+      "expectedAction": {
+        "type": "move",
+        "edgeId": "cross-cn-r1"
+      },
+      "expectedClass": 6,
+      "provenance": "safe collector on builder-course-02 at tick 35"
+    },
+    {
+      "id": "frame-builder-course-03-t0",
+      "scenarioId": "builder-course-03",
+      "tick": 0,
+      "observation": {
+        "schemaVersion": "arena-observation-v2",
+        "rulesVersion": "season-0.reference.2",
+        "tick": 0,
+        "remainingTicks": 800,
+        "decisionDue": true,
+        "self": {
+          "id": "champion",
+          "baseNode": "champion-base",
+          "policyVersion": "baseline.safe.v2",
+          "nodeId": "champion-base",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "transit": null,
+          "energy": 12,
+          "cargo": 0,
+          "banked": 0,
+          "cooldownUntilTick": 0,
+          "lastOutcome": null,
+          "visitedNodes": [
+            "champion-base"
+          ],
+          "knownResources": [
+            {
+              "id": "core-1",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-2",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-3",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-4",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-7",
+              "nodeId": "cross-n",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-8",
+              "nodeId": "cross-n",
+              "value": 1,
+              "available": true
+            }
+          ],
+          "grounded": true,
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "blockedTicks": 0,
+          "blockedEdges": [],
+          "recoveries": 0
+        },
+        "rivals": [
+          {
+            "id": "rival",
+            "position": null,
+            "cargo": null,
+            "banked": 0,
+            "visible": false
+          }
+        ],
+        "nodes": [
+          {
+            "id": "champion-base",
+            "position": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "id": "valley-n1",
+            "position": [
+              0,
+              0,
+              2
+            ]
+          },
+          {
+            "id": "valley-center",
+            "position": [
+              0,
+              0,
+              5
+            ]
+          },
+          {
+            "id": "valley-s1",
+            "position": [
+              0,
+              0,
+              8
+            ]
+          },
+          {
+            "id": "rival-base",
+            "position": [
+              0,
+              0,
+              10
+            ]
+          },
+          {
+            "id": "ridge-north",
+            "position": [
+              8,
+              3,
+              0
+            ]
+          },
+          {
+            "id": "ridge-n1",
+            "position": [
+              8,
+              3,
+              2
+            ]
+          },
+          {
+            "id": "ridge-center",
+            "position": [
+              8,
+              3,
+              5
+            ]
+          },
+          {
+            "id": "ridge-s1",
+            "position": [
+              8,
+              3,
+              8
+            ]
+          },
+          {
+            "id": "ridge-south",
+            "position": [
+              8,
+              3,
+              10
+            ]
+          },
+          {
+            "id": "cross-n",
+            "position": [
+              4,
+              1,
+              2
+            ]
+          },
+          {
+            "id": "cross-c",
+            "position": [
+              4,
+              1,
+              5
+            ]
+          },
+          {
+            "id": "cross-s",
+            "position": [
+              4,
+              1,
+              8
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "id": "valley-cb-n1",
+            "from": "champion-base",
+            "to": "valley-n1",
+            "travelTicks": 20,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "valley-n1-vc",
+            "from": "valley-n1",
+            "to": "valley-center",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "valley-vc-s1",
+            "from": "valley-center",
+            "to": "valley-s1",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "valley-s1-rb",
+            "from": "valley-s1",
+            "to": "rival-base",
+            "travelTicks": 20,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "ridge-rn-r1",
+            "from": "ridge-north",
+            "to": "ridge-n1",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "ridge-r1-rc",
+            "from": "ridge-n1",
+            "to": "ridge-center",
+            "travelTicks": 25,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "ridge-rc-r1s",
+            "from": "ridge-center",
+            "to": "ridge-s1",
+            "travelTicks": 25,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "ridge-r1s-rs",
+            "from": "ridge-s1",
+            "to": "ridge-south",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "base-cb-rn",
+            "from": "champion-base",
+            "to": "ridge-north",
+            "travelTicks": 35,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 35
+          },
+          {
+            "id": "base-rb-rs",
+            "from": "rival-base",
+            "to": "ridge-south",
+            "travelTicks": 35,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 35
+          },
+          {
+            "id": "cross-vn-cn",
+            "from": "valley-n1",
+            "to": "cross-n",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cn-r1",
+            "from": "cross-n",
+            "to": "ridge-n1",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-vc-cc",
+            "from": "valley-center",
+            "to": "cross-c",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cc-rc",
+            "from": "cross-c",
+            "to": "ridge-center",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-vs-cs",
+            "from": "valley-s1",
+            "to": "cross-s",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cs-r1s",
+            "from": "cross-s",
+            "to": "ridge-s1",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cn-cc",
+            "from": "cross-n",
+            "to": "cross-c",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "cross-cc-cs",
+            "from": "cross-c",
+            "to": "cross-s",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "shortcut-cb-cn",
+            "from": "champion-base",
+            "to": "cross-n",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "shortcut-rb-cs",
+            "from": "rival-base",
+            "to": "cross-s",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "diag-vn-rn",
+            "from": "valley-n1",
+            "to": "ridge-north",
+            "travelTicks": 30,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 30
+          },
+          {
+            "id": "diag-vs-rs",
+            "from": "valley-s1",
+            "to": "ridge-south",
+            "travelTicks": 30,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 30
+          },
+          {
+            "id": "valley-cb-vc",
+            "from": "champion-base",
+            "to": "valley-center",
+            "travelTicks": 40,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "valley-rb-vc",
+            "from": "rival-base",
+            "to": "valley-center",
+            "travelTicks": 40,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "ridge-rn-rc",
+            "from": "ridge-north",
+            "to": "ridge-center",
+            "travelTicks": 40,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "ridge-rs-rc",
+            "from": "ridge-south",
+            "to": "ridge-center",
+            "travelTicks": 40,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 40
+          }
+        ],
+        "resources": [
+          {
+            "id": "core-1",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-2",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-3",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-4",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-7",
+            "nodeId": "cross-n",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-8",
+            "nodeId": "cross-n",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          }
+        ],
+        "weather": {
+          "flooded": false,
+          "drainedUntilTick": 0
+        },
+        "availableActions": [
+          {
+            "type": "wait"
+          },
+          {
+            "type": "move",
+            "edgeId": "valley-cb-n1"
+          },
+          {
+            "type": "move",
+            "edgeId": "base-cb-rn"
+          },
+          {
+            "type": "move",
+            "edgeId": "shortcut-cb-cn"
+          },
+          {
+            "type": "move",
+            "edgeId": "valley-cb-vc"
+          }
+        ],
+        "fog": {
+          "visible": [
+            "champion-base",
+            "cross-n",
+            "ridge-north",
+            "valley-center",
+            "valley-n1"
+          ],
+          "remembered": [],
+          "hidden": [
+            "cross-c",
+            "cross-s",
+            "ridge-center",
+            "ridge-n1",
+            "ridge-s1",
+            "ridge-south",
+            "rival-base",
+            "valley-s1"
+          ]
+        }
+      },
+      "expectedAction": {
+        "type": "move",
+        "edgeId": "shortcut-cb-cn"
+      },
+      "expectedClass": 6,
+      "provenance": "safe collector on builder-course-03 at tick 0"
+    },
+    {
+      "id": "frame-builder-course-03-t25",
+      "scenarioId": "builder-course-03",
+      "tick": 25,
+      "observation": {
+        "schemaVersion": "arena-observation-v2",
+        "rulesVersion": "season-0.reference.2",
+        "tick": 25,
+        "remainingTicks": 775,
+        "decisionDue": true,
+        "self": {
+          "id": "champion",
+          "baseNode": "champion-base",
+          "policyVersion": "baseline.safe.v2",
+          "nodeId": "cross-n",
+          "position": [
+            4,
+            1,
+            2
+          ],
+          "transit": null,
+          "energy": 11.1,
+          "cargo": 0,
+          "banked": 0,
+          "cooldownUntilTick": 0,
+          "lastOutcome": {
+            "agentId": "champion",
+            "tick": 20,
+            "action": {
+              "type": "wait"
+            },
+            "accepted": true,
+            "reason": null
+          },
+          "visitedNodes": [
+            "champion-base",
+            "cross-n"
+          ],
+          "knownResources": [
+            {
+              "id": "core-1",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-2",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-3",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-4",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-7",
+              "nodeId": "cross-n",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-8",
+              "nodeId": "cross-n",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-11",
+              "nodeId": "ridge-n1",
+              "value": 1,
+              "available": true
+            }
+          ],
+          "grounded": true,
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "blockedTicks": 0,
+          "blockedEdges": [],
+          "recoveries": 0
+        },
+        "rivals": [
+          {
+            "id": "rival",
+            "position": null,
+            "cargo": null,
+            "banked": 0,
+            "visible": false
+          }
+        ],
+        "nodes": [
+          {
+            "id": "champion-base",
+            "position": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "id": "valley-n1",
+            "position": [
+              0,
+              0,
+              2
+            ]
+          },
+          {
+            "id": "valley-center",
+            "position": [
+              0,
+              0,
+              5
+            ]
+          },
+          {
+            "id": "valley-s1",
+            "position": [
+              0,
+              0,
+              8
+            ]
+          },
+          {
+            "id": "rival-base",
+            "position": [
+              0,
+              0,
+              10
+            ]
+          },
+          {
+            "id": "ridge-north",
+            "position": [
+              8,
+              3,
+              0
+            ]
+          },
+          {
+            "id": "ridge-n1",
+            "position": [
+              8,
+              3,
+              2
+            ]
+          },
+          {
+            "id": "ridge-center",
+            "position": [
+              8,
+              3,
+              5
+            ]
+          },
+          {
+            "id": "ridge-s1",
+            "position": [
+              8,
+              3,
+              8
+            ]
+          },
+          {
+            "id": "ridge-south",
+            "position": [
+              8,
+              3,
+              10
+            ]
+          },
+          {
+            "id": "cross-n",
+            "position": [
+              4,
+              1,
+              2
+            ]
+          },
+          {
+            "id": "cross-c",
+            "position": [
+              4,
+              1,
+              5
+            ]
+          },
+          {
+            "id": "cross-s",
+            "position": [
+              4,
+              1,
+              8
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "id": "valley-cb-n1",
+            "from": "champion-base",
+            "to": "valley-n1",
+            "travelTicks": 20,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "valley-n1-vc",
+            "from": "valley-n1",
+            "to": "valley-center",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "valley-vc-s1",
+            "from": "valley-center",
+            "to": "valley-s1",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "valley-s1-rb",
+            "from": "valley-s1",
+            "to": "rival-base",
+            "travelTicks": 20,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "ridge-rn-r1",
+            "from": "ridge-north",
+            "to": "ridge-n1",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "ridge-r1-rc",
+            "from": "ridge-n1",
+            "to": "ridge-center",
+            "travelTicks": 25,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "ridge-rc-r1s",
+            "from": "ridge-center",
+            "to": "ridge-s1",
+            "travelTicks": 25,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "ridge-r1s-rs",
+            "from": "ridge-s1",
+            "to": "ridge-south",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "base-cb-rn",
+            "from": "champion-base",
+            "to": "ridge-north",
+            "travelTicks": 35,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 35
+          },
+          {
+            "id": "base-rb-rs",
+            "from": "rival-base",
+            "to": "ridge-south",
+            "travelTicks": 35,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 35
+          },
+          {
+            "id": "cross-vn-cn",
+            "from": "valley-n1",
+            "to": "cross-n",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cn-r1",
+            "from": "cross-n",
+            "to": "ridge-n1",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-vc-cc",
+            "from": "valley-center",
+            "to": "cross-c",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cc-rc",
+            "from": "cross-c",
+            "to": "ridge-center",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-vs-cs",
+            "from": "valley-s1",
+            "to": "cross-s",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cs-r1s",
+            "from": "cross-s",
+            "to": "ridge-s1",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cn-cc",
+            "from": "cross-n",
+            "to": "cross-c",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "cross-cc-cs",
+            "from": "cross-c",
+            "to": "cross-s",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "shortcut-cb-cn",
+            "from": "champion-base",
+            "to": "cross-n",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "shortcut-rb-cs",
+            "from": "rival-base",
+            "to": "cross-s",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "diag-vn-rn",
+            "from": "valley-n1",
+            "to": "ridge-north",
+            "travelTicks": 30,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 30
+          },
+          {
+            "id": "diag-vs-rs",
+            "from": "valley-s1",
+            "to": "ridge-south",
+            "travelTicks": 30,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 30
+          },
+          {
+            "id": "valley-cb-vc",
+            "from": "champion-base",
+            "to": "valley-center",
+            "travelTicks": 40,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "valley-rb-vc",
+            "from": "rival-base",
+            "to": "valley-center",
+            "travelTicks": 40,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "ridge-rn-rc",
+            "from": "ridge-north",
+            "to": "ridge-center",
+            "travelTicks": 40,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "ridge-rs-rc",
+            "from": "ridge-south",
+            "to": "ridge-center",
+            "travelTicks": 40,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 40
+          }
+        ],
+        "resources": [
+          {
+            "id": "core-7",
+            "nodeId": "cross-n",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-8",
+            "nodeId": "cross-n",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-11",
+            "nodeId": "ridge-n1",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-1",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          },
+          {
+            "id": "core-2",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          },
+          {
+            "id": "core-3",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          },
+          {
+            "id": "core-4",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          }
+        ],
+        "weather": {
+          "flooded": false,
+          "drainedUntilTick": 0
+        },
+        "availableActions": [
+          {
+            "type": "wait"
+          },
+          {
+            "type": "move",
+            "edgeId": "cross-vn-cn"
+          },
+          {
+            "type": "move",
+            "edgeId": "cross-cn-r1"
+          },
+          {
+            "type": "move",
+            "edgeId": "cross-cn-cc"
+          },
+          {
+            "type": "move",
+            "edgeId": "shortcut-cb-cn"
+          },
+          {
+            "type": "collect",
+            "resourceId": "core-7"
+          },
+          {
+            "type": "collect",
+            "resourceId": "core-8"
+          }
+        ],
+        "fog": {
+          "visible": [
+            "champion-base",
+            "cross-c",
+            "cross-n",
+            "ridge-n1",
+            "valley-n1"
+          ],
+          "remembered": [],
+          "hidden": [
+            "cross-s",
+            "ridge-center",
+            "ridge-north",
+            "ridge-s1",
+            "ridge-south",
+            "rival-base",
+            "valley-center",
+            "valley-s1"
+          ]
+        }
+      },
+      "expectedAction": {
+        "type": "collect",
+        "resourceId": "core-7"
+      },
+      "expectedClass": 2,
+      "provenance": "safe collector on builder-course-03 at tick 25"
+    },
+    {
+      "id": "frame-builder-course-03-t30",
+      "scenarioId": "builder-course-03",
+      "tick": 30,
+      "observation": {
+        "schemaVersion": "arena-observation-v2",
+        "rulesVersion": "season-0.reference.2",
+        "tick": 30,
+        "remainingTicks": 770,
+        "decisionDue": true,
+        "self": {
+          "id": "champion",
+          "baseNode": "champion-base",
+          "policyVersion": "baseline.safe.v2",
+          "nodeId": "cross-n",
+          "position": [
+            4,
+            1,
+            2
+          ],
+          "transit": null,
+          "energy": 11.499999999999998,
+          "cargo": 1,
+          "banked": 0,
+          "cooldownUntilTick": 0,
+          "lastOutcome": {
+            "agentId": "champion",
+            "tick": 25,
+            "action": {
+              "type": "collect",
+              "resourceId": "core-7"
+            },
+            "accepted": true,
+            "reason": null
+          },
+          "visitedNodes": [
+            "champion-base",
+            "cross-n"
+          ],
+          "knownResources": [
+            {
+              "id": "core-1",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-2",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-3",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-4",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-7",
+              "nodeId": "cross-n",
+              "value": 1,
+              "available": false
+            },
+            {
+              "id": "core-8",
+              "nodeId": "cross-n",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-11",
+              "nodeId": "ridge-n1",
+              "value": 1,
+              "available": true
+            }
+          ],
+          "grounded": true,
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "blockedTicks": 0,
+          "blockedEdges": [],
+          "recoveries": 0
+        },
+        "rivals": [
+          {
+            "id": "rival",
+            "position": null,
+            "cargo": null,
+            "banked": 0,
+            "visible": false
+          }
+        ],
+        "nodes": [
+          {
+            "id": "champion-base",
+            "position": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "id": "valley-n1",
+            "position": [
+              0,
+              0,
+              2
+            ]
+          },
+          {
+            "id": "valley-center",
+            "position": [
+              0,
+              0,
+              5
+            ]
+          },
+          {
+            "id": "valley-s1",
+            "position": [
+              0,
+              0,
+              8
+            ]
+          },
+          {
+            "id": "rival-base",
+            "position": [
+              0,
+              0,
+              10
+            ]
+          },
+          {
+            "id": "ridge-north",
+            "position": [
+              8,
+              3,
+              0
+            ]
+          },
+          {
+            "id": "ridge-n1",
+            "position": [
+              8,
+              3,
+              2
+            ]
+          },
+          {
+            "id": "ridge-center",
+            "position": [
+              8,
+              3,
+              5
+            ]
+          },
+          {
+            "id": "ridge-s1",
+            "position": [
+              8,
+              3,
+              8
+            ]
+          },
+          {
+            "id": "ridge-south",
+            "position": [
+              8,
+              3,
+              10
+            ]
+          },
+          {
+            "id": "cross-n",
+            "position": [
+              4,
+              1,
+              2
+            ]
+          },
+          {
+            "id": "cross-c",
+            "position": [
+              4,
+              1,
+              5
+            ]
+          },
+          {
+            "id": "cross-s",
+            "position": [
+              4,
+              1,
+              8
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "id": "valley-cb-n1",
+            "from": "champion-base",
+            "to": "valley-n1",
+            "travelTicks": 20,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "valley-n1-vc",
+            "from": "valley-n1",
+            "to": "valley-center",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "valley-vc-s1",
+            "from": "valley-center",
+            "to": "valley-s1",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "valley-s1-rb",
+            "from": "valley-s1",
+            "to": "rival-base",
+            "travelTicks": 20,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "ridge-rn-r1",
+            "from": "ridge-north",
+            "to": "ridge-n1",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "ridge-r1-rc",
+            "from": "ridge-n1",
+            "to": "ridge-center",
+            "travelTicks": 25,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "ridge-rc-r1s",
+            "from": "ridge-center",
+            "to": "ridge-s1",
+            "travelTicks": 25,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "ridge-r1s-rs",
+            "from": "ridge-s1",
+            "to": "ridge-south",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "base-cb-rn",
+            "from": "champion-base",
+            "to": "ridge-north",
+            "travelTicks": 35,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 35
+          },
+          {
+            "id": "base-rb-rs",
+            "from": "rival-base",
+            "to": "ridge-south",
+            "travelTicks": 35,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 35
+          },
+          {
+            "id": "cross-vn-cn",
+            "from": "valley-n1",
+            "to": "cross-n",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cn-r1",
+            "from": "cross-n",
+            "to": "ridge-n1",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-vc-cc",
+            "from": "valley-center",
+            "to": "cross-c",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cc-rc",
+            "from": "cross-c",
+            "to": "ridge-center",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-vs-cs",
+            "from": "valley-s1",
+            "to": "cross-s",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cs-r1s",
+            "from": "cross-s",
+            "to": "ridge-s1",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cn-cc",
+            "from": "cross-n",
+            "to": "cross-c",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "cross-cc-cs",
+            "from": "cross-c",
+            "to": "cross-s",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "shortcut-cb-cn",
+            "from": "champion-base",
+            "to": "cross-n",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "shortcut-rb-cs",
+            "from": "rival-base",
+            "to": "cross-s",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "diag-vn-rn",
+            "from": "valley-n1",
+            "to": "ridge-north",
+            "travelTicks": 30,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 30
+          },
+          {
+            "id": "diag-vs-rs",
+            "from": "valley-s1",
+            "to": "ridge-south",
+            "travelTicks": 30,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 30
+          },
+          {
+            "id": "valley-cb-vc",
+            "from": "champion-base",
+            "to": "valley-center",
+            "travelTicks": 40,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "valley-rb-vc",
+            "from": "rival-base",
+            "to": "valley-center",
+            "travelTicks": 40,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "ridge-rn-rc",
+            "from": "ridge-north",
+            "to": "ridge-center",
+            "travelTicks": 40,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "ridge-rs-rc",
+            "from": "ridge-south",
+            "to": "ridge-center",
+            "travelTicks": 40,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 40
+          }
+        ],
+        "resources": [
+          {
+            "id": "core-8",
+            "nodeId": "cross-n",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-11",
+            "nodeId": "ridge-n1",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-1",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          },
+          {
+            "id": "core-2",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          },
+          {
+            "id": "core-3",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          },
+          {
+            "id": "core-4",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          }
+        ],
+        "weather": {
+          "flooded": false,
+          "drainedUntilTick": 0
+        },
+        "availableActions": [
+          {
+            "type": "wait"
+          },
+          {
+            "type": "move",
+            "edgeId": "cross-vn-cn"
+          },
+          {
+            "type": "move",
+            "edgeId": "cross-cn-r1"
+          },
+          {
+            "type": "move",
+            "edgeId": "cross-cn-cc"
+          },
+          {
+            "type": "move",
+            "edgeId": "shortcut-cb-cn"
+          },
+          {
+            "type": "collect",
+            "resourceId": "core-8"
+          }
+        ],
+        "fog": {
+          "visible": [
+            "champion-base",
+            "cross-c",
+            "cross-n",
+            "ridge-n1",
+            "valley-n1"
+          ],
+          "remembered": [],
+          "hidden": [
+            "cross-s",
+            "ridge-center",
+            "ridge-north",
+            "ridge-s1",
+            "ridge-south",
+            "rival-base",
+            "valley-center",
+            "valley-s1"
+          ]
+        }
+      },
+      "expectedAction": {
+        "type": "collect",
+        "resourceId": "core-8"
+      },
+      "expectedClass": 2,
+      "provenance": "safe collector on builder-course-03 at tick 30"
+    },
+    {
+      "id": "frame-builder-course-03-t35",
+      "scenarioId": "builder-course-03",
+      "tick": 35,
+      "observation": {
+        "schemaVersion": "arena-observation-v2",
+        "rulesVersion": "season-0.reference.2",
+        "tick": 35,
+        "remainingTicks": 765,
+        "decisionDue": true,
+        "self": {
+          "id": "champion",
+          "baseNode": "champion-base",
+          "policyVersion": "baseline.safe.v2",
+          "nodeId": "cross-n",
+          "position": [
+            4,
+            1,
+            2
+          ],
+          "transit": null,
+          "energy": 11.899999999999997,
+          "cargo": 2,
+          "banked": 0,
+          "cooldownUntilTick": 0,
+          "lastOutcome": {
+            "agentId": "champion",
+            "tick": 30,
+            "action": {
+              "type": "collect",
+              "resourceId": "core-8"
+            },
+            "accepted": true,
+            "reason": null
+          },
+          "visitedNodes": [
+            "champion-base",
+            "cross-n"
+          ],
+          "knownResources": [
+            {
+              "id": "core-1",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-2",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-3",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-4",
+              "nodeId": "valley-center",
+              "value": 1,
+              "available": true
+            },
+            {
+              "id": "core-7",
+              "nodeId": "cross-n",
+              "value": 1,
+              "available": false
+            },
+            {
+              "id": "core-8",
+              "nodeId": "cross-n",
+              "value": 1,
+              "available": false
+            },
+            {
+              "id": "core-11",
+              "nodeId": "ridge-n1",
+              "value": 1,
+              "available": true
+            }
+          ],
+          "grounded": true,
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "blockedTicks": 0,
+          "blockedEdges": [],
+          "recoveries": 0
+        },
+        "rivals": [
+          {
+            "id": "rival",
+            "position": null,
+            "cargo": null,
+            "banked": 0,
+            "visible": false
+          }
+        ],
+        "nodes": [
+          {
+            "id": "champion-base",
+            "position": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "id": "valley-n1",
+            "position": [
+              0,
+              0,
+              2
+            ]
+          },
+          {
+            "id": "valley-center",
+            "position": [
+              0,
+              0,
+              5
+            ]
+          },
+          {
+            "id": "valley-s1",
+            "position": [
+              0,
+              0,
+              8
+            ]
+          },
+          {
+            "id": "rival-base",
+            "position": [
+              0,
+              0,
+              10
+            ]
+          },
+          {
+            "id": "ridge-north",
+            "position": [
+              8,
+              3,
+              0
+            ]
+          },
+          {
+            "id": "ridge-n1",
+            "position": [
+              8,
+              3,
+              2
+            ]
+          },
+          {
+            "id": "ridge-center",
+            "position": [
+              8,
+              3,
+              5
+            ]
+          },
+          {
+            "id": "ridge-s1",
+            "position": [
+              8,
+              3,
+              8
+            ]
+          },
+          {
+            "id": "ridge-south",
+            "position": [
+              8,
+              3,
+              10
+            ]
+          },
+          {
+            "id": "cross-n",
+            "position": [
+              4,
+              1,
+              2
+            ]
+          },
+          {
+            "id": "cross-c",
+            "position": [
+              4,
+              1,
+              5
+            ]
+          },
+          {
+            "id": "cross-s",
+            "position": [
+              4,
+              1,
+              8
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "id": "valley-cb-n1",
+            "from": "champion-base",
+            "to": "valley-n1",
+            "travelTicks": 20,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "valley-n1-vc",
+            "from": "valley-n1",
+            "to": "valley-center",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "valley-vc-s1",
+            "from": "valley-center",
+            "to": "valley-s1",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "valley-s1-rb",
+            "from": "valley-s1",
+            "to": "rival-base",
+            "travelTicks": 20,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "ridge-rn-r1",
+            "from": "ridge-north",
+            "to": "ridge-n1",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "ridge-r1-rc",
+            "from": "ridge-n1",
+            "to": "ridge-center",
+            "travelTicks": 25,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "ridge-rc-r1s",
+            "from": "ridge-center",
+            "to": "ridge-s1",
+            "travelTicks": 25,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "ridge-r1s-rs",
+            "from": "ridge-s1",
+            "to": "ridge-south",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "base-cb-rn",
+            "from": "champion-base",
+            "to": "ridge-north",
+            "travelTicks": 35,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 35
+          },
+          {
+            "id": "base-rb-rs",
+            "from": "rival-base",
+            "to": "ridge-south",
+            "travelTicks": 35,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 35
+          },
+          {
+            "id": "cross-vn-cn",
+            "from": "valley-n1",
+            "to": "cross-n",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cn-r1",
+            "from": "cross-n",
+            "to": "ridge-n1",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-vc-cc",
+            "from": "valley-center",
+            "to": "cross-c",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cc-rc",
+            "from": "cross-c",
+            "to": "ridge-center",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-vs-cs",
+            "from": "valley-s1",
+            "to": "cross-s",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cs-r1s",
+            "from": "cross-s",
+            "to": "ridge-s1",
+            "travelTicks": 15,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 15
+          },
+          {
+            "id": "cross-cn-cc",
+            "from": "cross-n",
+            "to": "cross-c",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "cross-cc-cs",
+            "from": "cross-c",
+            "to": "cross-s",
+            "travelTicks": 20,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 20
+          },
+          {
+            "id": "shortcut-cb-cn",
+            "from": "champion-base",
+            "to": "cross-n",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "shortcut-rb-cs",
+            "from": "rival-base",
+            "to": "cross-s",
+            "travelTicks": 25,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 25
+          },
+          {
+            "id": "diag-vn-rn",
+            "from": "valley-n1",
+            "to": "ridge-north",
+            "travelTicks": 30,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 30
+          },
+          {
+            "id": "diag-vs-rs",
+            "from": "valley-s1",
+            "to": "ridge-south",
+            "travelTicks": 30,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 30
+          },
+          {
+            "id": "valley-cb-vc",
+            "from": "champion-base",
+            "to": "valley-center",
+            "travelTicks": 40,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "valley-rb-vc",
+            "from": "rival-base",
+            "to": "valley-center",
+            "travelTicks": 40,
+            "floodable": true,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "ridge-rn-rc",
+            "from": "ridge-north",
+            "to": "ridge-center",
+            "travelTicks": 40,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 40
+          },
+          {
+            "id": "ridge-rs-rc",
+            "from": "ridge-south",
+            "to": "ridge-center",
+            "travelTicks": 40,
+            "floodable": false,
+            "blocked": false,
+            "currentTravelTicks": 40
+          }
+        ],
+        "resources": [
+          {
+            "id": "core-11",
+            "nodeId": "ridge-n1",
+            "value": 1,
+            "available": true,
+            "visible": true,
+            "stale": false
+          },
+          {
+            "id": "core-1",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          },
+          {
+            "id": "core-2",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          },
+          {
+            "id": "core-3",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          },
+          {
+            "id": "core-4",
+            "nodeId": "valley-center",
+            "value": 1,
+            "available": true,
+            "visible": false,
+            "stale": true
+          }
+        ],
+        "weather": {
+          "flooded": false,
+          "drainedUntilTick": 0
+        },
+        "availableActions": [
+          {
+            "type": "wait"
+          },
+          {
+            "type": "move",
+            "edgeId": "cross-vn-cn"
+          },
+          {
+            "type": "move",
+            "edgeId": "cross-cn-r1"
+          },
+          {
+            "type": "move",
+            "edgeId": "cross-cn-cc"
+          },
+          {
+            "type": "move",
+            "edgeId": "shortcut-cb-cn"
+          }
+        ],
+        "fog": {
+          "visible": [
+            "champion-base",
+            "cross-c",
+            "cross-n",
+            "ridge-n1",
+            "valley-n1"
+          ],
+          "remembered": [],
+          "hidden": [
+            "cross-s",
+            "ridge-center",
+            "ridge-north",
+            "ridge-s1",
+            "ridge-south",
+            "rival-base",
+            "valley-center",
+            "valley-s1"
+          ]
+        }
+      },
+      "expectedAction": {
+        "type": "move",
+        "edgeId": "cross-cn-r1"
+      },
+      "expectedClass": 6,
+      "provenance": "safe collector on builder-course-03 at tick 35"
+    }
+  ]
+}

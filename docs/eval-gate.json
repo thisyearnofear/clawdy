@@ -1,0 +1,533 @@
+{
+  "version": 1,
+  "generatedAt": "2026-09-19T20:04:49.913Z",
+  "rulesVersion": "season-0.reference.2",
+  "worldNamespace": "builder-abstract-v1",
+  "checkpointSchema": "season-0.checkpoint.v2",
+  "distill": {
+    "weightsHash": "4d7b4f7f3d3d",
+    "datasetHash": "ds:bc78e99b:75",
+    "sampleCount": 75,
+    "trainingConfig": {
+      "epochs": 60,
+      "learningRate": 0.02,
+      "momentum": 0.85,
+      "weightDecay": 0.0001
+    }
+  },
+  "matches": [
+    {
+      "scenarioId": "builder-course-heldout-01",
+      "split": "evaluation",
+      "side": "normal",
+      "policy": "safe",
+      "banked": 8,
+      "winner": "champion",
+      "recoveries": 0,
+      "weatherDrains": 0,
+      "finished": true
+    },
+    {
+      "scenarioId": "builder-course-heldout-01",
+      "split": "evaluation",
+      "side": "swapped",
+      "policy": "safe",
+      "banked": 8,
+      "winner": "champion",
+      "recoveries": 0,
+      "weatherDrains": 0,
+      "finished": true
+    },
+    {
+      "scenarioId": "builder-course-heldout-01",
+      "split": "evaluation",
+      "side": "normal",
+      "policy": "trained",
+      "banked": 3,
+      "winner": "rival",
+      "recoveries": 0,
+      "weatherDrains": 1,
+      "finished": true
+    },
+    {
+      "scenarioId": "builder-course-heldout-01",
+      "split": "evaluation",
+      "side": "swapped",
+      "policy": "trained",
+      "banked": 3,
+      "winner": "rival",
+      "recoveries": 0,
+      "weatherDrains": 1,
+      "finished": true
+    },
+    {
+      "scenarioId": "builder-course-heldout-02",
+      "split": "evaluation",
+      "side": "normal",
+      "policy": "safe",
+      "banked": 5,
+      "winner": "champion",
+      "recoveries": 0,
+      "weatherDrains": 0,
+      "finished": true
+    },
+    {
+      "scenarioId": "builder-course-heldout-02",
+      "split": "evaluation",
+      "side": "swapped",
+      "policy": "safe",
+      "banked": 3,
+      "winner": "rival",
+      "recoveries": 0,
+      "weatherDrains": 0,
+      "finished": true
+    },
+    {
+      "scenarioId": "builder-course-heldout-02",
+      "split": "evaluation",
+      "side": "normal",
+      "policy": "trained",
+      "banked": 0,
+      "winner": "rival",
+      "recoveries": 0,
+      "weatherDrains": 1,
+      "finished": true
+    },
+    {
+      "scenarioId": "builder-course-heldout-02",
+      "split": "evaluation",
+      "side": "swapped",
+      "policy": "trained",
+      "banked": 3,
+      "winner": "rival",
+      "recoveries": 0,
+      "weatherDrains": 1,
+      "finished": true
+    },
+    {
+      "scenarioId": "builder-course-heldout-03",
+      "split": "evaluation",
+      "side": "normal",
+      "policy": "safe",
+      "banked": 5,
+      "winner": "champion",
+      "recoveries": 0,
+      "weatherDrains": 0,
+      "finished": true
+    },
+    {
+      "scenarioId": "builder-course-heldout-03",
+      "split": "evaluation",
+      "side": "swapped",
+      "policy": "safe",
+      "banked": 5,
+      "winner": "champion",
+      "recoveries": 0,
+      "weatherDrains": 0,
+      "finished": true
+    },
+    {
+      "scenarioId": "builder-course-heldout-03",
+      "split": "evaluation",
+      "side": "normal",
+      "policy": "trained",
+      "banked": 3,
+      "winner": "champion",
+      "recoveries": 0,
+      "weatherDrains": 2,
+      "finished": true
+    },
+    {
+      "scenarioId": "builder-course-heldout-03",
+      "split": "evaluation",
+      "side": "swapped",
+      "policy": "trained",
+      "banked": 0,
+      "winner": "rival",
+      "recoveries": 0,
+      "weatherDrains": 1,
+      "finished": true
+    },
+    {
+      "scenarioId": "builder-course-heldout-04",
+      "split": "evaluation",
+      "side": "normal",
+      "policy": "safe",
+      "banked": 5,
+      "winner": "champion",
+      "recoveries": 0,
+      "weatherDrains": 0,
+      "finished": true
+    },
+    {
+      "scenarioId": "builder-course-heldout-04",
+      "split": "evaluation",
+      "side": "swapped",
+      "policy": "safe",
+      "banked": 5,
+      "winner": "champion",
+      "recoveries": 0,
+      "weatherDrains": 0,
+      "finished": true
+    },
+    {
+      "scenarioId": "builder-course-heldout-04",
+      "split": "evaluation",
+      "side": "normal",
+      "policy": "trained",
+      "banked": 5,
+      "winner": "champion",
+      "recoveries": 0,
+      "weatherDrains": 1,
+      "finished": true
+    },
+    {
+      "scenarioId": "builder-course-heldout-04",
+      "split": "evaluation",
+      "side": "swapped",
+      "policy": "trained",
+      "banked": 5,
+      "winner": "champion",
+      "recoveries": 0,
+      "weatherDrains": 1,
+      "finished": true
+    }
+  ],
+  "aggregate": {
+    "safeTotal": 23,
+    "trainedTotal": 11,
+    "totalDelta": -12,
+    "trainedWinsVsSafe": 0,
+    "swappedSafeTotal": 21,
+    "swappedTrainedTotal": 11
+  },
+  "grounded": {
+    "matches": [
+      {
+        "scenarioId": "sandstone-practice-01",
+        "split": "practice",
+        "mode": "practice",
+        "side": "normal",
+        "policy": "safe",
+        "banked": 9,
+        "winner": "champion",
+        "recoveries": 0,
+        "weatherDrains": 0,
+        "finished": true
+      },
+      {
+        "scenarioId": "sandstone-practice-01",
+        "split": "practice",
+        "mode": "practice",
+        "side": "swapped",
+        "policy": "safe",
+        "banked": 6,
+        "winner": "rival",
+        "recoveries": 0,
+        "weatherDrains": 0,
+        "finished": true
+      },
+      {
+        "scenarioId": "sandstone-practice-01",
+        "split": "practice",
+        "mode": "practice",
+        "side": "normal",
+        "policy": "trained",
+        "banked": 3,
+        "winner": "rival",
+        "recoveries": 0,
+        "weatherDrains": 1,
+        "finished": true
+      },
+      {
+        "scenarioId": "sandstone-practice-01",
+        "split": "practice",
+        "mode": "practice",
+        "side": "swapped",
+        "policy": "trained",
+        "banked": 0,
+        "winner": "rival",
+        "recoveries": 0,
+        "weatherDrains": 1,
+        "finished": true
+      },
+      {
+        "scenarioId": "sandstone-compete-01",
+        "split": "evaluation",
+        "mode": "compete",
+        "side": "normal",
+        "policy": "safe",
+        "banked": 12,
+        "winner": "champion",
+        "recoveries": 0,
+        "weatherDrains": 0,
+        "finished": true
+      },
+      {
+        "scenarioId": "sandstone-compete-01",
+        "split": "evaluation",
+        "mode": "compete",
+        "side": "swapped",
+        "policy": "safe",
+        "banked": 9,
+        "winner": null,
+        "recoveries": 0,
+        "weatherDrains": 0,
+        "finished": true
+      },
+      {
+        "scenarioId": "sandstone-compete-01",
+        "split": "evaluation",
+        "mode": "compete",
+        "side": "normal",
+        "policy": "trained",
+        "banked": 5,
+        "winner": "rival",
+        "recoveries": 0,
+        "weatherDrains": 2,
+        "finished": true
+      },
+      {
+        "scenarioId": "sandstone-compete-01",
+        "split": "evaluation",
+        "mode": "compete",
+        "side": "swapped",
+        "policy": "trained",
+        "banked": 4,
+        "winner": "rival",
+        "recoveries": 0,
+        "weatherDrains": 1,
+        "finished": true
+      }
+    ],
+    "aggregate": {
+      "safeTotal": 36,
+      "trainedTotal": 12,
+      "totalDelta": -24
+    }
+  },
+  "family": {
+    "layouts": [
+      {
+        "id": "sandstone-family-01",
+        "seed": 20261001,
+        "attempts": 1,
+        "droppedEdgeIds": [
+          "cross-cn-cc",
+          "ridge-rn-rc"
+        ]
+      },
+      {
+        "id": "sandstone-family-02",
+        "seed": 20261002,
+        "attempts": 1,
+        "droppedEdgeIds": []
+      },
+      {
+        "id": "sandstone-family-03",
+        "seed": 20261003,
+        "attempts": 1,
+        "droppedEdgeIds": [
+          "valley-rb-vs3"
+        ]
+      },
+      {
+        "id": "sandstone-family-04",
+        "seed": 20261004,
+        "attempts": 1,
+        "droppedEdgeIds": [
+          "diag-vn-rn",
+          "valley-cb-vc"
+        ]
+      }
+    ],
+    "matches": [
+      {
+        "scenarioId": "sandstone-family-01",
+        "split": "evaluation",
+        "side": "normal",
+        "policy": "safe",
+        "banked": 9,
+        "winner": null,
+        "recoveries": 0,
+        "weatherDrains": 0,
+        "finished": true
+      },
+      {
+        "scenarioId": "sandstone-family-01",
+        "split": "evaluation",
+        "side": "swapped",
+        "policy": "safe",
+        "banked": 9,
+        "winner": null,
+        "recoveries": 0,
+        "weatherDrains": 0,
+        "finished": true
+      },
+      {
+        "scenarioId": "sandstone-family-01",
+        "split": "evaluation",
+        "side": "normal",
+        "policy": "trained",
+        "banked": 3,
+        "winner": "rival",
+        "recoveries": 0,
+        "weatherDrains": 1,
+        "finished": true
+      },
+      {
+        "scenarioId": "sandstone-family-01",
+        "split": "evaluation",
+        "side": "swapped",
+        "policy": "trained",
+        "banked": 0,
+        "winner": "rival",
+        "recoveries": 0,
+        "weatherDrains": 2,
+        "finished": true
+      },
+      {
+        "scenarioId": "sandstone-family-02",
+        "split": "evaluation",
+        "side": "normal",
+        "policy": "safe",
+        "banked": 9,
+        "winner": "champion",
+        "recoveries": 0,
+        "weatherDrains": 0,
+        "finished": true
+      },
+      {
+        "scenarioId": "sandstone-family-02",
+        "split": "evaluation",
+        "side": "swapped",
+        "policy": "safe",
+        "banked": 9,
+        "winner": null,
+        "recoveries": 0,
+        "weatherDrains": 0,
+        "finished": true
+      },
+      {
+        "scenarioId": "sandstone-family-02",
+        "split": "evaluation",
+        "side": "normal",
+        "policy": "trained",
+        "banked": 3,
+        "winner": "rival",
+        "recoveries": 0,
+        "weatherDrains": 1,
+        "finished": true
+      },
+      {
+        "scenarioId": "sandstone-family-02",
+        "split": "evaluation",
+        "side": "swapped",
+        "policy": "trained",
+        "banked": 0,
+        "winner": "rival",
+        "recoveries": 0,
+        "weatherDrains": 2,
+        "finished": true
+      },
+      {
+        "scenarioId": "sandstone-family-03",
+        "split": "evaluation",
+        "side": "normal",
+        "policy": "safe",
+        "banked": 12,
+        "winner": "champion",
+        "recoveries": 0,
+        "weatherDrains": 0,
+        "finished": true
+      },
+      {
+        "scenarioId": "sandstone-family-03",
+        "split": "evaluation",
+        "side": "swapped",
+        "policy": "safe",
+        "banked": 9,
+        "winner": "rival",
+        "recoveries": 0,
+        "weatherDrains": 0,
+        "finished": true
+      },
+      {
+        "scenarioId": "sandstone-family-03",
+        "split": "evaluation",
+        "side": "normal",
+        "policy": "trained",
+        "banked": 3,
+        "winner": "rival",
+        "recoveries": 0,
+        "weatherDrains": 2,
+        "finished": true
+      },
+      {
+        "scenarioId": "sandstone-family-03",
+        "split": "evaluation",
+        "side": "swapped",
+        "policy": "trained",
+        "banked": 0,
+        "winner": "rival",
+        "recoveries": 0,
+        "weatherDrains": 2,
+        "finished": true
+      },
+      {
+        "scenarioId": "sandstone-family-04",
+        "split": "evaluation",
+        "side": "normal",
+        "policy": "safe",
+        "banked": 9,
+        "winner": "champion",
+        "recoveries": 0,
+        "weatherDrains": 0,
+        "finished": true
+      },
+      {
+        "scenarioId": "sandstone-family-04",
+        "split": "evaluation",
+        "side": "swapped",
+        "policy": "safe",
+        "banked": 6,
+        "winner": "rival",
+        "recoveries": 0,
+        "weatherDrains": 0,
+        "finished": true
+      },
+      {
+        "scenarioId": "sandstone-family-04",
+        "split": "evaluation",
+        "side": "normal",
+        "policy": "trained",
+        "banked": 0,
+        "winner": "rival",
+        "recoveries": 0,
+        "weatherDrains": 2,
+        "finished": true
+      },
+      {
+        "scenarioId": "sandstone-family-04",
+        "split": "evaluation",
+        "side": "swapped",
+        "policy": "trained",
+        "banked": 0,
+        "winner": "rival",
+        "recoveries": 0,
+        "weatherDrains": 2,
+        "finished": true
+      }
+    ],
+    "aggregate": {
+      "safeTotal": 72,
+      "trainedTotal": 9,
+      "totalDelta": -63
+    }
+  },
+  "frames": {
+    "total": 12,
+    "passed": 12,
+    "failedIds": []
+  }
+}

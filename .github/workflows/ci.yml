@@ -31,6 +31,9 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Eval gate
+        run: npm run eval:gate
+
       - name: Build
         run: npm run build
         env:

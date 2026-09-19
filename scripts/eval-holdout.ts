@@ -24,136 +24,18 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { SEASON_0_BASE_CHECKPOINT } from '../services/policyModel'
-import { HELD_OUT_SCENARIOS, PRACTICE_SCENARIOS, isEvaluationScenario } from '../services/arenaScenarios'
+import { HELD_OUT_SCENARIOS, isEvaluationScenario } from '../services/arenaScenarios'
 import {
-  ArenaRunner,
-  collectorPolicy,
-  type EntrantPolicyOption,
-} from '../services/arenaPolicy'
-import { ArenaEpisode } from '../services/arenaEpisode'
-import {
-  trainPolicyCheckpoint,
-  type ArenaTrainingExample,
-} from '../services/policyTrainer'
+  buildSyntheticExamples,
+  runMatch,
+  toScenarioResult,
+  trainDistilledCheckpoint,
+} from './eval-lib'
+import type { EntrantPolicyOption } from '../services/arenaPolicy'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = join(HERE, '..')
 const OUTPUT_PATH = join(REPO_ROOT, 'docs', 'eval-holdout.json')
-
-interface ScenarioResult {
-  scenarioId: string
-  split: 'practice' | 'evaluation'
-  banked: number
-  winner: 'champion' | 'rival' | null
-  recoveries: number
-  weatherDrains: number
-}
-
-/**
- * Build a synthetic coaching set by distilling the rule-based safe collector
- * across the three practice scenarios. For each decision tick where the safe
- * collector would take a non-trivial action, we emit a training example that
- * says "in this observation, the preferred action is what safe would do".
- *
- * This is the minimum-viable coach: replay the practice course under the safe
- * collector, label its decisions as ground truth, train on them. The trained
- * champion becomes a learned approximation of safe that can be improved
- * further with human-approved coaching later.
- */
-function buildSyntheticExamples(): ArenaTrainingExample[] {
-  const examples: ArenaTrainingExample[] = []
-
-  for (const practice of PRACTICE_SCENARIOS) {
-    const episode = new ArenaEpisode(practice)
-    let perScenario = 0
-
-    while (!episode.finished && perScenario < 25) {
-      const tick = episode.tick
-      const champObs = episode.observe('champion')
-      if (!champObs.decisionDue) {
-        episode.step()
-        continue
-      }
-
-      // Pick a recorded action (something that differs from safe, so the
-      // training signal is meaningful — otherwise we're just teaching the
-      // network what it already kind of knows).
-      const candidates = champObs.availableActions.filter(a => a.type !== 'wait')
-      if (candidates.length < 2) {
-        episode.step([{ agentId: 'champion', tick, action: { type: 'wait' } }, { agentId: 'rival', tick, action: { type: 'wait' } }])
-        continue
-      }
-      const safeAction = collectorPolicy(champObs, 'safe')
-      const recorded = candidates.find(candidate => JSON.stringify(candidate) !== JSON.stringify(safeAction)) ?? candidates[0]
-
-      if (safeAction.type !== 'wait') {
-        examples.push({
-          id: `distill-${practice.id}-${tick}`,
-          sourceEpisodeId: practice.id,
-          tick,
-          observation: champObs,
-          originalAction: recorded,
-          preferredAction: safeAction,
-          rationale: `Safe collector would ${safeAction.type}${safeAction.type === 'move' ? ' along a non-floodable route when applicable' : ''}.`,
-          approved: true,
-          source: 'approved',
-        })
-        perScenario++
-      }
-
-      // Advance both rovers with the safe action so the recorded observations
-      // are representative of safe play.
-      episode.step([
-        { agentId: 'champion', tick, action: safeAction },
-        { agentId: 'rival', tick, action: safeAction },
-      ])
-    }
-  }
-
-  return examples
-}
-
-/**
- * Run a single scenario once with the given champion strategy. The rival
- * uses the greedy collector in all cases, so the comparison is "same
- * opponent, different champion brain".
- */
-function evaluateChampion(
-  championOption: EntrantPolicyOption,
-  scenario: typeof HELD_OUT_SCENARIOS[number]
-): ScenarioResult {
-  let runner: ArenaRunner
-  try {
-    runner = new ArenaRunner(scenario, {
-      champion: championOption,
-      rival: 'greedy',
-    })
-  } catch (err) {
-    console.error(`[eval] Failed on scenario ${scenario.id}:`, err)
-    console.error(`[eval] entrants:`, scenario.entrants)
-    throw err
-  }
-  runner.advanceTicks(scenario.durationTicks)
-  const snap = runner.snapshot()
-  const champ = snap.agents.find(a => a.id === 'champion')!
-
-  let weatherDrains = 0
-  const recording = runner.recording()
-  for (const batch of recording.batches) {
-    for (const request of batch.requests) {
-      if (request.agentId === 'champion' && request.action?.type === 'drain') weatherDrains++
-    }
-  }
-
-  return {
-    scenarioId: scenario.id,
-    split: scenario.split,
-    banked: champ.banked,
-    winner: snap.winner as 'champion' | 'rival' | null,
-    recoveries: champ.recoveries,
-    weatherDrains,
-  }
-}
 
 function main() {
   console.log('=== Clawdy held-out evaluation ===\n')
@@ -173,11 +55,7 @@ function main() {
     }
   }
 
-  const trained = trainPolicyCheckpoint(SEASON_0_BASE_CHECKPOINT, examples, {
-    epochs: 60,
-    learningRate: 0.02,
-    name: `Champion v1 (+${examples.length} synthetic examples)`,
-  })
+  const trained = trainDistilledCheckpoint(examples)
 
   console.log(`Trained checkpoint: ${trained.id}`)
   console.log(`  hash: ${trained.weightsHash.slice(0, 14)}`)
@@ -189,8 +67,10 @@ function main() {
   const trainedOption: EntrantPolicyOption = { strategy: 'learned', checkpoint: trained }
 
   const perScenario = HELD_OUT_SCENARIOS.map(scenario => {
-    const baseline = evaluateChampion(baselineOption, scenario)
-    const candidate = evaluateChampion(trainedOption, scenario)
+    // Same opponent, different champion brain; single normal-side leg each.
+    // toScenarioResult keeps the asset-board artifact on its frozen shape.
+    const baseline = toScenarioResult(runMatch(scenario, baselineOption, { policy: 'safe' }))
+    const candidate = toScenarioResult(runMatch(scenario, trainedOption, { policy: 'trained' }))
     return { scenarioId: scenario.id, baseline, candidate, delta: candidate.banked - baseline.banked }
   })
 
