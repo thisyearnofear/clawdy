@@ -71,6 +71,24 @@ A scene descriptor (shot kind, span, focus, reason) is itself serializable, so a
 - **Assume hostile networking.** The replay-cam path has zero network dependency and is the on-stage floor; generative stages must degrade to it silently.
 - **Never claim determinism for generated media.** A fixed seed does not guarantee identical output across providers or prompts. Scenes are presentation artifacts versioned by recording hash, not evidence.
 
+## Future Consideration — Rive (deferred, not scoped)
+
+Evaluated September 19, 2026: Rive CLI + RML → `.riv` with `@rive-app/react` runtime
+(`https://rive.app/docs/cli/overview`). No `.riv`/RML/Lottie in repo today; UI is
+Tailwind + lucide + 3D event VFX.
+
+Where it could help (presentation only, never match authority): animated HUD feedback
+(flood/collect/bank/recovery/finish), Practice→Match lock / countdown / winner overlays,
+coach-legibility mascot, tournament act breaks and share cards. Small interactive vector
+files driven by recorded facts fit the degradation ladder (AI clips → replay-cam → scrub
+→ text) as a cheap deterministic overlay stage.
+
+Why deferred: solo pre-demo build, no browser/mobile QA yet, 3D stack already heavy
+(R3F + Rapier + Blender GLB). Adding a WASM runtime + `.riv` pipeline now violates
+scope discipline in `HACKATHON.md` — core learning-loop credibility first. If revisited,
+spike one element (e.g. flood banner or Match countdown), pin runtime + asset versions,
+and measure bundle/perf on low-end devices before committing.
+
 ## Non-Goals
 
 - Scenes are not observations and never enter policy inputs, coaching examples, or evaluation.

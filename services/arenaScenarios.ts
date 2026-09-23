@@ -127,6 +127,35 @@ export const PRACTICE_SCENARIOS: ArenaScenario[] = [
     { startTick: 75, endTick: 400 },
     { startTick: 500, endTick: 700 },
   ]),
+  // Challenge syllabus (practice split — legal training ground, never
+  // held-out): the same board under harsher weather and hotter contention so
+  // oracle labels cover timing the base three never force.
+  // - early-flood: water from tick 10 forces patience/drain calls immediately.
+  createBuilderScenario('builder-course-04-early-flood', 20260908, 'practice', 800, [
+    { startTick: 10, endTick: 260 },
+    { startTick: 340, endTick: 590 },
+  ]),
+  // - long-flood: one 650-tick submersion; routing around is impossible, only
+  //   timing (wait vs drain vs eat the 4x) scores.
+  createBuilderScenario('builder-course-05-long-flood', 20260909, 'practice', 1000, [
+    { startTick: 50, endTick: 700 },
+  ]),
+  // - contention: greedy rival starts at mid-board cross-c, contesting the
+  //   same cores the champion wants. Teaches racing, not just routing.
+  createBuilderScenario(
+    'builder-course-06-contention',
+    20260910,
+    'practice',
+    800,
+    [
+      { startTick: 60, endTick: 300 },
+      { startTick: 420, endTick: 660 },
+    ],
+    [
+      { id: 'champion', baseNode: 'champion-base', policyVersion: 'baseline.safe.v2' },
+      { id: 'rival', baseNode: 'cross-c', policyVersion: 'reference.greedy.v2' },
+    ],
+  ),
 ]
 
 /**

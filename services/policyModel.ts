@@ -171,6 +171,95 @@ export function encodeObservation(observation: ArenaObservation): Float32Array {
 }
 
 /**
+ * Flood-aware distance map from a start node over unblocked edges using the
+ * current (flood-multiplied) travel ticks — what the rover would actually pay
+ * right now. Local to this module so the learned head can rank edges without
+ * importing the baseline router (which itself imports this module).
+ */
+function routeCostsFrom(observation: ArenaObservation, start: string): Map<string, number> {
+  const dist = new Map<string, number>([[start, 0]])
+  const visited = new Set<string>()
+  while (visited.size < observation.nodes.length) {
+    let current: string | null = null
+    let best = Infinity
+    for (const [id, cost] of dist) {
+      if (!visited.has(id) && (cost < best || (cost === best && (current === null || id < current)))) {
+        current = id
+        best = cost
+      }
+    }
+    if (current === null) break
+    visited.add(current)
+    for (const edge of observation.edges) {
+      if (edge.blocked || (edge.from !== current && edge.to !== current)) continue
+      const neighbor = edge.from === current ? edge.to : edge.from
+      if (visited.has(neighbor)) continue
+      const next = best + edge.currentTravelTicks
+      const prev = dist.get(neighbor)
+      if (prev === undefined || next < prev) dist.set(neighbor, next)
+    }
+  }
+  return dist
+}
+
+function resourceValueAt(observation: ArenaObservation, nodeId: string): number {
+  let total = 0
+  for (const resource of observation.resources) {
+    if (resource.nodeId !== nodeId || !resource.available) continue
+    // Stale sightings are discounted harder here than in the encoder: the
+    // executor must commit to a road, and chasing a ghost the rival already
+    // ate loses the race. Visible (certain) value dominates.
+    total += resource.value * (resource.stale ? 0.2 : 1)
+  }
+  return total
+}
+
+/** Best onward prospect from a node: richest reachable resource minus travel cost. */
+function onwardProspect(observation: ArenaObservation, from: string): number {
+  const dist = routeCostsFrom(observation, from)
+  let best = 0
+  for (const resource of observation.resources) {
+    if (!resource.available) continue
+    const cost = dist.get(resource.nodeId)
+    if (cost === undefined) continue
+    // Certain resources dominate stale ones; distance is priced in ticks.
+    const certainty = resource.stale ? 0.2 : 1
+    const prospect = resource.value * 20 * certainty - cost * 0.6
+    if (prospect > best) best = prospect
+  }
+  return best
+}
+
+function scoreMoveEdge(observation: ArenaObservation, edgeId: string, cls: 4 | 5 | 6 | 7): number {
+  const edge = observation.edges.find(candidate => candidate.id === edgeId)
+  if (!edge) return -Infinity
+  const self = observation.self
+  const target = edge.from === self.nodeId ? edge.to : edge.from
+  const nowCost = edge.currentTravelTicks
+  const urgency = Math.max(0, Math.min(1, 1 - observation.remainingTicks / 400))
+  if (cls === 7) {
+    // move-home: minimize remaining cost to base; cargo + clock raise the stakes.
+    const homeCost = routeCostsFrom(observation, target).get(self.baseNode) ?? nowCost * 2
+    return (self.cargo > 0 ? 30 + self.cargo * 8 : 4) + urgency * 30 - homeCost - nowCost * 0.2
+  }
+  if (cls === 6) {
+    // move-resource: value density at the target plus what it unlocks next.
+    return resourceValueAt(observation, target) * 22 + onwardProspect(observation, target) * 0.6 - nowCost * 0.5
+  }
+  // move-low / move-high: same corridor intent, ranked by what the target unlocks.
+  return resourceValueAt(observation, target) * 18 + onwardProspect(observation, target) - nowCost * 0.5
+}
+
+/** Rank same-class move edges deterministically: best prospect first, edge id breaks ties. */
+function rankMoveEdges(observation: ArenaObservation, edgeIds: string[], cls: 4 | 5 | 6 | 7): string[] {
+  return [...edgeIds].sort((a, b) => {
+    const diff = scoreMoveEdge(observation, b, cls) - scoreMoveEdge(observation, a, cls)
+    if (diff !== 0) return diff
+    return a < b ? -1 : a > b ? 1 : 0
+  })
+}
+
+/**
  * Finds the shortest route from the agent's current node to a target node.
  */
 function findShortestRoute(observation: ArenaObservation, target: string): { cost: number; firstEdge: string | null } | null {
@@ -240,44 +329,44 @@ export function selectActionForClass(actionClass: number, observation: ArenaObse
       if (drain) return drain
       break
     }
-    case 4: { // move-low (floodable)
-      const moveLow = available.find(a => {
-        if (a.type !== 'move') return false
+    case 4: { // move-low (floodable): rank by prospect, not first-legal.
+      const ids = available.flatMap(a => {
+        if (a.type !== 'move') return []
         const edge = observation.edges.find(e => e.id === a.edgeId)
-        return edge?.floodable === true
+        return edge?.floodable === true ? [a.edgeId] : []
       })
-      if (moveLow) return moveLow
+      if (ids.length > 0) return { type: 'move', edgeId: rankMoveEdges(observation, ids, 4)[0] }
       break
     }
-    case 5: { // move-high (non-floodable ridge)
-      const moveHigh = available.find(a => {
-        if (a.type !== 'move') return false
+    case 5: { // move-high (non-floodable ridge): rank by prospect, not first-legal.
+      const ids = available.flatMap(a => {
+        if (a.type !== 'move') return []
         const edge = observation.edges.find(e => e.id === a.edgeId)
-        return edge && !edge.floodable
+        return edge && !edge.floodable ? [a.edgeId] : []
       })
-      if (moveHigh) return moveHigh
+      if (ids.length > 0) return { type: 'move', edgeId: rankMoveEdges(observation, ids, 5)[0] }
       break
     }
-    case 6: { // move-resource
-      const moveRes = available.find(a => {
-        if (a.type !== 'move') return false
+    case 6: { // move-resource: richest reachable target first.
+      const ids = available.flatMap(a => {
+        if (a.type !== 'move') return []
         const edge = observation.edges.find(e => e.id === a.edgeId)
-        if (!edge) return false
+        if (!edge) return []
         const target = edge.from === observation.self.nodeId ? edge.to : edge.from
-        return observation.resources.some(r => r.nodeId === target)
+        return observation.resources.some(r => r.nodeId === target) ? [a.edgeId] : []
       })
-      if (moveRes) return moveRes
+      if (ids.length > 0) return { type: 'move', edgeId: rankMoveEdges(observation, ids, 6)[0] }
       break
     }
-    case 7: { // move-home
-      const moveHome = available.find(a => {
-        if (a.type !== 'move') return false
+    case 7: { // move-home: cheapest return leg first.
+      const ids = available.flatMap(a => {
+        if (a.type !== 'move') return []
         const edge = observation.edges.find(e => e.id === a.edgeId)
-        if (!edge) return false
+        if (!edge) return []
         const target = edge.from === observation.self.nodeId ? edge.to : edge.from
-        return target === observation.self.baseNode
+        return target === observation.self.baseNode ? [a.edgeId] : []
       })
-      if (moveHome) return moveHome
+      if (ids.length > 0) return { type: 'move', edgeId: rankMoveEdges(observation, ids, 7)[0] }
       break
     }
   }

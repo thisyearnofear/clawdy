@@ -147,7 +147,7 @@ Buffer absorbs a lost day to a CI hiccup or a frame refactor without slipping th
 - [x] Pick 4: gift-card share button rendered on the match-complete UI — second button next to "Watch replay" calls `canvas.toDataURL('image/png')` (with `preserveDrawingBuffer: true` on the R3F Canvas) and downloads a PNG keyed to scenario id + tick (TS / tests / build green; browser smoke test still pending).
 - [ ] Stretch: Heygears STL print kit for the champion rover shipped as a downloadable artifact.
 - [x] Hero stills: 3 screenshots captured (home page, match-complete with share button, replay view with coach panel). `docs/assets/`.
-- [x] Held-out evaluation suite frozen: `scripts/eval-holdout.ts` distilled across 3 practice scenarios. Safe collector banks 23/23 (4-0 vs greedy rival); trained champion banks 11/23 (2-4). Results in `docs/eval-holdout.json`.
+- [x] Held-out evaluation suite, oracle-routed consequence supervision (Sep 23): `scripts/eval-lib.ts` routes each practice tick to the honest teacher (weather/patience/safe) across the 6-board syllabus, verifies every label by 120-tick counterfactual rollout, trains with consequence weights. Abstract safe 23 / trained 11; grounded practice trained 3→9 (beats safe on the physical course). Results in `docs/eval-holdout.json`, gate pin in `docs/eval-gate.json`, migration log in `docs/COMPATIBILITY.md`.
 - [x] Browser QA round-trip verified: play → replay scrub → coach panel (rule buttons, propose/approve flow) → share button ("Saved share card" message confirmed). Training from replay is correctly locked until reset.
 - [ ] Desktop + mobile walkthrough captured.
 - [ ] Asset board assembled.

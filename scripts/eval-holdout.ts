@@ -5,12 +5,12 @@
  * and reports a safe-baseline-vs-trained table. Used for the Tripothon S1
  * submission's "measurable generalization" claim.
  *
- * The training set is small and synthetic: a handful of coaching rules
- * applied to one practice scenario. The point is not to win the held-out
- * scenarios (some are adversarial by design); the point is to show that
- * coaching the base brain with even a small set of corrections makes it
- * competitive with the rule-based safe collector on held-out scenarios
- * neither of them has seen.
+ * The training set is oracle-routed consequence supervision across the
+ * practice syllabus (base boards + flood/contention challenge variants):
+ * each tick goes to the honest teacher (weather/patience/safe) and every
+ * label is verified by a counterfactual rollout. The point is not to win
+ * every held-out scenario (some are adversarial by design); the point is
+ * that coached timing (drain/wait) transfers to unseen floods.
  *
  * Usage:
  *   npm run eval:holdout
@@ -141,7 +141,7 @@ function main() {
     },
     notes: [
       'Baseline uses the rule-based safe collector; rival uses the rule-based greedy collector.',
-      'Training data is drawn from the first practice scenario only.',
+      'Training data is oracle-routed consequence supervision across the 6-board practice syllabus (never held-out).',
       'No held-out scenario is used for training. The split is enforced by services/arenaScenarios.ts.',
       'Numbers are reproducible: same base seed + same examples → same weightsHash → same evaluation output.',
     ],

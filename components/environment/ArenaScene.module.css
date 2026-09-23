@@ -36,6 +36,13 @@
 .worldTopline, .worldBottomline { position: absolute; left: 20px; right: 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; pointer-events: none; }
 .worldTopline { top: 18px; font: 10px var(--font-geist-mono), monospace; color: #1a352e; }
 .worldTopline > div, .worldTopline > span { padding: 8px 10px; background: #f2f3e9e8; border-radius: 3px; }
+.scorebug { display: inline-flex; align-items: center; gap: 8px; font: 10px var(--font-geist-mono), monospace; }
+.scorebug strong { font-size: 15px; letter-spacing: -0.02em; }
+.scorebug .you { color: #2b5c33; }
+.scorebug .foe { color: #8a5a24; }
+.scorebug .sep { color: #8a9387; }
+.scorebug .floodWarn { color: #165d75; background: #d8edf2; padding: 2px 6px; border-radius: 3px; }
+.scorebug .drained { color: #2b5c33; background: #dde9d4; padding: 2px 6px; border-radius: 3px; }
 .liveDot { display: inline-block; width: 6px; height: 6px; border-radius: 100%; margin-right: 7px; background: #899184; }
 .liveDot[data-active="true"] { background: #588958; box-shadow: 0 0 0 3px #b6d6a458; }
 .worldBottomline { bottom: 18px; }

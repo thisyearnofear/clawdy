@@ -309,6 +309,16 @@ export class ArenaEpisode {
     return structuredClone(this.#state)
   }
 
+  /**
+   * Restore a previously recorded snapshot (same scenario). Recording
+   * checkpoints are full state clones, so restoring one rehydrates agents,
+   * resources, weather, and tick exactly. Used by consequence rollouts to
+   * branch from a live state; never used by match play.
+   */
+  restoreSnapshot(state: ArenaSnapshot) {
+    this.#state = structuredClone(state)
+  }
+
   observe(agentId: string, options?: { forceDecision?: boolean }): ArenaObservation {
     return observeSnapshot(this.#scenario, this.#state, agentId, options)
   }
@@ -500,6 +510,55 @@ export class ArenaEpisode {
       }
     }
   }
+}
+
+/**
+ * Branch an episode from a recorded snapshot state (route-only path, no
+ * physics): restore the snapshot into a fresh episode over the same
+ * scenario, apply one champion action, then run both branches with fixed
+ * policies to `horizonTicks`. Returns banked delta (oracle branch minus
+ * learner branch). Deterministic: same snapshot + same actions → same delta.
+ * Used to weight consequence supervision.
+ */
+export function rolloutOutcomeDelta(
+  scenario: ArenaScenario,
+  state: ArenaSnapshot,
+  oracleAction: ArenaAction,
+  learnerAction: ArenaAction,
+  championPolicy: (obs: ArenaObservation) => ArenaAction,
+  rivalPolicy: (obs: ArenaObservation) => ArenaAction,
+  horizonTicks = 120,
+): number {
+  const runBranch = (firstAction: ArenaAction): { banked: number; cargo: number; collected: number } => {
+    const branch = new ArenaEpisode({ ...scenario, entrants: scenario.entrants.map(e => ({ ...e })) })
+    branch.restoreSnapshot(structuredClone(state))
+    const startTick = branch.tick
+    const startBanked = branch.snapshot().agents.find(a => a.id === 'champion')?.banked ?? 0
+    const endTick = Math.min(startTick + horizonTicks, scenario.durationTicks)
+    let first = true
+    let collected = 0
+    while (!branch.finished && branch.tick < endTick) {
+      const tick = branch.tick
+      if (tick % ARENA_RULES.decisionEveryTicks !== 0) { branch.step(); continue }
+      const championAction = first ? firstAction : championPolicy(branch.observe('champion'))
+      if (!first && championAction.type === 'collect') collected++
+      if (first && firstAction.type === 'collect') collected++
+      first = false
+      branch.step([
+        { agentId: 'champion', tick, action: championAction },
+        { agentId: 'rival', tick, action: rivalPolicy(branch.observe('rival')) },
+      ])
+    }
+    const end = branch.snapshot().agents.find(a => a.id === 'champion')
+    return { banked: (end?.banked ?? 0) - startBanked, cargo: end?.cargo ?? 0, collected }
+  }
+  const oracle = runBranch(oracleAction)
+  const learner = runBranch(learnerAction)
+  // Progress score: banked is sparse (horizon rarely reaches a bank trip),
+  // so credit cargo aboard + collects too. Scale: 1 banked ≈ 3 cargo-equivalents.
+  const score = (r: { banked: number; cargo: number; collected: number }) =>
+    r.banked * 3 + r.cargo * 0.5 + r.collected * 0.25
+  return score(oracle) - score(learner)
 }
 
 export function isScenarioFlooded(scenario: ArenaScenario, state: ArenaSnapshot): boolean {

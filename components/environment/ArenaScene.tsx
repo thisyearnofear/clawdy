@@ -169,6 +169,22 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
   const clock = `${Math.floor(remaining / 60).toString().padStart(2, '0')}:${(remaining % 60).toString().padStart(2, '0')}`
   const courseIsEvaluation = activeCourse.scenario.split === 'evaluation' || isEvaluationScenario(activeCourse.scenario.id)
   const coachingLocked = courseIsEvaluation || view.scored
+  // Scorebug: always-visible sport state derived from the live snapshot.
+  const champion = view.episode.agents.find(agent => agent.id === 'champion')
+  const rival = view.episode.agents.find(agent => agent.id === 'rival')
+  const flooded = view.episode.weather.flooded
+  const drained = !flooded && view.episode.weather.drainedUntilTick > view.episode.tick
+  const nextFloodIn = (() => {
+    if (flooded) return null
+    const coming = activeCourse.scenario.floods.find(window => window.startTick > view.episode.tick)
+    if (!coming) return null
+    return Math.max(0, Math.ceil((coming.startTick - view.episode.tick) * ARENA_RULES.stepMs / 1000))
+  })()
+  const floodEndsIn = flooded ? (() => {
+    const window = activeCourse.scenario.floods.find(w => view.episode.tick >= w.startTick && view.episode.tick < w.endTick)
+    if (!window) return null
+    return Math.max(0, Math.ceil((window.endTick - view.episode.tick) * ARENA_RULES.stepMs / 1000))
+  })() : null
 
   useEffect(() => {
     const onVisibility = () => { if (document.hidden) session.pause() }
@@ -461,7 +477,22 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
             </ErrorBoundary>
           </div>
           <div className={styles.worldTopline}>
-            <div><span className={styles.liveDot} data-active={view.phase === 'running'} />{PHASE_LABELS[view.phase]}{playMode === 'compete' ? ' · Match' : ' · Practice'}</div>
+            <div>
+              <span className={styles.liveDot} data-active={view.phase === 'running'} />
+              {PHASE_LABELS[view.phase]}{playMode === 'compete' ? ' · Match' : ' · Practice'}
+              {champion && rival && (
+                <span className={styles.scorebug} aria-label={`Score: you ${champion.banked}, rival ${rival.banked}`}>
+                  {' · '}<strong className={styles.you}>{champion.banked}</strong>
+                  <span className={styles.sep}>YOU–RIVAL</span>
+                  <strong className={styles.foe}>{rival.banked}</strong>
+                  {' · '}{clock}
+                  {champion.cargo > 0 && <span>●{champion.cargo}/{ARENA_RULES.capacity}</span>}
+                  {flooded && floodEndsIn !== null && <span className={styles.floodWarn}>FLOOD {floodEndsIn}s</span>}
+                  {!flooded && drained && <span className={styles.drained}>DRAINED</span>}
+                  {!flooded && !drained && nextFloodIn !== null && nextFloodIn <= 30 && <span className={styles.floodWarn}>FLOOD IN {nextFloodIn}s</span>}
+                </span>
+              )}
+            </div>
             <span>{follow === 'overview' ? 'Drag to look around' : activeCourse.config.name}</span>
           </div>
           {!visualReady && view.phase !== 'error' && <div className={styles.worldNotice} role="status">Loading the world. Play unlocks when it settles.</div>}

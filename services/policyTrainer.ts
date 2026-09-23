@@ -23,6 +23,17 @@ import {
 
 export type TrainingExampleSource = 'draft' | 'approved' | 'generated'
 
+/**
+ * Oracle provenance: which teacher produced the preferred action and why it
+ * was trusted there. `oracle` names the routing teacher (safe/weather/patience);
+ * `consequence` means the label survived a counterfactual rollout check.
+ * Human coach approvals keep their own provenance via rationale + source.
+ */
+export type TrainingExampleProvenance =
+  | { kind: 'human' }
+  | { kind: 'oracle'; teacher: 'safe' | 'weather' | 'patience'; reason: string }
+  | { kind: 'oracle-consequence'; teacher: 'safe' | 'weather' | 'patience'; reason: string; outcomeDelta: number }
+
 export interface ArenaTrainingExample {
   id: string
   sourceEpisodeId: string
@@ -33,6 +44,10 @@ export interface ArenaTrainingExample {
   rationale: string
   approved: boolean
   source: TrainingExampleSource
+  /** Present on generated/oracle examples; absent on legacy + human examples. */
+  provenance?: TrainingExampleProvenance
+  /** Counterfactual banked delta (oracle minus learner) when measured. */
+  outcomeDelta?: number
 }
 
 export interface TrainingOptions {
@@ -41,6 +56,13 @@ export interface TrainingOptions {
   momentum?: number
   weightDecay?: number
   name?: string
+  /**
+   * Per-example importance weights, aligned with the approved examples array
+   * order after filtering (approved only). Defaults to uniform. Consequence
+   * supervision passes normalized outcome deltas here so high-stakes frames
+   * (flood timing, drain calls) move the weights more than routine routing.
+   */
+  sampleWeights?: readonly number[]
 }
 
 export interface EvaluationResult {
@@ -112,6 +134,12 @@ export function trainPolicyCheckpoint(
   const momentum = options.momentum ?? 0.85
   const weightDecay = options.weightDecay ?? 0.0001
   const name = options.name ?? `Champion (Trained +${approvedExamples.length} examples)`
+  const sampleWeights = options.sampleWeights
+  if (sampleWeights !== undefined && sampleWeights.length !== approvedExamples.length) {
+    throw new Error(
+      `sampleWeights length ${sampleWeights.length} does not match approved examples ${approvedExamples.length}`,
+    )
+  }
 
   const weights = cloneWeights(parent.weights)
   const h1Dim = weights.hidden1.biases.length
@@ -127,11 +155,16 @@ export function trainPolicyCheckpoint(
   const vBOut = new Array(outDim).fill(0)
 
   // Pre-encode datasets
-  const dataset = approvedExamples.map(example => {
+  const dataset = approvedExamples.map((example, index) => {
     const input = encodeObservation(example.observation)
     const targetClass = classifyAction(example.preferredAction, example.observation)
-    return { input, targetClass }
+    const weight = sampleWeights?.[index] ?? 1
+    if (!Number.isFinite(weight) || weight < 0) {
+      throw new Error(`Invalid sample weight at index ${index}: ${String(sampleWeights?.[index])}`)
+    }
+    return { input, targetClass, weight }
   })
+  const meanWeight = dataset.reduce((sum, entry) => sum + entry.weight, 0) / Math.max(1, dataset.length)
 
   let finalLoss = 0
   let correctCount = 0
@@ -140,14 +173,15 @@ export function trainPolicyCheckpoint(
     let epochLoss = 0
     correctCount = 0
 
-    for (const { input, targetClass } of dataset) {
+    for (const { input, targetClass, weight } of dataset) {
       // Forward pass
       const { logits, hidden1, hidden2 } = forwardPolicy(input, weights)
       const probs = softmax(logits)
 
-      // Loss: Cross entropy
+      // Loss: weighted cross entropy (normalized so lr stays comparable).
+      const importance = meanWeight > 0 ? weight / meanWeight : 1
       const prob = Math.max(1e-7, probs[targetClass])
-      epochLoss += -Math.log(prob)
+      epochLoss += -Math.log(prob) * importance
 
       // Prediction accuracy check
       let predClass = 0
@@ -160,10 +194,10 @@ export function trainPolicyCheckpoint(
       }
       if (predClass === targetClass) correctCount++
 
-      // Output gradient: dL / dLogits = p - y
+      // Output gradient: dL / dLogits = importance * (p - y)
       const dLogits = new Float32Array(outDim)
       for (let i = 0; i < outDim; i++) {
-        dLogits[i] = probs[i] - (i === targetClass ? 1.0 : 0.0)
+        dLogits[i] = (probs[i] - (i === targetClass ? 1.0 : 0.0)) * importance
       }
 
       // Action head gradients & backprop to hidden2

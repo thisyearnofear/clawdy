@@ -60,7 +60,9 @@ describe('v1 compatibility inventory', () => {
   })
 
   it('keeps builder fixtures in the abstract namespace, separate from grounded courses', () => {
-    expect(PRACTICE_SCENARIOS).toHaveLength(3)
+    // Practice syllabus: 3 base boards + 3 challenge variants (early-flood,
+    // long-flood, contention). All practice split — legal training ground.
+    expect(PRACTICE_SCENARIOS).toHaveLength(6)
     expect(HELD_OUT_SCENARIOS).toHaveLength(4)
     for (const scenario of [...PRACTICE_SCENARIOS, ...HELD_OUT_SCENARIOS]) {
       expect(scenario.worldVersion).toBe('builder-abstract-v1')

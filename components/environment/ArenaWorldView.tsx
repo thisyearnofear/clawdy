@@ -418,18 +418,25 @@ function Resource({ session, id, position }: { session: ArenaSession; id: string
 
 function PathRibbon({ session, edgeId, points, color }: { session: ArenaSession; edgeId: string; points: ArenaPosition[]; color: string }) {
   const group = useRef<THREE.Group>(null)
+  const material = useRef<THREE.MeshBasicMaterial>(null)
   const geometry = useMemo(() => createRouteRibbonGeometry(points, 0.09, 0.025), [points])
 
   useEffect(() => () => { geometry?.dispose() }, [geometry])
+  // Board legibility: the network is the game board, so it stays visible.
+  // Idle edges render faint (amber = floodable valley, teal = safe ridge);
+  // active transit renders full. Opacity is the only per-frame change — no
+  // mount/unmount churn.
   useFrame(() => {
-    if (!group.current) return
-    group.current.visible = session.getSnapshot().episode.agents.some(agent => agent.transit?.edgeId === edgeId)
+    if (!group.current || !material.current) return
+    const active = session.getSnapshot().episode.agents.some(agent => agent.transit?.edgeId === edgeId)
+    const target = active ? 0.95 : 0.3
+    if (Math.abs(material.current.opacity - target) > 0.01) material.current.opacity = target
   })
   if (!geometry) return null
   return (
-    <group ref={group} visible={false}>
+    <group ref={group} visible>
       <mesh geometry={geometry} renderOrder={2}>
-        <meshBasicMaterial color={color} transparent opacity={0.65} depthWrite={false} side={THREE.DoubleSide} />
+        <meshBasicMaterial ref={material} color={color} transparent opacity={0.3} depthWrite={false} side={THREE.DoubleSide} />
       </mesh>
     </group>
   )
@@ -666,10 +673,17 @@ export default memo(function ArenaWorldView(props: WorldProps) {
       shadows={!lite}
       camera={{ position: [16, 12, 16], fov: 42, near: 0.05, far: 180 }}
       dpr={lite ? [1, 1] : [1, 1.5]}
-      frameloop={lite ? 'never' : 'always'}
-      gl={{ antialias: true, alpha: false, powerPreference: lite ? 'low-power' : 'high-performance', preserveDrawingBuffer: false }}
+      // Simulation time advances in useFrame (EpisodeClock). "never" would
+      // freeze rovers on coarse/narrow devices, so always pump frames and let
+      // FrameLimiter cap the rate on lite hardware instead.
+      frameloop="always"
+      // preserveDrawingBuffer is required for the gift-card share capture
+      // (canvas.toDataURL in ArenaScene.handleShareCard). Cost is one buffer
+      // copy per frame — negligible next to the 600k-tri terrain.
+      gl={{ antialias: true, alpha: false, powerPreference: lite ? 'low-power' : 'high-performance', preserveDrawingBuffer: true }}
       fallback={<p role="alert">This device could not create a WebGL view.</p>}
     >
+      {lite ? <FrameLimiter fps={30} /> : null}
       <World {...props} lite={lite} />
     </Canvas>
   )

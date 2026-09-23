@@ -1,16 +1,16 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-19T20:04:49.913Z",
+  "generatedAt": "2026-09-23T22:55:05.019Z",
   "rulesVersion": "season-0.reference.2",
   "worldNamespace": "builder-abstract-v1",
   "checkpointSchema": "season-0.checkpoint.v2",
   "distill": {
-    "weightsHash": "4d7b4f7f3d3d",
-    "datasetHash": "ds:bc78e99b:75",
-    "sampleCount": 75,
+    "weightsHash": "4a1b9e583d2c",
+    "datasetHash": "ds:d8c2b898:95",
+    "sampleCount": 95,
     "trainingConfig": {
       "epochs": 60,
-      "learningRate": 0.02,
+      "learningRate": 0.005,
       "momentum": 0.85,
       "weightDecay": 0.0001
     }
@@ -43,10 +43,10 @@
       "split": "evaluation",
       "side": "normal",
       "policy": "trained",
-      "banked": 3,
+      "banked": 5,
       "winner": "rival",
       "recoveries": 0,
-      "weatherDrains": 1,
+      "weatherDrains": 0,
       "finished": true
     },
     {
@@ -57,7 +57,7 @@
       "banked": 3,
       "winner": "rival",
       "recoveries": 0,
-      "weatherDrains": 1,
+      "weatherDrains": 0,
       "finished": true
     },
     {
@@ -90,7 +90,7 @@
       "banked": 0,
       "winner": "rival",
       "recoveries": 0,
-      "weatherDrains": 1,
+      "weatherDrains": 0,
       "finished": true
     },
     {
@@ -101,7 +101,7 @@
       "banked": 3,
       "winner": "rival",
       "recoveries": 0,
-      "weatherDrains": 1,
+      "weatherDrains": 0,
       "finished": true
     },
     {
@@ -131,10 +131,10 @@
       "split": "evaluation",
       "side": "normal",
       "policy": "trained",
-      "banked": 3,
+      "banked": 4,
       "winner": "champion",
       "recoveries": 0,
-      "weatherDrains": 2,
+      "weatherDrains": 0,
       "finished": true
     },
     {
@@ -145,7 +145,7 @@
       "banked": 0,
       "winner": "rival",
       "recoveries": 0,
-      "weatherDrains": 1,
+      "weatherDrains": 0,
       "finished": true
     },
     {
@@ -175,10 +175,10 @@
       "split": "evaluation",
       "side": "normal",
       "policy": "trained",
-      "banked": 5,
-      "winner": "champion",
+      "banked": 2,
+      "winner": "rival",
       "recoveries": 0,
-      "weatherDrains": 1,
+      "weatherDrains": 0,
       "finished": true
     },
     {
@@ -186,10 +186,10 @@
       "split": "evaluation",
       "side": "swapped",
       "policy": "trained",
-      "banked": 5,
-      "winner": "champion",
+      "banked": 3,
+      "winner": "rival",
       "recoveries": 0,
-      "weatherDrains": 1,
+      "weatherDrains": 0,
       "finished": true
     }
   ],
@@ -199,7 +199,7 @@
     "totalDelta": -12,
     "trainedWinsVsSafe": 0,
     "swappedSafeTotal": 21,
-    "swappedTrainedTotal": 11
+    "swappedTrainedTotal": 9
   },
   "grounded": {
     "matches": [
@@ -233,10 +233,10 @@
         "mode": "practice",
         "side": "normal",
         "policy": "trained",
-        "banked": 3,
-        "winner": "rival",
+        "banked": 9,
+        "winner": "champion",
         "recoveries": 0,
-        "weatherDrains": 1,
+        "weatherDrains": 0,
         "finished": true
       },
       {
@@ -248,7 +248,7 @@
         "banked": 0,
         "winner": "rival",
         "recoveries": 0,
-        "weatherDrains": 1,
+        "weatherDrains": 0,
         "finished": true
       },
       {
@@ -284,7 +284,7 @@
         "banked": 5,
         "winner": "rival",
         "recoveries": 0,
-        "weatherDrains": 2,
+        "weatherDrains": 0,
         "finished": true
       },
       {
@@ -293,17 +293,17 @@
         "mode": "compete",
         "side": "swapped",
         "policy": "trained",
-        "banked": 4,
+        "banked": 0,
         "winner": "rival",
         "recoveries": 0,
-        "weatherDrains": 1,
+        "weatherDrains": 0,
         "finished": true
       }
     ],
     "aggregate": {
       "safeTotal": 36,
-      "trainedTotal": 12,
-      "totalDelta": -24
+      "trainedTotal": 14,
+      "totalDelta": -22
     }
   },
   "family": {
@@ -369,10 +369,10 @@
         "split": "evaluation",
         "side": "normal",
         "policy": "trained",
-        "banked": 3,
+        "banked": 0,
         "winner": "rival",
         "recoveries": 0,
-        "weatherDrains": 1,
+        "weatherDrains": 0,
         "finished": true
       },
       {
@@ -383,7 +383,7 @@
         "banked": 0,
         "winner": "rival",
         "recoveries": 0,
-        "weatherDrains": 2,
+        "weatherDrains": 0,
         "finished": true
       },
       {
@@ -416,7 +416,7 @@
         "banked": 3,
         "winner": "rival",
         "recoveries": 0,
-        "weatherDrains": 1,
+        "weatherDrains": 0,
         "finished": true
       },
       {
@@ -427,7 +427,7 @@
         "banked": 0,
         "winner": "rival",
         "recoveries": 0,
-        "weatherDrains": 2,
+        "weatherDrains": 0,
         "finished": true
       },
       {
@@ -457,10 +457,10 @@
         "split": "evaluation",
         "side": "normal",
         "policy": "trained",
-        "banked": 3,
-        "winner": "rival",
+        "banked": 6,
+        "winner": null,
         "recoveries": 0,
-        "weatherDrains": 2,
+        "weatherDrains": 0,
         "finished": true
       },
       {
@@ -471,7 +471,7 @@
         "banked": 0,
         "winner": "rival",
         "recoveries": 0,
-        "weatherDrains": 2,
+        "weatherDrains": 0,
         "finished": true
       },
       {
@@ -501,10 +501,10 @@
         "split": "evaluation",
         "side": "normal",
         "policy": "trained",
-        "banked": 0,
+        "banked": 3,
         "winner": "rival",
         "recoveries": 0,
-        "weatherDrains": 2,
+        "weatherDrains": 0,
         "finished": true
       },
       {
@@ -515,19 +515,19 @@
         "banked": 0,
         "winner": "rival",
         "recoveries": 0,
-        "weatherDrains": 2,
+        "weatherDrains": 0,
         "finished": true
       }
     ],
     "aggregate": {
       "safeTotal": 72,
-      "trainedTotal": 9,
-      "totalDelta": -63
+      "trainedTotal": 12,
+      "totalDelta": -60
     }
   },
   "frames": {
-    "total": 12,
-    "passed": 12,
+    "total": 23,
+    "passed": 23,
     "failedIds": []
   }
 }

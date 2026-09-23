@@ -87,7 +87,7 @@ Training configs by entry path (overrides recorded per checkpoint in `trainingCo
 |---|---|---|---|---|
 | `trainPolicyCheckpoint` defaults | 40 | 0.03 | 0.85 | 0.0001 |
 | Builder CLI (`starter/train.ts`) | 500 | 0.01 | 0.9 | 0.0001 (default) |
-| Distill/eval (`scripts/eval-holdout.ts`) | 60 | 0.02 | 0.85 (default) | 0.0001 (default) |
+| Distill/eval (`scripts/eval-holdout.ts` via `scripts/eval-lib.ts`) | 60 | 0.005 | 0.85 (default) | 0.0001 (default) |
 
 These configs are pinned by `versions.test.ts`. Changing any value changes measured
 results (`docs/eval-holdout.json`, `starter/champion-checkpoint.json`) and therefore
@@ -120,7 +120,6 @@ grounded courses prove it.
 ## 5. Migration log
 
 ### v2 encoder + public scoreboard (observation v2 / encoder v2 / checkpoint v2)
-
 - **What:** rival `banked` disclosed at all visibility levels (cargo/position stay
   fog-masked); encoder 32 → 36 dims with four additive memory/scoreboard
   features; checkpoint schema v1 → v2 (36-wide input layer).
@@ -138,6 +137,45 @@ grounded courses prove it.
   `docs/eval-gate.json`.
 - **User impact:** browser checkpoints minted under v1 become view-only; the
   refusal message names the upgrade path (re-train examples under v2).
+
+### Oracle-routed consequence supervision (distill v2, Sep 23)
+
+- **What:** the synthetic dataset (`scripts/eval-lib.ts`) is no longer
+  single-teacher safe-distillation. Each practice tick is routed to the
+  honest teacher — `weather` (drain while swimming flood water), `patience`
+  (wait out floods with cargo aboard), `safe` (flood-aware routing/collect/
+  bank) — via `routeOracle()` in `services/arenaPolicy.ts`. Every label is
+  verified by a 120-tick counterfactual rollout
+  (`rolloutOutcomeDelta()`, new `ArenaEpisode.restoreSnapshot()` branch
+  primitive): oracle branch vs learner branch, safe continuation, greedy
+  rival. Contradicted labels (delta < −0.25) are dropped — the outcome
+  overrides the teacher. Kept labels train with consequence weights
+  (1 + clamped delta, routine 1.0 → verified 3.0) through weighted
+  cross-entropy (`sampleWeights` in `trainPolicyCheckpoint`).
+- **Syllabus:** practice grows 3 → 6 boards (all `practice` split, held-out
+  untouched): early-flood, long-flood, and contention (greedy rival starts
+  mid-board) variants force the timing/contested states the base three never
+  produce. Per-scenario emit budgets keep every board teaching.
+- **Executor (same change):** `selectActionForClass()` ranks same-class moves
+  by flood-aware cost + resource value + onward prospect (stale sightings
+  discounted 0.2×) instead of first-legal — weights choose strategy, the
+  shared cost map executes routing. Deterministic ties on edge id.
+- **Why:** probed all practice boards — safe never waits at a station and
+  never drains, so two of eight action classes had zero demonstration and
+  drain timing was untrained fallback noise. Imitation of one router cannot
+  teach timing; measured consequences can.
+- **Config:** distill learningRate 0.02 → 0.005 (0.02 diverges on the
+  95-example mixed set: loss 3.2, acc 18%; 0.005 converges: loss 0.02,
+  acc 100%). Epochs/momentum/decay unchanged. Encoder (36-dim), 8-class
+  head, sim rules, held-out split all frozen.
+- **Measured effect:** abstract `safe 23 / trained 11 (−12)`; grounded
+  practice trained `3→9 normal` (now beats safe head-to-head on the physical
+  course); family-03 trained `3→6`; frames 12 → 23/23. Full re-pin reviewed
+  in `docs/eval-gate.json` + `docs/regression-frames.json`. Honest status:
+  the student still trails the teacher on abstract held-outs — timing
+  transfers, junction targeting under contention does not yet. Next: junction
+  contrast pairs (oracle-vs-base disagreement states are already mined in
+  phase 2; executor stale-discount is the first half of the fix).
 
 ## 6. Non-goals
 - No cross-version *execution*: a v1 checkpoint is never run under v2 rules "to see
