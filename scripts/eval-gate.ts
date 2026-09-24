@@ -168,8 +168,10 @@ async function main() {
   const world = await loadGroundedWorld(REPO_ROOT)
   console.log(`grounded world: ${world.course.config.name} (19 nodes, ${world.course.scenario.edges.length} edges)`)
   const groundedPractice = applyCourseMode(world.course, 'practice')
+  const groundedDeep = applyCourseMode(world.course, 'practice-deep')
   const examples = buildSyllabusExamples([
     { scenario: groundedPractice.scenario, collider: world.collider },
+    { scenario: groundedDeep.scenario, collider: world.collider },
   ])
   if (examples.length === 0) fail('no synthetic coaching examples generated')
   rejectEvaluationExamples(examples)

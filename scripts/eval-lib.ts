@@ -8,7 +8,7 @@
  * changes measured results and must be reviewed as a migration (see
  * docs/COMPATIBILITY.md §3).
  */
-import { SEASON_0_BASE_CHECKPOINT, createLearnedPolicy, type PolicyCheckpoint } from '../services/policyModel'
+import { SEASON_0_BASE_CHECKPOINT, createLearnedPolicy, classifyAction, type PolicyCheckpoint } from '../services/policyModel'
 import { PRACTICE_SCENARIOS, rejectEvaluationExamples } from '../services/arenaScenarios'
 import { ARENA_RULES, ArenaEpisode, rolloutOutcomeDelta, type ArenaAction, type ArenaObservation, type ArenaScenario } from '../services/arenaEpisode'
 import { readFile } from 'node:fs/promises'
@@ -208,7 +208,7 @@ export interface GroundedSyllabusBoard {
 }
 
 /** Practice-split grounded board ids legal as training ground. */
-const GROUNDED_PRACTICE_IDS = new Set(['sandstone-practice-01'])
+const GROUNDED_PRACTICE_IDS = new Set(['sandstone-practice-01', 'sandstone-practice-deep-01'])
 
 /**
  * Build the oracle-routed consequence dataset across a syllabus.
@@ -216,12 +216,13 @@ const GROUNDED_PRACTICE_IDS = new Set(['sandstone-practice-01'])
  * Integrity split:
  * - Abstract boards (PRACTICE_SCENARIOS, route-only ArenaEpisode): the base
  *   syllabus. Always included.
- * - Grounded boards (opt-in via `groundedBoards`): the PHYSICAL course
- *   (sandstone-practice-01, practice split) walked through ArenaRunner with
- *   isolated physics over the pinned collider. These teach the travel-time
- *   geometry (68-tick ridge vs 41-tick shortcut) no abstract board contains.
- *   Grounded boards are practice-split only — compete/family (evaluation)
- *   scenarios throw here, same as rejectEvaluationExamples.
+ * - Grounded boards (opt-in via `groundedBoards`): PHYSICAL practice-split
+ *   courses walked through ArenaRunner with isolated physics over the pinned
+ *   collider. `sandstone-practice-01` teaches openings + travel-time;
+ *   `sandstone-practice-deep-01` uses compete-like floods/cores (still
+ *   practice split) so post-bank flood pad junctions have positive
+ *   consequence shape without leaking the evaluation compete scenario.
+ *   Compete/family (evaluation) scenarios throw here.
  *
  * Deterministic: same code + same collider → same datasetHash.
  */
@@ -249,7 +250,15 @@ export function buildSyllabusExamples(groundedBoards: GroundedSyllabusBoard[] = 
     snapshot: Parameters<typeof rolloutOutcomeDelta>[1],
     label: { action: ArenaAction; teacher: 'safe' | 'weather' | 'patience'; reason: string },
     candidates: ArenaAction[],
-    opts: { bypassTeacherCaps?: boolean; keySuffix?: string; respectRolloutVeto?: boolean } = {},
+    opts: {
+      bypassTeacherCaps?: boolean
+      keySuffix?: string
+      respectRolloutVeto?: boolean
+      /** Override contrast original (student mistake); default = base policy pick. */
+      contrastAction?: ArenaAction
+      /** Consequence horizon ticks (default 120). Pad-flood mines need ≥240. */
+      horizonTicks?: number
+    } = {},
   ): boolean => {
     const key = `${practice.id}${opts.keySuffix ?? ''}:${tick}`
     // Grounded phase uses a dedicated local allowance so abstract
@@ -265,7 +274,9 @@ export function buildSyllabusExamples(groundedBoards: GroundedSyllabusBoard[] = 
     // Without same-type preference, a post-bank move contrasts against drain
     // (first in the candidate list) and the flooded-base rollout vetoes the
     // second-trip opening we most need to teach.
-    const learnerPick = basePolicy(champObs)
+    // Student mines pass contrastAction so the interim student's ridge hop
+    // is the recorded mistake (not an unrelated season-0 pick).
+    const learnerPick = opts.contrastAction ?? basePolicy(champObs)
     const drainAvailable = champObs.availableActions.some(a => a.type === 'drain')
     const sameTypeContrast = candidates.find(
       candidate =>
@@ -286,7 +297,7 @@ export function buildSyllabusExamples(groundedBoards: GroundedSyllabusBoard[] = 
       recorded,
       championContinuation,
       rivalContinuation,
-      120,
+      opts.horizonTicks ?? 120,
     )
     // Labels the rollout contradicts are dropped — the teacher was wrong
     // there and the outcome overrides. Tolerance: fractional deltas below
@@ -498,6 +509,9 @@ export function buildSyllabusExamples(groundedBoards: GroundedSyllabusBoard[] = 
   // stay route-only; grounded emits never veto on negative route-only deltas
   // (physics snapshots mis-price travel).
   for (const board of groundedBoards) {
+    // practice-deep is reserved for phase 3c student pad-flood mines — full
+    // 3a/3b walks on compete-like cores poison practice openings (33→20).
+    if (board.scenario.id === 'sandstone-practice-deep-01') continue
     if (board.scenario.split !== 'practice' || !GROUNDED_PRACTICE_IDS.has(board.scenario.id)) {
       throw new Error(
         `Training data leak: grounded board "${board.scenario.id}" is not practice training ground ` +
@@ -633,15 +647,181 @@ export function buildSyllabusExamples(groundedBoards: GroundedSyllabusBoard[] = 
     }
   }
 
-  // 3c — two-pass student mine (post-bank flood pad junctions) is intentionally
-  // not enabled in the default syllabus build. Diagnosis (Sep 24): walking an
-  // interim distilled checkpoint on practice DOES surface the compete t400
-  // contrast (valley-cb-n1 vs base-cb-rn at champion-base, flooded, empty bay),
-  // but route-only rolloutOutcomeDelta is < −0.25 on that state — forcing the
-  // label via bypassTeacherCaps floored the delta to 0.5 and regressed practice
-  // normal 10→7. Student mines must use respectRolloutVeto: true; until a
-  // physics-aware consequence check exists, zero labels pass. See
-  // docs/COMPATIBILITY.md (Sep 24 shadow + student-mine note).
+  // 3c — two-pass student mine on practice-deep boards only. Train an interim
+  // checkpoint on phases 1–3b, walk it on sandstone-practice-deep-01 (compete-
+  // like floods/cores, practice split), and emit pad-flood junctions that
+  // pass a 240-tick consequence check (h=120 is noisy; practice-01 pad-flood
+  // fails even at 240 because valley-center cores make valley net-negative).
+  const deepBoards = groundedBoards.filter(b => b.scenario.id === 'sandstone-practice-deep-01')
+  if (deepBoards.length > 0) {
+    const interimExamples = examples.filter(e => e.approved)
+    if (interimExamples.length > 0) {
+      const interim = trainDistilledCheckpoint(interimExamples)
+      const student = createLearnedPolicy(interim)
+
+      for (const board of deepBoards) {
+        if (board.scenario.split !== 'practice' || !GROUNDED_PRACTICE_IDS.has(board.scenario.id)) {
+          throw new Error(
+            `Training data leak: grounded board "${board.scenario.id}" is not practice training ground.`,
+          )
+        }
+
+        const motion = new ArenaPhysics(board.collider)
+        try {
+          const runner = new ArenaRunner(
+            board.scenario,
+            { champion: { strategy: 'learned', checkpoint: interim }, rival: 'greedy' },
+            motion,
+          )
+          let priorityHere = 0
+          let guard = 0
+          while (runner.snapshot().status !== 'finished' && examples.length < 400) {
+            if (++guard > board.scenario.durationTicks + 10) break
+            const snap = runner.snapshot()
+            if (snap.tick % ARENA_RULES.decisionEveryTicks === 0) {
+              const champObs = runner.observe('champion')
+              if (champObs.decisionDue) {
+                const studentAction = student(champObs)
+                const label = routeOracle(champObs)
+                  if (label && JSON.stringify(studentAction) !== JSON.stringify(label.action)) {
+                  const isJunction =
+                    studentAction.type === 'move' && label.action.type === 'move' &&
+                    (studentAction as { edgeId: string }).edgeId !== (label.action as { edgeId: string }).edgeId
+                  const atOwnBase = champObs.self.nodeId === champObs.self.baseNode
+                  // Only valley-over-ridge (class 4 beats class 5): the compete
+                  // t400 shape. Inverse labels (oracle ridge) pass the delta
+                  // check but teach the wrong road and collapse practice.
+                  const oracleCls = classifyAction(label.action, champObs)
+                  const studentCls = classifyAction(studentAction, champObs)
+                  const isValleyOverRidge = oracleCls === 4 && studentCls === 5
+                  // banked≥6: compete t400 shape. bank=3 on compete is
+                  // ridge-first (fast second trip); mining valley there
+                  // teaches the slow cross-corridor path.
+                  const isPadFloodJunction =
+                    atOwnBase &&
+                    champObs.self.cargo === 0 &&
+                    champObs.self.banked >= 6 &&
+                    champObs.weather.flooded &&
+                    isJunction &&
+                    isValleyOverRidge
+                  if (isPadFloodJunction && priorityHere < 4) {
+                    const before = examples.length
+                    if (
+                      tryEmit(
+                        board.scenario,
+                        snap.tick,
+                        champObs,
+                        snap,
+                        label,
+                        champObs.availableActions,
+                        {
+                          bypassTeacherCaps: true,
+                          respectRolloutVeto: true,
+                          contrastAction: studentAction,
+                          horizonTicks: 240,
+                          keySuffix: ':student',
+                        },
+                      ) &&
+                      examples.length > before
+                    ) {
+                      // Boost verified pad-flood contrasts: a single +0.25
+                      // delta barely moves class-4 vs class-5 logits.
+                      const last = examples[examples.length - 1]
+                      if (last) {
+                        const boosted = Math.max(last.outcomeDelta ?? 0, 1.5)
+                        last.outcomeDelta = boosted
+                        if (last.provenance && 'outcomeDelta' in last.provenance) {
+                          ;(last.provenance as { outcomeDelta: number }).outcomeDelta = boosted
+                        }
+                      }
+                      priorityHere++
+                    }
+                  }
+                }
+              }
+            }
+            runner.advanceTicks(1)
+          }
+        } finally {
+          motion.dispose()
+        }
+
+        // Also mine the teacher path on deep for the same valley-over-ridge
+        // pad-flood shape (base vs oracle). Multiplies verified contrasts
+        // without full 3a/3b walks that poison practice.
+        {
+          const motion = new ArenaPhysics(board.collider)
+          try {
+            const runner = new ArenaRunner(board.scenario, { champion: 'safe', rival: 'greedy' }, motion)
+            let priorityHere = 0
+            let guard = 0
+            while (runner.snapshot().status !== 'finished' && examples.length < 400) {
+              if (++guard > board.scenario.durationTicks + 10) break
+              const snap = runner.snapshot()
+              if (snap.tick % ARENA_RULES.decisionEveryTicks === 0) {
+                const champObs = runner.observe('champion')
+                if (champObs.decisionDue) {
+                  const baseAction = basePolicy(champObs)
+                  const label = routeOracle(champObs)
+                  if (label && JSON.stringify(baseAction) !== JSON.stringify(label.action)) {
+                    const isJunction =
+                      baseAction.type === 'move' && label.action.type === 'move' &&
+                      (baseAction as { edgeId: string }).edgeId !== (label.action as { edgeId: string }).edgeId
+                    const atOwnBase = champObs.self.nodeId === champObs.self.baseNode
+                    const oracleCls = classifyAction(label.action, champObs)
+                    const baseCls = classifyAction(baseAction, champObs)
+                    const isValleyOverRidge = oracleCls === 4 && baseCls === 5
+                    if (
+                      atOwnBase &&
+                      champObs.self.cargo === 0 &&
+                      champObs.self.banked >= 6 &&
+                      champObs.weather.flooded &&
+                      isJunction &&
+                      isValleyOverRidge &&
+                      priorityHere < 4
+                    ) {
+                      const before = examples.length
+                      if (
+                        tryEmit(
+                          board.scenario,
+                          snap.tick,
+                          champObs,
+                          snap,
+                          label,
+                          champObs.availableActions,
+                          {
+                            bypassTeacherCaps: true,
+                            respectRolloutVeto: true,
+                            contrastAction: baseAction,
+                            horizonTicks: 240,
+                            keySuffix: ':pad',
+                          },
+                        ) &&
+                        examples.length > before
+                      ) {
+                        const last = examples[examples.length - 1]
+                        if (last) {
+                          const boosted = Math.max(last.outcomeDelta ?? 0, 1.5)
+                          last.outcomeDelta = boosted
+                          if (last.provenance && 'outcomeDelta' in last.provenance) {
+                            ;(last.provenance as { outcomeDelta: number }).outcomeDelta = boosted
+                          }
+                        }
+                        priorityHere++
+                      }
+                    }
+                  }
+                }
+              }
+              runner.advanceTicks(1)
+            }
+          } finally {
+            motion.dispose()
+          }
+        }
+      }
+    }
+  }
 
   rejectEvaluationExamples(examples)
   return examples

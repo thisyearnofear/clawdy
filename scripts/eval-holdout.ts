@@ -49,8 +49,10 @@ async function main() {
   const world = await loadGroundedWorld(REPO_ROOT)
   const { applyCourseMode } = await import('../services/arenaCourse')
   const groundedPractice = applyCourseMode(world.course, 'practice')
+  const groundedDeep = applyCourseMode(world.course, 'practice-deep')
   const examples = buildSyllabusExamples([
     { scenario: groundedPractice.scenario, collider: world.collider },
+    { scenario: groundedDeep.scenario, collider: world.collider },
   ])
   if (examples.length === 0) {
     console.error('No synthetic coaching examples were generated; the practice scenario did not produce a flood + safe-move pair within the first 6 decisions. Aborting.')

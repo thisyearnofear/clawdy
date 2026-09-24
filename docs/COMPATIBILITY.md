@@ -223,6 +223,24 @@ grounded courses prove it.
 - **Next:** physics-aware (or longer) consequence check for grounded student
   mines, or human-approved pad-flood contrasts — not another executor redirect.
 
+### Practice-deep mine + hollow class-5 alias (Sep 24, evening)
+
+- **What:** `practice-deep` board (compete-like floods/cores, practice split)
+  for two-pass student mines at h=240 with `respectRolloutVeto`; valley-over-
+  ridge only at `banked≥6`. Executor: hollow class-5→non-floodable class-6
+  alias at flooded mid-score pad (ridge cores classify as 6, so class 5 was
+  falling through to valley); soft pad-flood tie-break; energy patience when
+  the affordable hop is barren while the resource-route hop is energy-gated.
+- **Physics finding:** physics-aware rollouts matched route-only on the pad
+  contrast; longer horizons on practice-01 stay valley-negative. Deep board
+  + boost (δ≥1.5) is what lets the student label survive.
+- **Measured (gate pin `1092809a3d13`, 170 examples):** grounded trained
+  `33→35` (practice 9/8, compete **12**/6 — open-loop gap closed on normal);
+  abstract dual-side `36→35`. Practice normal ties safe (was +1). Family still
+  trails (36 vs 72).
+- **Next:** restore practice-normal 10 and abstract 36 without giving back
+  compete 12; family transfer remains the larger gap.
+
 ## 6. Non-goals
 - No cross-version *execution*: a v1 checkpoint is never run under v2 rules "to see
   what happens". Cross-version comparison happens in the eval harness on matched

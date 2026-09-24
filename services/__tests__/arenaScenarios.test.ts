@@ -6,6 +6,7 @@ describe('evaluation scenario guard', () => {
     expect(isEvaluationScenario('sandstone-compete-01')).toBe(true)
     expect(isEvaluationScenario('cloudbank-compete-01')).toBe(true)
     expect(isEvaluationScenario('sandstone-practice-01')).toBe(false)
+    expect(isEvaluationScenario('sandstone-practice-deep-01')).toBe(false)
     expect(isEvaluationScenario('cloudbank-practice-01')).toBe(false)
   })
 

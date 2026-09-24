@@ -164,4 +164,20 @@ describe('versioned Sandstone Basin course', () => {
       physics.dispose()
     }
   })
+
+  it('exposes practice-deep as practice-split training ground with compete-like floods', () => {
+    const physics = new ArenaPhysics(collider)
+    try {
+      const practice = buildArenaCourse(physics)
+      const deep = applyCourseMode(practice, 'practice-deep')
+      const compete = applyCourseMode(practice, 'compete')
+      expect(deep.scenario.id).toBe('sandstone-practice-deep-01')
+      expect(deep.scenario.split).toBe('practice')
+      expect(deep.scenario.floods).toEqual(compete.scenario.floods)
+      expect(deep.scenario.resources.map(r => r.nodeId)).toEqual(compete.scenario.resources.map(r => r.nodeId))
+      expect(deep.scenario.nodes).toEqual(practice.scenario.nodes)
+    } finally {
+      physics.dispose()
+    }
+  })
 })

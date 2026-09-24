@@ -1,20 +1,20 @@
 {
-  "generatedAt": "2026-09-24T09:36:12.112Z",
+  "generatedAt": "2026-09-24T17:34:58.675Z",
   "baseCheckpoint": {
     "id": "champion-baseline-s0",
     "weightsHash": "74866b9f3bce",
     "note": "Randomly initialized base; safe collector is the meaningful baseline."
   },
   "trainedCheckpoint": {
-    "id": "checkpoint-mufc7d1l-6a3d4f",
-    "name": "Champion v1 (+169 synthetic examples)",
-    "weightsHash": "122f676a3d4f",
+    "id": "checkpoint-muftb2q8-9a3d13",
+    "name": "Champion v1 (+170 synthetic examples)",
+    "weightsHash": "1092809a3d13",
     "trainingSummary": {
       "epochs": 60,
-      "loss": 0.0358,
-      "sampleCount": 169,
-      "datasetHash": "ds:404297a0:169",
-      "accuracy": 0.982
+      "loss": 0.0329,
+      "sampleCount": 170,
+      "datasetHash": "ds:98f859da:170",
+      "accuracy": 0.988
     }
   },
   "examples": [
@@ -919,117 +919,123 @@
       "rationale": "Safe collector would move along a non-floodable route when applicable."
     },
     {
-      "id": "distill-sandstone-practice-01-0",
+      "id": "distill-sandstone-practice-01:swapped-0",
       "sourceEpisodeId": "sandstone-practice-01",
       "tick": 0,
       "rationale": "Safe collector would move along a non-floodable route when applicable."
     },
     {
-      "id": "distill-sandstone-practice-01-120",
+      "id": "distill-sandstone-practice-01:swapped-120",
       "sourceEpisodeId": "sandstone-practice-01",
       "tick": 120,
       "rationale": "Weather oracle restrains drain at the station; routing/collecting beats 2 energy + 50 ticks (measured)."
     },
     {
-      "id": "distill-sandstone-practice-01-155",
+      "id": "distill-sandstone-practice-01:swapped-155",
       "sourceEpisodeId": "sandstone-practice-01",
       "tick": 155,
       "rationale": "Weather oracle restrains drain at the station; routing/collecting beats 2 energy + 50 ticks (measured)."
     },
     {
-      "id": "distill-sandstone-practice-01-190",
+      "id": "distill-sandstone-practice-01:swapped-190",
       "sourceEpisodeId": "sandstone-practice-01",
       "tick": 190,
       "rationale": "Weather oracle restrains drain at the station; routing/collecting beats 2 energy + 50 ticks (measured)."
     },
     {
-      "id": "distill-sandstone-practice-01-225",
+      "id": "distill-sandstone-practice-01:swapped-225",
       "sourceEpisodeId": "sandstone-practice-01",
       "tick": 225,
       "rationale": "Weather oracle restrains drain at the station; routing/collecting beats 2 energy + 50 ticks (measured)."
     },
     {
-      "id": "distill-sandstone-practice-01-230",
+      "id": "distill-sandstone-practice-01:swapped-230",
       "sourceEpisodeId": "sandstone-practice-01",
       "tick": 230,
       "rationale": "Weather oracle restrains drain at the station; routing/collecting beats 2 energy + 50 ticks (measured)."
     },
     {
-      "id": "distill-sandstone-practice-01-235",
+      "id": "distill-sandstone-practice-01:swapped-235",
       "sourceEpisodeId": "sandstone-practice-01",
       "tick": 235,
       "rationale": "Weather oracle restrains drain at the station; routing/collecting beats 2 energy + 50 ticks (measured)."
     },
     {
-      "id": "distill-sandstone-practice-01-530",
+      "id": "distill-sandstone-practice-01:swapped-530",
       "sourceEpisodeId": "sandstone-practice-01",
       "tick": 530,
       "rationale": "Safe collector would move along a non-floodable route when applicable."
     },
     {
-      "id": "distill-sandstone-practice-01-40",
+      "id": "distill-sandstone-practice-01:swapped-40",
       "sourceEpisodeId": "sandstone-practice-01",
       "tick": 40,
       "rationale": "Safe collector would move along a non-floodable route when applicable."
     },
     {
-      "id": "distill-sandstone-practice-01-80",
+      "id": "distill-sandstone-practice-01:swapped-80",
       "sourceEpisodeId": "sandstone-practice-01",
       "tick": 80,
       "rationale": "Safe collector would move along a non-floodable route when applicable."
     },
     {
-      "id": "distill-sandstone-practice-01-100",
+      "id": "distill-sandstone-practice-01:swapped-100",
       "sourceEpisodeId": "sandstone-practice-01",
       "tick": 100,
       "rationale": "Safe collector would wait."
     },
     {
-      "id": "distill-sandstone-practice-01-310",
+      "id": "distill-sandstone-practice-01:swapped-310",
       "sourceEpisodeId": "sandstone-practice-01",
       "tick": 310,
       "rationale": "Safe collector would move along a non-floodable route when applicable."
     },
     {
-      "id": "distill-sandstone-practice-01-315",
+      "id": "distill-sandstone-practice-01:swapped-315",
       "sourceEpisodeId": "sandstone-practice-01",
       "tick": 315,
       "rationale": "Safe collector would move along a non-floodable route when applicable."
     },
     {
-      "id": "distill-sandstone-practice-01-320",
+      "id": "distill-sandstone-practice-01:swapped-320",
       "sourceEpisodeId": "sandstone-practice-01",
       "tick": 320,
       "rationale": "Safe collector would move along a non-floodable route when applicable."
     },
     {
-      "id": "distill-sandstone-practice-01-325",
+      "id": "distill-sandstone-practice-01:swapped-325",
       "sourceEpisodeId": "sandstone-practice-01",
       "tick": 325,
       "rationale": "Safe collector would move along a non-floodable route when applicable."
     },
     {
-      "id": "distill-sandstone-practice-01-330",
+      "id": "distill-sandstone-practice-01:swapped-330",
       "sourceEpisodeId": "sandstone-practice-01",
       "tick": 330,
       "rationale": "Safe collector would move along a non-floodable route when applicable."
     },
     {
-      "id": "distill-sandstone-practice-01-405",
+      "id": "distill-sandstone-practice-01:swapped-405",
       "sourceEpisodeId": "sandstone-practice-01",
       "tick": 405,
       "rationale": "Safe collector would move along a non-floodable route when applicable."
     },
     {
-      "id": "distill-sandstone-practice-01-410",
+      "id": "distill-sandstone-practice-01:swapped-410",
       "sourceEpisodeId": "sandstone-practice-01",
       "tick": 410,
       "rationale": "Safe collector would move along a non-floodable route when applicable."
     },
     {
-      "id": "distill-sandstone-practice-01-415",
+      "id": "distill-sandstone-practice-01:swapped-415",
       "sourceEpisodeId": "sandstone-practice-01",
       "tick": 415,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-sandstone-practice-deep-01:student-390",
+      "sourceEpisodeId": "sandstone-practice-deep-01",
+      "tick": 390,
       "rationale": "Safe collector would move along a non-floodable route when applicable."
     }
   ],
@@ -1070,7 +1076,7 @@
         "banked": 5,
         "winner": "champion",
         "recoveries": 0,
-        "weatherDrains": 0
+        "weatherDrains": 1
       },
       "delta": 0
     },
