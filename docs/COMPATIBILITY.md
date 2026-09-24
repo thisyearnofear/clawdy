@@ -177,6 +177,35 @@ grounded courses prove it.
   contrast pairs (oracle-vs-base disagreement states are already mined in
   phase 2; executor stale-discount is the first half of the fix).
 
+### Held-out oscillation + timing budget (Sep 24)
+
+- **What:** timing-first syllabus pass (weather/patience/dry-move before safe
+  routing fills the global cap); challenge boards get larger junction/timing
+  mine budgets; executor redirects for bank-at-base, cargo anti-oscillation
+  (no corridor hop that increases home distance when homeward is legal and no
+  visible pickup remains), empty-bay class 4↔5 score arbitration; corridor
+  prospect discounts non-visible ghosts harder (visible 1.0 / stale 0.05).
+- **Why:** heldout-02 scored 0 via cargo=1 bouncing `cross-n`↔`ridge-n1` while
+  `ridge-r1-rc` (home) sat unused — class-5 logits outranked class-7.
+  Weather/patience labels lost a budget race to safe routing, so abstract
+  floods under-trained.
+- **Measured effect (gate pin `122f676a3d4f`, 169 examples):** grounded trained
+  `29→33` (practice 10/8, compete 9/6; safe 36); abstract dual-side trained
+  `20→36` (safe 44); heldout-02 normal `0→5`. Family still trails (43 vs 72).
+- **Safe-trajectory shadow (compete normal):** on the path that banks 12,
+  distilled legally disagrees only 5 times. One-step regret: skipping on-node
+  collect at t20 is −3 (entire open-loop gap on that spine); post-bank ridge
+  vs valley at t400 is 0 on the safe spine. Open-loop compete stays 9 because
+  trained leaves the safe spine — later low-energy ridge stalls scrap
+  `3+3+2+1`. Collect-first abstract labels flip t20 logits (class-2 ≫ class-6)
+  but regress compete swapped (−1) and do not raise open-loop compete; flood
+  barren→nearest executor patches raise compete toward 10 but drop practice
+  normal to 7. Not pinned.
+- **Next:** grounded-only disagreement mining that walks the *base* policy on
+  practice-split physics (not the safe spine), prioritizing post-bank flood
+  valley-vs-ridge contrasts that resemble compete t400 — no eval-split leak,
+  no hard redirect that fights practice.
+
 ## 6. Non-goals
 - No cross-version *execution*: a v1 checkpoint is never run under v2 rules "to see
   what happens". Cross-version comparison happens in the eval harness on matched
