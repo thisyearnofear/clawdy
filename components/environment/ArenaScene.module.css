@@ -106,6 +106,12 @@
 .secondaryButton { border: 1px solid var(--line); background: transparent; color: var(--ink); }
 a.secondaryButton { text-decoration: none; }
 .secondaryButton:hover:not(:disabled) { background: #e7ebdf; }
+.eventFeed { position: absolute; left: 20px; bottom: 64px; display: flex; flex-direction: column; gap: 6px; pointer-events: none; z-index: 3; }
+.eventFeed span { padding: 6px 10px; background: #1a352ee6; color: #eef4e6; border-radius: 3px; font: 10px var(--font-geist-mono), monospace; animation: feedIn 180ms ease; }
+.eventFeed span[data-tone='bank'] { background: #4d7a28ee; }
+.eventFeed span[data-tone='flood'] { background: #146988ee; }
+@keyframes feedIn { from { opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) { .eventFeed span { animation: none; } }
 .shell button:disabled { opacity: 0.45; cursor: not-allowed; }
 .shell button:focus-visible, .shell select:focus-visible, .shell input:focus-visible { outline: 2px solid #468b71; outline-offset: 3px; }
 .runMeta { display: flex; align-items: center; gap: 18px; color: var(--muted); font: 9px var(--font-geist-mono), monospace; }

@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { AlertTriangle, ArrowRight, BarChart3, CheckCircle2, Download, Eye, Layers, Pause, Play, Printer, RotateCcw, Sparkles, Trophy, Upload, XCircle } from 'lucide-react'
+import { AlertTriangle, ArrowRight, BarChart3, CheckCircle2, Clapperboard, Download, Eye, Layers, Pause, Play, Printer, RotateCcw, Sparkles, Trophy, Upload, XCircle } from 'lucide-react'
 import { ARENA_RULES, type ArenaAction, type ArenaAgentState, type ArenaObservation } from '../../services/arenaEpisode'
 import { loadArenaCourse, applyCourseMode, type ArenaCourse, type CoursePlayMode } from '../../services/arenaCourse'
 import { isEvaluationScenario, rejectEvaluationExamples } from '../../services/arenaScenarios'
@@ -12,6 +12,7 @@ import { collectorPolicy, type CollectorStrategy } from '../../services/arenaPol
 import { createTournament, runTournament, type ArenaTournament, type TournamentEntrant, type TournamentMatch } from '../../services/arenaTournament'
 import {
   type PolicyCheckpoint,
+  POLICY_SCHEMA_VERSION,
   SEASON_0_BASE_CHECKPOINT,
 } from '../../services/policyModel'
 import {
@@ -37,6 +38,16 @@ import { ErrorBoundary } from '../utils/ErrorBoundary'
 import styles from './ArenaScene.module.css'
 
 const WorldView = dynamic(() => import('./ArenaWorldView'), { ssr: false })
+/**
+ * v1 checkpoints remain metadata-readable (lineage, export) but must never
+ * reach the session runner — createLearnedPolicy refuses them with
+ * checkpoint-execution-mismatch. Storage is never rewritten; v1 entries stay
+ * in the list as view-only and the user re-trains their examples to upgrade.
+ */
+const isExecutableCheckpoint = (checkpoint: PolicyCheckpoint) =>
+  checkpoint.schemaVersion === POLICY_SCHEMA_VERSION
+const viewOnlyCheckpointMessage = (checkpoint: PolicyCheckpoint) =>
+  `"${checkpoint.name}" is a view-only v1 brain — re-train its examples to upgrade, then run the new checkpoint.`
 const POLICY_LABELS: Record<CollectorStrategy, string> = {
   learned: 'Trained champion',
   safe: 'Careful collector',
@@ -159,9 +170,21 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
   const [isTraining, setIsTraining] = useState(false)
   const [trainMessage, setTrainMessage] = useState<string | null>(null)
   const [trainResult, setTrainResult] = useState<{ baseline: EvaluationResult; trained: EvaluationResult } | null>(null)
+  const [feed, setFeed] = useState<{ id: number; text: string; tone: 'bank' | 'flood' | 'info' }[]>([])
+  const [clipUrl, setClipUrl] = useState<string | null>(null)
   const [hasHydrated, setHasHydrated] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const exampleCounter = useRef(0)
+  const feedId = useRef(0)
+  const lastFeedTick = useRef(-1)
+  const lastFeedPhase = useRef(view.phase)
+  const lastFeedBanked = useRef<Record<string, number>>({})
+  const lastFeedFlooded = useRef(false)
+  const lastFeedDrained = useRef(false)
+  const recorderRef = useRef<MediaRecorder | null>(null)
+  const recordStreamRef = useRef<MediaStream | null>(null)
+  const recordChunksRef = useRef<Blob[]>([])
+  const clipUrlRef = useRef<string | null>(null)
 
   const onReady = useCallback(() => setVisualReady(true), [])
   const onError = useCallback((error: Error) => session.fail(error.message), [session])
@@ -196,11 +219,23 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
     const storedCheckpoints = loadStoredCheckpoints()
     const storedExamples = loadStoredExamples()
     if (storedCheckpoints.length > 0) {
+      const executable = storedCheckpoints.filter(isExecutableCheckpoint)
+      const legacy = storedCheckpoints.filter(c => !isExecutableCheckpoint(c))
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setCheckpoints(storedCheckpoints)
-      setActiveCheckpoint(storedCheckpoints[0])
-      session.setCheckpoint(storedCheckpoints[0])
-      session.selectPolicy('champion', 'learned', storedCheckpoints[0])
+      setCheckpoints([...executable, ...legacy])
+      const first = executable[0] ?? SEASON_0_BASE_CHECKPOINT
+      setActiveCheckpoint(first)
+      try {
+        session.setCheckpoint(first)
+        session.selectPolicy('champion', 'learned', first)
+      } catch (err) {
+        setTrainMessage(`Stored brain refused: ${err instanceof Error ? err.message : 'incompatible checkpoint'}`)
+      }
+      if (legacy.length > 0) {
+        setTrainMessage(
+          `${legacy.length} stored brain${legacy.length === 1 ? ' is' : 's are'} view-only (v1 schema) — re-train ${legacy.length === 1 ? 'its' : 'their'} examples to upgrade.`,
+        )
+      }
     }
     if (storedExamples.length > 0) {
       setExamples(storedExamples)
@@ -218,11 +253,122 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
     saveStoredExamples(examples)
   }, [examples, hasHydrated])
 
+  const pushFeed = useCallback((items: { text: string; tone: 'bank' | 'flood' | 'info' }[]) => {
+    if (items.length === 0) return
+    const stamped = items.map(item => ({ ...item, id: ++feedId.current }))
+    const ids = new Set(stamped.map(event => event.id))
+    setFeed(prev => [...prev, ...stamped].slice(-3))
+    setTimeout(() => setFeed(prev => prev.filter(event => !ids.has(event.id))), 4500)
+  }, [])
+
+  // Live race feed: banks, flood flips, drains, and the full-time score.
+  // Throttled to one decision cadence (5 ticks) so snapshot pumps never churn renders.
+  useEffect(() => {
+    const tick = view.episode.tick
+    const phase = view.phase
+    if (tick - lastFeedTick.current < 5 && phase === lastFeedPhase.current) return
+    type FeedItem = { text: string; tone: 'bank' | 'flood' | 'info' }
+    let items: FeedItem[] = []
+    for (const agent of view.episode.agents) {
+      const before = lastFeedBanked.current[agent.id]
+      if (before !== undefined && agent.banked > before) {
+        items = [
+          ...items,
+          {
+            text: `${agent.id === 'champion' ? 'You bank' : 'Rival banks'} +${agent.banked - before}`,
+            tone: 'bank',
+          },
+        ]
+      }
+      lastFeedBanked.current[agent.id] = agent.banked
+    }
+    const floodedNow = view.episode.weather.flooded
+    if (floodedNow !== lastFeedFlooded.current) {
+      items = [...items, { text: floodedNow ? 'Flood on the valley' : 'Waters recede — valley open', tone: 'flood' }]
+      lastFeedFlooded.current = floodedNow
+    }
+    const drainedNow = !floodedNow && view.episode.weather.drainedUntilTick > tick
+    if (drainedNow && !lastFeedDrained.current) items = [...items, { text: 'Drain opened a path', tone: 'info' }]
+    lastFeedDrained.current = drainedNow
+    if (phase === 'finished' && lastFeedPhase.current !== 'finished') {
+      const you = view.episode.agents.find(agent => agent.id === 'champion')?.banked ?? 0
+      const foe = view.episode.agents.find(agent => agent.id === 'rival')?.banked ?? 0
+      items = [...items, { text: `Full time — You ${you} · Rival ${foe}`, tone: 'info' }]
+    }
+    lastFeedTick.current = tick
+    lastFeedPhase.current = phase
+    pushFeed(items)
+  }, [view, pushFeed])
+
+  // Souvenir clip: auto-record every non-lite run to WebM; offered for download at full time.
+  useEffect(() => {
+    const phase = view.phase
+    if (phase === 'running' && !recorderRef.current) {
+      try {
+        if (typeof window === 'undefined') return
+        if (window.matchMedia('(pointer: coarse)').matches) return // spare low-end GPUs the encode
+        if (typeof MediaRecorder === 'undefined') return
+        const canvas = document.querySelector('canvas') as HTMLCanvasElement | null
+        const stream = canvas?.captureStream?.(30)
+        if (!stream) return
+        const mimeType = ['video/webm;codecs=vp9', 'video/webm'].find(type => MediaRecorder.isTypeSupported(type))
+        const recorder = new MediaRecorder(stream, mimeType ? { mimeType, videoBitsPerSecond: 2_500_000 } : undefined)
+        recordChunksRef.current = []
+        recorder.ondataavailable = event => {
+          if (event.data.size > 0) recordChunksRef.current.push(event.data)
+        }
+        recorder.onstop = () => {
+          recorderRef.current = null
+          recordStreamRef.current?.getTracks().forEach(track => track.stop())
+          recordStreamRef.current = null
+          const blob = new Blob(recordChunksRef.current, { type: 'video/webm' })
+          recordChunksRef.current = []
+          if (blob.size === 0) return
+          if (clipUrlRef.current) URL.revokeObjectURL(clipUrlRef.current)
+          const url = URL.createObjectURL(blob)
+          clipUrlRef.current = url
+          setClipUrl(url)
+        }
+        recordStreamRef.current = stream
+        recorder.start(1000)
+        recorderRef.current = recorder
+      } catch {
+        // Recording is a souvenir — never break play.
+      }
+    }
+    if (phase !== 'running' && phase !== 'paused' && recorderRef.current) {
+      try {
+        if (recorderRef.current.state !== 'inactive') recorderRef.current.stop()
+      } catch {
+        // Best-effort stop only.
+      }
+    }
+    if (phase === 'ready' && clipUrlRef.current) {
+      URL.revokeObjectURL(clipUrlRef.current)
+      clipUrlRef.current = null
+      setClipUrl(null)
+    }
+  }, [view.phase])
+
+  useEffect(() => () => {
+    try {
+      if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
+    } catch {
+      // Best-effort teardown only.
+    }
+    recordStreamRef.current?.getTracks().forEach(track => track.stop())
+    if (clipUrlRef.current) URL.revokeObjectURL(clipUrlRef.current)
+  }, [])
+
   const entrantName = (id: string | null) => id === null ? 'bye' : (tournament?.entrants.find(entrant => entrant.id === id)?.name ?? id)
 
   /** Single-elimination bracket: your trained champion vs the house field, run headlessly on the live layout. */
   const runBracket = () => {
     if (tournamentRunning) return
+    if (!isExecutableCheckpoint(activeCheckpoint)) {
+      setTrainMessage(viewOnlyCheckpointMessage(activeCheckpoint))
+      return
+    }
     const entrants: TournamentEntrant[] = [
       { id: 'you', name: activeCheckpoint.name, policy: { strategy: 'learned', checkpoint: activeCheckpoint }, policyVersion: 'learned.you' },
       { id: 'house-careful', name: 'House · Careful', policy: 'safe', policyVersion: 'baseline.safe.v2' },
@@ -313,6 +459,10 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
           const filtered = prev.filter(c => c.id !== imported.id)
           return [imported, ...filtered]
         })
+        if (!isExecutableCheckpoint(imported)) {
+          setTrainMessage(`Imported ${imported.name} as view-only. ${viewOnlyCheckpointMessage(imported)}`)
+          return
+        }
         setActiveCheckpoint(imported)
         session.setCheckpoint(imported)
         session.selectPolicy('champion', 'learned', imported)
@@ -421,10 +571,17 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
 
   const handleSelectCheckpoint = (ckptId: string) => {
     const selected = checkpoints.find(c => c.id === ckptId)
-    if (selected) {
-      setActiveCheckpoint(selected)
+    if (!selected) return
+    if (!isExecutableCheckpoint(selected)) {
+      setTrainMessage(viewOnlyCheckpointMessage(selected))
+      return
+    }
+    setActiveCheckpoint(selected)
+    try {
       session.setCheckpoint(selected)
       session.selectPolicy('champion', 'learned', selected)
+    } catch (err) {
+      setTrainMessage(`Brain refused: ${err instanceof Error ? err.message : 'incompatible checkpoint'}`)
     }
   }
 
@@ -496,6 +653,11 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
             <span>{follow === 'overview' ? 'Drag to look around' : activeCourse.config.name}</span>
           </div>
           {!visualReady && view.phase !== 'error' && <div className={styles.worldNotice} role="status">Loading the world. Play unlocks when it settles.</div>}
+          {feed.length > 0 && (
+            <div className={styles.eventFeed} aria-live="polite">
+              {feed.map(event => <span key={event.id} data-tone={event.tone}>{event.text}</span>)}
+            </div>
+          )}
           {view.error && <div className={styles.worldNotice} role="alert"><strong>Run stopped</strong><p>{view.error}</p><button onClick={onRetry}>Retry world loading</button></div>}
           {visualReady && hintOpen && view.phase === 'ready' && (
             <div className={styles.playHint} role="status">
@@ -532,6 +694,15 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
                   >
                     <Printer size={16} /> Print your champion
                   </a>
+                  {clipUrl && (
+                    <a
+                      className={styles.secondaryButton}
+                      href={clipUrl}
+                      download={`clawdy-${activeCourse.scenario.id.replace(/[^a-z0-9-]/gi, '-')}-${view.episode.tick}.webm`}
+                    >
+                      <Clapperboard size={16} /> Save clip
+                    </a>
+                  )}
                 </div>
               )}
             </div>
@@ -711,7 +882,7 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
                 disabled={view.phase === 'running'}
                 onChange={e => handleSelectCheckpoint(e.target.value)}
               >
-                {checkpoints.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {checkpoints.map(c => <option key={c.id} value={c.id}>{isExecutableCheckpoint(c) ? c.name : `${c.name} (view-only)`}</option>)}
               </select>
             </label>
             <div className={styles.checkpointActions}>

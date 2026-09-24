@@ -152,7 +152,6 @@ export function BankBursts({
           }
         },
       })
-      // eslint-disable-next-line no-await-in-loop
       await mesh.initialized
       if (cancelled) {
         mesh.dispose()
@@ -183,7 +182,6 @@ export function BankBursts({
         for (const [entrantIndex, entrant] of entrantsRef.current.entries()) {
           const slots: BurstSlot[] = []
           for (let copy = 0; copy < BANK_POOL; copy++) {
-            // eslint-disable-next-line no-await-in-loop
             const node = await buildPuff(Spark, 0x9e37 + entrantIndex * 101 + copy * 17, entrant.color, BANK_SPLATS, 1)
             if (cancelled || !node) return
             slots.push({ node, active: false, born: 0, life: BANK_LIFE, rise: 0.55 })
@@ -192,7 +190,6 @@ export function BankBursts({
         }
         const collectColor = new THREE.Color('#ffe9b0')
         for (let copy = 0; copy < COLLECT_POOL; copy++) {
-          // eslint-disable-next-line no-await-in-loop
           const node = await buildPuff(Spark, 0x51f7 + copy * 31, collectColor, COLLECT_SPLATS, 0.62)
           if (cancelled || !node) return
           collectPoolRef.current.push({ node, active: false, born: 0, life: COLLECT_LIFE, rise: 0.35 })
@@ -248,6 +245,11 @@ export function BankBursts({
     )
   }
 
+  function hide(slot: BurstSlot) {
+    slot.active = false
+    slot.node.visible = false
+  }
+
   useFrame((_, delta) => {
     if (lite || !readyRef.current) return
     timeRef.current += delta
@@ -264,15 +266,9 @@ export function BankBursts({
       for (const resource of view.episode.resources) collected[resource.id] = resource.collectedBy
       seenCollectedRef.current = collected
       for (const slots of Object.values(bankPoolsRef.current)) {
-        for (const slot of slots) {
-          slot.active = false
-          slot.node.visible = false
-        }
+        for (const slot of slots) hide(slot)
       }
-      for (const slot of collectPoolRef.current) {
-        slot.active = false
-        slot.node.visible = false
-      }
+      for (const slot of collectPoolRef.current) hide(slot)
     } else {
       const banks = detectBankDeltas(
         seenBankedRef.current,
