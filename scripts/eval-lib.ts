@@ -249,7 +249,7 @@ export function buildSyllabusExamples(groundedBoards: GroundedSyllabusBoard[] = 
     snapshot: Parameters<typeof rolloutOutcomeDelta>[1],
     label: { action: ArenaAction; teacher: 'safe' | 'weather' | 'patience'; reason: string },
     candidates: ArenaAction[],
-    opts: { bypassTeacherCaps?: boolean; keySuffix?: string } = {},
+    opts: { bypassTeacherCaps?: boolean; keySuffix?: string; respectRolloutVeto?: boolean } = {},
   ): boolean => {
     const key = `${practice.id}${opts.keySuffix ?? ''}:${tick}`
     // Grounded phase uses a dedicated local allowance so abstract
@@ -297,15 +297,19 @@ export function buildSyllabusExamples(groundedBoards: GroundedSyllabusBoard[] = 
     // snapshots mis-price travel-time geometry (the whole reason grounded
     // labels exist). Never veto teacher-path grounded emits; floor the
     // recorded delta so sample weights stay honest.
+    //
+    // Student-path mines (two-pass interim walk) DO respect the veto —
+    // floored false-positive labels at champion-base post-bank flood
+    // regressed practice 10→7 when forced in.
     let weightDelta = outcomeDelta
     if (outcomeDelta < -0.25) {
-      if (!opts.bypassTeacherCaps) return false
+      if (!opts.bypassTeacherCaps || opts.respectRolloutVeto) return false
       weightDelta = 0.5
     }
     seenTicks.add(key)
     teacherTotals[label.teacher]++
     examples.push({
-      id: `distill-${practice.id}-${tick}`,
+      id: `distill-${practice.id}${opts.keySuffix ?? ''}-${tick}`,
       sourceEpisodeId: practice.id,
       tick,
       observation: champObs,
@@ -628,6 +632,16 @@ export function buildSyllabusExamples(groundedBoards: GroundedSyllabusBoard[] = 
       }
     }
   }
+
+  // 3c — two-pass student mine (post-bank flood pad junctions) is intentionally
+  // not enabled in the default syllabus build. Diagnosis (Sep 24): walking an
+  // interim distilled checkpoint on practice DOES surface the compete t400
+  // contrast (valley-cb-n1 vs base-cb-rn at champion-base, flooded, empty bay),
+  // but route-only rolloutOutcomeDelta is < −0.25 on that state — forcing the
+  // label via bypassTeacherCaps floored the delta to 0.5 and regressed practice
+  // normal 10→7. Student mines must use respectRolloutVeto: true; until a
+  // physics-aware consequence check exists, zero labels pass. See
+  // docs/COMPATIBILITY.md (Sep 24 shadow + student-mine note).
 
   rejectEvaluationExamples(examples)
   return examples

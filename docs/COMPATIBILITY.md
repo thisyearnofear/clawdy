@@ -206,6 +206,23 @@ grounded courses prove it.
   valley-vs-ridge contrasts that resemble compete t400 — no eval-split leak,
   no hard redirect that fights practice.
 
+### Two-pass student mine attempt (Sep 24, same day)
+
+- **What tried:** after phases 1–3b, train an interim checkpoint and walk it on
+  `sandstone-practice-01` (student trajectory). Emit oracle corrections at
+  empty-bay flooded pad junctions (`respectRolloutVeto` on `tryEmit`).
+- **Finding:** the frozen base checkpoint banks 0 on practice, so it never
+  reaches post-bank states. The interim student DOES reach them and surfaces
+  the exact compete t400 contrast (`valley-cb-n1` preferred vs `base-cb-rn`
+  original at champion-base). Route-only `rolloutOutcomeDelta` is &lt; −0.25 on
+  that state — bypassing the veto (flooring delta to 0.5) regresses practice
+  normal 10→7. With the veto respected, zero student labels survive.
+- **Code:** `tryEmit(..., { respectRolloutVeto: true })` kept for future
+  physics-aware consequence checks; default syllabus build does not run the
+  interim walk (would double distill cost for zero emits).
+- **Next:** physics-aware (or longer) consequence check for grounded student
+  mines, or human-approved pad-flood contrasts — not another executor redirect.
+
 ## 6. Non-goals
 - No cross-version *execution*: a v1 checkpoint is never run under v2 rules "to see
   what happens". Cross-version comparison happens in the eval harness on matched
