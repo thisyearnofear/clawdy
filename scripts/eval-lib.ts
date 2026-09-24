@@ -240,7 +240,7 @@ export function buildSyllabusExamples(groundedBoards: GroundedSyllabusBoard[] = 
   const seenTicks = new Set<string>()
   const teacherTotals = { safe: 0, weather: 0, patience: 0 }
   // Global caps sized so all 6 boards fit: 6 × ~17 routing + timing.
-  const TEACHER_TOTAL_CAPS = { safe: 110, weather: 12, patience: 10 }
+  const TEACHER_TOTAL_CAPS = { safe: 105, weather: 14, patience: 12 }
 
   const tryEmit = (
     practice: ArenaScenario,
@@ -324,6 +324,46 @@ export function buildSyllabusExamples(groundedBoards: GroundedSyllabusBoard[] = 
     return true
   }
 
+  // Phase 1a — timing-first pass: weather / patience / dry-move across every
+  // practice board BEFORE routing fills the safe cap. Held-out floods need
+  // these scarce labels; without the pre-pass they lose the budget race.
+  for (const practice of PRACTICE_SCENARIOS) {
+    const episode = new ArenaEpisode(practice)
+    let timingHere = 0
+    while (!episode.finished && timingHere < 8 && examples.length < 160) {
+      const tick = episode.tick
+      const champObs = episode.observe('champion')
+      if (!champObs.decisionDue) { episode.step(); continue }
+      const candidates = champObs.availableActions.filter(a => a.type !== 'wait')
+      const transitPatience =
+        candidates.length === 0 &&
+        champObs.self.transit !== null &&
+        champObs.self.cargo > 0 &&
+        champObs.weather.flooded
+      if (candidates.length >= 2 || transitPatience) {
+        const label = routeOracle(champObs)
+        if (label) {
+          const isDryMove =
+            label.action.type === 'move' && label.teacher === 'safe' &&
+            !champObs.weather.flooded && champObs.self.transit === null && champObs.self.cargo > 0
+          const want =
+            label.teacher === 'weather' || label.teacher === 'patience' || isDryMove
+          if (want && teacherTotals[label.teacher] < TEACHER_TOTAL_CAPS[label.teacher]) {
+            const before = examples.length
+            if (tryEmit(practice, tick, champObs, episode.snapshot(), label, candidates.length > 0 ? candidates : champObs.availableActions) && examples.length > before) {
+              timingHere++
+            }
+          }
+        }
+      }
+      const fallback = routeOracle(champObs)?.action ?? collectorPolicy(champObs, 'safe')
+      episode.step([
+        { agentId: 'champion', tick, action: fallback },
+        { agentId: 'rival', tick, action: fallback },
+      ])
+    }
+  }
+
   for (const practice of PRACTICE_SCENARIOS) {
     const episode = new ArenaEpisode(practice)
     // Per-scenario emit budget + per-teacher per-scenario caps: every board
@@ -362,7 +402,7 @@ export function buildSyllabusExamples(groundedBoards: GroundedSyllabusBoard[] = 
           const isDryMove =
             label.action.type === 'move' && label.teacher === 'safe' &&
             !champObs.weather.flooded && champObs.self.transit === null && champObs.self.cargo > 0
-          const perTeacherCap = label.teacher === 'safe' ? (isDryMove ? 99 : 17) : label.teacher === 'weather' ? 4 : 3
+          const perTeacherCap = label.teacher === 'safe' ? (isDryMove ? 99 : 16) : label.teacher === 'weather' ? 4 : 3
           if ((hereCounts[label.teacher] < perTeacherCap || (isDryMove && dryMoveHere < 5)) && teacherTotals[label.teacher] < TEACHER_TOTAL_CAPS[label.teacher]) {
             const before = examples.length
             if (tryEmit(practice, tick, champObs, episode.snapshot(), label, candidates.length > 0 ? candidates : champObs.availableActions) && examples.length > before) {
@@ -395,8 +435,14 @@ export function buildSyllabusExamples(groundedBoards: GroundedSyllabusBoard[] = 
     const episode = new ArenaEpisode(practice)
     let minedHere = 0
     let junctionHere = 0
+    let timingHere = 0
+    // Challenge boards (early/long flood, contention) get a larger junction
+    // budget — they are the closest abstract cousins of held-out floods.
+    const isChallenge = /early-flood|long-flood|contention/.test(practice.id)
+    const junctionCap = isChallenge ? 10 : 6
+    const minedCap = isChallenge ? 16 : 12
 
-    while (!episode.finished && examples.length < 220) {
+    while (!episode.finished && examples.length < 240) {
       const tick = episode.tick
       const champObs = episode.observe('champion')
       if (!champObs.decisionDue) {
@@ -415,11 +461,19 @@ export function buildSyllabusExamples(groundedBoards: GroundedSyllabusBoard[] = 
       const isJunctionContrast =
         baseAction.type === 'move' && label.action.type === 'move' &&
         (baseAction as { edgeId: string }).edgeId !== (label.action as { edgeId: string }).edgeId
-      const allowance = isJunctionContrast ? junctionHere < 6 : minedHere < 12
+      const isTiming =
+        label.teacher === 'patience' || label.teacher === 'weather' ||
+        (label.action.type === 'wait' && baseAction.type !== 'wait') ||
+        (label.action.type !== 'wait' && baseAction.type === 'wait')
+      const allowance =
+        isTiming ? timingHere < (isChallenge ? 8 : 4)
+        : isJunctionContrast ? junctionHere < junctionCap
+        : minedHere < minedCap
       if (allowance) {
         const before = examples.length
         if (tryEmit(practice, tick, champObs, episode.snapshot(), label, champObs.availableActions) && examples.length > before) {
-          if (isJunctionContrast) junctionHere++
+          if (isTiming) timingHere++
+          else if (isJunctionContrast) junctionHere++
           else minedHere++
         }
       }

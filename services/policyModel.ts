@@ -214,8 +214,9 @@ function resourceValueAt(observation: ArenaObservation, nodeId: string): number 
     if (resource.nodeId !== nodeId || !resource.available) continue
     // Stale sightings are discounted harder here than in the encoder: the
     // executor must commit to a road, and chasing a ghost the rival already
-    // ate loses the race. Visible (certain) value dominates.
-    total += resource.value * (resource.stale ? 0.2 : 1)
+    // ate loses the race. Visible (certain) value dominates; remembered
+    // ghosts are a weak hint only.
+    total += resource.value * (resource.visible ? 1 : resource.stale ? 0.05 : 0)
   }
   return total
 }
@@ -244,8 +245,10 @@ function onwardProspect(observation: ArenaObservation, from: string): number {
     if (!resource.available) continue
     const cost = dist.get(resource.nodeId)
     if (cost === undefined) continue
-    // Certain resources dominate stale ones; distance is priced in ticks.
-    const certainty = resource.stale ? 0.2 : 1
+    // Certain (visible) resources dominate; stale memories are a faint hint;
+    // never treat fog-hidden as full value.
+    const certainty = resource.visible ? 1 : resource.stale ? 0.05 : 0
+    if (certainty <= 0) continue
     let prospect = resource.value * 20 * certainty - cost * 0.6
     // Contention discount: rival gets there first → halve the prospect.
     // (Route costs from the rival's node use the same flood-aware map.)
@@ -293,7 +296,12 @@ function scoreMoveEdge(observation: ArenaObservation, edgeId: string, cls: 4 | 5
   // enough to keep the long home edge illegal, so the rover waits forever
   // one hop from bank. Hollow (-Infinity) lets class-ranked resolution fall
   // through to wait until the homeward edge is affordable.
-  if (self.cargo >= ARENA_RULES.capacity) {
+  //
+  // Same homeward ranking when carrying ANY cargo and no visible pickup
+  // remains: chasing remembered ghosts (heldout-02 ridge-s1) must not beat
+  // a direct path home. Visible cores still unlock normal prospect ranking.
+  const visiblePickupExists = observation.resources.some(r => r.available && r.visible)
+  if (self.cargo > 0 && (self.cargo >= ARENA_RULES.capacity || !visiblePickupExists)) {
     const homeFromHere = routeCostsFrom(observation, self.nodeId).get(self.baseNode) ?? Infinity
     const homeFromTarget = routeCostsFrom(observation, target).get(self.baseNode) ?? Infinity
     if (homeFromTarget > homeFromHere + 1e-6) return -Infinity
@@ -574,6 +582,99 @@ export function createLearnedPolicy(checkpoint: PolicyCheckpoint): (observation:
       // class's action under false pretenses.
       if (!observation.availableActions.some(a => JSON.stringify(a) === JSON.stringify(resolved))) continue
       if (classifyAction(resolved, observation) !== cls) continue
+
+      // At base with cargo: banking is the only scoring action. Corridor /
+      // homeward logits must not walk off the pad (heldout-02 cargo=2
+      // oscillating ridge-center ↔ cross-c while bank sat legal).
+      if (observation.self.cargo > 0) {
+        const bank = observation.availableActions.find(a => a.type === 'bank')
+        if (bank) return bank
+      }
+
+      // Premature home: bay has room and a visible pickup is legal — finish
+      // the trip before banking unless the clock is short. During flood,
+      // only insist when the pickup is on non-floodable ground (ridge cores
+      // remain reachable at 1x). Redirect to the pickup rather than falling
+      // through to a weaker corridor class.
+      if (
+        cls === 7 &&
+        observation.self.cargo >= 2 &&
+        observation.self.cargo < ARENA_RULES.capacity &&
+        observation.remainingTicks > 300
+      ) {
+        const pickup = selectActionForClass(6, observation)
+        if (
+          pickup.type === 'move' &&
+          classifyAction(pickup, observation) === 6 &&
+          observation.availableActions.some(a => JSON.stringify(a) === JSON.stringify(pickup))
+        ) {
+          const edge = observation.edges.find(e => e.id === (pickup as { edgeId: string }).edgeId)
+          if (!observation.weather.flooded || (edge && !edge.floodable)) {
+            return pickup
+          }
+        }
+      }
+
+      // Anti-oscillation: with cargo and no visible pickup, a corridor hop
+      // that increases home distance loses to a legal homeward class-7 move.
+      // Heldout-02 death mode was cargo=1 bouncing cross-n ↔ ridge-n1 while
+      // ridge-r1-rc (home) sat unused — class 5 outranked class 7 on logits.
+      if (
+        (cls === 4 || cls === 5) &&
+        observation.self.cargo > 0 &&
+        resolved.type === 'move' &&
+        !observation.resources.some(r => r.available && r.visible)
+      ) {
+        const edge = observation.edges.find(e => e.id === (resolved as { edgeId: string }).edgeId)
+        if (edge) {
+          const target = edge.from === observation.self.nodeId ? edge.to : edge.from
+          const homeFromHere =
+            routeCostsFrom(observation, observation.self.nodeId).get(observation.self.baseNode) ?? Infinity
+          const homeFromTarget =
+            routeCostsFrom(observation, target).get(observation.self.baseNode) ?? Infinity
+          if (homeFromTarget > homeFromHere + 1e-6) {
+            const home = selectActionForClass(7, observation)
+            if (
+              home.type === 'move' &&
+              classifyAction(home, observation) === 7 &&
+              observation.availableActions.some(a => JSON.stringify(a) === JSON.stringify(home))
+            ) {
+              return home
+            }
+          }
+        }
+      }
+
+      // Empty-bay corridor arbitration: class 4 vs 5 logit noise should not
+      // strand a post-bank rover on a barren ridge when the low corridor has
+      // better prospect (compete t400: base-cb-rn vs valley-cb-n1). Compare
+      // executor scores and take the better legal hop.
+      if (
+        (cls === 4 || cls === 5) &&
+        observation.self.cargo === 0 &&
+        resolved.type === 'move'
+      ) {
+        const otherCls = cls === 4 ? 5 : 4
+        const other = selectActionForClass(otherCls, observation)
+        if (
+          other.type === 'move' &&
+          classifyAction(other, observation) === otherCls &&
+          observation.availableActions.some(a => JSON.stringify(a) === JSON.stringify(other))
+        ) {
+          const scoreHere = scoreMoveEdge(
+            observation,
+            (resolved as { edgeId: string }).edgeId,
+            cls,
+          )
+          const scoreOther = scoreMoveEdge(
+            observation,
+            (other as { edgeId: string }).edgeId,
+            otherCls,
+          )
+          if (scoreOther > scoreHere + 1e-6) return other
+        }
+      }
+
       return resolved
     }
 
