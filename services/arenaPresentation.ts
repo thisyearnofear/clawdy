@@ -47,3 +47,67 @@ export function createRouteRibbonGeometry(
   geometry.setIndex(new THREE.BufferAttribute(indices, 1))
   return geometry
 }
+
+export interface BankDeltaEvent {
+  id: string
+  delta: number
+}
+
+export interface BankDeltaScan {
+  events: BankDeltaEvent[]
+  seen: Record<string, number>
+}
+
+/**
+ * Pure bank-event detector for presentation effects (e.g. the bank burst).
+ * Compares the current per-agent banked totals against the previously seen
+ * map. Agents absent from `previous` are baselined silently — first sight is
+ * never an event. Only positive deltas are reported; callers own scrub/reset
+ * handling (tick regression) by discarding `seen` and re-baselining.
+ */
+export function detectBankDeltas(
+  previous: Readonly<Record<string, number>>,
+  agents: readonly { id: string; banked: number }[],
+): BankDeltaScan {
+  const events: BankDeltaEvent[] = []
+  const seen: Record<string, number> = {}
+  for (const agent of agents) {
+    const before = previous[agent.id] ?? agent.banked
+    seen[agent.id] = agent.banked
+    const delta = agent.banked - before
+    if (delta > 0) events.push({ id: agent.id, delta })
+  }
+  return { events, seen }
+}
+
+export interface CollectEvent {
+  id: string
+  by: string
+}
+
+export interface CollectScan {
+  events: CollectEvent[]
+  seen: Record<string, string | null>
+}
+
+/**
+ * Pure collect-event detector for presentation effects. Reports resources
+ * whose `collectedBy` transitioned from uncollected to an agent id.
+ * Resources absent from `previous` are baselined silently — first sight is
+ * never an event. Callers own scrub/reset handling by discarding `seen`.
+ */
+export function detectCollectEvents(
+  previous: Readonly<Record<string, string | null>>,
+  resources: readonly { id: string; collectedBy: string | null }[],
+): CollectScan {
+  const events: CollectEvent[] = []
+  const seen: Record<string, string | null> = {}
+  for (const resource of resources) {
+    const before = resource.id in previous ? previous[resource.id] : resource.collectedBy
+    seen[resource.id] = resource.collectedBy
+    if (before === null && resource.collectedBy !== null) {
+      events.push({ id: resource.id, by: resource.collectedBy })
+    }
+  }
+  return { events, seen }
+}

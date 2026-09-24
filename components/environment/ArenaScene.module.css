@@ -104,6 +104,7 @@
 .primaryButton { border: 1px solid #233531; background: #233531; color: #e7f6d7; }
 .primaryButton:hover:not(:disabled) { background: #3b5547; }
 .secondaryButton { border: 1px solid var(--line); background: transparent; color: var(--ink); }
+a.secondaryButton { text-decoration: none; }
 .secondaryButton:hover:not(:disabled) { background: #e7ebdf; }
 .shell button:disabled { opacity: 0.45; cursor: not-allowed; }
 .shell button:focus-visible, .shell select:focus-visible, .shell input:focus-visible { outline: 2px solid #468b71; outline-offset: 3px; }

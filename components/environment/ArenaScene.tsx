@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { AlertTriangle, ArrowRight, BarChart3, CheckCircle2, Download, Eye, Layers, Pause, Play, RotateCcw, Sparkles, Trophy, Upload, XCircle } from 'lucide-react'
+import { AlertTriangle, ArrowRight, BarChart3, CheckCircle2, Download, Eye, Layers, Pause, Play, Printer, RotateCcw, Sparkles, Trophy, Upload, XCircle } from 'lucide-react'
 import { ARENA_RULES, type ArenaAction, type ArenaAgentState, type ArenaObservation } from '../../services/arenaEpisode'
 import { loadArenaCourse, applyCourseMode, type ArenaCourse, type CoursePlayMode } from '../../services/arenaCourse'
 import { isEvaluationScenario, rejectEvaluationExamples } from '../../services/arenaScenarios'
@@ -524,6 +524,14 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
                   >
                     <Download size={16} /> Share your world
                   </button>
+                  <a
+                    className={styles.secondaryButton}
+                    href="/prints/champion-rover.stl"
+                    download="clawdy-champion-rover.stl"
+                    onClick={() => setTrainMessage('Saved print kit: clawdy-champion-rover.stl — profile in docs/PRINT_KIT.md')}
+                  >
+                    <Printer size={16} /> Print your champion
+                  </a>
                 </div>
               )}
             </div>

@@ -11,6 +11,7 @@ import { disposeArenaTerrain, loadArenaTerrain } from '../../services/arenaTerra
 import { createRouteRibbonGeometry } from '../../services/arenaPresentation'
 import { planCinematicShots, shotAt, type CinematicShot } from '../../services/arenaCinematic'
 import { MintModel } from './MintModel'
+import { BankBursts } from './BankBursts'
 import FrameLimiter from '../utils/FrameLimiter'
 import { getMintAsset, getMintModelArtifact, getMintModelTransform, getMintModelUrl } from '../../services/mintAssets'
 
@@ -631,6 +632,7 @@ function World({ course, session, follow, cinematic = false, coachSuggestion, on
 
       <CourseLandmarks course={course} />
       <CoachTrailLayer course={course} coachSuggestion={coachSuggestion} />
+      <BankBursts session={session} course={course} lite={lite} />
 
       {course.scenario.entrants.map(entrant => {
         const position = course.scenario.nodes.find(node => node.id === entrant.baseNode)!.position

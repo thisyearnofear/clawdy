@@ -12,6 +12,7 @@
     "starter:train": "tsx starter/train.ts",
     "marble:generate": "node scripts/marble-generate-world.mjs",
     "marble:rebuild": "node scripts/marble-rebuild-immersive.mjs",
+    "print:stl": "python3 scripts/export-print-stl.py public/assets/mint/champion-rover.glb public/prints/champion-rover.stl",
     "eval:holdout": "tsx scripts/eval-holdout.ts",
     "eval:gate": "tsx scripts/eval-gate.ts",
     "terrain:build": "blender --background --factory-startup --python scripts/build-arena-terrain.py",
