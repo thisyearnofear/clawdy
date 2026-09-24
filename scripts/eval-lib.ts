@@ -10,7 +10,7 @@
  */
 import { SEASON_0_BASE_CHECKPOINT, createLearnedPolicy, type PolicyCheckpoint } from '../services/policyModel'
 import { PRACTICE_SCENARIOS, rejectEvaluationExamples } from '../services/arenaScenarios'
-import { ArenaEpisode, rolloutOutcomeDelta, type ArenaAction, type ArenaObservation, type ArenaScenario } from '../services/arenaEpisode'
+import { ARENA_RULES, ArenaEpisode, rolloutOutcomeDelta, type ArenaAction, type ArenaObservation, type ArenaScenario } from '../services/arenaEpisode'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { createHash } from 'node:crypto'
@@ -201,7 +201,31 @@ export const DISTILL_TRAINING_CONFIG = Object.freeze({
  * Without these the net never learns timing — every label is an action, so
  * the fallback head always prefers *something* over sitting out the water.
  */
-export function buildSyntheticExamples(): ArenaTrainingExample[] {
+export interface GroundedSyllabusBoard {
+  scenario: ArenaScenario
+  /** Pinned collider for isolated-physics walks (shared, never mutated). */
+  collider: { vertices: Float32Array; indices: Uint32Array }
+}
+
+/** Practice-split grounded board ids legal as training ground. */
+const GROUNDED_PRACTICE_IDS = new Set(['sandstone-practice-01'])
+
+/**
+ * Build the oracle-routed consequence dataset across a syllabus.
+ *
+ * Integrity split:
+ * - Abstract boards (PRACTICE_SCENARIOS, route-only ArenaEpisode): the base
+ *   syllabus. Always included.
+ * - Grounded boards (opt-in via `groundedBoards`): the PHYSICAL course
+ *   (sandstone-practice-01, practice split) walked through ArenaRunner with
+ *   isolated physics over the pinned collider. These teach the travel-time
+ *   geometry (68-tick ridge vs 41-tick shortcut) no abstract board contains.
+ *   Grounded boards are practice-split only — compete/family (evaluation)
+ *   scenarios throw here, same as rejectEvaluationExamples.
+ *
+ * Deterministic: same code + same collider → same datasetHash.
+ */
+export function buildSyllabusExamples(groundedBoards: GroundedSyllabusBoard[] = []): ArenaTrainingExample[] {
   const examples: ArenaTrainingExample[] = []
   // Base learner for consequence rollouts AND disagreement mining: the frozen
   // v2 base checkpoint's policy (what the student would do before coaching).
@@ -215,27 +239,44 @@ export function buildSyntheticExamples(): ArenaTrainingExample[] {
   // contributes labels; global caps let the first scenario eat the budget.
   const seenTicks = new Set<string>()
   const teacherTotals = { safe: 0, weather: 0, patience: 0 }
-  const TEACHER_TOTAL_CAPS = { safe: 85, weather: 12, patience: 10 }
+  // Global caps sized so all 6 boards fit: 6 × ~17 routing + timing.
+  const TEACHER_TOTAL_CAPS = { safe: 110, weather: 12, patience: 10 }
 
   const tryEmit = (
-    practice: (typeof PRACTICE_SCENARIOS)[number],
+    practice: ArenaScenario,
     tick: number,
     champObs: ArenaObservation,
     snapshot: Parameters<typeof rolloutOutcomeDelta>[1],
     label: { action: ArenaAction; teacher: 'safe' | 'weather' | 'patience'; reason: string },
     candidates: ArenaAction[],
+    opts: { bypassTeacherCaps?: boolean } = {},
   ): boolean => {
     const key = `${practice.id}:${tick}`
-    if (seenTicks.has(key) || teacherTotals[label.teacher] >= TEACHER_TOTAL_CAPS[label.teacher]) return false
+    // Grounded phase uses a dedicated local allowance (≤12) so abstract
+    // syllabus caps can fill without starving the physical-course openings.
+    if (seenTicks.has(key)) return false
+    if (!opts.bypassTeacherCaps && teacherTotals[label.teacher] >= TEACHER_TOTAL_CAPS[label.teacher]) return false
     // Contrast original: the base learner's pick when it disagrees (that IS
-    // the mistake); else any non-oracle candidate. In-transit patience
-    // labels (only wait legal) record drain as the losing alternative so the
-    // fallback head learns wait-over-drain timing.
+    // the mistake); else prefer a SAME-TYPE alternative (move-vs-move
+    // junction) before any non-oracle candidate. Two engineered contrasts
+    // still force drain as the loser for wait / weather-restraint labels.
+    // Without same-type preference, a post-bank move contrasts against drain
+    // (first in the candidate list) and the flooded-base rollout vetoes the
+    // second-trip opening we most need to teach.
     const learnerPick = basePolicy(champObs)
+    const drainAvailable = champObs.availableActions.some(a => a.type === 'drain')
+    const sameTypeContrast = candidates.find(
+      candidate =>
+        candidate.type === label.action.type &&
+        JSON.stringify(candidate) !== JSON.stringify(label.action),
+    )
     const recorded =
       JSON.stringify(learnerPick) !== JSON.stringify(label.action) ? learnerPick
       : label.action.type === 'wait' ? { type: 'drain' } as ArenaAction
-      : (candidates.find(candidate => JSON.stringify(candidate) !== JSON.stringify(label.action)) ?? candidates[0])
+      : label.teacher === 'weather' && drainAvailable ? { type: 'drain' } as ArenaAction
+      : (sameTypeContrast
+        ?? candidates.find(candidate => JSON.stringify(candidate) !== JSON.stringify(label.action))
+        ?? candidates[0])
     const outcomeDelta = rolloutOutcomeDelta(
       practice,
       snapshot,
@@ -249,7 +290,16 @@ export function buildSyntheticExamples(): ArenaTrainingExample[] {
     // there and the outcome overrides. Tolerance: fractional deltas below
     // 0.25 are rollout noise (cargo/collect weighting), not contradiction;
     // only strictly negative, meaningful deltas veto.
-    if (outcomeDelta < -0.25) return false
+    //
+    // Grounded exception: route-only rollouts restored from physics
+    // snapshots mis-price travel-time geometry (the whole reason grounded
+    // labels exist). Never veto teacher-path grounded emits; floor the
+    // recorded delta so sample weights stay honest.
+    let weightDelta = outcomeDelta
+    if (outcomeDelta < -0.25) {
+      if (!opts.bypassTeacherCaps) return false
+      weightDelta = 0.5
+    }
     seenTicks.add(key)
     teacherTotals[label.teacher]++
     examples.push({
@@ -261,12 +311,13 @@ export function buildSyntheticExamples(): ArenaTrainingExample[] {
       preferredAction: label.action,
       rationale:
         label.teacher === 'safe' ? `Safe collector would ${label.action.type}${label.action.type === 'move' ? ' along a non-floodable route when applicable' : ''}.`
-        : label.teacher === 'weather' ? 'Weather oracle would drain while swimming flood water (measured).'
+        : label.teacher === 'weather' && label.action.type === 'drain' ? 'Weather oracle would drain while swimming flood water (measured).'
+        : label.teacher === 'weather' ? 'Weather oracle restrains drain at the station; routing/collecting beats 2 energy + 50 ticks (measured).'
         : 'Patience oracle would wait out the flood with cargo aboard (measured).',
       approved: true,
       source: 'approved',
-      provenance: { kind: 'oracle-consequence', teacher: label.teacher, reason: label.reason, outcomeDelta },
-      outcomeDelta,
+      provenance: { kind: 'oracle-consequence', teacher: label.teacher, reason: label.reason, outcomeDelta: weightDelta },
+      outcomeDelta: weightDelta,
     })
     return true
   }
@@ -274,9 +325,12 @@ export function buildSyntheticExamples(): ArenaTrainingExample[] {
   for (const practice of PRACTICE_SCENARIOS) {
     const episode = new ArenaEpisode(practice)
     // Per-scenario emit budget + per-teacher per-scenario caps: every board
-    // teaches, no board dominates.
+    // teaches, no board dominates. DRY-MOVE priority: dry-station-with-cargo
+    // move labels are the anti-wait lesson (patience must not generalize to
+    // dry boards) — dedicated allowance so they survive the safe cap.
     let emittedHere = 0
     const hereCounts = { safe: 0, weather: 0, patience: 0 }
+    let dryMoveHere = 0
 
     while (!episode.finished && examples.length < 150) {
       const tick = episode.tick
@@ -295,17 +349,24 @@ export function buildSyntheticExamples(): ArenaTrainingExample[] {
         champObs.self.transit !== null &&
         champObs.self.cargo > 0 &&
         champObs.weather.flooded
-      if ((candidates.length >= 2 || transitPatience) && emittedHere < 25) {
+      if ((candidates.length >= 2 || transitPatience) && emittedHere < 28) {
         const label = routeOracle(champObs)
         if (label) {
           // Timing labels are rare by design: patience over-generalizes
           // (wait ↔ cargo) if it exceeds ~15% of the set. Routing dominates.
-          const perTeacherCap = label.teacher === 'safe' ? 17 : label.teacher === 'weather' ? 4 : 3
-          if (hereCounts[label.teacher] < perTeacherCap) {
+          // Dry-move (dry station + cargo + move) bypasses the safe cap via
+          // its own allowance: the head must see move-with-cargo-on-dry
+          // as often as wait-with-cargo-on-flood.
+          const isDryMove =
+            label.action.type === 'move' && label.teacher === 'safe' &&
+            !champObs.weather.flooded && champObs.self.transit === null && champObs.self.cargo > 0
+          const perTeacherCap = label.teacher === 'safe' ? (isDryMove ? 99 : 17) : label.teacher === 'weather' ? 4 : 3
+          if ((hereCounts[label.teacher] < perTeacherCap || (isDryMove && dryMoveHere < 5)) && teacherTotals[label.teacher] < TEACHER_TOTAL_CAPS[label.teacher]) {
             const before = examples.length
             if (tryEmit(practice, tick, champObs, episode.snapshot(), label, candidates.length > 0 ? candidates : champObs.availableActions) && examples.length > before) {
               emittedHere++
               hereCounts[label.teacher]++
+              if (isDryMove) dryMoveHere++
             }
           }
         }
@@ -324,12 +385,16 @@ export function buildSyntheticExamples(): ArenaTrainingExample[] {
   // base disagrees. This is where weather labels come from: the base wanders
   // into flood water in transit, and the oracle demonstrates drain. Also
   // surfaces junction mistakes (wrong ridge) the oracle path never visits.
+  // Junction-contrast priority: edgeId disagreements (same node, both move,
+  // different road) are the targeting lesson — they bypass the minedHere
+  // budget via a dedicated allowance so contention boards always teach.
   // Same per-scenario discipline: every board contributes, none dominates.
   for (const practice of PRACTICE_SCENARIOS) {
     const episode = new ArenaEpisode(practice)
     let minedHere = 0
+    let junctionHere = 0
 
-    while (!episode.finished && examples.length < 200) {
+    while (!episode.finished && examples.length < 220) {
       const tick = episode.tick
       const champObs = episode.observe('champion')
       if (!champObs.decisionDue) {
@@ -338,10 +403,22 @@ export function buildSyntheticExamples(): ArenaTrainingExample[] {
       }
       const baseAction = basePolicy(champObs)
       const label = routeOracle(champObs)
-      if (label && JSON.stringify(baseAction) !== JSON.stringify(label.action) && minedHere < 12) {
+      if (!label || JSON.stringify(baseAction) === JSON.stringify(label.action)) {
+        episode.step([
+          { agentId: 'champion', tick, action: baseAction },
+          { agentId: 'rival', tick, action: collectorPolicy(episode.observe('rival'), 'greedy') },
+        ])
+        continue
+      }
+      const isJunctionContrast =
+        baseAction.type === 'move' && label.action.type === 'move' &&
+        (baseAction as { edgeId: string }).edgeId !== (label.action as { edgeId: string }).edgeId
+      const allowance = isJunctionContrast ? junctionHere < 6 : minedHere < 12
+      if (allowance) {
         const before = examples.length
         if (tryEmit(practice, tick, champObs, episode.snapshot(), label, champObs.availableActions) && examples.length > before) {
-          minedHere++
+          if (isJunctionContrast) junctionHere++
+          else minedHere++
         }
       }
       episode.step([
@@ -351,8 +428,153 @@ export function buildSyntheticExamples(): ArenaTrainingExample[] {
     }
   }
 
+  // Phase 3 — grounded practice board (opt-in): walk sandstone-practice-01
+  // through ArenaRunner on isolated physics. Same oracle routing + consequence
+  // veto as abstract, but a DEDICATED allowance that bypasses the abstract
+  // teacher caps — otherwise Phase 1/2 fill safe/weather/patience exactly and
+  // the physical openings never land. The physical board teaches OPENINGS
+  // (t0 shortcut vs valley/ridge), second-trip post-bank junctions, and
+  // full-cargo homeward legs that no abstract board contains.
+  //
+  // Physics observations ARE the training observations. Consequence rollouts
+  // stay route-only over the same scenario (label routing value).
+  //
+  // Two walks:
+  //   3a — oracle/safe path: on-policy teacher labels (openings + mid-game).
+  //   3b — base-policy disagreement mine: wherever the student disagrees,
+  //        especially full-cargo homeward and post-bank second openings.
+  for (const board of groundedBoards) {
+    if (board.scenario.split !== 'practice' || !GROUNDED_PRACTICE_IDS.has(board.scenario.id)) {
+      throw new Error(
+        `Training data leak: grounded board "${board.scenario.id}" is not practice training ground ` +
+        `(want one of ${[...GROUNDED_PRACTICE_IDS].join(', ')}).`,
+      )
+    }
+
+    const emitGrounded = (
+      tick: number,
+      champObs: ArenaObservation,
+      snap: Parameters<typeof rolloutOutcomeDelta>[1],
+      label: { action: ArenaAction; teacher: 'safe' | 'weather' | 'patience'; reason: string },
+      candidates: ArenaAction[],
+    ): boolean => {
+      const before = examples.length
+      return (
+        tryEmit(board.scenario, tick, champObs, snap, label, candidates, {
+          bypassTeacherCaps: true,
+        }) && examples.length > before
+      )
+    }
+
+    // Prefer labels that close the practice-normal gap: openings, full-cargo
+    // homeward moves, and post-bank second trips. Collects fill leftover slots.
+    const groundedPriority = (obs: ArenaObservation, label: { action: ArenaAction }): number => {
+      if (obs.tick === 0 && label.action.type === 'move') return 3
+      if (obs.self.cargo >= ARENA_RULES.capacity && label.action.type === 'move') return 3
+      if (obs.self.cargo === 0 && obs.self.banked > 0 && label.action.type === 'move') return 2
+      if (label.action.type === 'move' || label.action.type === 'bank') return 1
+      return 0
+    }
+
+    // 3a — oracle path (champion=safe).
+    {
+      const motion = new ArenaPhysics(board.collider)
+      try {
+        const runner = new ArenaRunner(board.scenario, { champion: 'safe', rival: 'greedy' }, motion)
+        const pending: Array<{
+          tick: number
+          obs: ArenaObservation
+          snap: Parameters<typeof rolloutOutcomeDelta>[1]
+          label: { action: ArenaAction; teacher: 'safe' | 'weather' | 'patience'; reason: string }
+          candidates: ArenaAction[]
+          priority: number
+        }> = []
+        let guard = 0
+        while (runner.snapshot().status !== 'finished') {
+          if (++guard > board.scenario.durationTicks + 10) break
+          const snap = runner.snapshot()
+          if (snap.tick % ARENA_RULES.decisionEveryTicks === 0) {
+            const champObs = runner.observe('champion')
+            const candidates = champObs.availableActions.filter(a => a.type !== 'wait')
+            if (candidates.length >= 2) {
+              const label = routeOracle(champObs)
+              if (label) {
+                pending.push({
+                  tick: snap.tick,
+                  obs: champObs,
+                  snap,
+                  label,
+                  candidates,
+                  priority: groundedPriority(champObs, label),
+                })
+              }
+            }
+          }
+          runner.advanceTicks(1)
+        }
+        // Emit highest-priority first so openings / homeward survive the cap.
+        pending.sort((a, b) => b.priority - a.priority || a.tick - b.tick)
+        let groundedHere = 0
+        for (const item of pending) {
+          if (groundedHere >= 10 || examples.length >= 260) break
+          // Soft-prefer priority ≥ 1 once we have a few; still allow fills.
+          if (item.priority === 0 && groundedHere >= 6) continue
+          if (emitGrounded(item.tick, item.obs, item.snap, item.label, item.candidates)) groundedHere++
+        }
+      } finally {
+        motion.dispose()
+      }
+    }
+
+    // 3b — disagreement mine on the TEACHER path: walk safe, emit wherever
+    // the base learner disagrees. Keeps labels on states the oracle visits
+    // (post-bank second openings, full-cargo homeward) instead of the base's
+    // off-policy ridge wander that pollutes the set with low-value hops.
+    {
+      const motion = new ArenaPhysics(board.collider)
+      try {
+        const runner = new ArenaRunner(board.scenario, { champion: 'safe', rival: 'greedy' }, motion)
+        let minedHere = 0
+        let priorityHere = 0
+        let guard = 0
+        while (runner.snapshot().status !== 'finished' && examples.length < 280) {
+          if (++guard > board.scenario.durationTicks + 10) break
+          const snap = runner.snapshot()
+          if (snap.tick % ARENA_RULES.decisionEveryTicks === 0) {
+            const champObs = runner.observe('champion')
+            const baseAction = basePolicy(champObs)
+            const label = routeOracle(champObs)
+            if (label && JSON.stringify(baseAction) !== JSON.stringify(label.action)) {
+              const isJunction =
+                baseAction.type === 'move' && label.action.type === 'move' &&
+                (baseAction as { edgeId: string }).edgeId !== (label.action as { edgeId: string }).edgeId
+              const isHomeward =
+                champObs.self.cargo >= ARENA_RULES.capacity && label.action.type === 'move'
+              const isPostBank =
+                champObs.self.cargo === 0 && champObs.self.banked > 0 && label.action.type === 'move'
+              const priority = isHomeward || isPostBank || (isJunction && champObs.tick === 0)
+              const allowance = priority ? priorityHere < 10 : minedHere < 4
+              if (allowance && emitGrounded(snap.tick, champObs, snap, label, champObs.availableActions)) {
+                if (priority) priorityHere++
+                else minedHere++
+              }
+            }
+          }
+          runner.advanceTicks(1)
+        }
+      } finally {
+        motion.dispose()
+      }
+    }
+  }
+
   rejectEvaluationExamples(examples)
   return examples
+}
+
+/** Legacy entry: abstract syllabus only (no grounded boards). */
+export function buildSyntheticExamples(): ArenaTrainingExample[] {
+  return buildSyllabusExamples([])
 }
 
 /** Train the distilled champion from oracle-routed consequence examples (frozen config). */

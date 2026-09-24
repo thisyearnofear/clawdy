@@ -38,8 +38,9 @@ import { HELD_OUT_SCENARIOS, PRACTICE_SCENARIOS, rejectEvaluationExamples } from
 import { collectorPolicy, type EntrantPolicyOption } from '../services/arenaPolicy'
 import { ArenaEpisode } from '../services/arenaEpisode'
 import { POLICY_SCHEMA_VERSION, classifyAction, createLearnedPolicy, type PolicyCheckpoint } from '../services/policyModel'
+import { applyCourseMode } from '../services/arenaCourse'
 import {
-  buildSyntheticExamples,
+  buildSyllabusExamples,
   loadGroundedWorld,
   runGroundedMatch,
   runGroundedScenario,
@@ -161,7 +162,15 @@ function fail(message: string): never {
 async function main() {
   console.log('=== Clawdy eval gate ===\n')
 
-  const examples = buildSyntheticExamples()
+  // Load pinned collider first: distillation drinks from the practice-split
+  // physical course (openings + travel-time), then the same world feeds
+  // grounded + family evaluation. Compete/family never enter the dataset.
+  const world = await loadGroundedWorld(REPO_ROOT)
+  console.log(`grounded world: ${world.course.config.name} (19 nodes, ${world.course.scenario.edges.length} edges)`)
+  const groundedPractice = applyCourseMode(world.course, 'practice')
+  const examples = buildSyllabusExamples([
+    { scenario: groundedPractice.scenario, collider: world.collider },
+  ])
   if (examples.length === 0) fail('no synthetic coaching examples generated')
   rejectEvaluationExamples(examples)
   const trained = trainDistilledCheckpoint(examples)
@@ -187,8 +196,6 @@ async function main() {
 
   // Grounded course: practice + compete × {safe, trained} × {normal, swapped}
   // on isolated physics worlds over the pinned collider.
-  const world = await loadGroundedWorld(REPO_ROOT)
-  console.log(`grounded world: ${world.course.config.name} (19 nodes, ${world.course.scenario.edges.length} edges)`)
   const groundedMatches: GroundedMatchResult[] = []
   for (const mode of ['practice', 'compete'] as const) {
     for (const [option, policy] of [[safeOption, 'safe'], [trainedOption, 'trained']] as const) {

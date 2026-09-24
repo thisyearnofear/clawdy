@@ -26,7 +26,8 @@ import { fileURLToPath } from 'node:url'
 import { SEASON_0_BASE_CHECKPOINT } from '../services/policyModel'
 import { HELD_OUT_SCENARIOS, isEvaluationScenario } from '../services/arenaScenarios'
 import {
-  buildSyntheticExamples,
+  buildSyllabusExamples,
+  loadGroundedWorld,
   runMatch,
   toScenarioResult,
   trainDistilledCheckpoint,
@@ -37,10 +38,20 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = join(HERE, '..')
 const OUTPUT_PATH = join(REPO_ROOT, 'docs', 'eval-holdout.json')
 
-function main() {
+async function main() {
   console.log('=== Clawdy held-out evaluation ===\n')
 
-  const examples = buildSyntheticExamples()
+  // Grounded syllabus: abstract boards always teach; the physical practice
+  // course (practice split, pinned collider) teaches openings + travel-time
+  // geometry. Compete/family (evaluation) never enter the dataset — the
+  // GROUNDED_PRACTICE_IDS allowlist + split check in buildSyllabusExamples
+  // enforce it, and the sanity guard below re-verifies.
+  const world = await loadGroundedWorld(REPO_ROOT)
+  const { applyCourseMode } = await import('../services/arenaCourse')
+  const groundedPractice = applyCourseMode(world.course, 'practice')
+  const examples = buildSyllabusExamples([
+    { scenario: groundedPractice.scenario, collider: world.collider },
+  ])
   if (examples.length === 0) {
     console.error('No synthetic coaching examples were generated; the practice scenario did not produce a flood + safe-move pair within the first 6 decisions. Aborting.')
     process.exit(1)
@@ -141,9 +152,9 @@ function main() {
     },
     notes: [
       'Baseline uses the rule-based safe collector; rival uses the rule-based greedy collector.',
-      'Training data is oracle-routed consequence supervision across the 6-board practice syllabus (never held-out).',
-      'No held-out scenario is used for training. The split is enforced by services/arenaScenarios.ts.',
-      'Numbers are reproducible: same base seed + same examples → same weightsHash → same evaluation output.',
+      'Training data is oracle-routed consequence supervision across the 6-board abstract practice syllabus plus ≤12 labels from the practice-split physical course (sandstone-practice-01; never compete/family/held-out).',
+      'No held-out scenario is used for training. The split is enforced by services/arenaScenarios.ts and GROUNDED_PRACTICE_IDS.',
+      'Numbers are reproducible: same base seed + same examples + same collider → same weightsHash → same evaluation output.',
     ],
   }
 
@@ -151,4 +162,7 @@ function main() {
   console.log(`\nWrote artifact: ${OUTPUT_PATH}`)
 }
 
-main()
+main().catch(err => {
+  console.error(err instanceof Error ? err.message : err)
+  process.exit(1)
+})

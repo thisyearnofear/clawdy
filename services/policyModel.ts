@@ -124,13 +124,19 @@ export function encodeObservation(observation: ArenaObservation): Float32Array {
 
   // Rival relative advantage (legacy visible-gated semantics, frozen: hidden
   // rivals contribute 0 here; the public scoreboard lives in vec[32]).
+  // vec[26] behind/ahead is computed vs banked regardless of visibility
+  // (scoreboard is public) — the head needs to know it is losing even when
+  // it cannot see the rival. Cargo (vec[24]) stays visibility-gated: hidden
+  // cargo is genuinely unknown.
   const rival = observation.rivals[0]
   if (rival && rival.visible) {
     vec[24] = Math.min(1, (rival.cargo ?? 0) / rules.capacity)
     vec[25] = Math.min(1, (rival.banked ?? 0) / 10)
     vec[26] = (rival.banked ?? 0) > self.banked ? 1.0 : (rival.banked ?? 0) === self.banked ? 0.5 : 0.0
   } else {
-    vec[24] = 0; vec[25] = 0; vec[26] = 0.5
+    vec[24] = 0
+    vec[25] = 0
+    vec[26] = (rival?.banked ?? 0) > self.banked ? 1.0 : (rival?.banked ?? 0) === self.banked ? 0.5 : 0.0
   }
 
   // Energy budget awareness
@@ -217,6 +223,22 @@ function resourceValueAt(observation: ArenaObservation, nodeId: string): number 
 /** Best onward prospect from a node: richest reachable resource minus travel cost. */
 function onwardProspect(observation: ArenaObservation, from: string): number {
   const dist = routeCostsFrom(observation, from)
+  // Rival contention: the rival's node is known only when visible, but its
+  // banked score is public. When the rival is visible, discount resources it
+  // reaches first — racing for a core it will eat is worse than a certain
+  // nearer pickup. When hidden, no discount (fog is honest uncertainty).
+  const rivalNode = (() => {
+    const rival = observation.rivals[0]
+    if (!rival?.visible || !rival.position) return null
+    let best: string | null = null
+    let bestDist = Infinity
+    for (const node of observation.nodes) {
+      const d = Math.hypot(node.position[0] - rival.position[0], node.position[2] - rival.position[2])
+      if (d < bestDist) { bestDist = d; best = node.id }
+    }
+    return bestDist < 1.5 ? best : null
+  })()
+  const rivalDist = rivalNode ? routeCostsFrom(observation, rivalNode) : null
   let best = 0
   for (const resource of observation.resources) {
     if (!resource.available) continue
@@ -224,7 +246,13 @@ function onwardProspect(observation: ArenaObservation, from: string): number {
     if (cost === undefined) continue
     // Certain resources dominate stale ones; distance is priced in ticks.
     const certainty = resource.stale ? 0.2 : 1
-    const prospect = resource.value * 20 * certainty - cost * 0.6
+    let prospect = resource.value * 20 * certainty - cost * 0.6
+    // Contention discount: rival gets there first → halve the prospect.
+    // (Route costs from the rival's node use the same flood-aware map.)
+    if (rivalDist) {
+      const rivalCost = rivalDist.get(resource.nodeId) ?? Infinity
+      if (rivalCost < cost) prospect *= 0.5
+    }
     if (prospect > best) best = prospect
   }
   return best
@@ -243,10 +271,33 @@ function scoreMoveEdge(observation: ArenaObservation, edgeId: string, cls: 4 | 5
     return (self.cargo > 0 ? 30 + self.cargo * 8 : 4) + urgency * 30 - homeCost - nowCost * 0.2
   }
   if (cls === 6) {
-    // move-resource: value density at the target plus what it unlocks next.
-    return resourceValueAt(observation, target) * 22 + onwardProspect(observation, target) * 0.6 - nowCost * 0.5
+    // move-resource: ONLY edges whose target holds a VISIBLE resource are
+    // candidates (mirrors classifyAction: stale ghosts don't promote).
+    // A FULL bay scores -Infinity: chasing cores with no free slot is never
+    // the move — homeward / corridor classes decide. Otherwise score a
+    // presence-first pile (first core carries the hop; capacity-capped
+    // extras are a small bonus) so a farther 4-pile cannot beat a nearer
+    // 2-pile. Non-qualifying edges score -Infinity so a transit hop toward
+    // nothing visible can never win class 6.
+    const visibleHere = observation.resources.filter(r => r.available && r.visible && r.nodeId === target)
+    if (visibleHere.length === 0) return -Infinity
+    const freeSlots = Math.max(0, ARENA_RULES.capacity - self.cargo)
+    if (freeSlots <= 0) return -Infinity
+    const extras = Math.max(0, Math.min(freeSlots, visibleHere.length) - 1)
+    return 30 + extras * 2 + onwardProspect(observation, target) * 0.6 - nowCost * 0.5
   }
-  // move-low / move-high: same corridor intent, ranked by what the target unlocks.
+  // move-low / move-high: corridor intent. With a full bay, rank by remaining
+  // home cost — and NEVER take a hop that moves farther from base. Short
+  // ridge oscillations with full cargo are an energy trap: they burn just
+  // enough to keep the long home edge illegal, so the rover waits forever
+  // one hop from bank. Hollow (-Infinity) lets class-ranked resolution fall
+  // through to wait until the homeward edge is affordable.
+  if (self.cargo >= ARENA_RULES.capacity) {
+    const homeFromHere = routeCostsFrom(observation, self.nodeId).get(self.baseNode) ?? Infinity
+    const homeFromTarget = routeCostsFrom(observation, target).get(self.baseNode) ?? Infinity
+    if (homeFromTarget > homeFromHere + 1e-6) return -Infinity
+    return 40 - homeFromTarget - nowCost * 0.2
+  }
   return resourceValueAt(observation, target) * 18 + onwardProspect(observation, target) - nowCost * 0.5
 }
 
@@ -299,7 +350,24 @@ export function classifyAction(action: ArenaAction, observation: ArenaObservatio
     if (!edge) return 0
     const targetNode = edge.from === observation.self.nodeId ? edge.to : edge.from
     if (targetNode === observation.self.baseNode) return 7 // move-home
-    if (observation.resources.some(r => r.nodeId === targetNode)) return 6 // move-resource
+    // Resource test uses VISIBLE resources only. A stale ghost (remembered
+    // but unseen — possibly already eaten by the rival) must not promote a
+    // transit hop into move-resource: that mislabeling taught the head that
+    // cross-vn-cn (toward nothing visible) is a resource run, when it is
+    // just a road. Integrity: classify what you can see, not what you remember.
+    //
+    // Full bay: never promote to move-resource. Chasing cores with no free
+    // slot is not a pickup — the hop is a corridor (homeward / transit), and
+    // class 4/5 home-ranking must be allowed to win. Otherwise a homeward
+    // edge through a stocked node classifies as 6, scores -Infinity, and the
+    // agent waits forever with cargo aboard (practice-normal death at ridge-s1).
+    const freeSlots = Math.max(0, ARENA_RULES.capacity - observation.self.cargo)
+    if (
+      freeSlots > 0 &&
+      observation.resources.some(r => r.available && r.visible && r.nodeId === targetNode)
+    ) {
+      return 6 // move-resource
+    }
     if (edge.floodable) return 4 // move-low
     return 5 // move-high
   }
@@ -329,34 +397,44 @@ export function selectActionForClass(actionClass: number, observation: ArenaObse
       if (drain) return drain
       break
     }
-    case 4: { // move-low (floodable): rank by prospect, not first-legal.
+    case 4: { // move-low (floodable corridor): only edges that classify as 4.
       const ids = available.flatMap(a => {
         if (a.type !== 'move') return []
-        const edge = observation.edges.find(e => e.id === a.edgeId)
-        return edge?.floodable === true ? [a.edgeId] : []
+        return classifyAction(a, observation) === 4 ? [a.edgeId] : []
       })
-      if (ids.length > 0) return { type: 'move', edgeId: rankMoveEdges(observation, ids, 4)[0] }
-      break
+      if (ids.length > 0) {
+        const ranked = rankMoveEdges(observation, ids, 4)
+        if (scoreMoveEdge(observation, ranked[0], 4) > -Infinity) {
+          return { type: 'move', edgeId: ranked[0] }
+        }
+      }
+      return { type: 'wait' }
     }
-    case 5: { // move-high (non-floodable ridge): rank by prospect, not first-legal.
+    case 5: { // move-high (non-floodable ridge): only edges that classify as 5.
       const ids = available.flatMap(a => {
         if (a.type !== 'move') return []
-        const edge = observation.edges.find(e => e.id === a.edgeId)
-        return edge && !edge.floodable ? [a.edgeId] : []
+        return classifyAction(a, observation) === 5 ? [a.edgeId] : []
       })
-      if (ids.length > 0) return { type: 'move', edgeId: rankMoveEdges(observation, ids, 5)[0] }
-      break
+      if (ids.length > 0) {
+        const ranked = rankMoveEdges(observation, ids, 5)
+        if (scoreMoveEdge(observation, ranked[0], 5) > -Infinity) {
+          return { type: 'move', edgeId: ranked[0] }
+        }
+      }
+      return { type: 'wait' }
     }
-    case 6: { // move-resource: richest reachable target first.
+    case 6: { // move-resource: only edges that classify as 6 (visible + free slot).
       const ids = available.flatMap(a => {
         if (a.type !== 'move') return []
-        const edge = observation.edges.find(e => e.id === a.edgeId)
-        if (!edge) return []
-        const target = edge.from === observation.self.nodeId ? edge.to : edge.from
-        return observation.resources.some(r => r.nodeId === target) ? [a.edgeId] : []
+        return classifyAction(a, observation) === 6 ? [a.edgeId] : []
       })
-      if (ids.length > 0) return { type: 'move', edgeId: rankMoveEdges(observation, ids, 6)[0] }
-      break
+      if (ids.length > 0) {
+        const ranked = rankMoveEdges(observation, ids, 6)
+        if (scoreMoveEdge(observation, ranked[0], 6) > -Infinity) {
+          return { type: 'move', edgeId: ranked[0] }
+        }
+      }
+      return { type: 'wait' }
     }
     case 7: { // move-home: cheapest return leg first.
       const ids = available.flatMap(a => {
@@ -366,8 +444,13 @@ export function selectActionForClass(actionClass: number, observation: ArenaObse
         const target = edge.from === observation.self.nodeId ? edge.to : edge.from
         return target === observation.self.baseNode ? [a.edgeId] : []
       })
-      if (ids.length > 0) return { type: 'move', edgeId: rankMoveEdges(observation, ids, 7)[0] }
-      break
+      if (ids.length > 0) {
+        const ranked = rankMoveEdges(observation, ids, 7)
+        if (scoreMoveEdge(observation, ranked[0], 7) > -Infinity) {
+          return { type: 'move', edgeId: ranked[0] }
+        }
+      }
+      return { type: 'wait' }
     }
   }
 
@@ -476,20 +559,26 @@ export function createLearnedPolicy(checkpoint: PolicyCheckpoint): (observation:
     const input = encodeObservation(observation)
     const { logits } = forwardPolicy(input, checkpoint.weights)
 
-    // Score all available actions and pick the one corresponding to the highest logit
-    let bestAction: ArenaAction = observation.availableActions[0]
-    let bestScore = -Infinity
-
-    for (const action of observation.availableActions) {
-      const cls = classifyAction(action, observation)
-      const score = logits[cls]
-      if (score > bestScore) {
-        bestScore = score
-        bestAction = action
-      }
+    // Rank CLASSES by logit, then resolve each class to its best LEGAL
+    // action via the shared cost-ranked executor. A class whose executor
+    // has no honest candidate (e.g. move-resource toward only stale ghosts)
+    // is skipped — the next-best class decides. This keeps the weights'
+    // strategy choice while preventing ghost-class wins: class 6 can only
+    // fire when selectActionForClass(6) returns a real visible-resource run.
+    const ordered = [...logits].map((_, cls) => cls).sort((a, b) => logits[b] - logits[a])
+    for (const cls of ordered) {
+      const resolved = selectActionForClass(cls, observation)
+      // Verify the resolved action actually belongs to the predicted class —
+      // otherwise a hollow class (no legal member) would emit another
+      // class's action under false pretenses.
+      if (!observation.availableActions.some(a => JSON.stringify(a) === JSON.stringify(resolved))) continue
+      if (classifyAction(resolved, observation) !== cls) continue
+      return resolved
     }
 
-    return bestAction
+    // No class resolves honestly (shouldn't happen): safest legal action.
+    return observation.availableActions.find(a => a.type === 'wait')
+      ?? observation.availableActions[0]
   }
 }
 

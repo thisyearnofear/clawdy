@@ -213,16 +213,28 @@ describe('frozen action-class mapping', () => {
     expect(classifyAction({ type: 'move', edgeId: 'valley-cb-n1' }, atBase)).toBe(4)
     // Dry ridge edge to a resourceless node.
     expect(classifyAction({ type: 'move', edgeId: 'base-cb-rn' }, atBase)).toBe(5)
-    // Floodable valley edge into the resourced valley-center.
+    // Floodable valley edge into the resourced valley-center (visible).
     expect(classifyAction({ type: 'move', edgeId: 'valley-n1-vc' }, {
       ...observation,
       self: { ...observation.self, nodeId: 'valley-n1', baseNode: 'champion-base' },
     })).toBe(6)
+    // Stale ghosts don't promote: same edge into valley-center remembered
+    // but unseen classifies as the corridor (move-low), not move-resource.
+    expect(classifyAction({ type: 'move', edgeId: 'valley-n1-vc' }, {
+      ...observation,
+      self: { ...observation.self, nodeId: 'valley-n1', baseNode: 'champion-base' },
+      resources: observation.resources.map(r => ({ ...r, visible: false, stale: true })),
+    })).toBe(4)
     // Any edge back into the base node.
     expect(classifyAction({ type: 'move', edgeId: 'valley-cb-n1' }, {
       ...observation,
       self: { ...observation.self, nodeId: 'valley-n1', baseNode: 'champion-base' },
     })).toBe(7)
+    // Full bay: a hop toward visible cores is a corridor, not a pickup.
+    expect(classifyAction({ type: 'move', edgeId: 'valley-n1-vc' }, {
+      ...observation,
+      self: { ...observation.self, nodeId: 'valley-n1', baseNode: 'champion-base', cargo: ARENA_RULES.capacity },
+    })).toBe(4)
   })
 })
 

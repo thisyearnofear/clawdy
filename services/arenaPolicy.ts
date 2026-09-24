@@ -77,10 +77,15 @@ export function routeOracle(observation: ArenaObservation): OracleLabel | null {
   const available = observation.availableActions
   const self = observation.self
   // Weather teacher: drain while swimming through flood water.
-  // NOTE: weather fires ~never on the oracle's own rollout path because safe
-  // never enters flood water in transit (it routes around). Weather labels
-  // come from learner-disagreement states (see buildSyntheticExamples): where
-  // the base policy HAS wandered into flood water, drain is demonstrated.
+  // Twin-arm integrity (Sep 23, grounded-leg guard):
+  // - SWIM arm (in transit on a flooded edge, drain legal): drain clears the
+  //   water being swum through. Demonstrated.
+  // - RESTRAINT arm: at a station, flooded, drain AVAILABLE, cargo aboard —
+  //   safe says move/collect/bank (drain is never worth 2 energy + 50 ticks
+  //   at a station: the rollout verdict is ~0/94 states). The head must see
+  //   drain-available-but-don't: without these the base fallback's
+  //   drain-bias fires on grounded boards (practice t130: drain with empty
+  //   cargo at base, 9→3 regression).
   if (
     self.transit &&
     observation.weather.flooded &&
@@ -93,27 +98,55 @@ export function routeOracle(observation: ArenaObservation): OracleLabel | null {
       reason: 'In transit on a flooded edge; draining clears the water being swum through.',
     }
   }
+  if (
+    self.transit === null &&
+    observation.weather.flooded &&
+    self.cargo > 0 &&
+    available.some(action => action.type === 'drain')
+  ) {
+    // Restraint: the oracle's answer here is whatever safe says (route /
+    // collect / bank) — the lesson is NOT-drain, recorded via the contrast
+    // original (drain) in buildSyntheticExamples.
+    const restrained = collectorPolicy(observation, 'safe')
+    if (restrained.type !== 'drain') {
+      return {
+        action: restrained,
+        teacher: 'weather',
+        reason: 'At a station with drain available; routing/collecting beats spending 2 energy + 50 ticks.',
+      }
+    }
+  }
   // Patience teacher: sit out the flood when stranded with cargo.
   // Fires at stations (transit null) while flooded, carrying cargo, drain
   // unavailable — waiting beats paying 4x. ALSO fires in transit when wait
   // is literally the only legal action during a flood: the base policy's
   // failure mode is predicting drain/move there (untrained fallback), so a
   // wait label teaches the fallback head that patience is legal.
-  if (observation.weather.flooded && self.cargo > 0 && !available.some(action => action.type === 'drain')) {
+  //
+  // SCOPE (integrity): station waits fire ONLY while flooded. Dry-station
+  // waits are never demonstrated — safe routes on dry boards, and a wait
+  // label on a dry board teaches the head that standing still is strategy.
+  // (Sep 23: 10 dry waits leaked via the transit ride-out arm on boards
+  // where flood ended mid-transit; the head generalized wait→dry-station
+  // and oscillated cross-n/valley-n1 on heldout-02 scoring 0. Restricted
+  // to flooded ticks; dry patience is the human coach's lesson.)
+  const noDrain = !available.some(action => action.type === 'drain')
+  if (!observation.weather.flooded || !noDrain || self.cargo === 0) {
+    // Not a patience situation — fall through to safe routing below.
+  } else if (self.transit === null) {
     const moves = available.filter(a => a.type === 'move')
-    if (self.transit === null && moves.length >= 1) {
+    if (moves.length >= 1) {
       return {
         action: { type: 'wait' },
         teacher: 'patience',
         reason: 'Flooded at a station with cargo and no drain; waiting beats the 4x valley cost.',
       }
     }
-    if (self.transit !== null && available.length === 1 && available[0].type === 'wait') {
-      return {
-        action: { type: 'wait' },
-        teacher: 'patience',
-        reason: 'In transit through flood water with no intervention available; riding it out.',
-      }
+  } else if (available.length === 1 && available[0].type === 'wait') {
+    return {
+      action: { type: 'wait' },
+      teacher: 'patience',
+      reason: 'In transit through flood water with no intervention available; riding it out.',
     }
   }
   // Safe teacher: everything else, via the flood-aware router.
