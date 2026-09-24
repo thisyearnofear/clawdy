@@ -249,11 +249,13 @@ export function buildSyllabusExamples(groundedBoards: GroundedSyllabusBoard[] = 
     snapshot: Parameters<typeof rolloutOutcomeDelta>[1],
     label: { action: ArenaAction; teacher: 'safe' | 'weather' | 'patience'; reason: string },
     candidates: ArenaAction[],
-    opts: { bypassTeacherCaps?: boolean } = {},
+    opts: { bypassTeacherCaps?: boolean; keySuffix?: string } = {},
   ): boolean => {
-    const key = `${practice.id}:${tick}`
-    // Grounded phase uses a dedicated local allowance (≤12) so abstract
+    const key = `${practice.id}${opts.keySuffix ?? ''}:${tick}`
+    // Grounded phase uses a dedicated local allowance so abstract
     // syllabus caps can fill without starving the physical-course openings.
+    // keySuffix disambiguates normal vs swapped grounded walks (same
+    // scenario id, mirrored bases — both practice-split, never eval).
     if (seenTicks.has(key)) return false
     if (!opts.bypassTeacherCaps && teacherTotals[label.teacher] >= TEACHER_TOTAL_CAPS[label.teacher]) return false
     // Contrast original: the base learner's pick when it disagrees (that IS
@@ -429,20 +431,14 @@ export function buildSyllabusExamples(groundedBoards: GroundedSyllabusBoard[] = 
   }
 
   // Phase 3 — grounded practice board (opt-in): walk sandstone-practice-01
-  // through ArenaRunner on isolated physics. Same oracle routing + consequence
-  // veto as abstract, but a DEDICATED allowance that bypasses the abstract
-  // teacher caps — otherwise Phase 1/2 fill safe/weather/patience exactly and
-  // the physical openings never land. The physical board teaches OPENINGS
-  // (t0 shortcut vs valley/ridge), second-trip post-bank junctions, and
-  // full-cargo homeward legs that no abstract board contains.
+  // through ArenaRunner on isolated physics. Dedicated allowance bypasses
+  // abstract teacher caps. Walks BOTH sides (normal + swapped bases) — still
+  // practice-split, never compete/family/held-out. Swapped teaches rival-base
+  // openings (valley-s3-rb vs shortcut-rb-far) that normal-side labels never see.
   //
   // Physics observations ARE the training observations. Consequence rollouts
-  // stay route-only over the same scenario (label routing value).
-  //
-  // Two walks:
-  //   3a — oracle/safe path: on-policy teacher labels (openings + mid-game).
-  //   3b — base-policy disagreement mine: wherever the student disagrees,
-  //        especially full-cargo homeward and post-bank second openings.
+  // stay route-only; grounded emits never veto on negative route-only deltas
+  // (physics snapshots mis-price travel).
   for (const board of groundedBoards) {
     if (board.scenario.split !== 'practice' || !GROUNDED_PRACTICE_IDS.has(board.scenario.id)) {
       throw new Error(
@@ -457,17 +453,17 @@ export function buildSyllabusExamples(groundedBoards: GroundedSyllabusBoard[] = 
       snap: Parameters<typeof rolloutOutcomeDelta>[1],
       label: { action: ArenaAction; teacher: 'safe' | 'weather' | 'patience'; reason: string },
       candidates: ArenaAction[],
+      side: 'normal' | 'swapped',
     ): boolean => {
       const before = examples.length
       return (
         tryEmit(board.scenario, tick, champObs, snap, label, candidates, {
           bypassTeacherCaps: true,
+          keySuffix: side === 'swapped' ? ':swapped' : '',
         }) && examples.length > before
       )
     }
 
-    // Prefer labels that close the practice-normal gap: openings, full-cargo
-    // homeward moves, and post-bank second trips. Collects fill leftover slots.
     const groundedPriority = (obs: ArenaObservation, label: { action: ArenaAction }): number => {
       if (obs.tick === 0 && label.action.type === 'move') return 3
       if (obs.self.cargo >= ARENA_RULES.capacity && label.action.type === 'move') return 3
@@ -476,94 +472,105 @@ export function buildSyllabusExamples(groundedBoards: GroundedSyllabusBoard[] = 
       return 0
     }
 
-    // 3a — oracle path (champion=safe).
-    {
-      const motion = new ArenaPhysics(board.collider)
-      try {
-        const runner = new ArenaRunner(board.scenario, { champion: 'safe', rival: 'greedy' }, motion)
-        const pending: Array<{
-          tick: number
-          obs: ArenaObservation
-          snap: Parameters<typeof rolloutOutcomeDelta>[1]
-          label: { action: ArenaAction; teacher: 'safe' | 'weather' | 'patience'; reason: string }
-          candidates: ArenaAction[]
-          priority: number
-        }> = []
-        let guard = 0
-        while (runner.snapshot().status !== 'finished') {
-          if (++guard > board.scenario.durationTicks + 10) break
-          const snap = runner.snapshot()
-          if (snap.tick % ARENA_RULES.decisionEveryTicks === 0) {
-            const champObs = runner.observe('champion')
-            const candidates = champObs.availableActions.filter(a => a.type !== 'wait')
-            if (candidates.length >= 2) {
-              const label = routeOracle(champObs)
-              if (label) {
-                pending.push({
-                  tick: snap.tick,
-                  obs: champObs,
-                  snap,
-                  label,
-                  candidates,
-                  priority: groundedPriority(champObs, label),
-                })
-              }
-            }
-          }
-          runner.advanceTicks(1)
-        }
-        // Emit highest-priority first so openings / homeward survive the cap.
-        pending.sort((a, b) => b.priority - a.priority || a.tick - b.tick)
-        let groundedHere = 0
-        for (const item of pending) {
-          if (groundedHere >= 10 || examples.length >= 260) break
-          // Soft-prefer priority ≥ 1 once we have a few; still allow fills.
-          if (item.priority === 0 && groundedHere >= 6) continue
-          if (emitGrounded(item.tick, item.obs, item.snap, item.label, item.candidates)) groundedHere++
-        }
-      } finally {
-        motion.dispose()
+    const scenarioForSide = (swapSides: boolean): ArenaScenario => {
+      if (!swapSides) return board.scenario
+      return {
+        ...board.scenario,
+        entrants: [
+          { ...board.scenario.entrants[0], baseNode: board.scenario.entrants[1].baseNode },
+          { ...board.scenario.entrants[1], baseNode: board.scenario.entrants[0].baseNode },
+        ],
       }
     }
 
-    // 3b — disagreement mine on the TEACHER path: walk safe, emit wherever
-    // the base learner disagrees. Keeps labels on states the oracle visits
-    // (post-bank second openings, full-cargo homeward) instead of the base's
-    // off-policy ridge wander that pollutes the set with low-value hops.
-    {
-      const motion = new ArenaPhysics(board.collider)
-      try {
-        const runner = new ArenaRunner(board.scenario, { champion: 'safe', rival: 'greedy' }, motion)
-        let minedHere = 0
-        let priorityHere = 0
-        let guard = 0
-        while (runner.snapshot().status !== 'finished' && examples.length < 280) {
-          if (++guard > board.scenario.durationTicks + 10) break
-          const snap = runner.snapshot()
-          if (snap.tick % ARENA_RULES.decisionEveryTicks === 0) {
-            const champObs = runner.observe('champion')
-            const baseAction = basePolicy(champObs)
-            const label = routeOracle(champObs)
-            if (label && JSON.stringify(baseAction) !== JSON.stringify(label.action)) {
-              const isJunction =
-                baseAction.type === 'move' && label.action.type === 'move' &&
-                (baseAction as { edgeId: string }).edgeId !== (label.action as { edgeId: string }).edgeId
-              const isHomeward =
-                champObs.self.cargo >= ARENA_RULES.capacity && label.action.type === 'move'
-              const isPostBank =
-                champObs.self.cargo === 0 && champObs.self.banked > 0 && label.action.type === 'move'
-              const priority = isHomeward || isPostBank || (isJunction && champObs.tick === 0)
-              const allowance = priority ? priorityHere < 10 : minedHere < 4
-              if (allowance && emitGrounded(snap.tick, champObs, snap, label, champObs.availableActions)) {
-                if (priority) priorityHere++
-                else minedHere++
+    for (const swapSides of [false, true]) {
+      const side: 'normal' | 'swapped' = swapSides ? 'swapped' : 'normal'
+      const scenario = scenarioForSide(swapSides)
+
+      // 3a — oracle path (champion=safe).
+      {
+        const motion = new ArenaPhysics(board.collider)
+        try {
+          const runner = new ArenaRunner(scenario, { champion: 'safe', rival: 'greedy' }, motion)
+          const pending: Array<{
+            tick: number
+            obs: ArenaObservation
+            snap: Parameters<typeof rolloutOutcomeDelta>[1]
+            label: { action: ArenaAction; teacher: 'safe' | 'weather' | 'patience'; reason: string }
+            candidates: ArenaAction[]
+            priority: number
+          }> = []
+          let guard = 0
+          while (runner.snapshot().status !== 'finished') {
+            if (++guard > scenario.durationTicks + 10) break
+            const snap = runner.snapshot()
+            if (snap.tick % ARENA_RULES.decisionEveryTicks === 0) {
+              const champObs = runner.observe('champion')
+              const candidates = champObs.availableActions.filter(a => a.type !== 'wait')
+              if (candidates.length >= 2) {
+                const label = routeOracle(champObs)
+                if (label) {
+                  pending.push({
+                    tick: snap.tick,
+                    obs: champObs,
+                    snap,
+                    label,
+                    candidates,
+                    priority: groundedPriority(champObs, label),
+                  })
+                }
               }
             }
+            runner.advanceTicks(1)
           }
-          runner.advanceTicks(1)
+          pending.sort((a, b) => b.priority - a.priority || a.tick - b.tick)
+          let groundedHere = 0
+          for (const item of pending) {
+            if (groundedHere >= 8 || examples.length >= 300) break
+            if (item.priority === 0 && groundedHere >= 5) continue
+            if (emitGrounded(item.tick, item.obs, item.snap, item.label, item.candidates, side)) groundedHere++
+          }
+        } finally {
+          motion.dispose()
         }
-      } finally {
-        motion.dispose()
+      }
+
+      // 3b — disagreement mine on the TEACHER path for this side.
+      {
+        const motion = new ArenaPhysics(board.collider)
+        try {
+          const runner = new ArenaRunner(scenario, { champion: 'safe', rival: 'greedy' }, motion)
+          let minedHere = 0
+          let priorityHere = 0
+          let guard = 0
+          while (runner.snapshot().status !== 'finished' && examples.length < 320) {
+            if (++guard > scenario.durationTicks + 10) break
+            const snap = runner.snapshot()
+            if (snap.tick % ARENA_RULES.decisionEveryTicks === 0) {
+              const champObs = runner.observe('champion')
+              const baseAction = basePolicy(champObs)
+              const label = routeOracle(champObs)
+              if (label && JSON.stringify(baseAction) !== JSON.stringify(label.action)) {
+                const isJunction =
+                  baseAction.type === 'move' && label.action.type === 'move' &&
+                  (baseAction as { edgeId: string }).edgeId !== (label.action as { edgeId: string }).edgeId
+                const isHomeward =
+                  champObs.self.cargo >= ARENA_RULES.capacity && label.action.type === 'move'
+                const isPostBank =
+                  champObs.self.cargo === 0 && champObs.self.banked > 0 && label.action.type === 'move'
+                const priority = isHomeward || isPostBank || (isJunction && champObs.tick === 0)
+                const allowance = priority ? priorityHere < 8 : minedHere < 3
+                if (allowance && emitGrounded(snap.tick, champObs, snap, label, champObs.availableActions, side)) {
+                  if (priority) priorityHere++
+                  else minedHere++
+                }
+              }
+            }
+            runner.advanceTicks(1)
+          }
+        } finally {
+          motion.dispose()
+        }
       }
     }
   }

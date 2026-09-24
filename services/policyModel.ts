@@ -274,17 +274,18 @@ function scoreMoveEdge(observation: ArenaObservation, edgeId: string, cls: 4 | 5
     // move-resource: ONLY edges whose target holds a VISIBLE resource are
     // candidates (mirrors classifyAction: stale ghosts don't promote).
     // A FULL bay scores -Infinity: chasing cores with no free slot is never
-    // the move — homeward / corridor classes decide. Otherwise score a
-    // presence-first pile (first core carries the hop; capacity-capped
-    // extras are a small bonus) so a farther 4-pile cannot beat a nearer
-    // 2-pile. Non-qualifying edges score -Infinity so a transit hop toward
-    // nothing visible can never win class 6.
+    // the move — homeward / corridor classes decide.
+    //
+    // Rank by NEAREST certain pickup (safe-aligned min-cost). Capacity-capped
+    // extras are a weak bonus; onward prospect is a weak tie-break only —
+    // a farther cross-far pile must not beat a nearer valley-s3 pickup
+    // (rival-base opening). Non-qualifying edges score -Infinity.
     const visibleHere = observation.resources.filter(r => r.available && r.visible && r.nodeId === target)
     if (visibleHere.length === 0) return -Infinity
     const freeSlots = Math.max(0, ARENA_RULES.capacity - self.cargo)
     if (freeSlots <= 0) return -Infinity
     const extras = Math.max(0, Math.min(freeSlots, visibleHere.length) - 1)
-    return 30 + extras * 2 + onwardProspect(observation, target) * 0.6 - nowCost * 0.5
+    return -nowCost * 10 + extras * 2 + onwardProspect(observation, target) * 0.15
   }
   // move-low / move-high: corridor intent. With a full bay, rank by remaining
   // home cost — and NEVER take a hop that moves farther from base. Short
