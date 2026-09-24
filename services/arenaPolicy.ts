@@ -16,7 +16,14 @@ import {
 
 export type CollectorStrategy = 'safe' | 'greedy' | 'weather' | 'learned'
 
-export type EntrantPolicyOption = CollectorStrategy | { strategy: 'learned'; checkpoint: PolicyCheckpoint }
+export type EntrantPolicyOption =
+  | CollectorStrategy
+  | {
+      strategy: 'learned'
+      checkpoint: PolicyCheckpoint
+      /** Forwarded to createLearnedPolicy; distill mines use 0. */
+      energyPatienceMinRemaining?: number
+    }
 
 export interface DecisionLifecycleEvent {
   agentId: string
@@ -236,7 +243,14 @@ export class ArenaRunner {
 
       if (strategy === 'learned') {
         const checkpoint = typeof option === 'object' && 'checkpoint' in option ? option.checkpoint : SEASON_0_BASE_CHECKPOINT
-        this.#policies.set(entrant.id, createLearnedPolicy(checkpoint))
+        const energyPatienceMinRemaining =
+          typeof option === 'object' && 'energyPatienceMinRemaining' in option
+            ? option.energyPatienceMinRemaining
+            : undefined
+        this.#policies.set(
+          entrant.id,
+          createLearnedPolicy(checkpoint, { energyPatienceMinRemaining }),
+        )
         // Scenario validation requires policyVersion to match the identifier
         // pattern (no colons), so we expose a sanitized view of the checkpoint
         // id rather than its raw value.

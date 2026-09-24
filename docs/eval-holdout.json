@@ -1,20 +1,20 @@
 {
-  "generatedAt": "2026-09-24T17:34:58.675Z",
+  "generatedAt": "2026-09-24T17:55:25.902Z",
   "baseCheckpoint": {
     "id": "champion-baseline-s0",
     "weightsHash": "74866b9f3bce",
     "note": "Randomly initialized base; safe collector is the meaningful baseline."
   },
   "trainedCheckpoint": {
-    "id": "checkpoint-muftb2q8-9a3d13",
+    "id": "checkpoint-mufu1don-eb3d2f",
     "name": "Champion v1 (+170 synthetic examples)",
-    "weightsHash": "1092809a3d13",
+    "weightsHash": "86f3dbeb3d2f",
     "trainingSummary": {
       "epochs": 60,
-      "loss": 0.0329,
+      "loss": 0.0337,
       "sampleCount": 170,
-      "datasetHash": "ds:98f859da:170",
-      "accuracy": 0.988
+      "datasetHash": "ds:2e3b342a:170",
+      "accuracy": 0.982
     }
   },
   "examples": [
@@ -1033,9 +1033,9 @@
       "rationale": "Safe collector would move along a non-floodable route when applicable."
     },
     {
-      "id": "distill-sandstone-practice-deep-01:student-390",
+      "id": "distill-sandstone-practice-deep-01:student-400",
       "sourceEpisodeId": "sandstone-practice-deep-01",
-      "tick": 390,
+      "tick": 400,
       "rationale": "Safe collector would move along a non-floodable route when applicable."
     }
   ],

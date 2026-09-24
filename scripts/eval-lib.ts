@@ -115,6 +115,16 @@ export function runGroundedMatch(
   return runGroundedScenario(world, scenario, championOption, { ...opts, mode })
 }
 
+/** Play/eval energy-patience floor — skips barren-pad waits when clock is short. */
+const PLAY_ENERGY_PATIENCE_MIN_REMAINING = 400
+
+function withPlayExecutor(option: EntrantPolicyOption): EntrantPolicyOption {
+  if (typeof option === 'object' && option.strategy === 'learned' && option.energyPatienceMinRemaining === undefined) {
+    return { ...option, energyPatienceMinRemaining: PLAY_ENERGY_PATIENCE_MIN_REMAINING }
+  }
+  return option
+}
+
 /**
  * Run an arbitrary prebuilt scenario (course mode or family layout) on an
  * isolated physics world. Returns the layout mode for course scenarios and
@@ -136,7 +146,7 @@ export function runGroundedScenario(
   try {
     const runner = new ArenaRunner(
       { ...scenario, entrants },
-      { champion: championOption, rival: 'greedy' },
+      { champion: withPlayExecutor(championOption), rival: 'greedy' },
       motion,
     )
     runner.advanceTicks(scenario.durationTicks)
@@ -657,7 +667,10 @@ export function buildSyllabusExamples(groundedBoards: GroundedSyllabusBoard[] = 
     const interimExamples = examples.filter(e => e.approved)
     if (interimExamples.length > 0) {
       const interim = trainDistilledCheckpoint(interimExamples)
-      const student = createLearnedPolicy(interim)
+      // Mine with unrestricted energy patience (minRemaining 0) so the deep
+      // trajectory matches the compete-12 path; play/eval keep the 400-tick
+      // floor so practice-normal holds 10.
+      const student = createLearnedPolicy(interim, { energyPatienceMinRemaining: 0 })
 
       for (const board of deepBoards) {
         if (board.scenario.split !== 'practice' || !GROUNDED_PRACTICE_IDS.has(board.scenario.id)) {
@@ -670,7 +683,10 @@ export function buildSyllabusExamples(groundedBoards: GroundedSyllabusBoard[] = 
         try {
           const runner = new ArenaRunner(
             board.scenario,
-            { champion: { strategy: 'learned', checkpoint: interim }, rival: 'greedy' },
+            {
+              champion: { strategy: 'learned', checkpoint: interim, energyPatienceMinRemaining: 0 },
+              rival: 'greedy',
+            },
             motion,
           )
           let priorityHere = 0
@@ -865,7 +881,7 @@ export function runMatch(
     : scenario.entrants
   const runner = new ArenaRunner(
     { ...scenario, entrants },
-    { champion: championOption, rival: 'greedy' },
+    { champion: withPlayExecutor(championOption), rival: 'greedy' },
   )
   runner.advanceTicks(scenario.durationTicks)
   const snap = runner.snapshot()

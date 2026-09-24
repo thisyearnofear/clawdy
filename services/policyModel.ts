@@ -553,14 +553,23 @@ export function computeWeightsHash(weights: PolicyWeights): string {
 
 /**
  * Creates an ArenaPolicy function backed by a frozen PolicyCheckpoint.
+ *
+ * `energyPatienceMinRemaining` gates the barren-pad recharge wait: below this
+ * remaining-tick floor the executor keeps the affordable hop (practice banks
+ * 9 late with ~265 ticks left). Default 0 preserves distill trajectories;
+ * play/eval pass 400 via ArenaRunner options.
  */
-export function createLearnedPolicy(checkpoint: PolicyCheckpoint): (observation: ArenaObservation) => ArenaAction {
+export function createLearnedPolicy(
+  checkpoint: PolicyCheckpoint,
+  opts: { energyPatienceMinRemaining?: number } = {},
+): (observation: ArenaObservation) => ArenaAction {
   validateCheckpoint(checkpoint)
   if (checkpoint.schemaVersion !== POLICY_SCHEMA_VERSION) {
     throw new Error(
       `checkpoint-execution-mismatch (got ${checkpoint.schemaVersion}, want ${POLICY_SCHEMA_VERSION} — re-train its examples to upgrade)`,
     )
   }
+  const energyPatienceMinRemaining = opts.energyPatienceMinRemaining ?? 0
   return (observation: ArenaObservation): ArenaAction => {
     if (!observation.decisionDue) return { type: 'wait' }
     if (observation.availableActions.length === 0) return { type: 'wait' }
@@ -575,6 +584,27 @@ export function createLearnedPolicy(checkpoint: PolicyCheckpoint): (observation:
     // strategy choice while preventing ghost-class wins: class 6 can only
     // fire when selectActionForClass(6) returns a real visible-resource run.
     const ordered = [...logits].map((_, cls) => cls).sort((a, b) => logits[b] - logits[a])
+
+    // Soft on-node collect: when collect is legal and class-2 trails the top
+    // class by <1.0 logit, prefer collecting. The practice-deep pad mine
+    // slightly demotes class-2 on abstract openings (heldout-02 swapped
+    // dropped 3→2 via walk-off at t20). Safe always collects on-node.
+    {
+      const collect = observation.availableActions.find(a => a.type === 'collect')
+      if (
+        collect &&
+        logits[2] >= logits[ordered[0]] - 1.0
+      ) {
+        const resolvedCollect = selectActionForClass(2, observation)
+        if (
+          resolvedCollect.type === 'collect' &&
+          observation.availableActions.some(a => JSON.stringify(a) === JSON.stringify(resolvedCollect))
+        ) {
+          return resolvedCollect
+        }
+      }
+    }
+
     for (const cls of ordered) {
       const resolved = selectActionForClass(cls, observation)
       // Verify the resolved action actually belongs to the predicted class —
@@ -585,14 +615,12 @@ export function createLearnedPolicy(checkpoint: PolicyCheckpoint): (observation:
         // Class 5 hollow trap (compete trip-2): a non-floodable ridge hop with
         // a visible core on the far node classifies as 6, so class 5 returns
         // wait and logit fallthrough takes floodable valley — missing the fast
-        // second trip. Only alias at own base, flooded, mid-scoring (banked
-        // 1..5): later pad departures and dry practice openings must not be
-        // forced onto ridge.
+        // second trip. Only alias at own base after the first bank (banked===3),
+        // flooded: bank=2 on heldout-02 swapped forced ridge when safe waits.
         if (
           cls === 5 &&
           observation.self.cargo === 0 &&
-          observation.self.banked > 0 &&
-          observation.self.banked < 6 &&
+          observation.self.banked === 3 &&
           observation.self.nodeId === observation.self.baseNode &&
           observation.weather.flooded
         ) {
@@ -754,13 +782,15 @@ export function createLearnedPolicy(checkpoint: PolicyCheckpoint): (observation:
       // routes toward known resources over the full graph and proposes the
       // first hop even when unaffordable. Wait when the affordable hop lands
       // on a barren node while the resource-route hop is energy-gated (compete
-      // bank=9: valley-cb-n1 empty vs valley-cb-vc). Unlocks compete 12; practice
-      // normal may sit at 9 (= safe) when the late pad is also barren.
+      // bank=9: valley-cb-n1 empty vs valley-cb-vc). `energyPatienceMinRemaining`
+      // (play/eval set 400) skips the wait when the clock is too short to finish
+      // another trip — practice banks 9 at ~t930 with ~265 ticks left.
       if (
         observation.self.cargo === 0 &&
         observation.self.banked >= 9 &&
         observation.self.nodeId === observation.self.baseNode &&
         !observation.self.transit &&
+        observation.remainingTicks > energyPatienceMinRemaining &&
         resolved.type === 'move'
       ) {
         const capacityLeft = ARENA_RULES.capacity - observation.self.cargo

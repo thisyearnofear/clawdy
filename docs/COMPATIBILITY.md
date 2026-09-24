@@ -228,18 +228,16 @@ grounded courses prove it.
 - **What:** `practice-deep` board (compete-like floods/cores, practice split)
   for two-pass student mines at h=240 with `respectRolloutVeto`; valley-over-
   ridge only at `banked≥6`. Executor: hollow class-5→non-floodable class-6
-  alias at flooded mid-score pad (ridge cores classify as 6, so class 5 was
-  falling through to valley); soft pad-flood tie-break; energy patience when
-  the affordable hop is barren while the resource-route hop is energy-gated.
+  alias at flooded bank=3 pad; soft on-node collect when class-2 trails top
+  by &lt;1.0; energy patience on barren pad hops with play/eval floor
+  `remainingTicks&gt;400` (distill mines use 0 so weights match compete-12).
 - **Physics finding:** physics-aware rollouts matched route-only on the pad
   contrast; longer horizons on practice-01 stay valley-negative. Deep board
   + boost (δ≥1.5) is what lets the student label survive.
-- **Measured (gate pin `1092809a3d13`, 170 examples):** grounded trained
-  `33→35` (practice 9/8, compete **12**/6 — open-loop gap closed on normal);
-  abstract dual-side `36→35`. Practice normal ties safe (was +1). Family still
-  trails (36 vs 72).
-- **Next:** restore practice-normal 10 and abstract 36 without giving back
-  compete 12; family transfer remains the larger gap.
+- **Measured (gate pin `86f3dbeb3d2f`, 170 examples):** grounded trained
+  **36** (practice **10**/8, compete **12**/6); abstract dual-side **36**.
+  Family still trails (38 vs 72).
+- **Next:** close family gap; human-coached training at scale.
 
 ## 6. Non-goals
 - No cross-version *execution*: a v1 checkpoint is never run under v2 rules "to see
