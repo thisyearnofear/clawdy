@@ -6,12 +6,14 @@ Clawdy is an agent-training league inside a physical world. You coach a rover th
 
 > The payoff is watching your agent use something you taught it when you are no longer allowed to help — and finding out whether your coaching held when the arena throws something it has never seen.
 
+**What is proven (Sep 26, gate pin `9c1e938a3d6b`):** the coached champion **matches the careful teacher's outcomes on unseen abstract layouts** — every leg within 1 banked, the same champion-win legs (5 = 5) — and **beats the untrained baseline on all four held-out boards** (+25 banked). On physical courses it still trails the teacher (grounded 27 vs 35; layout family 55 vs 66) while clearing the harness-enforced no-collapse floor on every leg. This paragraph mirrors the CI-enforced claims block in `scripts/eval-gate.ts` — docs may never claim more than the gate checks.
+
 ## The Loop
 
 **Play → Replay → Coach → Train → Match.**
 
 1. Press **Play** and watch two autonomous rovers race for cores (highlighted amber routes are flood-sensitive).
-2. Open **Replay** — watch it back as an event-driven cinematic, or scrub a mistake and queue a fix.
+2. Open **Replay** — watch it back as an event-driven cinematic, or scrub a mistake and queue a fix; the review frame ranks the top-3 outcome-measured alternatives beside the coach's keyword match.
 3. Open **Coach**, approve examples, and train a real checkpoint.
 4. Switch to **Match** for a scored held-out layout with coaching locked.
 

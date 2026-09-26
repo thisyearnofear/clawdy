@@ -621,6 +621,43 @@ a.secondaryButton { text-decoration: none; }
   color: #2b4530;
 }
 
+.candidateBanner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: #f4f0fa;
+  border: 1px solid #d4c6ea;
+  border-radius: 5px;
+  font-size: 11px;
+  color: #3f2e5c;
+}
+
+.candidateBanner > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.candidateList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.candidateList li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .evaluationNotice {
   display: flex;
   align-items: center;

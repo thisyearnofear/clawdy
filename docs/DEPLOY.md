@@ -40,7 +40,9 @@ Day-to-day local development:
 npx convex dev
 ```
 
-Writes `CONVEX_DEPLOYMENT` and `NEXT_PUBLIC_CONVEX_URL` into `.env.local`. With the URL set, Coach dual-writes checkpoints, examples, training jobs, and finished-match summaries under a browser **guest key** (exhibition trust — not Convex Auth). Without it, the app stays `localStorage`-only. Convex is never on the physics or scored-match inference path.
+Writes `CONVEX_DEPLOYMENT` and `NEXT_PUBLIC_CONVEX_URL` into `.env.local`. With the URL set, the app runs an offline-first sync protocol (`services/syncEngine.ts` ⇄ `convex/sync.ts`): boot pulls the guest's full mirror (including tombstones), merges last-writer-wins with `localStorage`, restores records created on other devices, then flushes a persisted outbox (`clawdy_sync_queue_v1`). Runtime edits are diffed per record and queued; deletes propagate as tombstones; server-side caps (40 checkpoints / 200 examples / 50 matches / 40 jobs) are enforced at write time and surfaced in the Coach panel status chip (`offline · 3 queued`) instead of swallowed warnings. Without the URL, the app stays `localStorage`-only. Convex is never on the physics or scored-match inference path.
+
+**Schema changes are a two-push, reviewed procedure.** `convex/schema.ts` changes with new *optional* columns go to a **preview/dev** deployment first together with any backfill (`npx convex run sync:backfillLegacy` — idempotent; stamps owner/LWW clocks and promotes legacy `payload` blobs into the typed `doc` column, flagging rejects as `payloadRejected` instead of destroying them). Verify on the preview, then push to prod. Never deploy a schema that narrows or reinterprets existing columns without the backfill having run. `convex.json` is not required: the default deploy ships every module in `convex/`.
 
 **Production (Vercel):** set `NEXT_PUBLIC_CONVEX_URL` to the **prod** deployment URL (e.g. `https://<deployment>.convex.cloud`) on the Vercel project, then redeploy so the client bundle inlines it. Live app: [https://clawdy-nine.vercel.app/](https://clawdy-nine.vercel.app/). Dashboard: Convex project `clawdy` on the team that owns the deployment.
 
@@ -72,7 +74,7 @@ npm run starter:train
 ## Architecture & Deployment Notes
 
 - **Hosting:** Production runs on Vercel ([clawdy-nine.vercel.app](https://clawdy-nine.vercel.app/)). Git pushes to `main` deploy; after changing `NEXT_PUBLIC_*` vars, redeploy so the client rebuild picks them up.
-- **Convex:** Cloud project `clawdy` dual-writes coaching lineage. Guest keys are exhibition-only; ranked identity needs Convex Auth later.
-- **Client-Side Storage:** Trained checkpoints and approved examples persist in browser `localStorage` under `clawdy_checkpoints_v1` and `clawdy_examples_v1` with SSR hydration fallbacks. LocalStorage remains source of truth when Convex is unset or offline.
+- **Convex:** system of record for the coaching lineage (checkpoints, examples, match/job history) under a browser **guest key** — exhibition trust, not Convex Auth. Uniqueness is transactional (composite-index read-then-insert); ordering converges on the server `serverSeenAt` clock. Guest keys are exhibition-only; ranked identity needs Convex Auth later (single seam: `convex/lib/identity.ts`).
+- **Client-Side Storage:** `localStorage` (`clawdy_checkpoints_v1`, `clawdy_examples_v1`) is a write-behind cache of the zustand arena store (`services/arenaStore.ts`) plus the sync outbox — instant boot, offline play, never a second source of truth when Convex is configured.
 - **Import/Export:** Checkpoints are serialized to standard JSON files that can be imported and exported between browser sessions and builder CLI scripts.
 - **World Assets:** Sandstone Basin terrain GLB is served statically with a SHA-256 pin in `services/arenaCourse.ts`. Marble assets remain in-repo for provenance / Spark bank bursts.

@@ -4,23 +4,27 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { ARENA_RULES } from '../arenaEpisode'
 import { ARENA_WORLD } from '../arenaCourse'
-import { HELD_OUT_SCENARIOS, PRACTICE_SCENARIOS } from '../arenaScenarios'
+import { HELD_OUT_SCENARIOS, PRACTICE_SCENARIOS, SYLLABUS_EXTRA_SCENARIOS } from '../arenaScenarios'
 import { replayArenaEpisode } from '../arenaReplay'
 import { ArenaRunner } from '../arenaPolicy'
 import {
   ACTION_CLASSES,
   CHECKPOINT_SCHEMA_V1,
+  CHECKPOINT_SCHEMA_V2,
+  EDGE_FEATURE_DIM,
   ENCODER_VERSION,
   OBSERVATION_FEATURE_DIM,
   POLICY_SCHEMA_VERSION,
   SEASON_0_BASE_CHECKPOINT,
   classifyAction,
   createLearnedPolicy,
+  encodeEdgeFeatures,
   encodeObservation,
   validateCheckpoint,
 } from '../policyModel'
 import { OBSERVATION_SCHEMA_VERSION } from '../arenaEpisode'
 import { trainPolicyCheckpoint, type ArenaTrainingExample } from '../policyTrainer'
+import { DISTILL_TRAINING_CONFIG } from '../../scripts/eval-lib'
 
 /**
  * Compatibility contract pins (docs/COMPATIBILITY.md). Every value here is a
@@ -29,8 +33,9 @@ import { trainPolicyCheckpoint, type ArenaTrainingExample } from '../policyTrain
 describe('v1 compatibility inventory', () => {
   it('pins the rules, checkpoint, world, and policy constants', () => {
     expect(ARENA_RULES.version).toBe('season-0.reference.2')
-    expect(POLICY_SCHEMA_VERSION).toBe('season-0.checkpoint.v2')
+    expect(POLICY_SCHEMA_VERSION).toBe('season-0.checkpoint.v3')
     expect(CHECKPOINT_SCHEMA_V1).toBe('season-0.checkpoint.v1')
+    expect(CHECKPOINT_SCHEMA_V2).toBe('season-0.checkpoint.v2')
     expect(ENCODER_VERSION).toBe('season-0.encoder.v2')
     expect(OBSERVATION_SCHEMA_VERSION).toBe('arena-observation-v2')
     expect(ARENA_WORLD.version).toBe('sandstone-basin-course-2')
@@ -39,8 +44,36 @@ describe('v1 compatibility inventory', () => {
     expect(ARENA_WORLD.terrainUrl).toBe(ARENA_WORLD.colliderUrl)
     expect(OBSERVATION_FEATURE_DIM).toBe(36)
     expect(ACTION_CLASSES).toBe(8)
+    expect(EDGE_FEATURE_DIM).toBe(8)
     expect(SEASON_0_BASE_CHECKPOINT.schemaVersion).toBe(POLICY_SCHEMA_VERSION)
     expect(SEASON_0_BASE_CHECKPOINT.weights.hidden1.weights).toHaveLength(36)
+    // v3 edge-pointer head: linear EDGE_FEATURE_DIM x 1 + single bias.
+    const edgeHead = SEASON_0_BASE_CHECKPOINT.weights.edgeHead
+    expect(edgeHead).toBeDefined()
+    expect(edgeHead?.weights).toHaveLength(EDGE_FEATURE_DIM)
+    expect(edgeHead?.weights[0]).toHaveLength(1)
+    expect(edgeHead?.biases).toHaveLength(1)
+  })
+
+  it('pins the trainer configs on every production surface', () => {
+    const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
+    // CI distillation (scripts/eval-lib.ts):
+    expect(DISTILL_TRAINING_CONFIG).toEqual({ epochs: 60, learningRate: 0.005 })
+    // Starter CLI (node-authored teacher run):
+    const starter = readFileSync(join(repoRoot, 'starter', 'train.ts'), 'utf8')
+    expect(starter).toMatch(/epochs:\s*500,/)
+    expect(starter).toMatch(/learningRate:\s*0\.01,/)
+    // Browser coach-train path (ArenaScene): 60 epochs / 0.008 with the
+    // deterministic 0.5x step at epoch 30 — pin the literals so any change
+    // to the sold learning path is deliberate.
+    const arenaScene = readFileSync(join(repoRoot, 'components', 'environment', 'ArenaScene.tsx'), 'utf8')
+    expect(arenaScene).toMatch(/epochs:\s*60,/)
+    expect(arenaScene).toMatch(/learningRate:\s*0\.008,/)
+    expect(arenaScene).toMatch(/learningRateDecay:\s*\{\s*atEpoch:\s*30,\s*factor:\s*0\.5\s*\}/)
+    // Trainer defaults (policyTrainer.ts):
+    const trainer = readFileSync(join(repoRoot, 'services', 'policyTrainer.ts'), 'utf8')
+    expect(trainer).toMatch(/options\.epochs \?\? 40/)
+    expect(trainer).toMatch(/options\.learningRate \?\? 0\.03/)
   })
 
   it('pins the frozen simulation numerics', () => {
@@ -62,13 +95,32 @@ describe('v1 compatibility inventory', () => {
   it('keeps builder fixtures in the abstract namespace, separate from grounded courses', () => {
     // Practice syllabus: 3 base boards + 3 challenge variants (early-flood,
     // long-flood, contention). All practice split — legal training ground.
+    // 3 diversity boards live in SYLLABUS_EXTRA_SCENARIOS: argmax-mining
+    // ground only, never teacher labels. The layout-tuple guard in
+    // arenaScenarios.ts asserts none duplicates a held-out board.
     expect(PRACTICE_SCENARIOS).toHaveLength(6)
+    expect(SYLLABUS_EXTRA_SCENARIOS).toHaveLength(3)
     expect(HELD_OUT_SCENARIOS).toHaveLength(4)
-    for (const scenario of [...PRACTICE_SCENARIOS, ...HELD_OUT_SCENARIOS]) {
+    for (const scenario of [...PRACTICE_SCENARIOS, ...SYLLABUS_EXTRA_SCENARIOS, ...HELD_OUT_SCENARIOS]) {
       expect(scenario.worldVersion).toBe('builder-abstract-v1')
     }
     expect(PRACTICE_SCENARIOS.every(s => s.split === 'practice')).toBe(true)
+    expect(SYLLABUS_EXTRA_SCENARIOS.every(s => s.split === 'practice')).toBe(true)
     expect(HELD_OUT_SCENARIOS.every(s => s.split === 'evaluation')).toBe(true)
+  })
+
+  it('no practice board duplicates a held-out layout tuple (duration, floods, bases, cores)', () => {
+    const tuple = (s: (typeof PRACTICE_SCENARIOS)[number]) =>
+      JSON.stringify([
+        s.durationTicks,
+        s.floods.map(f => [f.startTick, f.endTick]),
+        s.entrants.map(e => [e.id, e.baseNode]),
+        s.resources.map(r => [r.nodeId, r.value]),
+      ])
+    const heldOut = new Set(HELD_OUT_SCENARIOS.map(tuple))
+    for (const practice of [...PRACTICE_SCENARIOS, ...SYLLABUS_EXTRA_SCENARIOS]) {
+      expect(heldOut.has(tuple(practice))).toBe(false)
+    }
   })
 
   it('stamps the live observation and recording schemas from a builder episode', () => {
@@ -143,6 +195,44 @@ describe('encoder v2 additive features', () => {
       source: 'approved',
     }]
     expect(() => trainPolicyCheckpoint(v1, examples)).toThrow('checkpoint-execution-mismatch')
+  })
+
+  it('reads v2 checkpoints but refuses to execute or fine-tune them', () => {
+    // A v2 checkpoint is exactly a v3 one without the edge head.
+    const { hidden1, hidden2, actionHead } = SEASON_0_BASE_CHECKPOINT.weights
+    const v2Weights = { hidden1, hidden2, actionHead }
+    const v2 = { ...SEASON_0_BASE_CHECKPOINT, schemaVersion: CHECKPOINT_SCHEMA_V2, weights: v2Weights }
+    expect(() => validateCheckpoint(v2)).not.toThrow()
+    expect(() => validateCheckpoint({ ...v2, weights: { ...v2Weights, edgeHead: { weights: [[0]], biases: [0] } } }))
+      .toThrow('Invalid edgeHead layer shape')
+    expect(() => createLearnedPolicy(v2)).toThrow('checkpoint-execution-mismatch')
+    const obs = fixtureObservation()
+    const examples: ArenaTrainingExample[] = [{
+      id: 'v2-parent-ex',
+      sourceEpisodeId: PRACTICE_SCENARIOS[0].id,
+      tick: 0,
+      observation: obs,
+      originalAction: { type: 'wait' },
+      preferredAction: { type: 'wait' },
+      rationale: 'v2 parent refusal pin',
+      approved: true,
+      source: 'approved',
+    }]
+    expect(() => trainPolicyCheckpoint(v2, examples)).toThrow('checkpoint-execution-mismatch')
+  })
+
+  it('encodes edge features as finite values in [0,1] for every legal move', () => {
+    const obs = fixtureObservation()
+    for (const action of obs.availableActions) {
+      if (action.type !== 'move') continue
+      const vec = encodeEdgeFeatures(obs, action.edgeId)
+      expect(vec).toHaveLength(EDGE_FEATURE_DIM)
+      for (const v of Array.from(vec)) {
+        expect(Number.isFinite(v)).toBe(true)
+        expect(v).toBeGreaterThanOrEqual(0)
+        expect(v).toBeLessThanOrEqual(1)
+      }
+    }
   })
 })
 

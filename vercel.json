@@ -1,20 +1,8 @@
 {
   "framework": "nextjs",
   "buildCommand": "npm run build",
-  "installCommand": "rm -rf node_modules/.cache && npm ci --force",
+  "installCommand": "npm ci",
   "regions": ["iad1"],
-  "functions": {
-    "app/api/0g-storage/route.ts": {
-      "maxDuration": 30,
-      "memory": 512
-    },
-    "app/api/mcp/route.ts": {
-      "maxDuration": 10
-    },
-    "app/api/players/route.ts": {
-      "maxDuration": 5
-    }
-  },
   "headers": [
     {
       "source": "/(.*)",

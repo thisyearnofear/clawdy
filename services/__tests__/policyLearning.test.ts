@@ -203,3 +203,63 @@ describe('Coaching Engine', () => {
     expect(COACHING_RULES.some(r => r.category === 'weather')).toBe(true)
   })
 })
+
+describe('Browser coach-train stability (few-shot)', () => {
+  // The sold human path: a handful of approved notes fine-tuned with the
+  // pinned browser config (60 epochs, lr 0.008, 0.5x step at 30). A 12-note
+  // lesson must land finite, sane weights — the old 100/0.02 hot config was
+  // documented to diverge on lessons this small (COMPATIBILITY.md).
+  const BROWSER_TRAINING_CONFIG = {
+    epochs: 60,
+    learningRate: 0.008,
+    learningRateDecay: { atEpoch: 30, factor: 0.5 },
+  }
+
+  it('fine-tunes 12 mixed examples to a finite checkpoint with loss < 1.0', () => {
+    const obsFlooded = mockObservation({ weather: { flooded: true, drainedUntilTick: 0 } })
+    const obsLoaded = mockObservation({ self: { ...mockObservation().self, cargo: ARENA_RULES.capacity } })
+    const examples: ArenaTrainingExample[] = []
+    for (let i = 0; i < 12; i++) {
+      const kind = i % 4
+      const base = kind === 0 ? obsFlooded : kind === 1 ? obsLoaded : mockObservation({ tick: 100 + i })
+      const preferred =
+        kind === 0
+          ? { type: 'move', edgeId: 'ridge-road' }
+          : kind === 1
+            ? { type: 'bank' }
+            : kind === 2
+              ? { type: 'move', edgeId: 'valley-road' }
+              : { type: 'wait' }
+      examples.push({
+        id: `few-shot-${i}`,
+        sourceEpisodeId: 'practice-board',
+        tick: (base.tick ?? 0) + 5,
+        observation: base,
+        originalAction: { type: 'move', edgeId: 'valley-road' },
+        preferredAction: preferred as ArenaTrainingExample['preferredAction'],
+        rationale: 'few-shot stability pin',
+        approved: true,
+        source: 'approved',
+      })
+    }
+    const trained = trainPolicyCheckpoint(SEASON_0_BASE_CHECKPOINT, examples, BROWSER_TRAINING_CONFIG)
+    expect(trained.trainingConfig).toEqual({
+      ...BROWSER_TRAINING_CONFIG,
+      momentum: 0.85,
+      weightDecay: 0.0001,
+    })
+    expect(trained.trainingSummary.loss).toBeLessThan(1.0)
+    expect(Number.isFinite(trained.trainingSummary.loss)).toBe(true)
+    expect(validateCheckpoint(trained)).toBeUndefined()
+    const all = [
+      ...trained.weights.hidden1.weights.flat(),
+      ...trained.weights.hidden2.weights.flat(),
+      ...trained.weights.actionHead.weights.flat(),
+      ...(trained.weights.edgeHead?.weights.flat() ?? []),
+    ]
+    expect(all.every(Number.isFinite)).toBe(true)
+    // Deterministic: same inputs -> same artifact.
+    const again = trainPolicyCheckpoint(SEASON_0_BASE_CHECKPOINT, examples, BROWSER_TRAINING_CONFIG)
+    expect(again.weightsHash).toBe(trained.weightsHash)
+  })
+})

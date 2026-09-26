@@ -17,7 +17,11 @@
  *     the held-out claim statistical instead of single-layout.
  *  5. Hard floors (independent of the pin) — every run finishes, zero
  *     recoveries anywhere. A crash is a hard failure, never a silent zero.
- *  6. Regression frames — the distilled policy reproduces the expected action
+ *  6. Claims block (independent of the pin) — the product claim recomputed
+ *     from raw match data every run: abstract per-leg parity within 1 of the
+ *     safe teacher + identical champion-win set; physics no-collapse floor
+ *     (trained ≥ floor(safe/2) per leg). See checkClaims.
+ *  7. Regression frames — the distilled policy reproduces the expected action
  *     class on every pinned frame in docs/regression-frames.json.
  *
  * Usage:
@@ -75,6 +79,10 @@ interface GatePin {
   rulesVersion: string
   worldNamespace: string
   checkpointSchema: string
+  /** Measured claim summary (see checkClaims) — documentation only; the
+   *  enforcement below recomputes from raw match data every run, so editing
+   *  the pin can never weaken a claim. */
+  claims: ClaimsSummary
   distill: {
     weightsHash: string
     datasetHash: string
@@ -159,6 +167,80 @@ function fail(message: string): never {
   process.exit(1)
 }
 
+interface ClaimsSummary {
+  abstractLegs: number
+  abstractLegsWithinOneOfSafe: number
+  abstractChampionWins: { safe: number; trained: number }
+  physicsLegs: number
+  physicsLegsAtOrAboveHalfOfSafe: number
+}
+
+/**
+ * WS1.5 claims block — the product claim, harness-enforced every run.
+ * Deliberately asymmetric because the measured reality is asymmetric:
+ *  - Abstract held-out layouts: per-leg parity within 1 banked of the safe
+ *    teacher on EVERY leg, and the student wins exactly the legs the teacher
+ *    wins (never more, never fewer).
+ *  - Physics layouts (grounded + family): no-collapse floor — the trained
+ *    champion banks at least half of what the teacher banks on every leg.
+ *    The student is still measurably weaker than the per-tick Dijkstra teacher
+ *    on physical courses (route-only distillation mis-prices travel/turn
+ *    physics; see the COMPATIBILITY.md migration log). Do NOT soften the
+ *    docs above these guarantees, and do NOT "fix" a failing claim by
+ *    re-pinning — report it.
+ */
+function checkClaims(abstract: MatchResult[], physics: GroundedMatchResult[]): { summary: ClaimsSummary; violations: string[] } {
+  const violations: string[] = []
+  const legKey = (m: { scenarioId: string; side: string }) => `${m.scenarioId}/${m.side}`
+  const abstractPairs = new Map<string, { safe?: MatchResult; trained?: MatchResult }>()
+  for (const m of abstract) {
+    const pair = abstractPairs.get(legKey(m)) ?? {}
+    pair[m.policy] = m
+    abstractPairs.set(legKey(m), pair)
+  }
+  let withinOne = 0
+  const safeWin = new Set<string>()
+  const trainedWin = new Set<string>()
+  for (const [key, pair] of [...abstractPairs.entries()].sort()) {
+    const s = pair.safe, t = pair.trained
+    if (!s || !t) { violations.push(`abstract ${key}: missing safe or trained leg`); continue }
+    if (t.banked >= s.banked - 1) withinOne++
+    else violations.push(`abstract ${key}: trained ${t.banked} is more than 1 below safe ${s.banked} (parity claim)`)
+    if (s.winner === 'champion') safeWin.add(key)
+    if (t.winner === 'champion') trainedWin.add(key)
+  }
+  if (violations.length === 0 && withinOne < abstractPairs.size) {
+    violations.push(`abstract parity: only ${withinOne}/${abstractPairs.size} legs within 1 of safe`)
+  }
+  const missed = [...safeWin].filter(k => !trainedWin.has(k))
+  const extra = [...trainedWin].filter(k => !safeWin.has(k))
+  if (missed.length > 0) violations.push(`abstract wins: trained fails to win legs the teacher wins: ${missed.join(', ')}`)
+  if (extra.length > 0) violations.push(`abstract wins: trained wins legs the teacher does not (${extra.join(', ')}) — the docs claim parity, not superiority; verify before adjusting`)
+  let halfOk = 0
+  const physicsPairs = new Map<string, { safe?: GroundedMatchResult; trained?: GroundedMatchResult }>()
+  for (const m of physics) {
+    const pair = physicsPairs.get(legKey(m)) ?? {}
+    pair[m.policy] = m
+    physicsPairs.set(legKey(m), pair)
+  }
+  for (const [key, pair] of [...physicsPairs.entries()].sort()) {
+    const s = pair.safe, t = pair.trained
+    if (!s || !t) { violations.push(`physics ${key}: missing safe or trained leg`); continue }
+    if (t.banked >= Math.floor(s.banked / 2)) halfOk++
+    else violations.push(`physics ${key}: trained ${t.banked} below half of safe ${s.banked} (no-collapse floor)`)
+  }
+  return {
+    summary: {
+      abstractLegs: abstractPairs.size,
+      abstractLegsWithinOneOfSafe: withinOne,
+      abstractChampionWins: { safe: safeWin.size, trained: trainedWin.size },
+      physicsLegs: physicsPairs.size,
+      physicsLegsAtOrAboveHalfOfSafe: halfOk,
+    },
+    violations,
+  }
+}
+
 async function main() {
   console.log('=== Clawdy eval gate ===\n')
 
@@ -239,6 +321,13 @@ async function main() {
     fail(`recoveries above the zero floor: ${recovered.map(m => `${m.scenarioId}/${m.policy}/${m.side}=${m.recoveries}`).join(', ')}`)
   }
 
+  // Claims block: enforced from raw match data on EVERY run (pin or no pin).
+  const claims = checkClaims(matches, [...groundedMatches, ...familyMatches])
+  if (claims.violations.length > 0) {
+    fail(`claim violations:\n  - ${claims.violations.join('\n  - ')}\n  Do not re-pin to make a claim pass — the docs must never claim more than the gate enforces.`)
+  }
+  console.log(`claims: abstract ${claims.summary.abstractLegsWithinOneOfSafe}/${claims.summary.abstractLegs} legs within 1 of safe; wins ${claims.summary.abstractChampionWins.trained}(trained)=${claims.summary.abstractChampionWins.safe}(safe); physics ${claims.summary.physicsLegsAtOrAboveHalfOfSafe}/${claims.summary.physicsLegs} legs at or above the half-of-safe floor`)
+
   // Regression frames.
   let frames: RegressionFrame[]
   if (UPDATE || !existsSync(FRAMES_PATH)) {
@@ -278,6 +367,7 @@ async function main() {
     rulesVersion: ARENA_RULES.version,
     worldNamespace: 'builder-abstract-v1',
     checkpointSchema: POLICY_SCHEMA_VERSION,
+    claims: claims.summary,
     distill: {
       weightsHash: trained.weightsHash,
       datasetHash: trained.trainingSummary.datasetHash,
@@ -400,7 +490,7 @@ async function main() {
     fail('gate pin mismatch — behavior changed. Review the diff; re-pin with --update only if the change is intended.')
   }
   if (frameFailures.length > 0) fail(`${frameFailures.length} pinned frames fail`)
-  console.log('\n[gate] PASS: 16/16 abstract + 8/8 grounded + 16/16 family legs reproduce the pin, hard floors hold, all frames pass.')
+  console.log('\n[gate] PASS: 16/16 abstract + 8/8 grounded + 16/16 family legs reproduce the pin, hard floors hold, claims hold, all frames pass.')
 }
 
 main().catch(err => {

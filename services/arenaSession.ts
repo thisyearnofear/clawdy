@@ -67,7 +67,7 @@ export class ArenaSession {
     const options: Record<string, EntrantPolicyOption> = {}
     for (const [id, strategy] of Object.entries(policies)) {
       if (strategy === 'learned') {
-        options[id] = { strategy: 'learned', checkpoint, energyPatienceMinRemaining: 400 }
+        options[id] = { strategy: 'learned', checkpoint }
       } else {
         options[id] = strategy
       }

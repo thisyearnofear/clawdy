@@ -1,5 +1,4 @@
 import {
-  ARENA_RULES,
   type ArenaPosition,
   type ArenaScenario,
 } from './arenaEpisode'

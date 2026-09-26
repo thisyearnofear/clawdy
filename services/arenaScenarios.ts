@@ -159,6 +159,62 @@ export const PRACTICE_SCENARIOS: ArenaScenario[] = [
 ]
 
 /**
+ * Diversity boards (practice split) reserved for outcome-argmax mining
+ * (WS1.2) ONLY. Kept OUT of PRACTICE_SCENARIOS so the teacher-label
+ * distribution of the distilled syllabus stays exactly as measured at WS1.1
+ * — added boards must never weaken it ("richer arena, never weaker").
+ * Phase 1d of the CI syllabus walks these for measured outcome overrides
+ * (currently cap-disabled pending the checkpoint-v3 edge head — see
+ * scripts/eval-lib.ts); the layout-tuple guard below proves none duplicates
+ * a held-out board.
+ */
+export const SYLLABUS_EXTRA_SCENARIOS: ArenaScenario[] = [
+  // - wide-flood: three overlapping mid-board waves, tight dry windows.
+  createBuilderScenario('builder-course-07-wide-flood', 20260914, 'practice', 800, [
+    { startTick: 40, endTick: 240 },
+    { startTick: 300, endTick: 560 },
+    { startTick: 620, endTick: 780 },
+  ]),
+  // - valley-hot: default entrants, doubled valley/cross cores — collect-first
+  //   timing frames the DEFAULT_RESOURCES boards never surface.
+  createBuilderScenario(
+    'builder-course-08-valley-hot',
+    20260915,
+    'practice',
+    800,
+    [
+      { startTick: 80, endTick: 320 },
+      { startTick: 450, endTick: 600 },
+    ],
+    DEFAULT_ENTRANTS,
+    [
+      { id: 'core-1', nodeId: 'valley-center', value: 2 },
+      { id: 'core-2', nodeId: 'valley-center', value: 2 },
+      { id: 'core-3', nodeId: 'cross-c', value: 2 },
+      { id: 'core-4', nodeId: 'cross-n', value: 1 },
+      { id: 'core-5', nodeId: 'ridge-center', value: 1 },
+      { id: 'core-6', nodeId: 'ridge-s1', value: 1 },
+    ],
+  ),
+  // - cross-contention: rival camps at cross-n instead of cross-c; champion's
+  //   shortcut opening is contested from tick 30.
+  createBuilderScenario(
+    'builder-course-09-cross-contention',
+    20260916,
+    'practice',
+    800,
+    [
+      { startTick: 30, endTick: 280 },
+      { startTick: 380, endTick: 640 },
+    ],
+    [
+      { id: 'champion', baseNode: 'champion-base', policyVersion: 'baseline.safe.v2' },
+      { id: 'rival', baseNode: 'cross-n', policyVersion: 'reference.greedy.v2' },
+    ],
+  ),
+]
+
+/**
  * Held-out evaluation scenarios. These must never be used as training/coaching
  * data; the registry below exposes helpers to guard against that.
  *
@@ -237,8 +293,29 @@ export const HELD_OUT_SCENARIOS: ArenaScenario[] = [
   ),
 ]
 
-const ALL_SCENARIOS = [...PRACTICE_SCENARIOS, ...HELD_OUT_SCENARIOS]
+const ALL_SCENARIOS = [...PRACTICE_SCENARIOS, ...SYLLABUS_EXTRA_SCENARIOS, ...HELD_OUT_SCENARIOS]
 const EVALUATION_IDS = new Set(HELD_OUT_SCENARIOS.map(s => s.id))
+
+/**
+ * Layout tuple = everything that makes states comparable across boards
+ * (topology is the shared builder graph). A practice board must never
+ * duplicate a held-out tuple: identical weather + cores + bases would leak
+ * held-out states into training regardless of id-based guards.
+ */
+function scenarioTuple(s: ArenaScenario): string {
+  return JSON.stringify([
+    s.durationTicks,
+    s.floods.map(f => [f.startTick, f.endTick]),
+    s.entrants.map(e => [e.id, e.baseNode]),
+    s.resources.map(r => [r.nodeId, r.value]),
+  ])
+}
+const heldOutTuples = new Set(HELD_OUT_SCENARIOS.map(scenarioTuple))
+for (const practice of [...PRACTICE_SCENARIOS, ...SYLLABUS_EXTRA_SCENARIOS]) {
+  if (heldOutTuples.has(scenarioTuple(practice))) {
+    throw new Error(`Syllabus leak: practice board "${practice.id}" duplicates a held-out layout tuple`)
+  }
+}
 
 export function getScenarioById(id: string): ArenaScenario | undefined {
   return ALL_SCENARIOS.find(s => s.id === id)

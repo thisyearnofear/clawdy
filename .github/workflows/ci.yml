@@ -34,8 +34,8 @@ jobs:
       - name: Eval gate
         run: npm run eval:gate
 
+      # No Convex secret in CI: generated api bindings are committed, sync
+      # tests run against in-memory convex-test, and the build's offline path
+      # (NEXT_PUBLIC_CONVEX_URL unset) is exactly what ships as the static export.
       - name: Build
         run: npm run build
-        env:
-          NEXT_PUBLIC_CHAIN: 0g
-          NEXT_PUBLIC_USE_TESTNET: "true"

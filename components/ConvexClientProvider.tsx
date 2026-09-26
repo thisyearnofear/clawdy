@@ -4,7 +4,7 @@ import { ConvexProvider, ConvexReactClient, useQuery } from 'convex/react'
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
 import { api } from '../convex/_generated/api'
 import { getOrCreateGuestKey, shortGuestLabel } from '../services/guestIdentity'
-import { isConvexConfigured } from '../services/convexSync'
+import { isConvexConfigured } from '../services/syncEngine'
 
 const ConvexClientContext = createContext<ConvexReactClient | null>(null)
 

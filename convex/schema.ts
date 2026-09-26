@@ -1,13 +1,38 @@
 import { defineSchema, defineTable } from 'convex/server'
 import { v } from 'convex/values'
+import { checkpointDocV, exampleDocV } from './lib/payload'
 
 /**
- * Season 0 Convex schema.
+ * Season 0 Convex schema — system of record for the coaching lineage.
  *
- * Exhibition trust model: records are keyed by a browser-issued `guestKey`
- * (no Convex Auth yet). Scored-match isolation still lives in the local
- * runner — Convex never sits on the physics / inference path.
+ * Trust model: records are keyed by a browser-issued `guestKey` and owned by
+ * `resolveOwner(guestKey)` (convex/lib/identity.ts) — the single seam for a
+ * later Convex Auth swap to `user:<id>`. Convex never sits on the physics or
+ * inference path.
+ *
+ * Sync protocol (services/syncEngine.ts ⇄ convex/sync.ts):
+ *  - `updatedAtMs`   client wall clock, the LWW proposal.
+ *  - `serverSeenAt`  server clock stamped in every mutation; authoritative
+ *                    ordering (client ISO strings stay display data).
+ *  - `tombstone`     deletes are soft; pulls carry tombstones so every
+ *                    device converges.
+ *  - `doc`           typed payload (convex/lib/payload.ts). The legacy
+ *                    `payload: v.any()` column remains for rows written
+ *                    before validation existed; `sync.backfillLegacy` moves
+ *                    rows it can, flags the rest `payloadRejected`, and the
+ *                    old column is dropped in the follow-up cleanup push.
+ *
+ * Uniqueness: Convex has no unique index primitive; the `(guestKey, id)`
+ * guarantee is transactional — every writer reads by the composite index
+ * first (`.unique()`), and Convex transactions serialize conflicting inserts.
  */
+const syncFields = {
+  owner: v.optional(v.string()),
+  updatedAtMs: v.optional(v.number()),
+  serverSeenAt: v.optional(v.number()),
+  tombstone: v.optional(v.boolean()),
+}
+
 export default defineSchema({
   checkpoints: defineTable({
     guestKey: v.string(),
@@ -18,11 +43,14 @@ export default defineSchema({
     weightsHash: v.string(),
     createdAt: v.string(),
     approvedExampleIds: v.array(v.string()),
-    /** Full Season 0 checkpoint JSON (small MLP — fine as a document). */
-    payload: v.any(),
+    payload: v.optional(v.any()),
+    doc: v.optional(checkpointDocV),
+    payloadRejected: v.optional(v.boolean()),
+    ...syncFields,
   })
     .index('by_guest', ['guestKey'])
-    .index('by_guest_checkpoint', ['guestKey', 'checkpointId']),
+    .index('by_guest_checkpoint', ['guestKey', 'checkpointId'])
+    .index('by_guest_seen', ['guestKey', 'serverSeenAt']),
 
   examples: defineTable({
     guestKey: v.string(),
@@ -32,11 +60,14 @@ export default defineSchema({
     approved: v.boolean(),
     rationale: v.string(),
     preferredActionType: v.string(),
-    /** Full ArenaTrainingExample JSON. */
-    payload: v.any(),
+    payload: v.optional(v.any()),
+    doc: v.optional(exampleDocV),
+    payloadRejected: v.optional(v.boolean()),
+    ...syncFields,
   })
     .index('by_guest', ['guestKey'])
-    .index('by_guest_example', ['guestKey', 'exampleId']),
+    .index('by_guest_example', ['guestKey', 'exampleId'])
+    .index('by_guest_seen', ['guestKey', 'serverSeenAt']),
 
   matches: defineTable({
     guestKey: v.string(),
@@ -49,11 +80,12 @@ export default defineSchema({
     rivalBanked: v.number(),
     winner: v.union(v.string(), v.null()),
     finishedAt: v.string(),
-    /** Optional lineage: examples that produced the active checkpoint. */
     linkedExampleIds: v.array(v.string()),
+    ...syncFields,
   })
     .index('by_guest', ['guestKey'])
-    .index('by_guest_match', ['guestKey', 'matchId']),
+    .index('by_guest_match', ['guestKey', 'matchId'])
+    .index('by_guest_seen', ['guestKey', 'serverSeenAt']),
 
   trainingJobs: defineTable({
     guestKey: v.string(),
@@ -69,7 +101,9 @@ export default defineSchema({
     exampleCount: v.number(),
     message: v.union(v.string(), v.null()),
     updatedAt: v.string(),
+    ...syncFields,
   })
     .index('by_guest', ['guestKey'])
-    .index('by_guest_job', ['guestKey', 'jobId']),
+    .index('by_guest_job', ['guestKey', 'jobId'])
+    .index('by_guest_seen', ['guestKey', 'serverSeenAt']),
 })

@@ -8,10 +8,11 @@
  * @module
  */
 
-import type * as checkpoints from "../checkpoints.js";
-import type * as examples from "../examples.js";
+import type * as lib_identity from "../lib/identity.js";
+import type * as lib_payload from "../lib/payload.js";
 import type * as lineage from "../lineage.js";
 import type * as matches from "../matches.js";
+import type * as sync from "../sync.js";
 import type * as trainingJobs from "../trainingJobs.js";
 
 import type {
@@ -21,10 +22,11 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  checkpoints: typeof checkpoints;
-  examples: typeof examples;
+  "lib/identity": typeof lib_identity;
+  "lib/payload": typeof lib_payload;
   lineage: typeof lineage;
   matches: typeof matches;
+  sync: typeof sync;
   trainingJobs: typeof trainingJobs;
 }>;
 

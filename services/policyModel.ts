@@ -3,8 +3,10 @@ import {
   type ArenaAction,
   type ArenaObservation,
 } from './arenaEpisode'
+import { applyControllerRules } from './arenaControllerRules'
 
-export const POLICY_SCHEMA_VERSION = 'season-0.checkpoint.v2' as const
+export const POLICY_SCHEMA_VERSION = 'season-0.checkpoint.v3' as const
+export const CHECKPOINT_SCHEMA_V2 = 'season-0.checkpoint.v2' as const
 export const CHECKPOINT_SCHEMA_V1 = 'season-0.checkpoint.v1' as const
 
 export interface PolicyLayer {
@@ -13,9 +15,13 @@ export interface PolicyLayer {
 }
 
 export interface PolicyWeights {
-  hidden1: { weights: number[][]; biases: number[] } // 32 x 32
+  hidden1: { weights: number[][]; biases: number[] } // 36 x 32 (v1: 32 x 32)
   hidden2: { weights: number[][]; biases: number[] } // 32 x 16
   actionHead: { weights: number[][]; biases: number[] } // 16 x 8
+  /** v3 only: linear edge-pointer head (EDGE_FEATURE_DIM x 1). Absent on
+   *  legacy v1/v2 checkpoints, which stay metadata-readable but no longer
+   *  execute — see createLearnedPolicy. */
+  edgeHead?: { weights: number[][]; biases: number[] }
 }
 
 export interface CheckpointTrainingSummary {
@@ -31,6 +37,9 @@ export interface CheckpointTrainingConfig {
   learningRate: number
   momentum: number
   weightDecay: number
+  /** Optional deterministic step decay (browser coach path): from
+   *  `atEpoch`, the effective learning rate is `learningRate * factor`. */
+  learningRateDecay?: { atEpoch: number; factor: number }
 }
 
 export interface CheckpointEvaluationRecord {
@@ -44,9 +53,12 @@ export interface CheckpointEvaluationRecord {
 }
 
 export interface PolicyCheckpoint {
-  // Readable across v1 (legacy, metadata-only) and v2 (executable).
-  // Execution requires v2 — see createLearnedPolicy.
-  schemaVersion: typeof POLICY_SCHEMA_VERSION | typeof CHECKPOINT_SCHEMA_V1
+  // v1/v2 remain metadata-readable (lineage, eval records) but no longer
+  // execute — execution requires v3, see createLearnedPolicy.
+  schemaVersion:
+    | typeof POLICY_SCHEMA_VERSION
+    | typeof CHECKPOINT_SCHEMA_V2
+    | typeof CHECKPOINT_SCHEMA_V1
   id: string
   name: string
   parentCheckpointId: string | null
@@ -62,6 +74,7 @@ export const OBSERVATION_FEATURE_DIM = 36
 export const ENCODER_VERSION = 'season-0.encoder.v2' as const
 export const ENCODER_V1_DIM = 32
 export const ACTION_CLASSES = 8 // 0: wait, 1: bank, 2: collect, 3: drain, 4: move-low, 5: move-high, 6: move-resource, 7: move-home
+export const EDGE_FEATURE_DIM = 8 // v3 edge-pointer head input (see encodeEdgeFeatures)
 
 /**
  * Encodes an ArenaObservation into a normalized 32-dimensional feature vector.
@@ -261,7 +274,76 @@ function onwardProspect(observation: ArenaObservation, from: string): number {
   return best
 }
 
-function scoreMoveEdge(observation: ArenaObservation, edgeId: string, cls: 4 | 5 | 6 | 7): number {
+/**
+ * v3 edge-pointer features for one candidate move edge, computed purely from
+ * the observation (inference-time, no progress constants). Clipped to [0,1]
+ * so a plain linear head can rank same-class edges without feature scaling
+ * surprises. These are exactly the signals the hand-scored v2 executor weighed
+ * (cost, visible value, homeward distance, onward prospect, flood exposure,
+ * energy, connectivity) — v3 lets the coach's junction examples fit the
+ * weights instead of fixed constants.
+ */
+export function encodeEdgeFeatures(observation: ArenaObservation, edgeId: string): Float32Array {
+  const vec = new Float32Array(EDGE_FEATURE_DIM)
+  const edge = observation.edges.find(e => e.id === edgeId)
+  if (!edge) return vec
+  const self = observation.self
+  const target = edge.from === self.nodeId ? edge.to : edge.from
+  const clamp01 = (v: number) => (Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0)
+  vec[0] = target === self.baseNode ? 1 : 0
+  vec[1] = edge.floodable ? 1 : 0
+  vec[2] = clamp01(edge.currentTravelTicks / 60)
+  const visibleValue = observation.resources.reduce(
+    (sum, r) => sum + (r.available && r.visible && r.nodeId === target ? r.value : 0),
+    0,
+  )
+  vec[3] = clamp01(visibleValue / 4)
+  const homeCost = routeCostsFrom(observation, target).get(self.baseNode)
+  vec[4] = homeCost === undefined ? 1 : clamp01(homeCost / 120)
+  vec[5] = clamp01(onwardProspect(observation, target) / 40)
+  vec[6] = clamp01((edge.currentTravelTicks * ARENA_RULES.moveCostPerTick) / ARENA_RULES.initialEnergy)
+  const degree = observation.edges.filter(e => !e.blocked && (e.from === target || e.to === target)).length
+  vec[7] = clamp01(degree / 4)
+  return vec
+}
+
+/** Linear edge-pointer score: weights (EDGE_FEATURE_DIM x 1) + bias. */
+export function scoreEdgeWithHead(edgeHead: PolicyLayer, features: Float32Array): number {
+  let sum = edgeHead.biases[0] ?? 0
+  for (let i = 0; i < features.length; i++) {
+    sum += features[i] * (edgeHead.weights[i]?.[0] ?? 0)
+  }
+  return sum
+}
+
+/** Scale that puts the executor heuristic and the learned tilt on comparable
+ *  magnitude: heuristic deltas of ±48 score move ±3, which ~35 epochs of
+ *  consistent coach/argmax evidence can overcome. */
+export const EDGE_HEURISTIC_SCALE = 16
+
+/**
+ * v3 RESIDUAL edge ranking: the shared executor's heuristic score (so a
+ * zero-trained head reproduces the v2 order exactly — the base policy stays
+ * as strong as v2 and outcome-verification rollouts keep their meaning) plus
+ * the learned linear tilt. Heuristic traps (-Infinity: retreat hop while
+ * loaded, empty-slot chase) stay absolute; the head nudges among honest
+ * candidates, it never resurrects a road the executor distrusts.
+ * (Deviation from the original "pure learned score" sketch, recorded in
+ * docs/COMPATIBILITY.md with the checkpoint-v3 migration entry.)
+ */
+export function edgeResidualScore(
+  observation: ArenaObservation,
+  edgeId: string,
+  cls: 4 | 5 | 6 | 7,
+  edgeHead: PolicyLayer,
+): number {
+  const heur = scoreMoveEdge(observation, edgeId, cls)
+  if (!Number.isFinite(heur)) return heur
+  return heur / EDGE_HEURISTIC_SCALE + scoreEdgeWithHead(edgeHead, encodeEdgeFeatures(observation, edgeId))
+}
+
+/** Executor's v2 heuristic road score; exported for the residual trainer. */
+export function scoreMoveEdge(observation: ArenaObservation, edgeId: string, cls: 4 | 5 | 6 | 7): number {
   const edge = observation.edges.find(candidate => candidate.id === edgeId)
   if (!edge) return -Infinity
   const self = observation.self
@@ -386,7 +468,11 @@ export function classifyAction(action: ArenaAction, observation: ArenaObservatio
 /**
  * Maps an action class back to the best corresponding legal action from availableActions.
  */
-export function selectActionForClass(actionClass: number, observation: ArenaObservation): ArenaAction {
+export function selectActionForClass(
+  actionClass: number,
+  observation: ArenaObservation,
+  edgeHead?: PolicyLayer,
+): ArenaAction {
   const available = observation.availableActions
   if (available.length === 0) return { type: 'wait' }
 
@@ -406,58 +492,37 @@ export function selectActionForClass(actionClass: number, observation: ArenaObse
       if (drain) return drain
       break
     }
-    case 4: { // move-low (floodable corridor): only edges that classify as 4.
+    case 4: // move-low (floodable corridor)
+    case 5: // move-high (non-floodable ridge)
+    case 6: // move-resource: visible pickup + free slot (classifyAction)
+    case 7: { // move-home: edge targets own base
+      // Class membership first (stale-ghost / full-slot / visibility rules
+      // live in classifyAction), then rank: the v3 learned edge head when
+      // provided, else the v2 heuristic executor. Both deterministic.
       const ids = available.flatMap(a => {
         if (a.type !== 'move') return []
-        return classifyAction(a, observation) === 4 ? [a.edgeId] : []
+        return classifyAction(a, observation) === actionClass ? [a.edgeId] : []
       })
-      if (ids.length > 0) {
-        const ranked = rankMoveEdges(observation, ids, 4)
-        if (scoreMoveEdge(observation, ranked[0], 4) > -Infinity) {
+      if (ids.length === 0) return { type: 'wait' }
+      const cls = actionClass as 4 | 5 | 6 | 7
+      if (edgeHead) {
+        // Residual ranking: executor score + learned tilt (see
+        // edgeResidualScore). Deterministic edgeId tie-break.
+        const ranked = [...ids].sort((a, b) => {
+          const diff =
+            edgeResidualScore(observation, b, cls, edgeHead) -
+            edgeResidualScore(observation, a, cls, edgeHead)
+          if (diff !== 0) return diff
+          return a < b ? -1 : a > b ? 1 : 0
+        })
+        if (Number.isFinite(edgeResidualScore(observation, ranked[0], cls, edgeHead))) {
           return { type: 'move', edgeId: ranked[0] }
         }
+        return { type: 'wait' }
       }
-      return { type: 'wait' }
-    }
-    case 5: { // move-high (non-floodable ridge): only edges that classify as 5.
-      const ids = available.flatMap(a => {
-        if (a.type !== 'move') return []
-        return classifyAction(a, observation) === 5 ? [a.edgeId] : []
-      })
-      if (ids.length > 0) {
-        const ranked = rankMoveEdges(observation, ids, 5)
-        if (scoreMoveEdge(observation, ranked[0], 5) > -Infinity) {
-          return { type: 'move', edgeId: ranked[0] }
-        }
-      }
-      return { type: 'wait' }
-    }
-    case 6: { // move-resource: only edges that classify as 6 (visible + free slot).
-      const ids = available.flatMap(a => {
-        if (a.type !== 'move') return []
-        return classifyAction(a, observation) === 6 ? [a.edgeId] : []
-      })
-      if (ids.length > 0) {
-        const ranked = rankMoveEdges(observation, ids, 6)
-        if (scoreMoveEdge(observation, ranked[0], 6) > -Infinity) {
-          return { type: 'move', edgeId: ranked[0] }
-        }
-      }
-      return { type: 'wait' }
-    }
-    case 7: { // move-home: cheapest return leg first.
-      const ids = available.flatMap(a => {
-        if (a.type !== 'move') return []
-        const edge = observation.edges.find(e => e.id === a.edgeId)
-        if (!edge) return []
-        const target = edge.from === observation.self.nodeId ? edge.to : edge.from
-        return target === observation.self.baseNode ? [a.edgeId] : []
-      })
-      if (ids.length > 0) {
-        const ranked = rankMoveEdges(observation, ids, 7)
-        if (scoreMoveEdge(observation, ranked[0], 7) > -Infinity) {
-          return { type: 'move', edgeId: ranked[0] }
-        }
+      const ranked = rankMoveEdges(observation, ids, cls)
+      if (scoreMoveEdge(observation, ranked[0], cls) > -Infinity) {
+        return { type: 'move', edgeId: ranked[0] }
       }
       return { type: 'wait' }
     }
@@ -529,13 +594,17 @@ export function softmax(logits: Float32Array): Float32Array {
  * This is a stable fingerprint used for checkpoint identity, not a cryptographic SHA-256.
  */
 export function computeWeightsHash(weights: PolicyWeights): string {
+  const rounded = (layer: { weights: number[][]; biases: number[] }) => [
+    layer.weights.map(row => row.map(v => Math.round(v * 100000) / 100000)),
+    layer.biases.map(v => Math.round(v * 100000) / 100000),
+  ]
   const serialized = JSON.stringify([
-    weights.hidden1.weights.map(row => row.map(v => Math.round(v * 100000) / 100000)),
-    weights.hidden1.biases.map(v => Math.round(v * 100000) / 100000),
-    weights.hidden2.weights.map(row => row.map(v => Math.round(v * 100000) / 100000)),
-    weights.hidden2.biases.map(v => Math.round(v * 100000) / 100000),
-    weights.actionHead.weights.map(row => row.map(v => Math.round(v * 100000) / 100000)),
-    weights.actionHead.biases.map(v => Math.round(v * 100000) / 100000),
+    ...rounded(weights.hidden1),
+    ...rounded(weights.hidden2),
+    ...rounded(weights.actionHead),
+    // v3: the edge head is part of the artifact identity — a checkpoint that
+    // ranks roads differently is a different champion.
+    ...(weights.edgeHead ? rounded(weights.edgeHead) : []),
   ])
 
   let hash = 0x811c9dc5
@@ -554,14 +623,14 @@ export function computeWeightsHash(weights: PolicyWeights): string {
 /**
  * Creates an ArenaPolicy function backed by a frozen PolicyCheckpoint.
  *
- * `energyPatienceMinRemaining` gates the barren-pad recharge wait: below this
- * remaining-tick floor the executor keeps the affordable hop (practice banks
- * 9 late with ~265 ticks left). Default 0 preserves distill trajectories;
- * play/eval pass 400 via ArenaRunner options.
+ * The head picks an action CLASS; the shared executor resolves the class to a
+ * legal action; the universal controller rules (`applyControllerRules`) get
+ * the final say — identical contract the safe teacher runs under. No
+ * scenario-shaped redirects: nothing here may gate on progress constants like
+ * `banked === N`, or the student inherits scaffolding it was never taught.
  */
 export function createLearnedPolicy(
   checkpoint: PolicyCheckpoint,
-  opts: { energyPatienceMinRemaining?: number } = {},
 ): (observation: ArenaObservation) => ArenaAction {
   validateCheckpoint(checkpoint)
   if (checkpoint.schemaVersion !== POLICY_SCHEMA_VERSION) {
@@ -569,7 +638,6 @@ export function createLearnedPolicy(
       `checkpoint-execution-mismatch (got ${checkpoint.schemaVersion}, want ${POLICY_SCHEMA_VERSION} — re-train its examples to upgrade)`,
     )
   }
-  const energyPatienceMinRemaining = opts.energyPatienceMinRemaining ?? 0
   return (observation: ArenaObservation): ArenaAction => {
     if (!observation.decisionDue) return { type: 'wait' }
     if (observation.availableActions.length === 0) return { type: 'wait' }
@@ -585,262 +653,20 @@ export function createLearnedPolicy(
     // fire when selectActionForClass(6) returns a real visible-resource run.
     const ordered = [...logits].map((_, cls) => cls).sort((a, b) => logits[b] - logits[a])
 
-    // Soft on-node collect: when collect is legal and class-2 trails the top
-    // class by <1.0 logit, prefer collecting. The practice-deep pad mine
-    // slightly demotes class-2 on abstract openings (heldout-02 swapped
-    // dropped 3→2 via walk-off at t20). Safe always collects on-node.
-    {
-      const collect = observation.availableActions.find(a => a.type === 'collect')
-      if (
-        collect &&
-        logits[2] >= logits[ordered[0]] - 1.0
-      ) {
-        const resolvedCollect = selectActionForClass(2, observation)
-        if (
-          resolvedCollect.type === 'collect' &&
-          observation.availableActions.some(a => JSON.stringify(a) === JSON.stringify(resolvedCollect))
-        ) {
-          return resolvedCollect
-        }
-      }
-    }
-
     for (const cls of ordered) {
-      const resolved = selectActionForClass(cls, observation)
+      const resolved = selectActionForClass(cls, observation, checkpoint.weights.edgeHead)
       // Verify the resolved action actually belongs to the predicted class —
       // otherwise a hollow class (no legal member) would emit another
       // class's action under false pretenses.
       if (!observation.availableActions.some(a => JSON.stringify(a) === JSON.stringify(resolved))) continue
-      if (classifyAction(resolved, observation) !== cls) {
-        // Class 5 hollow trap (compete trip-2): a non-floodable ridge hop with
-        // a visible core on the far node classifies as 6, so class 5 returns
-        // wait and logit fallthrough takes floodable valley — missing the fast
-        // second trip. Only alias at own base after the first bank (banked===3),
-        // flooded: bank=2 on heldout-02 swapped forced ridge when safe waits.
-        if (
-          cls === 5 &&
-          observation.self.cargo === 0 &&
-          observation.self.banked === 3 &&
-          observation.self.nodeId === observation.self.baseNode &&
-          observation.weather.flooded
-        ) {
-          const ridgePickup = selectActionForClass(6, observation)
-          if (
-            ridgePickup.type === 'move' &&
-            classifyAction(ridgePickup, observation) === 6 &&
-            observation.availableActions.some(a => JSON.stringify(a) === JSON.stringify(ridgePickup))
-          ) {
-            const edge = observation.edges.find(e => e.id === (ridgePickup as { edgeId: string }).edgeId)
-            if (edge && !edge.floodable) {
-              // Only alias when the ridge pickup's target outscores the
-              // floodable valley hop on the shared corridor prospect scale.
-              // Practice loads valley-center cores — valley wins there.
-              // Compete trip-2 loads ridge-north value-2 — ridge wins.
-              const valley = selectActionForClass(4, observation)
-              const valleyLegal =
-                valley.type === 'move' &&
-                classifyAction(valley, observation) === 4 &&
-                observation.availableActions.some(a => JSON.stringify(a) === JSON.stringify(valley))
-              if (!valleyLegal) return ridgePickup
-              const prospect = (edgeId: string) => {
-                const e = observation.edges.find(candidate => candidate.id === edgeId)
-                if (!e) return -Infinity
-                const target = e.from === observation.self.nodeId ? e.to : e.from
-                return (
-                  resourceValueAt(observation, target) * 18 +
-                  onwardProspect(observation, target) -
-                  e.currentTravelTicks * 0.5
-                )
-              }
-              if (
-                prospect((ridgePickup as { edgeId: string }).edgeId) + 1e-6 >=
-                prospect((valley as { edgeId: string }).edgeId)
-              ) {
-                return ridgePickup
-              }
-            }
-          }
-        }
-        continue
-      }
-
-      // At base with cargo: banking is the only scoring action. Corridor /
-      // homeward logits must not walk off the pad (heldout-02 cargo=2
-      // oscillating ridge-center ↔ cross-c while bank sat legal).
-      if (observation.self.cargo > 0) {
-        const bank = observation.availableActions.find(a => a.type === 'bank')
-        if (bank) return bank
-      }
-
-      // Premature home: bay has room and a visible pickup is legal — finish
-      // the trip before banking unless the clock is short. During flood,
-      // only insist when the pickup is on non-floodable ground (ridge cores
-      // remain reachable at 1x). Redirect to the pickup rather than falling
-      // through to a weaker corridor class.
-      if (
-        cls === 7 &&
-        observation.self.cargo >= 2 &&
-        observation.self.cargo < ARENA_RULES.capacity &&
-        observation.remainingTicks > 300
-      ) {
-        const pickup = selectActionForClass(6, observation)
-        if (
-          pickup.type === 'move' &&
-          classifyAction(pickup, observation) === 6 &&
-          observation.availableActions.some(a => JSON.stringify(a) === JSON.stringify(pickup))
-        ) {
-          const edge = observation.edges.find(e => e.id === (pickup as { edgeId: string }).edgeId)
-          if (!observation.weather.flooded || (edge && !edge.floodable)) {
-            return pickup
-          }
-        }
-      }
-
-      // Anti-oscillation: with cargo and no visible pickup, a corridor hop
-      // that increases home distance loses to a legal homeward class-7 move.
-      // Heldout-02 death mode was cargo=1 bouncing cross-n ↔ ridge-n1 while
-      // ridge-r1-rc (home) sat unused — class 5 outranked class 7 on logits.
-      if (
-        (cls === 4 || cls === 5) &&
-        observation.self.cargo > 0 &&
-        resolved.type === 'move' &&
-        !observation.resources.some(r => r.available && r.visible)
-      ) {
-        const edge = observation.edges.find(e => e.id === (resolved as { edgeId: string }).edgeId)
-        if (edge) {
-          const target = edge.from === observation.self.nodeId ? edge.to : edge.from
-          const homeFromHere =
-            routeCostsFrom(observation, observation.self.nodeId).get(observation.self.baseNode) ?? Infinity
-          const homeFromTarget =
-            routeCostsFrom(observation, target).get(observation.self.baseNode) ?? Infinity
-          if (homeFromTarget > homeFromHere + 1e-6) {
-            const home = selectActionForClass(7, observation)
-            if (
-              home.type === 'move' &&
-              classifyAction(home, observation) === 7 &&
-              observation.availableActions.some(a => JSON.stringify(a) === JSON.stringify(home))
-            ) {
-              return home
-            }
-          }
-        }
-      }
-
-      // Empty-bay corridor arbitration: class 4 vs 5 logit noise should not
-      // strand a post-bank rover on a barren ridge when the low corridor has
-      // better prospect (compete t400: base-cb-rn vs valley-cb-n1). Compare
-      // executor scores and take the better legal hop.
-      if (
-        (cls === 4 || cls === 5) &&
-        observation.self.cargo === 0 &&
-        resolved.type === 'move'
-      ) {
-        const otherCls = cls === 4 ? 5 : 4
-        const other = selectActionForClass(otherCls, observation)
-        if (
-          other.type === 'move' &&
-          classifyAction(other, observation) === otherCls &&
-          observation.availableActions.some(a => JSON.stringify(a) === JSON.stringify(other))
-        ) {
-          const scoreHere = scoreMoveEdge(
-            observation,
-            (resolved as { edgeId: string }).edgeId,
-            cls,
-          )
-          const scoreOther = scoreMoveEdge(
-            observation,
-            (other as { edgeId: string }).edgeId,
-            otherCls,
-          )
-          if (scoreOther > scoreHere + 1e-6) return other
-        }
-      }
-
-      // Soft pad-flood tie-break: after the second bank (banked≥6), during
-      // flood, when class-5 barely beats class-4 on logits (<2.0), prefer the
-      // valley hop. Safe itself takes ridge at the first post-bank (bank=3)
-      // on compete; only the later pad departure is valley-over-ridge.
-      if (
-        cls === 5 &&
-        observation.self.cargo === 0 &&
-        observation.self.banked >= 6 &&
-        observation.weather.flooded &&
-        resolved.type === 'move' &&
-        logits[5] - logits[4] < 2.0
-      ) {
-        const valley = selectActionForClass(4, observation)
-        if (
-          valley.type === 'move' &&
-          classifyAction(valley, observation) === 4 &&
-          observation.availableActions.some(a => JSON.stringify(a) === JSON.stringify(valley))
-        ) {
-          return valley
-        }
-      }
-
-      // Energy patience: empty bay at own base after scoring (banked≥9). Safe
-      // routes toward known resources over the full graph and proposes the
-      // first hop even when unaffordable. Wait when the affordable hop lands
-      // on a barren node while the resource-route hop is energy-gated (compete
-      // bank=9: valley-cb-n1 empty vs valley-cb-vc). `energyPatienceMinRemaining`
-      // (play/eval set 400) skips the wait when the clock is too short to finish
-      // another trip — practice banks 9 at ~t930 with ~265 ticks left.
-      if (
-        observation.self.cargo === 0 &&
-        observation.self.banked >= 9 &&
-        observation.self.nodeId === observation.self.baseNode &&
-        !observation.self.transit &&
-        observation.remainingTicks > energyPatienceMinRemaining &&
-        resolved.type === 'move'
-      ) {
-        const capacityLeft = ARENA_RULES.capacity - observation.self.cargo
-        const targets = observation.resources
-          .filter(r => r.available && r.value <= capacityLeft)
-          .map(r => ({ r, route: findShortestRoute(observation, r.nodeId) }))
-          .filter((e): e is typeof e & { route: NonNullable<typeof e.route> } => e.route !== null)
-          .sort((a, b) => {
-            if (a.r.stale !== b.r.stale) return a.r.stale ? 1 : -1
-            return a.route.cost - b.route.cost || (a.r.id < b.r.id ? -1 : a.r.id > b.r.id ? 1 : 0)
-          })
-        const desiredEdge = targets[0]?.route.firstEdge
-        if (
-          desiredEdge &&
-          desiredEdge !== (resolved as { edgeId: string }).edgeId
-        ) {
-          const desiredAffordable = observation.availableActions.some(
-            a => a.type === 'move' && (a as { edgeId: string }).edgeId === desiredEdge,
-          )
-          if (!desiredAffordable) {
-            const desiredMeta = observation.edges.find(e => e.id === desiredEdge)
-            const cheapMeta = observation.edges.find(
-              e => e.id === (resolved as { edgeId: string }).edgeId,
-            )
-            const fromHere =
-              desiredMeta &&
-              !desiredMeta.blocked &&
-              (desiredMeta.from === observation.self.nodeId ||
-                desiredMeta.to === observation.self.nodeId)
-            if (fromHere && cheapMeta) {
-              const cheapTarget =
-                cheapMeta.from === observation.self.nodeId ? cheapMeta.to : cheapMeta.from
-              const cheapHasCore = observation.resources.some(
-                r => r.available && r.nodeId === cheapTarget && r.value <= capacityLeft,
-              )
-              if (!cheapHasCore) {
-                const wait = observation.availableActions.find(a => a.type === 'wait')
-                if (wait) return wait
-              }
-            }
-          }
-        }
-      }
-
-      return resolved
+      if (classifyAction(resolved, observation) !== cls) continue
+      return applyControllerRules(observation, resolved)
     }
 
     // No class resolves honestly (shouldn't happen): safest legal action.
-    return observation.availableActions.find(a => a.type === 'wait')
+    const fallback = observation.availableActions.find(a => a.type === 'wait')
       ?? observation.availableActions[0]
+    return applyControllerRules(observation, fallback)
   }
 }
 
@@ -849,12 +675,16 @@ export function createLearnedPolicy(
  */
 export function validateCheckpoint(checkpoint: PolicyCheckpoint): void {
   if (!checkpoint || typeof checkpoint !== 'object') throw new Error('Invalid checkpoint object')
-  // v1 checkpoints remain metadata-readable (lineage, eval records) but no
+  // v1/v2 checkpoints remain metadata-readable (lineage, eval records) but no
   // longer execute — see createLearnedPolicy. Never silently reinterpret.
   const expectedInputDim = checkpoint.schemaVersion === CHECKPOINT_SCHEMA_V1
     ? ENCODER_V1_DIM
     : OBSERVATION_FEATURE_DIM
-  if (checkpoint.schemaVersion !== POLICY_SCHEMA_VERSION && checkpoint.schemaVersion !== CHECKPOINT_SCHEMA_V1) {
+  if (
+    checkpoint.schemaVersion !== POLICY_SCHEMA_VERSION
+    && checkpoint.schemaVersion !== CHECKPOINT_SCHEMA_V2
+    && checkpoint.schemaVersion !== CHECKPOINT_SCHEMA_V1
+  ) {
     throw new Error(`Unsupported checkpoint schema: ${checkpoint.schemaVersion}`)
   }
   if (!checkpoint.id || typeof checkpoint.id !== 'string') throw new Error('Checkpoint requires an id')
@@ -870,6 +700,15 @@ export function validateCheckpoint(checkpoint: PolicyCheckpoint): void {
   if (actionHead.weights.length !== 16 || actionHead.weights[0]?.length !== ACTION_CLASSES) {
     throw new Error(`Invalid actionHead layer shape: expected 16x${ACTION_CLASSES}`)
   }
+  if (checkpoint.weights.edgeHead) {
+    const eh = checkpoint.weights.edgeHead
+    if (eh.weights.length !== EDGE_FEATURE_DIM || eh.weights[0]?.length !== 1 || eh.biases.length !== 1) {
+      throw new Error(`Invalid edgeHead layer shape: expected ${EDGE_FEATURE_DIM}x1`)
+    }
+  }
+  if (checkpoint.schemaVersion === POLICY_SCHEMA_VERSION && !checkpoint.weights.edgeHead) {
+    throw new Error(`Invalid edgeHead layer shape: v3 checkpoints require a ${EDGE_FEATURE_DIM}x1 edge head`)
+  }
 
   const allNumbers = [
     ...hidden1.weights.flat(),
@@ -878,6 +717,9 @@ export function validateCheckpoint(checkpoint: PolicyCheckpoint): void {
     ...hidden2.biases,
     ...actionHead.weights.flat(),
     ...actionHead.biases,
+    ...(checkpoint.weights.edgeHead
+      ? [...checkpoint.weights.edgeHead.weights.flat(), ...checkpoint.weights.edgeHead.biases]
+      : []),
   ]
   if (!allNumbers.every(Number.isFinite)) {
     throw new Error('Checkpoint weights contain non-finite numbers')
@@ -890,6 +732,11 @@ export function validateCheckpoint(checkpoint: PolicyCheckpoint): void {
     if (!Number.isFinite(tc.learningRate) || tc.learningRate <= 0) throw new Error('Invalid trainingConfig.learningRate')
     if (!Number.isFinite(tc.momentum) || tc.momentum < 0) throw new Error('Invalid trainingConfig.momentum')
     if (!Number.isFinite(tc.weightDecay) || tc.weightDecay < 0) throw new Error('Invalid trainingConfig.weightDecay')
+    if (tc.learningRateDecay !== undefined) {
+      const d = tc.learningRateDecay
+      if (!Number.isInteger(d.atEpoch) || d.atEpoch < 0) throw new Error('Invalid trainingConfig.learningRateDecay.atEpoch')
+      if (!Number.isFinite(d.factor) || d.factor <= 0 || d.factor > 1) throw new Error('Invalid trainingConfig.learningRateDecay.factor')
+    }
   }
 
   if (checkpoint.evaluationRecords !== undefined) {
@@ -947,7 +794,16 @@ export function createBaseCheckpoint(seed = 42): PolicyCheckpoint {
   actionHead.biases[4] = 0.2 // move-low (default aggressive)
   actionHead.biases[5] = 0.1 // move-high
 
-  const weights: PolicyWeights = { hidden1, hidden2, actionHead }
+  // v3 edge head: zero init. Ranking is residual (executor score + head
+  // tilt), so an untrained head reproduces the v2 executor order exactly —
+  // the base policy is provably as strong as v2, and gradients stay non-zero
+  // because candidate feature vectors differ per edge.
+  const edgeHead: PolicyWeights['edgeHead'] = {
+    weights: Array.from({ length: EDGE_FEATURE_DIM }, () => [0]),
+    biases: [0],
+  }
+
+  const weights: PolicyWeights = { hidden1, hidden2, actionHead, edgeHead }
   const weightsHash = computeWeightsHash(weights)
 
   return {

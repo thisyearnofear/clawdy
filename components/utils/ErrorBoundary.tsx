@@ -50,88 +50,32 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       }
 
       return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/95 backdrop-blur-xl">
-          <div className="max-w-md w-full mx-4 p-6 bg-slate-800/50 border border-red-500/30 rounded-2xl">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
-                <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              </div>
-              <div>
-                <h2 className="text-lg font-bold text-white">Something went wrong</h2>
-                <p className="text-sm text-white/50">An unexpected error occurred</p>
-              </div>
-            </div>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f2f3e9', color: '#233531', fontFamily: 'var(--font-geist-sans), sans-serif', padding: 20 }}>
+          <div style={{ maxWidth: 420, width: '100%', padding: '22px 24px', background: '#ffffff', border: '1px solid #d8ded2', borderRadius: 14 }}>
+            <h2 style={{ margin: '0 0 6px', fontSize: 18 }}>Something went wrong</h2>
+            <p style={{ margin: '0 0 14px', fontSize: 13, color: '#6e7971' }}>The arena hit an unexpected error. Your trained brains are safe in local storage.</p>
 
-            <div className="bg-black/30 rounded-lg p-3 mb-4 overflow-auto max-h-32">
-              <p className="text-xs font-mono text-red-300">
+            <div style={{ background: '#f7f7ef', border: '1px solid #e3e7dc', borderRadius: 8, padding: 10, marginBottom: 16, overflow: 'auto', maxHeight: 96 }}>
+              <p style={{ margin: 0, fontSize: 11, fontFamily: 'var(--font-geist-mono), ui-monospace, monospace', color: '#9a3b2e' }}>
                 {this.state.error?.message || 'Unknown error'}
               </p>
             </div>
 
-            <div className="flex gap-3">
+            <div style={{ display: 'flex', gap: 10 }}>
               <button
                 onClick={this.handleRetry}
-                className="flex-1 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white text-sm font-bold rounded-xl transition-colors"
+                style={{ flex: 1, padding: '9px 14px', background: '#233531', color: '#f2f3e9', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
               >
                 Try Again
               </button>
               <button
                 onClick={() => window.location.reload()}
-                className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-bold rounded-xl transition-colors"
+                style={{ flex: 1, padding: '9px 14px', background: 'transparent', color: '#233531', border: '1px solid #d8ded2', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
               >
                 Reload Page
               </button>
             </div>
           </div>
-        </div>
-      )
-    }
-
-    return this.props.children
-  }
-}
-
-// Smaller error boundary for specific components
-export class ComponentErrorBoundary extends Component<
-  { children: ReactNode; fallback?: ReactNode },
-  ErrorBoundaryState
-> {
-  constructor(props: { children: ReactNode; fallback?: ReactNode }) {
-    super(props)
-    this.state = { hasError: false, error: null }
-  }
-
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { hasError: true, error }
-  }
-
-  handleRetry = () => {
-    this.setState({ hasError: false, error: null })
-  }
-
-  render() {
-    if (this.state.hasError) {
-      if (this.props.fallback) {
-        return this.props.fallback
-      }
-
-      return (
-        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
-          <div className="flex items-center gap-2 mb-2">
-            <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01" />
-            </svg>
-            <span className="text-sm font-bold text-red-400">Component Error</span>
-          </div>
-          <p className="text-xs text-white/50 mb-2">{this.state.error?.message}</p>
-          <button
-            onClick={this.handleRetry}
-            className="text-xs font-bold text-sky-400 hover:text-sky-300"
-          >
-            Retry
-          </button>
         </div>
       )
     }

@@ -7,12 +7,16 @@ import {
 } from './arenaEpisode'
 import {
   POLICY_SCHEMA_VERSION,
-  CHECKPOINT_SCHEMA_V1,
   OBSERVATION_FEATURE_DIM,
+  EDGE_FEATURE_DIM,
+  EDGE_HEURISTIC_SCALE,
   type CheckpointEvaluationRecord,
   type PolicyCheckpoint,
   type PolicyWeights,
   encodeObservation,
+  encodeEdgeFeatures,
+  scoreEdgeWithHead,
+  scoreMoveEdge,
   classifyAction,
   forwardPolicy,
   softmax,
@@ -33,6 +37,10 @@ export type TrainingExampleProvenance =
   | { kind: 'human' }
   | { kind: 'oracle'; teacher: 'safe' | 'weather' | 'patience'; reason: string }
   | { kind: 'oracle-consequence'; teacher: 'safe' | 'weather' | 'patience'; reason: string; outcomeDelta: number }
+  /** Expert iteration (CI syllabus only): the label is the outcome-argmax over
+   *  a bounded candidate set, not the teacher's pick; `teacher` names the
+   *  overridden teacher action used as the contrast. */
+  | { kind: 'outcome-argmax'; teacher: 'safe' | 'weather' | 'patience'; reason: string; outcomeDelta: number }
 
 export interface ArenaTrainingExample {
   id: string
@@ -63,6 +71,13 @@ export interface TrainingOptions {
    * (flood timing, drain calls) move the weights more than routine routing.
    */
   sampleWeights?: readonly number[]
+  /**
+   * Deterministic step decay (browser coach path): the effective learning
+   * rate is `learningRate` until `atEpoch`, then `learningRate * factor`.
+   * Recorded in the checkpoint's trainingConfig — the artifact manifest
+   * must fully describe the optimizer that produced the weights.
+   */
+  learningRateDecay?: { atEpoch: number; factor: number }
 }
 
 export interface EvaluationResult {
@@ -106,6 +121,14 @@ function cloneWeights(w: PolicyWeights): PolicyWeights {
       weights: w.actionHead.weights.map(row => [...row]),
       biases: [...w.actionHead.biases],
     },
+    ...(w.edgeHead
+      ? {
+          edgeHead: {
+            weights: w.edgeHead.weights.map(row => [...row]),
+            biases: [...w.edgeHead.biases],
+          },
+        }
+      : {}),
   }
 }
 
@@ -118,9 +141,9 @@ export function trainPolicyCheckpoint(
   options: TrainingOptions = {}
 ): PolicyCheckpoint {
   validateCheckpoint(parent)
-  if (parent.schemaVersion === CHECKPOINT_SCHEMA_V1) {
+  if (parent.schemaVersion !== POLICY_SCHEMA_VERSION) {
     throw new Error(
-      `checkpoint-execution-mismatch (cannot fine-tune v1 parent under the v2 encoder — start from the v2 base and re-train its examples)`,
+      `checkpoint-execution-mismatch (cannot fine-tune a ${parent.schemaVersion} parent under the v3 edge-head trainer — start from the v3 base and re-train its examples)`,
     )
   }
 
@@ -140,6 +163,15 @@ export function trainPolicyCheckpoint(
       `sampleWeights length ${sampleWeights.length} does not match approved examples ${approvedExamples.length}`,
     )
   }
+  const lrDecay = options.learningRateDecay
+  if (lrDecay !== undefined) {
+    if (!Number.isInteger(lrDecay.atEpoch) || lrDecay.atEpoch < 0 || lrDecay.atEpoch >= epochs) {
+      throw new Error(`Invalid learningRateDecay.atEpoch: ${lrDecay.atEpoch} (want integer in [0, ${epochs - 1}])`)
+    }
+    if (!Number.isFinite(lrDecay.factor) || lrDecay.factor <= 0 || lrDecay.factor > 1) {
+      throw new Error(`Invalid learningRateDecay.factor: ${lrDecay.factor} (want (0, 1])`)
+    }
+  }
 
   const weights = cloneWeights(parent.weights)
   const h1Dim = weights.hidden1.biases.length
@@ -154,6 +186,13 @@ export function trainPolicyCheckpoint(
   const vWOut = weights.actionHead.weights.map(row => new Array(row.length).fill(0))
   const vBOut = new Array(outDim).fill(0)
 
+  // v3 edge-pointer head: linear EDGE_FEATURE_DIM->1. validateCheckpoint
+  // guarantees the shape on a v3 parent.
+  const edgeHead = weights.edgeHead!
+  const vWEdge = edgeHead.weights.map(row => new Array(row.length).fill(0))
+  const vBEdge = new Array(edgeHead.biases.length).fill(0)
+  const EDGE_CE_WEIGHT = 1.0
+
   // Pre-encode datasets
   const dataset = approvedExamples.map((example, index) => {
     const input = encodeObservation(example.observation)
@@ -162,7 +201,34 @@ export function trainPolicyCheckpoint(
     if (!Number.isFinite(weight) || weight < 0) {
       throw new Error(`Invalid sample weight at index ${index}: ${String(sampleWeights?.[index])}`)
     }
-    return { input, targetClass, weight }
+    // Edge-pointer supervision: the chosen road among the same legal
+    // same-class candidates the executor will rank at inference. Candidate
+    // sets and feature encoding are precomputed so the epoch loop never runs
+    // the Dijkstra-heavy edge features again.
+    // Residual edge supervision (v3): softmax over executor-score/scale +
+    // head tilt, matching edgeResidualScore at inference. Candidates the
+    // executor distrusts (-Infinity traps) are not rankable by the head and
+    // are dropped; examples whose own label is trapped get no edge term.
+    let edge: { bases: number[]; features: Float32Array[]; target: number } | null = null
+    const preferred = example.preferredAction
+    if (preferred.type === 'move' && preferred.edgeId && targetClass >= 4 && targetClass <= 7) {
+      const cls = targetClass as 4 | 5 | 6 | 7
+      const ids = [...new Set(
+        example.observation.availableActions.flatMap(a =>
+          a.type === 'move' && classifyAction(a, example.observation) === targetClass ? [a.edgeId] : [],
+        ),
+      )]
+      const candidates = ids.filter(id => Number.isFinite(scoreMoveEdge(example.observation, id, cls)))
+      const target = candidates.indexOf(preferred.edgeId)
+      if (target >= 0 && candidates.length > 1) {
+        edge = {
+          bases: candidates.map(id => scoreMoveEdge(example.observation, id, cls) / EDGE_HEURISTIC_SCALE),
+          features: candidates.map(id => encodeEdgeFeatures(example.observation, id)),
+          target,
+        }
+      }
+    }
+    return { input, targetClass, weight, edge }
   })
   const meanWeight = dataset.reduce((sum, entry) => sum + entry.weight, 0) / Math.max(1, dataset.length)
 
@@ -170,10 +236,11 @@ export function trainPolicyCheckpoint(
   let correctCount = 0
 
   for (let epoch = 0; epoch < epochs; epoch++) {
+    const lrEpoch = lrDecay && epoch >= lrDecay.atEpoch ? lr * lrDecay.factor : lr
     let epochLoss = 0
     correctCount = 0
 
-    for (const { input, targetClass, weight } of dataset) {
+    for (const { input, targetClass, weight, edge } of dataset) {
       // Forward pass
       const { logits, hidden1, hidden2 } = forwardPolicy(input, weights)
       const probs = softmax(logits)
@@ -204,12 +271,12 @@ export function trainPolicyCheckpoint(
       const dH2 = new Float32Array(h2Dim)
       for (let l = 0; l < outDim; l++) {
         const gradL = dLogits[l]
-        vBOut[l] = momentum * vBOut[l] - lr * (gradL + weightDecay * weights.actionHead.biases[l])
+        vBOut[l] = momentum * vBOut[l] - lrEpoch * (gradL + weightDecay * weights.actionHead.biases[l])
         weights.actionHead.biases[l] += vBOut[l]
 
         for (let k = 0; k < h2Dim; k++) {
           const gradW = gradL * hidden2[k]
-          vWOut[k][l] = momentum * vWOut[k][l] - lr * (gradW + weightDecay * weights.actionHead.weights[k][l])
+          vWOut[k][l] = momentum * vWOut[k][l] - lrEpoch * (gradW + weightDecay * weights.actionHead.weights[k][l])
           weights.actionHead.weights[k][l] += vWOut[k][l]
           dH2[k] += gradL * weights.actionHead.weights[k][l]
         }
@@ -225,12 +292,12 @@ export function trainPolicyCheckpoint(
       const dH1 = new Float32Array(h1Dim)
       for (let k = 0; k < h2Dim; k++) {
         const gradK = dH2Act[k]
-        vB2[k] = momentum * vB2[k] - lr * (gradK + weightDecay * weights.hidden2.biases[k])
+        vB2[k] = momentum * vB2[k] - lrEpoch * (gradK + weightDecay * weights.hidden2.biases[k])
         weights.hidden2.biases[k] += vB2[k]
 
         for (let j = 0; j < h1Dim; j++) {
           const gradW = gradK * hidden1[j]
-          vW2[j][k] = momentum * vW2[j][k] - lr * (gradW + weightDecay * weights.hidden2.weights[j][k])
+          vW2[j][k] = momentum * vW2[j][k] - lrEpoch * (gradW + weightDecay * weights.hidden2.weights[j][k])
           weights.hidden2.weights[j][k] += vW2[j][k]
           dH1[j] += gradK * weights.hidden2.weights[j][k]
         }
@@ -245,14 +312,39 @@ export function trainPolicyCheckpoint(
       // Hidden1 gradients
       for (let j = 0; j < h1Dim; j++) {
         const gradJ = dH1Act[j]
-        vB1[j] = momentum * vB1[j] - lr * (gradJ + weightDecay * weights.hidden1.biases[j])
+        vB1[j] = momentum * vB1[j] - lrEpoch * (gradJ + weightDecay * weights.hidden1.biases[j])
         weights.hidden1.biases[j] += vB1[j]
 
         for (let i = 0; i < OBSERVATION_FEATURE_DIM; i++) {
           const gradW = gradJ * input[i]
-          vW1[i][j] = momentum * vW1[i][j] - lr * (gradW + weightDecay * weights.hidden1.weights[i][j])
+          vW1[i][j] = momentum * vW1[i][j] - lrEpoch * (gradW + weightDecay * weights.hidden1.weights[i][j])
           weights.hidden1.weights[i][j] += vW1[i][j]
         }
+      }
+
+      // v3 edge-pointer head: softmax cross-entropy over the same-class
+      // candidate roads. Scores are read from the pre-update head, mirroring
+      // the class pass (one SGD step per example per epoch).
+      if (edge) {
+        const scores = edge.features.map((f, c) => edge.bases[c] + scoreEdgeWithHead(edgeHead, f))
+        const maxScore = Math.max(...scores)
+        const exps = scores.map(s => Math.exp(s - maxScore))
+        const expSum = exps.reduce((a, v) => a + v, 0) || 1
+        const probsE = exps.map(v => v / expSum)
+        const pTarget = Math.max(1e-7, probsE[edge.target])
+        epochLoss += -EDGE_CE_WEIGHT * Math.log(pTarget) * importance
+        const biasGrad = edge.features.reduce((acc, _f, c) =>
+          acc + (probsE[c] - (c === edge.target ? 1 : 0)), 0) * EDGE_CE_WEIGHT * importance
+        for (let i = 0; i < EDGE_FEATURE_DIM; i++) {
+          let gradW = 0
+          for (let c = 0; c < probsE.length; c++) {
+            gradW += EDGE_CE_WEIGHT * (probsE[c] - (c === edge.target ? 1 : 0)) * importance * edge.features[c][i]
+          }
+          vWEdge[i][0] = momentum * vWEdge[i][0] - lrEpoch * (gradW + weightDecay * edgeHead.weights[i][0])
+          edgeHead.weights[i][0] += vWEdge[i][0]
+        }
+        vBEdge[0] = momentum * vBEdge[0] - lrEpoch * (biasGrad + weightDecay * edgeHead.biases[0])
+        edgeHead.biases[0] += vBEdge[0]
       }
     }
 
@@ -282,6 +374,7 @@ export function trainPolicyCheckpoint(
       learningRate: lr,
       momentum,
       weightDecay,
+      ...(lrDecay ? { learningRateDecay: { atEpoch: lrDecay.atEpoch, factor: lrDecay.factor } } : {}),
     },
     weights,
   }

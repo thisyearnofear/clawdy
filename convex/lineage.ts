@@ -27,7 +27,10 @@ export const latestChain = query({
       .withIndex('by_guest', q => q.eq('guestKey', args.guestKey))
       .take(20)
     if (jobs.length === 0) return null
-    jobs.sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1))
+    // Server clock is the ordering authority; client ISO strings are display only.
+    const stamp = (row: { serverSeenAt?: number; updatedAt: string }) =>
+      row.serverSeenAt ?? (Number.isFinite(Date.parse(row.updatedAt)) ? Date.parse(row.updatedAt) : 0)
+    jobs.sort((a, b) => stamp(b) - stamp(a))
     const job = jobs[0]
 
     let checkpointName: string | null = null
@@ -45,9 +48,11 @@ export const latestChain = query({
       .query('matches')
       .withIndex('by_guest', q => q.eq('guestKey', args.guestKey))
       .take(30)
-    matches.sort((a, b) => (a.finishedAt < b.finishedAt ? 1 : -1))
+    const matchStamp = (row: { serverSeenAt?: number; finishedAt: string }) =>
+      row.serverSeenAt ?? (Number.isFinite(Date.parse(row.finishedAt)) ? Date.parse(row.finishedAt) : 0)
+    matches.sort((a, b) => matchStamp(b) - matchStamp(a))
     const linkedMatch = matches.find(
-      match => job.resultCheckpointId !== null && match.checkpointId === job.resultCheckpointId,
+      match => match.tombstone !== true && job.resultCheckpointId !== null && match.checkpointId === job.resultCheckpointId,
     ) ?? null
 
     return {

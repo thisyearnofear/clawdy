@@ -3,11 +3,11 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 
 import Home from '../../app/page'
-import { Providers } from '../../app/providers'
+import { ConvexAppProvider } from '../../components/ConvexClientProvider'
 
 describe('consolidated application entrypoint', () => {
   it('renders the new loading shell without wallet or queue onboarding', () => {
-    const html = renderToStaticMarkup(createElement(Providers, null, createElement(Home)))
+    const html = renderToStaticMarkup(createElement(ConvexAppProvider, null, createElement(Home)))
     expect(html).toContain('CLAWDY')
     expect(html).toContain('Preparing the proving ground.')
     expect(html).toContain('Play → Replay → Coach')

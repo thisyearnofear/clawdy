@@ -9,7 +9,7 @@
  * docs/COMPATIBILITY.md §3).
  */
 import { SEASON_0_BASE_CHECKPOINT, createLearnedPolicy, classifyAction, type PolicyCheckpoint } from '../services/policyModel'
-import { PRACTICE_SCENARIOS, rejectEvaluationExamples } from '../services/arenaScenarios'
+import { PRACTICE_SCENARIOS, SYLLABUS_EXTRA_SCENARIOS, rejectEvaluationExamples } from '../services/arenaScenarios'
 import { ARENA_RULES, ArenaEpisode, rolloutOutcomeDelta, type ArenaAction, type ArenaObservation, type ArenaScenario } from '../services/arenaEpisode'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -115,16 +115,6 @@ export function runGroundedMatch(
   return runGroundedScenario(world, scenario, championOption, { ...opts, mode })
 }
 
-/** Play/eval energy-patience floor — skips barren-pad waits when clock is short. */
-const PLAY_ENERGY_PATIENCE_MIN_REMAINING = 400
-
-function withPlayExecutor(option: EntrantPolicyOption): EntrantPolicyOption {
-  if (typeof option === 'object' && option.strategy === 'learned' && option.energyPatienceMinRemaining === undefined) {
-    return { ...option, energyPatienceMinRemaining: PLAY_ENERGY_PATIENCE_MIN_REMAINING }
-  }
-  return option
-}
-
 /**
  * Run an arbitrary prebuilt scenario (course mode or family layout) on an
  * isolated physics world. Returns the layout mode for course scenarios and
@@ -146,7 +136,7 @@ export function runGroundedScenario(
   try {
     const runner = new ArenaRunner(
       { ...scenario, entrants },
-      { champion: withPlayExecutor(championOption), rival: 'greedy' },
+      { champion: championOption, rival: 'greedy' },
       motion,
     )
     runner.advanceTicks(scenario.durationTicks)
@@ -250,7 +240,7 @@ export function buildSyllabusExamples(groundedBoards: GroundedSyllabusBoard[] = 
   // contributes labels; global caps let the first scenario eat the budget.
   const seenTicks = new Set<string>()
   const teacherTotals = { safe: 0, weather: 0, patience: 0 }
-  // Global caps sized so all 6 boards fit: 6 × ~17 routing + timing.
+  // Global caps sized so all 6 teacher boards fit: 6 × ~17 routing + timing.
   const TEACHER_TOTAL_CAPS = { safe: 105, weather: 14, patience: 12 }
 
   const tryEmit = (
@@ -509,6 +499,110 @@ export function buildSyllabusExamples(groundedBoards: GroundedSyllabusBoard[] = 
     }
   }
 
+  // Phase 1d — outcome-argmax mining (expert iteration; CI syllabus only).
+  // The teacher path is the imitation ceiling; this phase is built to break
+  // it at the EDGE level, which checkpoint v3's residual pointer head can
+  // represent: for each decision state on the oracle walk where the teacher
+  // moves, score the SAME-CLASS alternative roads with the counterfactual
+  // rollout and emit the outcome-optimal edge label only when it beats the
+  // teacher's pick by ≥ +1.0 at BOTH the 120- and 240-tick horizons. The
+  // teacher's action class is kept — class-level overrides were measured
+  // poison (see cap history below). Still supervised: labels are measured
+  // consequences at states this practice walk actually visits; practice
+  // boards only, held-out states never appear.
+  // STATUS: cap-disabled pending a physics-aware rollout (see history).
+  const outcomeCandidates = (obs: ArenaObservation, teacherAction: ArenaAction): ArenaAction[] => {
+    if (teacherAction.type !== 'move') return []
+    const cls = classifyAction(teacherAction, obs)
+    if (cls < 4) return []
+    return obs.availableActions
+      .filter(a => a.type === 'move' && a.edgeId !== teacherAction.edgeId && classifyAction(a, obs) === cls)
+      .slice(0, 6)
+  }
+  const ARGMAX_PER_BOARD = 5
+  // History (WS1.2 trial, 2026-09-26): broad argmax (class-level move/drain
+  // overrides) poisoned held-out/family legs (heldout-02/normal 5→0, family
+  // 58→50, grounded 27→22) — route-only rollouts misprice junctions AND the
+  // 8-class head could not represent the edge choice the label implied;
+  // collect-only argmax emits zero labels (rollout never confirms ≥ +1.0).
+  // Re-measurement under WS1.3 (edge-only overrides, learnable by the v3
+  // residual head): abstract legs are unmoved (38/40 either way — the
+  // residual head already cut edge-only divergence mass 15.5 → 1.25), but
+  // the mined physics-blind tilts hurt grounded/family legs (compete-01
+  // normal 11→5, one regression frame failed; one lone label was enough).
+  // Verdict: outcome mining from route-only rollouts does NOT transfer to
+  // physics surfaces; stays cap-disabled. Re-enable with a physics-aware
+  // rollout oracle, not a smarter threshold (2.0 was also measured worse).
+  const ARGMAX_TOTAL_CAP = 0
+  let argmaxTotal = 0
+  for (const practice of [...PRACTICE_SCENARIOS, ...SYLLABUS_EXTRA_SCENARIOS]) {
+    if (argmaxTotal >= ARGMAX_TOTAL_CAP) break
+    const episode = new ArenaEpisode(practice)
+    let minedHere = 0
+    while (!episode.finished && minedHere < ARGMAX_PER_BOARD && examples.length < 300) {
+      const tick = episode.tick
+      const champObs = episode.observe('champion')
+      if (!champObs.decisionDue) {
+        episode.step()
+        continue
+      }
+      const label = routeOracle(champObs)
+      if (label && !seenTicks.has(`${practice.id}:argmax:${tick}`)) {
+        const candidates = outcomeCandidates(champObs, label.action)
+        let best: { action: ArenaAction; delta: number } | null = null
+        for (const candidate of candidates) {
+          const snap = episode.snapshot()
+          const delta120 = rolloutOutcomeDelta(
+            practice, snap, candidate, label.action, championContinuation, rivalContinuation, 120,
+          )
+          if (delta120 < 1.0) continue
+          const delta240 = rolloutOutcomeDelta(
+            practice, snap, candidate, label.action, championContinuation, rivalContinuation, 240,
+          )
+          if (delta240 < 1.0) continue
+          if (!best || delta120 > best.delta) best = { action: candidate, delta: delta120 }
+        }
+        if (best) {
+          seenTicks.add(`${practice.id}:argmax:${tick}`)
+          // Expert iteration: the measured label REPLACES the teacher label
+          // for this exact state (conflicting same-state CE targets cancel
+          // out). Same tick alone is not enough — different walks can share
+          // a tick at different positions.
+          for (let i = examples.length - 1; i >= 0; i--) {
+            const e = examples[i]
+            if (
+              e.sourceEpisodeId === practice.id && e.tick === tick
+              && e.observation.self.nodeId === champObs.self.nodeId
+              && e.observation.self.cargo === champObs.self.cargo
+            ) {
+              examples.splice(i, 1)
+            }
+          }
+          examples.push({
+            id: `distill-${practice.id}:argmax-${tick}`,
+            sourceEpisodeId: practice.id,
+            tick,
+            observation: champObs,
+            originalAction: label.action,
+            preferredAction: best.action,
+            rationale: `Measured consequence: same-class road ${best.action.type === 'move' ? best.action.edgeId : '?'} out-banks the ${label.teacher} teacher's pick at 120 and 240 tick horizons (+${best.delta.toFixed(2)}).`,
+            approved: true,
+            source: 'approved',
+            provenance: { kind: 'outcome-argmax', teacher: label.teacher, reason: label.reason, outcomeDelta: best.delta },
+            outcomeDelta: best.delta,
+          })
+          minedHere++
+          argmaxTotal++
+        }
+      }
+      const fallback = routeOracle(champObs)?.action ?? collectorPolicy(champObs, 'safe')
+      episode.step([
+        { agentId: 'champion', tick, action: fallback },
+        { agentId: 'rival', tick, action: fallback },
+      ])
+    }
+  }
+
   // Phase 3 — grounded practice board (opt-in): walk sandstone-practice-01
   // through ArenaRunner on isolated physics. Dedicated allowance bypasses
   // abstract teacher caps. Walks BOTH sides (normal + swapped bases) — still
@@ -670,7 +764,7 @@ export function buildSyllabusExamples(groundedBoards: GroundedSyllabusBoard[] = 
       // Mine with unrestricted energy patience (minRemaining 0) so the deep
       // trajectory matches the compete-12 path; play/eval keep the 400-tick
       // floor so practice-normal holds 10.
-      const student = createLearnedPolicy(interim, { energyPatienceMinRemaining: 0 })
+      const student = createLearnedPolicy(interim)
 
       for (const board of deepBoards) {
         if (board.scenario.split !== 'practice' || !GROUNDED_PRACTICE_IDS.has(board.scenario.id)) {
@@ -684,7 +778,7 @@ export function buildSyllabusExamples(groundedBoards: GroundedSyllabusBoard[] = 
           const runner = new ArenaRunner(
             board.scenario,
             {
-              champion: { strategy: 'learned', checkpoint: interim, energyPatienceMinRemaining: 0 },
+              champion: { strategy: 'learned', checkpoint: interim },
               rival: 'greedy',
             },
             motion,
@@ -881,7 +975,7 @@ export function runMatch(
     : scenario.entrants
   const runner = new ArenaRunner(
     { ...scenario, entrants },
-    { champion: withPlayExecutor(championOption), rival: 'greedy' },
+    { champion: championOption, rival: 'greedy' },
   )
   runner.advanceTicks(scenario.durationTicks)
   const snap = runner.snapshot()

@@ -8,6 +8,7 @@ import {
 } from './arenaEpisode'
 
 import type { ArenaMotion } from './arenaPhysics'
+import { applyControllerRules } from './arenaControllerRules'
 import {
   type PolicyCheckpoint,
   SEASON_0_BASE_CHECKPOINT,
@@ -21,8 +22,6 @@ export type EntrantPolicyOption =
   | {
       strategy: 'learned'
       checkpoint: PolicyCheckpoint
-      /** Forwarded to createLearnedPolicy; distill mines use 0. */
-      energyPatienceMinRemaining?: number
     }
 
 export interface DecisionLifecycleEvent {
@@ -186,8 +185,12 @@ export function routeOracle(observation: ArenaObservation): OracleLabel | null {
  * Baseline entry point (unchanged semantics): run one named strategy.
  */
 export function collectorPolicy(observation: ArenaObservation, strategy: CollectorStrategy): ArenaAction {
+  if (!observation.decisionDue) return { type: 'wait' }
+  return applyControllerRules(observation, proposeCollectorAction(observation, strategy))
+}
+
+function proposeCollectorAction(observation: ArenaObservation, strategy: CollectorStrategy): ArenaAction {
   const wait: ArenaAction = { type: 'wait' }
-  if (!observation.decisionDue) return wait
   const available = observation.availableActions
   if (strategy === 'weather' && observation.self.transit &&
       observation.edges.some(edge => edge.id === observation.self.transit?.edgeId && edge.floodable) &&
@@ -243,14 +246,7 @@ export class ArenaRunner {
 
       if (strategy === 'learned') {
         const checkpoint = typeof option === 'object' && 'checkpoint' in option ? option.checkpoint : SEASON_0_BASE_CHECKPOINT
-        const energyPatienceMinRemaining =
-          typeof option === 'object' && 'energyPatienceMinRemaining' in option
-            ? option.energyPatienceMinRemaining
-            : undefined
-        this.#policies.set(
-          entrant.id,
-          createLearnedPolicy(checkpoint, { energyPatienceMinRemaining }),
-        )
+        this.#policies.set(entrant.id, createLearnedPolicy(checkpoint))
         // Scenario validation requires policyVersion to match the identifier
         // pattern (no colons), so we expose a sanitized view of the checkpoint
         // id rather than its raw value.

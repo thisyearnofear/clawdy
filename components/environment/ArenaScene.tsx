@@ -2,17 +2,16 @@
 
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { AlertTriangle, ArrowRight, BarChart3, CheckCircle2, Clapperboard, Download, Eye, HelpCircle, Layers, Pause, Play, Printer, RotateCcw, Sparkles, Trophy, Upload, XCircle } from 'lucide-react'
-import { ARENA_RULES, type ArenaAction, type ArenaAgentState, type ArenaObservation } from '../../services/arenaEpisode'
+import { ArrowRight, Clapperboard, Download, Eye, HelpCircle, Pause, Play, Printer, RotateCcw, Sparkles } from 'lucide-react'
+import { ARENA_RULES, observeSnapshot, type ArenaAction, type ArenaObservation } from '../../services/arenaEpisode'
 import { loadArenaCourse, applyCourseMode, type ArenaCourse, type CoursePlayMode } from '../../services/arenaCourse'
 import { isEvaluationScenario, rejectEvaluationExamples } from '../../services/arenaScenarios'
 import { ArenaSession } from '../../services/arenaSession'
 import type { ArenaMotion } from '../../services/arenaPhysics'
-import { collectorPolicy, type CollectorStrategy } from '../../services/arenaPolicy'
+import { collectorPolicy } from '../../services/arenaPolicy'
 import { createTournament, runTournament, type ArenaTournament, type TournamentEntrant, type TournamentMatch } from '../../services/arenaTournament'
 import {
   type PolicyCheckpoint,
-  POLICY_SCHEMA_VERSION,
   SEASON_0_BASE_CHECKPOINT,
 } from '../../services/policyModel'
 import {
@@ -21,17 +20,10 @@ import {
   evaluatePolicyCheckpoint,
   trainPolicyCheckpoint,
 } from '../../services/policyTrainer'
-import {
-  COACHING_RULES,
-  proposeCorrection,
-  SPECIALIZATION_CHIPS,
-  SPECIALIZATION_FOCI,
-  summarizeCoachFocus,
-  type FocusVector,
-} from '../../services/coachingEngine'
+import { proposeCorrection, summarizeCoachFocus } from '../../services/coachingEngine'
+import { rankCoachingCandidates, type CoachingCandidate } from '../../services/coachingCandidates'
 import {
   ENCOUNTER_STAGGER_TICKS,
-  fingerprintLine,
   focusVectorForChampion,
   focusVectorForRival,
   resolveEncounter,
@@ -39,7 +31,6 @@ import {
   type EncounterResolution,
 } from '../../services/arenaEncounter'
 import {
-  CHAMPION_LOOKS,
   getChampionLook,
   loadChampionIdentity,
   saveChampionIdentity,
@@ -50,40 +41,33 @@ import {
   importCheckpointJson,
   loadStoredCheckpoints,
   loadStoredExamples,
-  saveStoredCheckpoints,
-  saveStoredExamples,
 } from '../../services/checkpointStorage'
-import { ConvexLineageBadge, useConvexClient } from '../ConvexClientProvider'
-import { syncCheckpoint, syncExamples, syncMatchSummary, syncTrainingJob } from '../../services/convexSync'
+import { useConvexClient } from '../ConvexClientProvider'
+import {
+  deleteExampleRecord,
+  queueCheckpointSync,
+  queueMatchSync,
+  queueTrainingJobSync,
+  startArenaSync,
+} from '../../services/syncEngine'
+import { useArenaStore } from '../../services/arenaStore'
+import { computeNextStep } from '../../services/workbenchFlow'
 import type { ArenaCamera } from './ArenaWorldView'
 import { ErrorBoundary } from '../utils/ErrorBoundary'
+import { AgentCard } from '../workbench/AgentCard'
+import { BootScreen } from '../workbench/BootScreen'
+import { BrandHeader } from '../workbench/BrandHeader'
+import { CoachPanel } from '../workbench/CoachPanel'
+import { HelpDrawer } from '../workbench/HelpDrawer'
+import { ReplayPanel } from '../workbench/ReplayPanel'
+import { TournamentBracket } from '../workbench/TournamentBracket'
+import { ViewportHud, type HudFeedEvent } from '../workbench/ViewportHud'
+import { actionLabel, actionsEqual, COACH_NUDGE_KEY, isExecutableCheckpoint, PLAY_HINT_KEY, readHintDismissed } from '../workbench/readouts'
 import styles from './ArenaScene.module.css'
 
 const WorldView = dynamic(() => import('./ArenaWorldView'), { ssr: false })
-/**
- * v1 checkpoints remain metadata-readable (lineage, export) but must never
- * reach the session runner — createLearnedPolicy refuses them with
- * checkpoint-execution-mismatch. Storage is never rewritten; v1 entries stay
- * in the list as view-only and the user re-trains their examples to upgrade.
- */
-const isExecutableCheckpoint = (checkpoint: PolicyCheckpoint) =>
-  checkpoint.schemaVersion === POLICY_SCHEMA_VERSION
 const viewOnlyCheckpointMessage = (checkpoint: PolicyCheckpoint) =>
   `"${checkpoint.name}" is a view-only v1 brain — re-train its examples to upgrade, then run the new checkpoint.`
-const POLICY_LABELS: Record<CollectorStrategy, string> = {
-  learned: 'Your trained brain',
-  safe: 'Careful (house baseline)',
-  greedy: 'Fast (house baseline)',
-  weather: 'Flood-aware (house baseline)',
-}
-const PHASE_LABELS = {
-  ready: 'Ready',
-  running: 'Live',
-  paused: 'Paused',
-  finished: 'Finished',
-  review: 'Replay',
-  error: 'Stopped',
-}
 const CAMERA_LABELS: Record<ArenaCamera, string> = {
   overview: 'Arena',
   champion: 'Follow you',
@@ -92,263 +76,6 @@ const CAMERA_LABELS: Record<ArenaCamera, string> = {
 
 type LoadedSession = { session: ArenaSession; course: ArenaCourse; createMotion: () => ArenaMotion }
 
-function actionsEqual(a: ArenaAction, b: ArenaAction): boolean {
-  if (a.type !== b.type) return false
-  if (a.type === 'move' && b.type === 'move') return a.edgeId === b.edgeId
-  if (a.type === 'collect' && b.type === 'collect') return a.resourceId === b.resourceId
-  return true
-}
-
-function formatStat(value: number): string {
-  const rounded = Math.round(value)
-  return Math.abs(value - rounded) < 1e-6 ? String(rounded) : value.toFixed(1)
-}
-
-function actionLabel(action: ArenaAction): string {
-  if (action.type === 'move') return `move ${action.edgeId}`
-  if (action.type === 'collect') return `collect ${action.resourceId}`
-  return action.type
-}
-
-export function describeArenaDecision(agent: ArenaAgentState): string {
-  if (agent.recoveries > 0 && agent.lastOutcome?.reason === 'movement-blocked') return 'Blocked route. Recovered to the last safe station.'
-  const outcome = agent.lastOutcome
-  if (!outcome) return 'Waiting for the first observation.'
-  if (!outcome.accepted) return `Action rejected: ${outcome.reason?.replaceAll('-', ' ')}.`
-  if (agent.transit) {
-    const route = agent.transit.edgeId.includes('ridge') ? 'the high route'
-      : agent.transit.edgeId.includes('valley') ? 'the valley'
-      : agent.transit.edgeId.includes('shortcut') || agent.transit.edgeId.includes('diag') ? 'a shortcut'
-      : agent.transit.edgeId.includes('cross') ? 'a cross trail'
-      : 'the next station'
-    return `Following ${route}.`
-  }
-  if (outcome.action?.type === 'bank') return 'Delivered cargo to base.'
-  if (outcome.action?.type === 'collect') return 'Collected an energy core.'
-  if (outcome.action?.type === 'drain') return 'Spent energy to clear the low routes.'
-  return 'Observing the next opportunity.'
-}
-
-function BrandHeader({
-  activeCheckpoint,
-  championName,
-  onOpenHelp,
-}: {
-  activeCheckpoint: PolicyCheckpoint
-  championName: string
-  onOpenHelp: () => void
-}) {
-  return (
-    <header className={styles.header}>
-      <div className={styles.brand}><span className={styles.brandMark} aria-hidden="true">C</span> CLAWDY</div>
-      <div className={styles.headerActions}>
-        <div className={styles.checkpointBadge}>
-          <Layers size={13} />
-          <span>{championName} · {activeCheckpoint.name}</span>
-        </div>
-        <button type="button" className={styles.helpButton} onClick={onOpenHelp} aria-label="Open help">
-          <HelpCircle size={15} /> Help
-        </button>
-      </div>
-    </header>
-  )
-}
-
-function AgentCard({
-  agent,
-  policy,
-  unlocked,
-  onPolicy,
-  championIdentity,
-  onChampionIdentity,
-  focusVector,
-}: {
-  agent: ArenaAgentState
-  policy: CollectorStrategy
-  unlocked: boolean
-  onPolicy: (policy: CollectorStrategy) => void
-  championIdentity?: ChampionIdentity
-  onChampionIdentity?: (next: ChampionIdentity) => void
-  focusVector?: FocusVector
-}) {
-  const champion = agent.id === 'champion'
-  const look = championIdentity ? getChampionLook(championIdentity.lookId) : null
-  const focus = focusVector ?? null
-  return (
-    <section className={styles.agentCard} data-entrant={agent.id} aria-label={champion ? 'Your champion' : 'House rival'}>
-      <div className={styles.agentHeading}>
-        <span
-          className={styles.agentMark}
-          aria-hidden="true"
-          style={look ? { background: look.accent, color: '#233531' } : undefined}
-        >
-          {look?.mark ?? (champion ? 'C' : 'R')}
-        </span>
-        <div>
-          <h3>{champion ? (championIdentity?.name ?? 'Your champion') : 'House rival'}</h3>
-          <span>{POLICY_LABELS[policy]}</span>
-        </div>
-        <span className={styles.score}>{agent.banked}<small>banked</small></span>
-      </div>
-      {focus && (
-        <div className={styles.fingerprint} title={fingerprintLine(focus)}>
-          <span>{fingerprintLine(focus)}</span>
-          <div className={styles.fingerprintBars} aria-hidden>
-            {SPECIALIZATION_FOCI.map(key => (
-              <i key={key} style={{ transform: `scaleY(${Math.max(0.08, focus[key])})` }} data-focus={key} />
-            ))}
-          </div>
-        </div>
-      )}
-      {champion && championIdentity && onChampionIdentity && (
-        <div className={styles.identityBlock}>
-          <label className={styles.identityName}>
-            <span>Name</span>
-            <input
-              type="text"
-              maxLength={24}
-              value={championIdentity.name}
-              disabled={!unlocked}
-              onChange={event => onChampionIdentity({ ...championIdentity, name: event.target.value })}
-              onBlur={event => onChampionIdentity({ ...championIdentity, name: event.target.value.trim() || 'Champion' })}
-              aria-label="Champion name"
-            />
-          </label>
-          <div className={styles.lookRow} role="group" aria-label="Champion look">
-            {CHAMPION_LOOKS.map(option => (
-              <button
-                key={option.id}
-                type="button"
-                className={styles.lookSwatch}
-                aria-pressed={championIdentity.lookId === option.id}
-                disabled={!unlocked}
-                title={option.label}
-                style={{ background: option.accent }}
-                onClick={() => onChampionIdentity({ ...championIdentity, lookId: option.id })}
-              >
-                <span className={styles.srOnly}>{option.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-      <label className={styles.policyLabel}>
-        <span>Style</span>
-        <select value={policy} disabled={!unlocked} onChange={event => onPolicy(event.target.value as CollectorStrategy)}>
-          {Object.entries(POLICY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-        </select>
-      </label>
-      <dl className={styles.agentStats}>
-        <div><dt>Cargo</dt><dd>{formatStat(agent.cargo)}<small> / {ARENA_RULES.capacity}</small></dd></div>
-        <div><dt>Energy</dt><dd>{formatStat(agent.energy)}<small> / {ARENA_RULES.initialEnergy}</small></dd></div>
-        <div><dt>Recovery</dt><dd>{agent.recoveries}</dd></div>
-      </dl>
-      <p className={styles.decision}>{describeArenaDecision(agent)}</p>
-    </section>
-  )
-}
-
-function HelpDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
-  if (!open) return null
-  return (
-    <div className={styles.helpScrim} role="presentation" onClick={onClose}>
-      <aside
-        className={styles.helpDrawer}
-        role="dialog"
-        aria-modal="true"
-        aria-label="How Clawdy works"
-        onClick={event => event.stopPropagation()}
-      >
-        <div className={styles.helpHeader}>
-          <h2>How to play</h2>
-          <button type="button" className={styles.helpClose} onClick={onClose} aria-label="Close help">Close</button>
-        </div>
-        <ol className={styles.helpSteps}>
-          <li><strong>Play</strong> a Practice round — watch your rover race the house rival.</li>
-          <li><strong>Replay</strong> a bad turn, then open <strong>Coach</strong> and pick a focus chip.</li>
-          <li><strong>Approve</strong> fixes and <strong>Train</strong> a new brain.</li>
-          <li>Switch to <strong>Match</strong> to test it with coaching locked.</li>
-        </ol>
-        <dl className={styles.helpFaq}>
-          <div>
-            <dt>Practice vs Match?</dt>
-            <dd>Practice is for teaching. Match uses a held-out layout and freezes coaching.</dd>
-          </div>
-          <div>
-            <dt>How do I train?</dt>
-            <dd>Coach panel → specialize chips or rules → Approve → Train. Style “Your trained brain” runs the new weights.</dd>
-          </div>
-          <div>
-            <dt>Train did nothing?</dt>
-            <dd>You need at least one approved example, and Style must be set to Your trained brain after training.</dd>
-          </div>
-          <div>
-            <dt>Name & look?</dt>
-            <dd>Edit under Your champion card while Practice is Ready. Saved in this browser.</dd>
-          </div>
-          <div>
-            <dt>How do I save?</dt>
-            <dd>Export JSON in Coach, or Save run for the recording. Cloud sync uses a guest key when Convex is on.</dd>
-          </div>
-        </dl>
-      </aside>
-    </div>
-  )
-}
-
-const PLAY_HINT_KEY = 'clawdy_play_hint_v1'
-const COACH_NUDGE_KEY = 'clawdy_coach_nudge_v1'
-
-const BOOT_STAGES = [
-  'Grounding the sandstone basin…',
-  'Wiring routes and flood windows…',
-  'Rolling two rovers onto the field…',
-  'Almost there — Play unlocks when the world settles.',
-] as const
-
-function readHintDismissed(): boolean {
-  if (typeof window === 'undefined') return false
-  try {
-    return window.sessionStorage.getItem(PLAY_HINT_KEY) === '1'
-  } catch {
-    return false
-  }
-}
-
-function BootScreen({ error, onRetry }: { error: string | null; onRetry: () => void }) {
-  const [stage, setStage] = useState(0)
-  useEffect(() => {
-    if (error) return
-    const id = window.setInterval(() => {
-      setStage(current => Math.min(current + 1, BOOT_STAGES.length - 1))
-    }, 1400)
-    return () => window.clearInterval(id)
-  }, [error])
-
-  return (
-    <section className={styles.boot} aria-live="polite" data-error={Boolean(error)}>
-      <p className={styles.eyebrow}>TRAIN YOUR CHAMPION</p>
-      <h1>{error ? 'The course could not load.' : 'Preparing the proving ground.'}</h1>
-      <p>{error ?? BOOT_STAGES[stage]}</p>
-      {error ? (
-        <button className={styles.primaryButton} onClick={onRetry}>
-          Retry loading <RotateCcw size={16} />
-        </button>
-      ) : (
-        <div className={styles.bootProgress} aria-hidden>
-          <div className={styles.bootLine} data-stage={stage} />
-          <ol className={styles.bootSteps}>
-            <li data-done={stage >= 0}>World</li>
-            <li data-done={stage >= 1}>Routes</li>
-            <li data-done={stage >= 2}>Rovers</li>
-            <li data-done={stage >= 3}>Ready</li>
-          </ol>
-        </div>
-      )}
-      <small>Play → Replay → Coach · No wallet · Practice first</small>
-    </section>
-  )
-}
 
 function Workbench({
   session,
@@ -389,17 +116,20 @@ function Workbench({
   const encounterResumeTimer = useRef<number | null>(null)
   const modeBannerTimer = useRef<number | null>(null)
   const runTipTimer = useRef<number | null>(null)
-  const [checkpoints, setCheckpoints] = useState<PolicyCheckpoint[]>([SEASON_0_BASE_CHECKPOINT])
-  const [activeCheckpoint, setActiveCheckpoint] = useState<PolicyCheckpoint>(SEASON_0_BASE_CHECKPOINT)
-  const [examples, setExamples] = useState<ArenaTrainingExample[]>([])
+  const checkpoints = useArenaStore(state => state.checkpoints)
+  const setCheckpoints = useArenaStore(state => state.setCheckpoints)
+  const activeCheckpoint = useArenaStore(state => state.activeCheckpoint)
+  const setActiveCheckpoint = useArenaStore(state => state.setActiveCheckpoint)
+  const examples = useArenaStore(state => state.examples)
+  const setExamples = useArenaStore(state => state.setExamples)
+  const [frameAdvice, setFrameAdvice] = useState<{ taken: ArenaAction; atTick: number; observation: ArenaObservation; candidates: CoachingCandidate[] } | null>(null)
   const [promptText, setPromptText] = useState('')
   const [isTraining, setIsTraining] = useState(false)
   const [trainMessage, setTrainMessage] = useState<string | null>(null)
   const [trainResult, setTrainResult] = useState<{ baseline: EvaluationResult; trained: EvaluationResult } | null>(null)
-  const [feed, setFeed] = useState<{ id: number; text: string; tone: 'bank' | 'flood' | 'info' }[]>([])
+  const [feed, setFeed] = useState<HudFeedEvent[]>([])
   const [clipUrl, setClipUrl] = useState<string | null>(null)
   const [clipArmed, setClipArmed] = useState(false)
-  const [hasHydrated, setHasHydrated] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const exampleCounter = useRef(0)
   const feedId = useRef(0)
@@ -442,20 +172,24 @@ function Workbench({
     return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [session])
 
+  // Boot: localStorage first (instant, sync never blocks play); then the
+  // sync engine pulls Convex, LWW-merges, restores other devices' records,
+  // and flushes the persisted outbox behind the scenes.
   useEffect(() => {
+    const store = useArenaStore.getState()
     const storedCheckpoints = loadStoredCheckpoints()
     const storedExamples = loadStoredExamples()
     if (storedCheckpoints.length > 0) {
       const executable = storedCheckpoints.filter(isExecutableCheckpoint)
       const legacy = storedCheckpoints.filter(c => !isExecutableCheckpoint(c))
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setCheckpoints([...executable, ...legacy])
+      store.setCheckpoints([...executable, ...legacy])
       const first = executable[0] ?? SEASON_0_BASE_CHECKPOINT
-      setActiveCheckpoint(first)
+      store.setActiveCheckpoint(first)
       try {
         session.setCheckpoint(first)
         session.selectPolicy('champion', 'learned', first)
       } catch (err) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot boot read of localStorage; the quarantine notice must land before first paint
         setTrainMessage(`Stored brain refused: ${err instanceof Error ? err.message : 'incompatible checkpoint'}`)
       }
       if (legacy.length > 0) {
@@ -465,29 +199,17 @@ function Workbench({
       }
     }
     if (storedExamples.length > 0) {
-      setExamples(storedExamples)
+      store.setExamples(storedExamples)
     }
-    setHasHydrated(true)
-  }, [session])
-
-  useEffect(() => {
-    if (!hasHydrated) return
-    saveStoredCheckpoints(checkpoints)
-    for (const checkpoint of checkpoints) {
-      void syncCheckpoint(convex, checkpoint)
-    }
-  }, [checkpoints, hasHydrated, convex])
-
-  useEffect(() => {
-    if (!hasHydrated) return
-    saveStoredExamples(examples)
-    void syncExamples(convex, examples)
-  }, [examples, hasHydrated, convex])
+    store.markHydrated()
+    return startArenaSync(convex)
+  }, [session, convex])
 
   const championAccent = getChampionLook(championIdentity.lookId).accent
 
   useEffect(() => {
     if (view.phase !== 'finished' || coachingLocked) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- dismissing the one-time nudge when leaving the finished phase is the nudge's lifecycle contract
       setCoachNudgeOpen(false)
       return
     }
@@ -524,16 +246,14 @@ function Workbench({
     if (view.phase === 'paused') session.start()
   }, [session, view.phase])
 
-  const lastSyncedMatchRef = useRef<string | null>(null)
-
   // Persist a match summary when a round finishes (links active checkpoint).
+  // Idempotency by (matchId, payload) lives in the sync engine's meta, so a
+  // re-render or remount never double-records the same match.
   useEffect(() => {
     if (view.phase !== 'finished') return
-    if (lastSyncedMatchRef.current === session.matchId) return
-    lastSyncedMatchRef.current = session.matchId
     const champion = view.episode.agents.find(agent => agent.id === 'champion')
     const rival = view.episode.agents.find(agent => agent.id === 'rival')
-    void syncMatchSummary(convex, {
+    queueMatchSync({
       matchId: session.matchId,
       scenarioId: activeCourse.scenario.id,
       rulesVersion: view.episode.rulesVersion,
@@ -544,7 +264,7 @@ function Workbench({
       winner: view.episode.winner,
       linkedExampleIds: examples.filter(example => example.approved).map(example => example.id),
     })
-  }, [view.phase, view.episode, view.scored, session, activeCourse.scenario.id, activeCheckpoint.id, examples, convex])
+  }, [view.phase, view.episode, view.scored, session, activeCourse.scenario.id, activeCheckpoint.id, examples])
 
   const pushFeed = useCallback((items: { text: string; tone: 'bank' | 'flood' | 'info' }[]) => {
     if (items.length === 0) return
@@ -593,6 +313,7 @@ function Workbench({
       console.warn('[encounter] prize apply failed:', err)
     }
     lastEncounterTickRef.current = episode.tick
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the clash modal must appear on the same tick the episode is paused; deferring a render lets the race visibly stall
     setEncounter({ resolution, transferred })
     pushFeed([{
       text: transferred > 0
@@ -709,8 +430,6 @@ function Workbench({
     if (clipUrlRef.current) URL.revokeObjectURL(clipUrlRef.current)
   }, [])
 
-  const entrantName = (id: string | null) => id === null ? 'bye' : (tournament?.entrants.find(entrant => entrant.id === id)?.name ?? id)
-
   /** Single-elimination bracket: your trained champion vs the house field, run headlessly on the live layout. */
   const runBracket = () => {
     if (tournamentRunning) return
@@ -750,6 +469,22 @@ function Workbench({
     session.start()
   }
   const primaryLabel = view.phase === 'running' ? 'Pause' : view.phase === 'paused' ? 'Resume' : view.phase === 'finished' ? 'Play again' : view.phase === 'review' ? 'Back to match' : view.phase === 'error' ? 'Reload world' : 'Play'
+
+  // Space / P toggles play-pause, except while typing, while a button has
+  // focus (space already activates it), or while an encounter card is up.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.repeat || event.metaKey || event.ctrlKey || event.altKey || encounter) return
+      if (event.key !== ' ' && event.key.toLowerCase() !== 'p') return
+      const tag = (event.target as HTMLElement | null)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'BUTTON') return
+      event.preventDefault()
+      primaryAction()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  })
+
   const switchPlayMode = (mode: CoursePlayMode) => {
     if (view.phase !== 'ready' || mode === playMode) return
     const next = applyCourseMode(course, mode)
@@ -845,7 +580,9 @@ function Workbench({
   }
 
   const removeExample = (id: string) => {
-    setExamples(prev => prev.filter(ex => ex.id !== id))
+    // Tombstone-propagating delete: the old local-only filter silently
+    // diverged every other device.
+    deleteExampleRecord(id)
   }
 
   const handleTrain = () => {
@@ -864,7 +601,7 @@ function Workbench({
     setTimeout(() => {
       try {
         const jobId = `train-${Date.now().toString(36)}`
-        void syncTrainingJob(convex, {
+        queueTrainingJobSync({
           jobId,
           status: 'running',
           parentCheckpointId: activeCheckpoint.id,
@@ -873,8 +610,13 @@ function Workbench({
           message: null,
         })
         const trained = trainPolicyCheckpoint(activeCheckpoint, approved, {
-          epochs: 100,
-          learningRate: 0.02,
+          // Browser coach-train config, pinned in versions.test.ts and
+          // docs/COMPATIBILITY.md: 60 epochs, lr 0.008 with a deterministic
+          // 0.5x step at epoch 30 (few-shot stable; the old 100/0.02 ran
+          // hot enough to diverge on ~10-example lessons).
+          epochs: 60,
+          learningRate: 0.008,
+          learningRateDecay: { atEpoch: 30, factor: 0.5 },
           name: `${championIdentity.name} v${checkpoints.length} (+${approved.length})`,
         })
 
@@ -894,8 +636,8 @@ function Workbench({
             : `Training complete. Loss ${trained.trainingSummary.loss.toFixed(4)} · ${(trained.trainingSummary.accuracy * 100).toFixed(0)}% of the notes landed.`,
         )
         setTrainResult({ baseline: baselineEval, trained: trainedEval })
-        void syncCheckpoint(convex, trained, approved.map(example => example.id))
-        void syncTrainingJob(convex, {
+        queueCheckpointSync(trained, approved.map(example => example.id))
+        queueTrainingJobSync({
           jobId,
           status: 'succeeded',
           parentCheckpointId: activeCheckpoint.id,
@@ -906,7 +648,7 @@ function Workbench({
       } catch (err) {
         setIsTraining(false)
         setTrainMessage(`Training failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
-        void syncTrainingJob(convex, {
+        queueTrainingJobSync({
           jobId: `train-fail-${Date.now().toString(36)}`,
           status: 'failed',
           parentCheckpointId: activeCheckpoint.id,
@@ -958,6 +700,56 @@ function Workbench({
     setTrainMessage(`Queued a fix at ${example.tick}. Approve it, then train.`)
   }
 
+  // WS1.4: at a settled review frame, measure the top alternatives against the
+  // action actually taken (route-only rollouts on the real replay snapshot).
+  // The counterfactual base is the PRE-decision checkpoint at outcome.tick —
+  // view.episode lags one decision behind, so ranking at the live frame would
+  // compare futures from the wrong state. Debounced so scrubbing the slider
+  // does not run rollouts per frame; these are suggestions only — nothing
+  // trains until a human approves the example.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- leaving review must immediately drop stale counterfactual advice; the debounced timer below cannot guarantee that
+    if (view.phase !== 'review' || coachingLocked) { setFrameAdvice(null); return }
+    const outcome = view.episode.agents.find(agent => agent.id === 'champion')?.lastOutcome
+    if (!outcome?.accepted || !outcome.action || outcome.tick >= view.episode.tick) { setFrameAdvice(null); return }
+    const taken = outcome.action
+    const timer = window.setTimeout(() => {
+      try {
+        const recording = session.activeRecording()
+        const frame = recording.checkpoints[Math.floor(outcome.tick / ARENA_RULES.decisionEveryTicks)]
+        if (!frame || frame.state.tick !== outcome.tick) { setFrameAdvice(null); return }
+        const champObs = observeSnapshot(activeCourse.scenario, frame.state, 'champion')
+        const candidates = rankCoachingCandidates(activeCourse.scenario, frame.state, champObs, taken)
+        setFrameAdvice(candidates.length > 0 ? { taken, atTick: outcome.tick, observation: champObs, candidates } : null)
+      } catch {
+        setFrameAdvice(null)
+      }
+    }, 140)
+    return () => window.clearTimeout(timer)
+  }, [view.phase, view.replayIndex, coachingLocked])
+
+  const handleAddCandidate = (candidate: CoachingCandidate) => {
+    if (coachingLocked || !frameAdvice) return
+    exampleCounter.current += 1
+    const example: ArenaTrainingExample = {
+      id: `outcome-${frameAdvice.atTick}-${exampleCounter.current.toString(36)}`,
+      sourceEpisodeId: activeCourse.scenario.id,
+      tick: frameAdvice.atTick,
+      observation: frameAdvice.observation,
+      originalAction: frameAdvice.taken,
+      preferredAction: candidate.action,
+      rationale: candidate.rationale,
+      approved: false,
+      source: 'draft',
+      provenance: { kind: 'oracle-consequence', teacher: 'safe', reason: candidate.rationale, outcomeDelta: candidate.delta120 },
+      outcomeDelta: candidate.delta120,
+    }
+    setExamples(prev => [example, ...prev])
+    setStudioOpen(true)
+    setFrameAdvice(prev => prev ? { ...prev, candidates: prev.candidates.filter(c => c !== candidate) } : null)
+    setTrainMessage(`Queued a measured fix at ${example.tick}: ${candidate.rationale} Approve it, then train.`)
+  }
+
   const handleSelectCheckpoint = (ckptId: string) => {
     const selected = checkpoints.find(c => c.id === ckptId)
     if (!selected) return
@@ -1003,38 +795,35 @@ function Workbench({
   const championFocus = focusVectorForChampion(examples.filter(example => example.approved))
   const rivalFocus = focusVectorForRival(view.policies.rival)
 
-  const nextStep = (() => {
-    if (!visualReady) return { label: 'Settling the world…', run: null as (() => void) | null }
-    if (view.phase === 'error') return { label: 'Reload the world', run: onRetry }
-    if (view.phase === 'ready' && playMode === 'compete') {
-      return { label: 'Press Play — Match (coaching locked)', run: primaryAction }
+  const resetForTeaching = useCallback(() => {
+    floodWarnedRef.current = null
+    setRunTip(null)
+    session.reset()
+  }, [session])
+
+  // nextStep stays pure render data (label + action key); the ref-touching
+  // work happens in the click handler below, where it belongs. The machine
+  // itself lives in services/workbenchFlow.ts with golden tests.
+  const nextStep = computeNextStep({
+    visualReady,
+    phase: view.phase,
+    playMode,
+    coachingLocked,
+    studioOpen,
+    approvedCount,
+  })
+
+  const runNextStep = (action: string | null) => {
+    switch (action) {
+      case 'retry': onRetry(); break
+      case 'play': primaryAction(); break
+      case 'review': session.review(); break
+      case 'review-coach': session.review(); setStudioOpen(true); break
+      case 'teach': resetForTeaching(); break
+      case 'coach': setStudioOpen(true); break
+      case 'train': handleTrain(); break
     }
-    if (view.phase === 'ready') return { label: 'Press Play to start Practice', run: primaryAction }
-    if (view.phase === 'running') return { label: 'Watch the race — Pause anytime', run: null }
-    if (view.phase === 'paused') return { label: 'Resume, or open Replay', run: () => session.review() }
-    if (view.phase === 'finished' && !coachingLocked) {
-      return {
-        label: 'Open Replay, then Coach the miss',
-        run: () => { session.review(); setStudioOpen(true) },
-      }
-    }
-    if (view.phase === 'finished' && coachingLocked) {
-      return {
-        label: 'Reset, then switch to Practice to teach',
-        run: () => { floodWarnedRef.current = null; setRunTip(null); session.reset() },
-      }
-    }
-    if (view.phase === 'review' && !studioOpen && !coachingLocked) {
-      return { label: 'Open Coach and pick a focus', run: () => setStudioOpen(true) }
-    }
-    if (studioOpen && !coachingLocked && approvedCount === 0) {
-      return { label: 'Pick a focus chip and Approve a fix', run: null }
-    }
-    if (studioOpen && !coachingLocked && approvedCount > 0) {
-      return { label: `Train from ${approvedCount} approved note${approvedCount === 1 ? '' : 's'}`, run: handleTrain }
-    }
-    return { label: 'Play → Replay → Coach → Train → Match', run: null }
-  })()
+  }
 
   return (
     <div className={styles.stageEnter}>
@@ -1077,7 +866,7 @@ function Workbench({
               <h2>{encounter.resolution.winnerId === 'champion' ? `${championIdentity.name} holds the line.` : 'The house rival forces through.'}</h2>
               <p>{encounter.resolution.reason}</p>
               {encounter.transferred > 0 && <p className={styles.encounterPrize}>Cargo contested · +{encounter.transferred} to the winner</p>}
-              <button type="button" className={styles.primaryButton} onClick={dismissEncounter}>Continue</button>
+              <button type="button" className={styles.primaryButton} onClick={dismissEncounter}>Continue now</button>
             </div>
           )}
           {modeBanner && (
@@ -1086,36 +875,21 @@ function Workbench({
               <p>{modeBanner === 'compete' ? 'Held-out layout. Coaching locked.' : 'Teach freely. Same world, practice floods.'}</p>
             </div>
           )}
-          <div className={styles.worldTopline}>
-            <div>
-              <span className={styles.liveDot} data-active={view.phase === 'running'} />
-              {PHASE_LABELS[view.phase]}{playMode === 'compete' ? ' · Match' : ' · Practice'}
-              {champion && rival && (
-                <span className={styles.scorebug} aria-label={`Score: you ${champion.banked}, rival ${rival.banked}`}>
-                  {' · '}<strong className={styles.you}>{champion.banked}</strong>
-                  <span className={styles.sep}>YOU–RIVAL</span>
-                  <strong className={styles.foe}>{rival.banked}</strong>
-                  {' · '}{clock}
-                  {champion.cargo > 0 && <span>●{champion.cargo}/{ARENA_RULES.capacity}</span>}
-                  {flooded && floodEndsIn !== null && <span className={styles.floodWarn}>FLOOD {floodEndsIn}s</span>}
-                  {!flooded && drained && <span className={styles.drained}>DRAINED</span>}
-                  {!flooded && !drained && nextFloodIn !== null && nextFloodIn <= 30 && <span className={styles.floodWarn}>FLOOD IN {nextFloodIn}s</span>}
-                </span>
-              )}
-            </div>
-            <span>{follow === 'overview' ? 'Drag to look around' : activeCourse.config.name}</span>
-          </div>
-          {runTip && view.phase === 'running' && (
-            <div className={`${styles.runTip} ${styles.hintEnter}`} role="status">
-              {runTip}
-            </div>
-          )}
-          {feed.length > 0 && (
-            <div className={styles.eventFeed} aria-live="polite">
-              {feed.map(event => <span key={event.id} data-tone={event.tone}>{event.text}</span>)}
-            </div>
-          )}
-          {view.error && <div className={styles.worldNotice} role="alert"><strong>Run stopped</strong><p>{view.error}</p><button onClick={onRetry}>Retry world loading</button></div>}
+          <ViewportHud
+            phase={view.phase}
+            isMatch={playMode === 'compete'}
+            sideHint={follow === 'overview' ? 'Drag to look around' : activeCourse.config.name}
+            score={champion && rival ? { you: champion.banked, foe: rival.banked, cargo: champion.cargo } : null}
+            clock={clock}
+            flooded={flooded}
+            drained={drained}
+            floodEndsIn={floodEndsIn}
+            nextFloodIn={nextFloodIn}
+            runTip={runTip}
+            feed={feed}
+            error={view.error}
+            onRetry={onRetry}
+          />
           {visualReady && hintOpen && view.phase === 'ready' && !modeBanner && (
             <div className={`${styles.playHint} ${styles.hintEnter}`} role="status">
               <p><strong>Press Play.</strong> Follow your green champion — amber routes flood first.</p>
@@ -1269,315 +1043,66 @@ function Workbench({
       <div className={styles.nextStep} role="status">
         <span>Next</span>
         {nextStep.run ? (
-          <button type="button" onClick={nextStep.run}>{nextStep.label}</button>
+          <button type="button" onClick={() => runNextStep(nextStep.run)}>{nextStep.label}</button>
         ) : (
           <strong>{nextStep.label}</strong>
         )}
       </div>
 
-      <section className={styles.replay} aria-label="Tournament bracket">
-        <div>
-          <strong>Tournament · single elimination</strong>
-          <span>
-            {tournamentRunning
-              ? 'Running bracket…'
-              : tournament?.status === 'done'
-                ? `Champion: ${entrantName(tournament.champion)}`
-                : 'Your trained champion vs the house field'}
-          </span>
-          <button
-            type="button"
-            className={styles.frameCoachButton}
-            onClick={runBracket}
-            disabled={tournamentRunning || !visualReady}
-            title="Run a seeded bracket on the current layout; every match is fully recorded"
-          >
-            <Trophy size={13} />
-            {tournament ? 'Run again' : 'Run bracket'}
-          </button>
-        </div>
-        {tournament && tournament.rounds.map((round, roundIndex) => (
-          <div key={roundIndex} className={styles.bracketRound}>
-            <strong>{roundIndex === tournament.rounds.length - 1 ? 'Final' : `Round ${roundIndex + 1}`}</strong>
-            {round.map(match => (
-              <div key={match.id} className={styles.bracketMatch}>
-                <span>{entrantName(match.slotA)} vs {entrantName(match.slotB)}</span>
-                <span>
-                  {match.status === 'done'
-                    ? match.recording
-                      ? `${match.banked[match.slotA!] ?? 0}–${match.banked[match.slotB!] ?? 0} · ${entrantName(match.winner)}`
-                      : `${entrantName(match.winner)} · bye`
-                    : 'pending'}
-                </span>
-                {match.recording && (
-                  <button
-                    type="button"
-                    className={styles.frameCoachButton}
-                    onClick={() => watchMatch(match)}
-                    disabled={view.phase === 'running'}
-                    title="Replay this match with the cinematic camera"
-                  >
-                    <Play size={13} /> Watch
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        ))}
-      </section>
+      <TournamentBracket
+        tournament={tournament}
+        running={tournamentRunning}
+        visualReady={visualReady}
+        phase={view.phase}
+        onRun={runBracket}
+        onWatch={watchMatch}
+      />
 
       {view.phase === 'review' && (
-        <section className={styles.replay} aria-label="Recorded run review">
-          <div>
-            <strong>Replay · { (view.episode.tick * ARENA_RULES.stepMs / 1000).toFixed(1) }s</strong>
-            <span>Frame {view.replayIndex + 1} / {view.replayLength}</span>
-            <button
-              type="button"
-              className={styles.frameCoachButton}
-              aria-pressed={cinematic}
-              onClick={() => setCinematic(on => !on)}
-              title="Play the recording back as an event-driven camera reel"
-            >
-              <Play size={13} />
-              {cinematic ? 'Stop cinematic' : 'Play cinematic'}
-            </button>
-          </div>
-          <input aria-label="Replay frame" type="range" min={0} max={Math.max(0, view.replayLength - 1)} value={view.replayIndex} onChange={event => { setCinematic(false); session.seek(Number(event.target.value)) }} />
-          <div className={styles.replayCoachBar}>
-            <span>
-              Frame status: Station <strong>{view.episode.agents.find(a => a.id === 'champion')?.nodeId ?? 'base'}</strong> · Cargo: <strong>{view.episode.agents.find(a => a.id === 'champion')?.cargo ?? 0}</strong> · Weather: <strong>{view.episode.weather.flooded ? 'Submerged (Flooded)' : 'Clear'}</strong>
-            </span>
-            <div className={styles.replayButtons}>
-              <button
-                className={styles.frameCoachButton}
-                onClick={() => handlePropose(view.episode.weather.flooded ? 'take ridge route during flood' : 'prioritize energy core')}
-                disabled={coachingLocked}
-                title={coachingLocked ? 'Coaching is off during a scored match' : 'Propose a fix for this moment'}
-              >
-                <Sparkles size={13} />
-                Coach this moment
-              </button>
-            </div>
-          </div>
-          {currentMistake && (
-            <div className={styles.mistakeBanner} role="status">
-              <div>
-                <AlertTriangle size={14} />
-                <strong>Looks off at { (view.episode.tick * ARENA_RULES.stepMs / 1000).toFixed(1) }s</strong>
-                <span>It chose <em>{actionLabel(currentMistake.recorded)}</em>; the careful collector would <em>{actionLabel(currentMistake.suggested)}</em>.</span>
-              </div>
-              <button
-                className={styles.mistakeCoachButton}
-                onClick={handleAddMistake}
-                disabled={coachingLocked}
-                title={coachingLocked ? 'Coaching is off during a scored match' : 'Add this fix to the coaching queue'}
-              >
-                Queue this fix
-              </button>
-            </div>
-          )}
-          {view.phase === 'review' && !currentMistake && (
-            <div className={styles.frameOk} role="status">
-              <CheckCircle2 size={14} />
-              <span>This choice matches the careful collector.</span>
-            </div>
-          )}
-        </section>
+        <ReplayPanel
+          tick={view.episode.tick}
+          replayIndex={view.replayIndex}
+          replayLength={view.replayLength}
+          championNodeId={view.episode.agents.find(a => a.id === 'champion')?.nodeId ?? 'base'}
+          championCargo={view.episode.agents.find(a => a.id === 'champion')?.cargo ?? 0}
+          flooded={view.episode.weather.flooded}
+          cinematic={cinematic}
+          coachingLocked={coachingLocked}
+          currentMistake={currentMistake}
+          frameAdvice={frameAdvice}
+          onSeek={frame => { setCinematic(false); session.seek(frame) }}
+          onToggleCinematic={() => setCinematic(on => !on)}
+          onCoachThisMoment={() => handlePropose(view.episode.weather.flooded ? 'take ridge route during flood' : 'prioritize energy core')}
+          onQueueMistake={handleAddMistake}
+          onQueueCandidate={handleAddCandidate}
+        />
       )}
 
       {studioOpen && (
-      <section className={styles.coachingSection} aria-label="Coach your champion">
-        <div className={styles.coachingHeader}>
-          <div>
-            <h2>Coach</h2>
-            <p>Pick a focus, approve fixes, then train. Style must stay on “Your trained brain” to use the new weights.</p>
-            <ConvexLineageBadge />
-            {trainFocusLine && <p className={styles.focusLine}>{trainFocusLine}</p>}
-          </div>
-          <div className={styles.checkpointMeta}>
-            <label>
-              Active brain:
-              <select
-                className={styles.checkpointSelect}
-                value={activeCheckpoint.id}
-                disabled={view.phase === 'running'}
-                onChange={e => handleSelectCheckpoint(e.target.value)}
-              >
-                {checkpoints.map(c => <option key={c.id} value={c.id}>{isExecutableCheckpoint(c) ? c.name : `${c.name} (view-only)`}</option>)}
-              </select>
-            </label>
-            <div className={styles.checkpointActions}>
-              <button
-                type="button"
-                className={styles.actionButtonSmall}
-                onClick={handleExportCheckpoint}
-                title="Download active checkpoint JSON file"
-              >
-                <Download size={13} /> Export JSON
-              </button>
-              <button
-                type="button"
-                className={styles.actionButtonSmall}
-                onClick={handleImportClick}
-                disabled={view.phase === 'running'}
-                title="Import trained checkpoint JSON file"
-              >
-                <Upload size={13} /> Import JSON
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".json,application/json"
-                style={{ display: 'none' }}
-                onChange={handleFileChange}
-              />
-            </div>
-          </div>
-        </div>
-
-        {coachingLocked && (
-          <div className={styles.evaluationNotice} role="alert">
-            <AlertTriangle size={14} />
-            <strong>Scored match</strong>
-            <span>Coaching and training stay off. Switch to Practice to teach it.</span>
-          </div>
-        )}
-
-        <div className={styles.coachingGrid}>
-          <div className={styles.coachingCol}>
-            <h3>Specialize</h3>
-            <p className={styles.specializeHint}>Limited time — pick what this brain should get good at.</p>
-            <div className={styles.specializeRow}>
-              {SPECIALIZATION_CHIPS.map(chip => (
-                <button
-                  key={chip.id}
-                  type="button"
-                  className={styles.specializeChip}
-                  onClick={() => handlePropose(chip.prompt)}
-                  disabled={view.phase === 'running' || coachingLocked}
-                  title={chip.blurb}
-                >
-                  <strong>{chip.label}</strong>
-                  <span>{chip.blurb}</span>
-                </button>
-              ))}
-            </div>
-            <h3>Suggest a fix</h3>
-            <div className={styles.rulesGrid}>
-              {COACHING_RULES.map(rule => (
-                <button
-                  key={rule.id}
-                  className={styles.ruleButton}
-                  onClick={() => handlePropose(rule.description)}
-                  disabled={view.phase === 'running' || coachingLocked}
-                >
-                  <strong>{rule.label}</strong>
-                  <span>{rule.description}</span>
-                </button>
-              ))}
-            </div>
-            <form className={styles.promptForm} onSubmit={e => { e.preventDefault(); handlePropose(promptText) }}>
-              <input
-                className={styles.promptInput}
-                type="text"
-                placeholder={coachingLocked ? 'Coaching is off in a scored match' : 'Or type a note, e.g. take the ridge when it floods'}
-                value={promptText}
-                disabled={view.phase === 'running' || coachingLocked}
-                onChange={e => setPromptText(e.target.value)}
-              />
-              <button className={styles.secondaryButton} type="submit" disabled={!promptText.trim() || view.phase === 'running' || coachingLocked}>
-                Propose
-              </button>
-            </form>
-          </div>
-
-          <div className={styles.coachingCol}>
-            <div className={styles.queueHeader}>
-              <h3>Approve ({approvedCount})</h3>
-              <button
-                className={styles.primaryButton}
-                disabled={approvedCount === 0 || isTraining || view.phase === 'running' || coachingLocked}
-                onClick={handleTrain}
-              >
-                <Sparkles size={13} />
-                {isTraining ? 'Training…' : `Train (${approvedCount})`}
-              </button>
-            </div>
-
-            <div className={styles.examplesList}>
-              {examples.length === 0 ? (
-                <div className={styles.exampleEmpty}>
-                  No coaching examples yet. Select a rule or enter feedback on the left.
-                </div>
-              ) : (
-                examples.map(ex => {
-                  const isEval = isEvaluationScenario(ex.sourceEpisodeId)
-                  return (
-                    <div key={ex.id} className={styles.exampleCard} data-approved={ex.approved} data-evaluation={isEval}>
-                      <div className={styles.exampleDetails}>
-                        <strong>{ex.preferredAction.type}{('edgeId' in ex.preferredAction) ? ` · ${(ex.preferredAction as { edgeId: string }).edgeId}` : ''}{isEval && <span className={styles.evaluationTag}>Match</span>}</strong>
-                        <p>{ex.rationale}</p>
-                      </div>
-                      <div className={styles.exampleActions}>
-                        <button
-                          className={ex.approved ? styles.approveButton : styles.rejectButton}
-                          onClick={() => toggleApprove(ex.id)}
-                          disabled={isEval}
-                          title={isEval ? 'Held-out scenario: cannot approve for training' : ex.approved ? 'Approved for training' : 'Click to approve'}
-                        >
-                          {ex.approved ? <CheckCircle2 size={13} /> : 'Approve'}
-                        </button>
-                        <button
-                          className={styles.rejectButton}
-                          onClick={() => removeExample(ex.id)}
-                          title="Remove example"
-                        >
-                          <XCircle size={13} />
-                        </button>
-                      </div>
-                    </div>
-                  )
-                })
-              )}
-            </div>
-          </div>
-        </div>
-
-        {trainMessage && (
-          <div className={styles.trainingStatusCard} role="status">
-            <span>{trainMessage}</span>
-          </div>
-        )}
-
-        {trainResult && (
-          <div className={styles.trainingResultCard} role="status" aria-label="Training evaluation comparison">
-            <div className={styles.trainingResultHeader}>
-              <BarChart3 size={14} />
-              <strong>Checkpoint evaluation on {course.config.name}</strong>
-            </div>
-            <div className={styles.trainingResultGrid}>
-              <div>
-                <span>Base checkpoint</span>
-                <strong>{trainResult.baseline.totalBanked}</strong>
-                <small>banked · {trainResult.baseline.wins}W {trainResult.baseline.losses}L {trainResult.baseline.draws}D</small>
-              </div>
-              <div>
-                <span>Trained checkpoint</span>
-                <strong>{trainResult.trained.totalBanked}</strong>
-                <small>banked · {trainResult.trained.wins}W {trainResult.trained.losses}L {trainResult.trained.draws}D</small>
-              </div>
-              <div>
-                <span>Improvement</span>
-                <strong className={trainResult.trained.totalBanked > trainResult.baseline.totalBanked ? styles.improvementPositive : ''}>
-                  {trainResult.trained.totalBanked - trainResult.baseline.totalBanked >= 0 ? '+' : ''}{trainResult.trained.totalBanked - trainResult.baseline.totalBanked}
-                </strong>
-                <small>resources banked</small>
-              </div>
-            </div>
-            <p className={styles.trainingResultNote}>Practice-course score against the house rival. Not a ranked result.</p>
-          </div>
-        )}
-      </section>
+      <CoachPanel
+        activeCheckpoint={activeCheckpoint}
+        checkpoints={checkpoints}
+        phase={view.phase}
+        coachingLocked={coachingLocked}
+        trainFocusLine={trainFocusLine}
+        onSelectCheckpoint={handleSelectCheckpoint}
+        onExportCheckpoint={handleExportCheckpoint}
+        onImportClick={handleImportClick}
+        onFileChange={handleFileChange}
+        fileInputRef={fileInputRef}
+        onPropose={text => handlePropose(text)}
+        promptText={promptText}
+        onPromptTextChange={setPromptText}
+        approvedCount={approvedCount}
+        isTraining={isTraining}
+        onTrain={handleTrain}
+        examples={examples}
+        onToggleApprove={toggleApprove}
+        onRemoveExample={removeExample}
+        trainMessage={trainMessage}
+        trainResult={trainResult}
+        courseName={course.config.name}
+      />
       )}
 
       <footer className={styles.footer}>

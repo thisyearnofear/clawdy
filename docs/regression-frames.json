@@ -1,8 +1,8 @@
 {
   "version": 1,
   "pinnedFrom": {
-    "weightsHash": "86f3dbeb3d2f",
-    "datasetHash": "ds:2e3b342a:170",
+    "weightsHash": "9c1e938a3d6b",
+    "datasetHash": "ds:6c34309c:162",
     "note": "Passing subset pin — guards against change, does not claim capability. Extend as coaching improves."
   },
   "frames": [

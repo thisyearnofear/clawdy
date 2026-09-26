@@ -16,7 +16,7 @@ across a year of future work.
 | Observation schema | observation `schemaVersion` | `arena-observation-v2` (v1 data still valid) | `services/arenaEpisode.ts` |
 | Recording schema | recording `schemaVersion` | `arena-recording-v1` | `services/arenaEpisode.ts` |
 | Motion controller | `ROVER_PHYSICS.version` / route fallback | `rapier-kinematic-terrain-0.19.2.v1` / `route-reference-v2` | `services/arenaPhysics.ts`, `services/arenaEpisode.ts` |
-| Checkpoint | `POLICY_SCHEMA_VERSION` | `season-0.checkpoint.v2` (v1 metadata-readable) | `services/policyModel.ts` |
+| Checkpoint | `POLICY_SCHEMA_VERSION` | `season-0.checkpoint.v3` (v1/v2 metadata-readable) | `services/policyModel.ts` |
 | Encoder | `ENCODER_VERSION` / `OBSERVATION_FEATURE_DIM` | `season-0.encoder.v2` / 36 | `services/policyModel.ts` |
 | World | `ARENA_WORLD.version` + `colliderSha256` | `sandstone-basin-course-2` + `7633067b2624fb476f36adfb14e1a13b1325c71143fbd4d5087cfaf209c993af` | `services/arenaCourse.ts` |
 | Builder fixtures | abstract-graph `worldVersion` | `builder-abstract-v1` | `services/arenaScenarios.ts` |
@@ -80,14 +80,19 @@ output. Dims 0–31 are frozen v1 semantics; dims 32–35 are additive v2
 (public rival banked, stale remembered value, hidden fraction, remembered
 fraction). Action classes: `0 wait, 1 bank, 2 collect, 3 drain, 4 move-low (floodable),
 5 move-high (dry), 6 move-resource, 7 move-home` (`classifyAction`, `policyModel.ts`).
+Checkpoint v3 adds a linear edge-pointer head (`edgeHead`: EDGE_FEATURE_DIM=8
+weights + 1 bias) that ranks same-class candidate roads by a *residual* over the
+shared executor heuristic — zero-init ⇒ exact v2 ordering; heuristic −Infinity
+traps stay absolute. Pinned by `versions.test.ts`.
 
 Training configs by entry path (overrides recorded per checkpoint in `trainingConfig`):
 
-| Path | epochs | learningRate | momentum | weightDecay |
-|---|---|---|---|---|
-| `trainPolicyCheckpoint` defaults | 40 | 0.03 | 0.85 | 0.0001 |
-| Builder CLI (`starter/train.ts`) | 500 | 0.01 | 0.9 | 0.0001 (default) |
-| Distill/eval (`scripts/eval-holdout.ts` via `scripts/eval-lib.ts`) | 60 | 0.005 | 0.85 (default) | 0.0001 (default) |
+| Path | epochs | learningRate | momentum | weightDecay | decay |
+|---|---|---|---|---|---|
+| `trainPolicyCheckpoint` defaults | 40 | 0.03 | 0.85 | 0.0001 | — |
+| Builder CLI (`starter/train.ts`) | 500 | 0.01 | 0.9 | 0.0001 (default) | — |
+| Distill/eval (`scripts/eval-holdout.ts` via `scripts/eval-lib.ts`) | 60 | 0.005 | 0.85 (default) | 0.0001 (default) | — |
+| Browser coach panel (`ArenaScene`) | 60 | 0.008 | 0.85 (default) | 0.0001 (default) | ×0.5 from epoch 30 |
 
 These configs are pinned by `versions.test.ts`. Changing any value changes measured
 results (`docs/eval-holdout.json`, `starter/champion-checkpoint.json`) and therefore
@@ -99,9 +104,15 @@ Promotion discipline: no checkpoint is promoted on the strength of one replay.
 side-swapped}), 8 grounded legs (practice + compete × {safe, distilled} ×
 {normal, side-swapped} on isolated physics over the pinned collider), and
 16 family legs (4 generated layouts × {safe, distilled} × {normal, swapped}),
-zero-recovery and all-finished hard floors, determinism via the distilled
-weightsHash, and the `docs/regression-frames.json` corpus. A mismatch fails CI;
-re-pinning with `--update` is a reviewed migration, never a silent reset.
+zero-recovery and all-finished hard floors, the harness-enforced claims block
+(see `checkClaims` in `scripts/eval-gate.ts`: abstract per-leg parity within 1
+of the safe teacher + identical champion-win set; physics no-collapse floor of
+floor(safe/2) per leg — recomputed from raw match data every run, so the pin
+can never weaken a claim), determinism via the distilled weightsHash, and the
+`docs/regression-frames.json` corpus. A mismatch fails CI; re-pinning with
+`--update` is a reviewed migration, never a silent reset. Product docs may only
+claim what this block enforces — when a claim fails, the claim and the prose
+come down, the numbers do not move up.
 
 ## 4. World namespaces
 
@@ -238,6 +249,90 @@ grounded courses prove it.
   **36** (practice **10**/8, compete **12**/6); abstract dual-side **36**.
   Family still trails (38 vs 72).
 - **Next:** close family gap; human-coached training at scale.
+
+### Executor symmetrization + checkpoint v3 residual edge head (Sep 25–26)
+
+- **What (four linked moves under one reviewed arc):**
+  1. **Symmetric executor rules** (`services/arenaControllerRules.ts`):
+     auto-bank, on-node collect, no-retreat-hop and patience-when-gated now
+     live in `applyControllerRules(obs, action)` — observation-derived
+     predicates only — and run for the `safe`/`greedy` teachers AND the
+     learned policy alike. Deleted: the student-only scenario-shaped
+     redirects gated on `banked===3/≥6/≥9` constants, the hollow class-5→6
+     alias, soft on-node collect margin, premature-home, pad-flood tie-break.
+     The student gets no scaffolding the teacher doesn't.
+  2. **Expert-iteration mining attempt** (phase 1d in `scripts/eval-lib.ts`):
+     outcome-argmax labels over bounded candidate sets on practice walks.
+     Broad class-level overrides poisoned held-out/family legs (measured
+     2026-09-26: heldout-02 normal 5→0, family 58→50, grounded 27→22);
+     re-scoped to edge-only same-class overrides under the v3 head, they
+     still poisoned grounded physics (compete-01 normal 11→5, one pinned
+     regression frame failed); a stricter +2.0 threshold was worse. Final
+     state: `ARGMAX_TOTAL_CAP = 0` — the machinery and its measured history
+     stay in-tree. Re-enablement requires a physics-aware rollout oracle,
+     not a smarter threshold. The user-facing path was never affected:
+     browser training remains 100% approve→cross-entropy.
+  3. **Checkpoint v3** (`season-0.checkpoint.v3`): a linear edge-pointer
+     head (`EDGE_FEATURE_DIM = 8` inference-time features per candidate
+     road) that breaks the 8-class label ceiling by letting an approved
+     `edgeId` actually train routing choice. **Deviation from plan:** the
+     head scores a *residual* over the executor's v2 heuristic
+     (`scoreMoveEdge/16 + w·f + b`) rather than the planned pure learned
+     score — a random-init learned-from-scratch head degraded the base
+     checkpoint that outcome-verification rollouts run on, shifting teacher
+     labels (dataset 162→164, trained 38→21) before teaching anything.
+     Zero-init residual ⇒ base provably equals v2 behavior; −Infinity
+     heuristic traps stay absolute. Backbone, encoder, and class head are
+     untouched; disclosed here as the architecture decision the HACKATHON
+     Learning Contract delegates to experiment.
+  4. **Browser coach path:** few-shot stability — 100 epochs @ 0.02 diverged
+     on ~10-example lessons; the panel now trains 60 @ 0.008 with a
+     deterministic ×0.5 decay from epoch 30 (plumbed through
+     `trainingConfig`, the Convex payload validator, and `versions.test.ts`
+     config pins, including the previously unpinned distill/builder/CLI
+     configs). New review-frame feature: top-3 *outcome-verified*
+     alternative actions (`services/coachingCandidates.ts`) ranked by the
+     same dual-horizon `rolloutOutcomeDelta` the CI syllabus uses, computed
+     on the real pre-decision replay snapshot, each row showing its measured
+     delta; queueing one still requires explicit human approval.
+- **Claim enforcement:** the gate now carries a harness-enforced claims
+  block (see §3 promotion discipline). The literal "beats what it was never
+  taught" claim is **softened to what is measured**: the bar "trained ≥
+  safe per suite" (plan GO-3) was NOT met, and per plan we report it rather
+  than re-pin downward.
+- **Measured effect (distill `9c1e938a3d6b`, dataset `ds:6c34309c:162`):**
+  abstract held-outs: trained 38 vs safe 40 dual-side, **8/8 legs within 1
+  banked of the teacher, champion-win set identical (5 = 5, same legs)** —
+  up from trained 19 vs 23-normal at the prior pin with 0 parity wins.
+  Grounded physics: trained 27 vs safe 35 (compete normal 11 vs 12);
+  family layouts: 55 vs 66 — every leg at or above the half-of-safe
+  no-collapse floor. Edge-only decision divergence mass (WS1.0 analyzer):
+  15.5 → 1.25. Frames 24/24, zero recoveries, all runs finished.
+- **Readability:** v2 checkpoints validate and show lineage/eval records but
+  refuse execution and fine-tuning (`checkpoint-execution-mismatch`),
+  exactly like v1 did under v2; boot quarantines them. The v3 base
+  checkpoint is a new shared seed (`createBaseCheckpoint`, zero-init edge
+  head); v1/v2 bases never shadow it.
+- **Label decision:** entrant `policyVersion` literals stay
+  `baseline.safe.v2`/`reference.greedy.v2` — they are descriptive strings
+  outside the execution path; the executed-teacher identity for this era is
+  carried by the distill weightsHash + gate pin. Bumping the literals would
+  byte-churn 24 pinned regression-frame observations for zero contract gain.
+
+### Post-re-pin rendering dependency pass (Sep 26, no version-axis change)
+
+- **What:** after the re-pin above, the frozen rendering stack was bumped
+  within majors: three 0.180.0→0.186.1, @types/three 0.186.0,
+  @react-three/fiber 9.5.0→9.8.1, @react-three/drei 10.7.9,
+  react/react-dom →19.3.0 (fiber peers allow >=19 <19.4). Physics stays
+  **locked: @dimforge/rapier3d-compat 0.19.2 / @react-three/rapier 2.2.0**
+  (npm overrides + postinstall guard; rapier 0.21 is a breaking jump and was
+  skipped deliberately).
+- **Verification:** `npm test` green (GLB SHA pins survive — bytes unchanged);
+  `npm run eval:gate` reproduced the pin byte-for-byte; `npm run build`
+  (Turbopack) clean. **Zero grounded/family drift ⇒ no `ROVER_PHYSICS.version`
+  bump, no re-pin.** The pass rule stands: if a future rendering bump moves any
+  grounded leg, revert the bump — never re-pin over physics drift.
 
 ## 6. Non-goals
 - No cross-version *execution*: a v1 checkpoint is never run under v2 rules "to see
