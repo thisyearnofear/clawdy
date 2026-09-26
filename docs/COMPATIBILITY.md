@@ -336,6 +336,36 @@ grounded courses prove it.
   bump, no re-pin.** The pass rule stands: if a future rendering bump moves any
   grounded leg, revert the bump — never re-pin over physics drift.
 
+### Render-layer interpolation + shadow-map cleanup (Sep 26, evening — no version-axis change)
+
+- **What:** two player-visible quality fixes with no sim/policy/physics effects:
+  1. **Fixed-timestep render interpolation.** The arena sim commits at 20 Hz
+     (one tick per 50 ms). Before this change the renderer consumed every
+     commit directly, so both the `Rover` mesh and `FollowCamera` jittered
+     20×/sec. `ArenaSession.interpolation()` now exposes the runner's
+     interpolation fraction; `ArenaWorldView.tsx` adds `sampleInterpolatedPose`
+     (per-session WeakMap of pose histories) so the renderer samples one tick
+     behind authority and lerps by the live tick fraction — velocity ripple
+     gone from the Rover, FollowCamera follows one motion curve with the
+     Rover. `RoverShadow` gets the same treatment. Idempotent per tick;
+     reset on scrub.
+  2. **Shadow-map type pinning.** `@react-three/fiber` defaults to
+     `PCFSoftShadowMap` when `shadows={true}`. `three` r186.1 removed that
+     type → deprecation warning + fallback + a GL sampler mismatch against
+     Spark's `sampler2DShadow` uniforms (71 `GL_INVALID_OPERATION` / frame).
+     `ArenaWorldView` now passes `shadows={'percentage'}` explicitly, which
+     fiber maps to `PCFShadowMap` — the current three default — before Spark
+     inits. Upgraded `@sparkjsdev/spark` 2.1.0→2.2.0 for a clean
+     `sampler2DShadow` implementation on r186.
+  3. Spark also replaced its own deprecated `THREE.Clock` with `THREE.Timer`
+     in v2.2.0; the Rapier init warning (`"using deprecated parameters"`) is
+     harmless (Rapier's API contract predates the object form; no fix).
+- **Verification:** `npm test` green; `npm run eval:gate` byte-for-byte
+  repro of pin `2b76a6113d66`; `npm run build` clean. No grounded/family
+  drift (physics untouched), no policy re-pins. Browser console: the PCFSoft
+  shadow warning and all 71 GL sampler-mismatch errors clear; the remaining
+  deprecations are Rapier init and fiber-internal clock (out of app code).
+
 ### Physics-aware rollout oracle + grounded argmax (Sep 26, evening — no version-axis change)
 
 - **What:** the consequence rollout oracle is no longer route-only on
