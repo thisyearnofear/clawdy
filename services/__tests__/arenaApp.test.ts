@@ -10,7 +10,7 @@ describe('consolidated application entrypoint', () => {
     const html = renderToStaticMarkup(createElement(Providers, null, createElement(Home)))
     expect(html).toContain('CLAWDY')
     expect(html).toContain('Preparing the proving ground.')
-    expect(html).toContain('Practice match')
+    expect(html).toContain('Play → Replay → Coach')
     expect(html).toContain('Champion Base')
     expect(html).not.toContain('Connect Wallet')
     expect(html).not.toContain('Joining Arena')

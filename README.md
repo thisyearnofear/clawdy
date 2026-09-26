@@ -22,17 +22,22 @@ Clawdy is an agent-training league inside a physical world. You coach a rover th
 
 Both paths produce the same checkpoint artifact and run under the same match rules.
 
+## Live
+
+**Play:** [https://clawdy-nine.vercel.app/](https://clawdy-nine.vercel.app/) — Practice → Replay → Coach → Train → Match. No wallet. Checkpoints sync to Convex under a browser guest key when configured; `localStorage` + JSON export always work offline.
+
 ## Quick Start
 
 ```bash
 npm ci
 npm run dev              # web app at http://localhost:3000
+npx convex dev           # optional — dual-write coaching lineage
 npm test                 # unit/integration suites
 npm run build            # static Next.js build
 npm run starter:train    # headless trainer, exports a checkpoint
 ```
 
-Requires Node.js 20+ and npm 10+.
+Requires Node.js 20+ and npm 10+. Production Convex + Vercel env notes: [docs/DEPLOY.md](docs/DEPLOY.md).
 
 **World visuals:** since September 18 the playable course is a mesh-first Blender-authored terrain (`public/terrain/sandstone-basin.glb` — included, no Blender needed to run the app; explicit rebuild `blender --background --factory-startup --python scripts/build-arena-terrain.py -- --force` with Blender 4.5 LTS on PATH, then re-pin the printed SHA in `services/arenaCourse.ts`), used identically for rendering and physics collision, plus path/landmark overlays. The earlier generated-world strategy is superseded — see [public/marble/IMMERSIVE_REBUILD.md](public/marble/IMMERSIVE_REBUILD.md); Marble and Mint candidate assets are retained but not active.
 

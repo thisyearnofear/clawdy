@@ -154,6 +154,60 @@ function AgentCard({ agent, policy, unlocked, onPolicy }: {
   )
 }
 
+const PLAY_HINT_KEY = 'clawdy_play_hint_v1'
+const COACH_NUDGE_KEY = 'clawdy_coach_nudge_v1'
+
+const BOOT_STAGES = [
+  'Grounding the sandstone basin…',
+  'Wiring routes and flood windows…',
+  'Rolling two rovers onto the field…',
+  'Almost there — Play unlocks when the world settles.',
+] as const
+
+function readHintDismissed(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    return window.sessionStorage.getItem(PLAY_HINT_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function BootScreen({ error, onRetry }: { error: string | null; onRetry: () => void }) {
+  const [stage, setStage] = useState(0)
+  useEffect(() => {
+    if (error) return
+    const id = window.setInterval(() => {
+      setStage(current => Math.min(current + 1, BOOT_STAGES.length - 1))
+    }, 1400)
+    return () => window.clearInterval(id)
+  }, [error])
+
+  return (
+    <section className={styles.boot} aria-live="polite" data-error={Boolean(error)}>
+      <p className={styles.eyebrow}>TRAIN YOUR CHAMPION</p>
+      <h1>{error ? 'The course could not load.' : 'Preparing the proving ground.'}</h1>
+      <p>{error ?? BOOT_STAGES[stage]}</p>
+      {error ? (
+        <button className={styles.primaryButton} onClick={onRetry}>
+          Retry loading <RotateCcw size={16} />
+        </button>
+      ) : (
+        <div className={styles.bootProgress} aria-hidden>
+          <div className={styles.bootLine} data-stage={stage} />
+          <ol className={styles.bootSteps}>
+            <li data-done={stage >= 0}>World</li>
+            <li data-done={stage >= 1}>Routes</li>
+            <li data-done={stage >= 2}>Rovers</li>
+            <li data-done={stage >= 3}>Ready</li>
+          </ol>
+        </div>
+      )}
+      <small>Play → Replay → Coach · No wallet · Practice first</small>
+    </section>
+  )
+}
+
 function Workbench({ session, course, createMotion, onRetry }: LoadedSession & { onRetry: () => void }) {
   const view = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot)
   const convex = useConvexClient()
@@ -165,7 +219,13 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
   const [playMode, setPlayMode] = useState<CoursePlayMode>('practice')
   const [activeCourse, setActiveCourse] = useState(course)
   const [studioOpen, setStudioOpen] = useState(false)
-  const [hintOpen, setHintOpen] = useState(true)
+  const [hintOpen, setHintOpen] = useState(() => !readHintDismissed())
+  const [coachNudgeOpen, setCoachNudgeOpen] = useState(false)
+  const [modeBanner, setModeBanner] = useState<CoursePlayMode | null>(null)
+  const [runTip, setRunTip] = useState<string | null>(null)
+  const floodWarnedRef = useRef<number | null>(null)
+  const modeBannerTimer = useRef<number | null>(null)
+  const runTipTimer = useRef<number | null>(null)
   const [checkpoints, setCheckpoints] = useState<PolicyCheckpoint[]>([SEASON_0_BASE_CHECKPOINT])
   const [activeCheckpoint, setActiveCheckpoint] = useState<PolicyCheckpoint>(SEASON_0_BASE_CHECKPOINT)
   const [examples, setExamples] = useState<ArenaTrainingExample[]>([])
@@ -260,6 +320,33 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
     saveStoredExamples(examples)
     void syncExamples(convex, examples)
   }, [examples, hasHydrated, convex])
+
+  useEffect(() => {
+    if (view.phase !== 'finished' || coachingLocked) {
+      setCoachNudgeOpen(false)
+      return
+    }
+    try {
+      if (window.sessionStorage.getItem(COACH_NUDGE_KEY) === '1') return
+    } catch { /* ignore */ }
+    setCoachNudgeOpen(true)
+  }, [view.phase, coachingLocked])
+
+  // Mid-run flood tip: once per approaching window, when the valley is ≤12s from flooding.
+  useEffect(() => {
+    if (view.phase !== 'running' || flooded || nextFloodIn === null || nextFloodIn > 12) return
+    const coming = activeCourse.scenario.floods.find(window => window.startTick > view.episode.tick)
+    if (!coming || floodWarnedRef.current === coming.startTick) return
+    floodWarnedRef.current = coming.startTick
+    setRunTip(`Flood in ${nextFloodIn}s — amber valley slows. Take the ridge.`)
+    if (runTipTimer.current) window.clearTimeout(runTipTimer.current)
+    runTipTimer.current = window.setTimeout(() => setRunTip(null), 5200)
+  }, [view.phase, view.episode.tick, flooded, nextFloodIn, activeCourse.scenario.floods])
+
+  useEffect(() => () => {
+    if (modeBannerTimer.current) window.clearTimeout(modeBannerTimer.current)
+    if (runTipTimer.current) window.clearTimeout(runTipTimer.current)
+  }, [])
 
   const lastSyncedMatchRef = useRef<string | null>(null)
 
@@ -442,6 +529,11 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
     session.setCourse(next)
     session.setScored(mode === 'compete')
     if (mode === 'compete') setStudioOpen(false)
+    floodWarnedRef.current = null
+    setRunTip(null)
+    setModeBanner(mode)
+    if (modeBannerTimer.current) window.clearTimeout(modeBannerTimer.current)
+    modeBannerTimer.current = window.setTimeout(() => setModeBanner(null), 1100)
   }
   const download = () => {
     const url = URL.createObjectURL(new Blob([JSON.stringify(session.recording())], { type: 'application/json' }))
@@ -672,7 +764,7 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
   const approvedCount = examples.filter(e => e.approved && !isEvaluationScenario(e.sourceEpisodeId)).length
 
   return (
-    <>
+    <div className={styles.stageEnter}>
       <div className={styles.intro}>
         <div>
           <p className={styles.eyebrow}>TRAIN YOUR CHAMPION</p>
@@ -685,13 +777,28 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
           <li data-active={studioOpen && !coachingLocked}>Coach</li>
         </ol>
       </div>
-      <div className={styles.workbench}>
+      <div className={styles.workbench} data-mode={playMode} data-world-ready={visualReady}>
         <section className={styles.viewport} aria-label="Generated world and autonomous rovers">
-          <div className={styles.canvas}>
+          <div className={styles.canvas} data-ready={visualReady}>
             <ErrorBoundary onError={onError} fallback={<div className={styles.canvasError}><h2>The world view could not start.</h2><button onClick={onRetry}>Reload world</button></div>}>
               <WorldView course={activeCourse} session={session} follow={follow} cinematic={cinematic && view.phase === 'review'} coachSuggestion={coachSuggestion} onReady={onReady} onError={onError} />
             </ErrorBoundary>
           </div>
+          <div
+            className={styles.worldVeil}
+            data-ready={visualReady}
+            aria-hidden={visualReady}
+          >
+            {!visualReady && (
+              <p>Settling the world…</p>
+            )}
+          </div>
+          {modeBanner && (
+            <div className={styles.modeFlash} key={modeBanner} role="status">
+              <span>{modeBanner === 'compete' ? 'MATCH' : 'PRACTICE'}</span>
+              <p>{modeBanner === 'compete' ? 'Held-out layout. Coaching locked.' : 'Teach freely. Same world, practice floods.'}</p>
+            </div>
+          )}
           <div className={styles.worldTopline}>
             <div>
               <span className={styles.liveDot} data-active={view.phase === 'running'} />
@@ -711,21 +818,50 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
             </div>
             <span>{follow === 'overview' ? 'Drag to look around' : activeCourse.config.name}</span>
           </div>
-          {!visualReady && view.phase !== 'error' && <div className={styles.worldNotice} role="status">Loading the world. Play unlocks when it settles.</div>}
+          {runTip && view.phase === 'running' && (
+            <div className={`${styles.runTip} ${styles.hintEnter}`} role="status">
+              {runTip}
+            </div>
+          )}
           {feed.length > 0 && (
             <div className={styles.eventFeed} aria-live="polite">
               {feed.map(event => <span key={event.id} data-tone={event.tone}>{event.text}</span>)}
             </div>
           )}
           {view.error && <div className={styles.worldNotice} role="alert"><strong>Run stopped</strong><p>{view.error}</p><button onClick={onRetry}>Retry world loading</button></div>}
-          {visualReady && hintOpen && view.phase === 'ready' && (
-            <div className={styles.playHint} role="status">
-              <p>Press Play. Follow your green champion — amber marked routes are flood-sensitive.</p>
-              <button type="button" onClick={() => setHintOpen(false)} aria-label="Dismiss hint">Got it</button>
+          {visualReady && hintOpen && view.phase === 'ready' && !modeBanner && (
+            <div className={`${styles.playHint} ${styles.hintEnter}`} role="status">
+              <p><strong>Press Play.</strong> Follow your green champion — amber routes flood first.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setHintOpen(false)
+                  try { window.sessionStorage.setItem(PLAY_HINT_KEY, '1') } catch { /* ignore */ }
+                }}
+                aria-label="Dismiss hint"
+              >
+                Got it
+              </button>
+            </div>
+          )}
+          {coachNudgeOpen && view.phase === 'finished' && !coachingLocked && (
+            <div className={`${styles.playHint} ${styles.hintEnter}`} role="status">
+              <p><strong>Teach the miss.</strong> Open Replay, scrub the bad turn, then Coach that frame.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setCoachNudgeOpen(false)
+                  session.review()
+                  setStudioOpen(true)
+                  try { window.sessionStorage.setItem(COACH_NUDGE_KEY, '1') } catch { /* ignore */ }
+                }}
+              >
+                Open Coach
+              </button>
             </div>
           )}
           {view.phase === 'finished' && (
-            <div className={styles.result} role="status">
+            <div className={`${styles.result} ${styles.hintEnter}`} role="status">
               <span>{playMode === 'compete' ? 'MATCH COMPLETE' : 'ROUND COMPLETE'}</span>
               <h2>{view.episode.winner === 'champion' ? 'Your champion takes it.' : view.episode.winner === 'rival' ? 'The house rival wins.' : 'An even contest.'}</h2>
               <p>{coachingLocked ? 'This was a scored match. Coaching stays off — try Practice if you want to teach it.' : 'Watch the replay, then coach the moment it went wrong.'}</p>
@@ -734,7 +870,12 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
                   <button
                     type="button"
                     className={styles.primaryButton}
-                    onClick={() => { session.review(); setStudioOpen(true) }}
+                    onClick={() => {
+                      setCoachNudgeOpen(false)
+                      session.review()
+                      setStudioOpen(true)
+                      try { window.sessionStorage.setItem(COACH_NUDGE_KEY, '1') } catch { /* ignore */ }
+                    }}
                   >
                     <Eye size={16} /> Watch replay
                   </button>
@@ -777,7 +918,7 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
         </section>
         <aside className={styles.sidebar} aria-label="Competitor status">
           <div className={styles.sidebarHeader}><span>THE FIELD</span><span className={styles.timer}>{clock}</span></div>
-          <div className={styles.modeToggle} role="group" aria-label="Match type">
+          <div className={styles.modeToggle} role="group" aria-label="Match type" data-flash={modeBanner ?? undefined}>
             <button type="button" aria-pressed={playMode === 'practice'} disabled={view.phase !== 'ready'} onClick={() => switchPlayMode('practice')}>Practice</button>
             <button type="button" aria-pressed={playMode === 'compete'} disabled={view.phase !== 'ready'} onClick={() => switchPlayMode('compete')}>Match</button>
           </div>
@@ -800,8 +941,15 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
 
       <div className={styles.controlBar}>
         <div className={styles.mainControls}>
-          <button className={styles.primaryButton} onClick={primaryAction} disabled={!visualReady && view.phase !== 'error'}>{view.phase === 'running' ? <Pause size={16} /> : <Play size={16} />}{primaryLabel}</button>
-          <button className={styles.secondaryButton} onClick={() => { setCinematic(false); session.reset() }} disabled={!visualReady || view.phase === 'error'}><RotateCcw size={15} />Reset</button>
+          <button
+            className={`${styles.primaryButton}${visualReady && hintOpen && view.phase === 'ready' ? ` ${styles.playPulse}` : ''}`}
+            onClick={primaryAction}
+            disabled={!visualReady && view.phase !== 'error'}
+          >
+            {view.phase === 'running' ? <Pause size={16} /> : <Play size={16} />}
+            {primaryLabel}
+          </button>
+          <button className={styles.secondaryButton} onClick={() => { setCinematic(false); floodWarnedRef.current = null; setRunTip(null); session.reset() }} disabled={!visualReady || view.phase === 'error'}><RotateCcw size={15} />Reset</button>
           <button className={styles.secondaryButton} onClick={() => session.review()} disabled={view.phase !== 'paused' && view.phase !== 'finished'}><Eye size={16} />Replay</button>
           <button
             className={styles.secondaryButton}
@@ -1116,7 +1264,7 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
         <p><strong>Play → Replay → Coach → Train → Match.</strong> The new brain is a real weight update, not a saved prompt.</p>
         <span>Play <ArrowRight size={13} /> Coach <ArrowRight size={13} /> Match</span>
       </footer>
-    </>
+    </div>
   )
 }
 
@@ -1152,7 +1300,7 @@ export default function ArenaScene() {
   return (
     <div className={styles.shell}>
       <BrandHeader activeCheckpoint={loaded?.session.getSnapshot().checkpoint ?? SEASON_0_BASE_CHECKPOINT} />
-      {loaded ? <Workbench key={attempt} {...loaded} onRetry={retry} /> : <section className={styles.boot} aria-live="polite"><p className={styles.eyebrow}>TRAIN YOUR CHAMPION</p><h1>{error ? 'The course could not load.' : 'Preparing the proving ground.'}</h1><p>{error ?? 'Grounding the routes and rolling two rovers onto the field.'}</p>{error ? <button className={styles.primaryButton} onClick={retry}>Retry loading <RotateCcw size={16} /></button> : <div className={styles.bootLine} />}<small>Practice match · No wallet · Coach after the round</small></section>}
+      {loaded ? <Workbench key={attempt} {...loaded} onRetry={retry} /> : <BootScreen error={error} onRetry={retry} />}
     </div>
   )
 }
