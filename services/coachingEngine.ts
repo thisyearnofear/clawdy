@@ -35,6 +35,92 @@ export const COACHING_RULES: readonly CoachingRule[] = Object.freeze([
   },
 ])
 
+/** High-level training focus chips — map to proposeCorrection prompts, not new algorithms. */
+export type SpecializationChip = {
+  id: string
+  label: string
+  blurb: string
+  prompt: string
+  focus: 'weather' | 'banking' | 'collection' | 'contest' | 'energy'
+}
+
+export const SPECIALIZATION_CHIPS: readonly SpecializationChip[] = Object.freeze([
+  {
+    id: 'weather-ridge',
+    label: 'Weather / Ridge',
+    blurb: 'Survive floods on the high path',
+    prompt: 'take the ridge route during flood',
+    focus: 'weather',
+  },
+  {
+    id: 'bank-cargo',
+    label: 'Bank & cargo',
+    blurb: 'Deliver when full; hustle home',
+    prompt: 'bank cargo at base when full',
+    focus: 'banking',
+  },
+  {
+    id: 'grab-cores',
+    label: 'Grab cores',
+    blurb: 'Harvest whenever you stop on a core',
+    prompt: 'prioritize energy core',
+    focus: 'collection',
+  },
+  {
+    id: 'energy-drain',
+    label: 'Energy & drain',
+    blurb: 'Spend energy to open the valley',
+    prompt: 'drain when low route is urgent',
+    focus: 'energy',
+  },
+  {
+    id: 'contest',
+    label: 'Contest cores',
+    blurb: 'Beat the rival to contested stations',
+    prompt: 'prioritize adjacent energy core before the rival',
+    focus: 'contest',
+  },
+])
+
+const FOCUS_LABELS: Record<SpecializationChip['focus'], string> = {
+  weather: 'weather / ridge',
+  banking: 'bank & cargo',
+  collection: 'core collection',
+  contest: 'contesting cores',
+  energy: 'energy & drain',
+}
+
+function classifyExampleFocus(example: { rationale: string; preferredAction: { type: string } }): SpecializationChip['focus'] {
+  const text = `${example.rationale} ${example.preferredAction.type}`.toLowerCase()
+  if (text.includes('flood') || text.includes('ridge') || text.includes('water')) return 'weather'
+  if (text.includes('drain') || text.includes('energy')) return 'energy'
+  if (text.includes('bank') || text.includes('deliver') || text.includes('base') || example.preferredAction.type === 'bank') {
+    return 'banking'
+  }
+  if (text.includes('rival') || text.includes('contest')) return 'contest'
+  if (text.includes('collect') || text.includes('core') || text.includes('harvest') || example.preferredAction.type === 'collect') {
+    return 'collection'
+  }
+  return 'collection'
+}
+
+/** One-line summary of what this training batch emphasized. */
+export function summarizeCoachFocus(
+  examples: ReadonlyArray<{ rationale: string; preferredAction: { type: string }; approved?: boolean }>,
+): string | null {
+  const approved = examples.filter(example => example.approved !== false)
+  if (approved.length === 0) return null
+  const counts = new Map<SpecializationChip['focus'], number>()
+  for (const example of approved) {
+    const focus = classifyExampleFocus(example)
+    counts.set(focus, (counts.get(focus) ?? 0) + 1)
+  }
+  const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1])
+  const top = ranked.slice(0, 2).map(([focus]) => FOCUS_LABELS[focus])
+  if (top.length === 1) return `This session focused on ${top[0]}.`
+  return `This session focused on ${top[0]} and ${top[1]}.`
+}
+
 /**
  * Analyzes an observation and chosen action against coach guidance, proposing a structured correction.
  */

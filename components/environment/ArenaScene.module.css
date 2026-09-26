@@ -22,8 +22,16 @@
 .brand { display: flex; align-items: center; gap: 12px; font-weight: 800; letter-spacing: -0.06em; font-size: 22px; }
 .brandMark { display: grid; place-items: center; width: 31px; height: 31px; background: var(--ink); color: #d2efad; border-radius: 50% 50% 50% 8%; font-size: 20px; }
 .edition { margin-left: 18px; color: var(--muted); font: 10px var(--font-geist-mono), monospace; letter-spacing: 0.1em; }
+.headerActions { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .buildBadge { font: 10px var(--font-geist-mono), monospace; letter-spacing: 0.06em; border: 1px solid var(--line); padding: 8px 11px; border-radius: 3px; white-space: nowrap; }
+.helpButton, .helpInline, .helpClose {
+  display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: #f7f9ef;
+  color: var(--ink); border-radius: 4px; cursor: pointer; font-size: 11px; padding: 8px 11px;
+}
+.helpInline { margin-top: 10px; padding: 6px 10px; font-size: 10px; }
+.helpClose { padding: 6px 10px; }
 .intro { display: flex; align-items: end; justify-content: space-between; gap: 24px; padding: 22px 0 18px; }
+.introAside { display: flex; flex-direction: column; align-items: flex-end; gap: 0; }
 .eyebrow { color: var(--muted); font: 10px var(--font-geist-mono), monospace; letter-spacing: 0.15em; margin: 0 0 12px; }
 .intro h1, .boot h1 { font: normal clamp(32px, 3.5vw, 52px)/1.05 Georgia, serif; letter-spacing: -0.035em; margin: 0; }
 .lede { margin: 12px 0 0; font-size: 13px; color: var(--muted); max-width: 42rem; }
@@ -147,6 +155,61 @@
 .agentHeading { display: flex; gap: 9px; align-items: center; }
 .agentMark { display: grid; place-items: center; width: 30px; height: 34px; border-radius: 4px; background: #bedb9c; color: #314c30; font-weight: 750; font-size: 15px; }
 .agentCard[data-entrant="rival"] .agentMark { background: #efd3aa; color: #704e2e; }
+.identityBlock { display: flex; flex-direction: column; gap: 8px; margin: 12px 0 0; }
+.identityName { display: flex; align-items: center; gap: 8px; font-size: 10px; color: var(--muted); }
+.identityName input {
+  flex: 1; min-width: 0; border: 1px solid #cbd3c5; background: #fff; border-radius: 3px;
+  padding: 6px 8px; color: var(--ink); font-size: 11px;
+}
+.identityName input:disabled { opacity: 0.65; }
+.lookRow { display: flex; gap: 6px; }
+.lookSwatch {
+  width: 22px; height: 22px; border-radius: 999px; border: 2px solid transparent; cursor: pointer; padding: 0;
+}
+.lookSwatch[aria-pressed='true'] { border-color: #233531; box-shadow: 0 0 0 2px #fff inset; }
+.lookSwatch:disabled { opacity: 0.5; cursor: not-allowed; }
+.srOnly {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+.nextStep {
+  display: flex; align-items: center; gap: 12px; margin: 10px 0 4px; padding: 10px 14px;
+  border: 1px solid #d5dfd6; border-radius: 5px; background: #f7f9ef;
+  font: 11px/1.4 var(--font-geist-mono), monospace;
+}
+.nextStep > span { color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; font-size: 9px; }
+.nextStep strong { color: var(--ink); font-weight: 550; }
+.nextStep button {
+  border: 0; background: transparent; color: #2f6b3a; font: inherit; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px; padding: 0; text-align: left;
+}
+.specializeHint { margin: 0 0 10px; font-size: 11px; color: var(--muted); }
+.specializeRow { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.specializeChip {
+  flex: 1 1 140px; text-align: left; border: 1px solid #d5dfd6; background: #fff; border-radius: 5px;
+  padding: 10px 12px; cursor: pointer; display: flex; flex-direction: column; gap: 4px;
+}
+.specializeChip strong { font-size: 11px; color: var(--ink); }
+.specializeChip span { font-size: 10px; color: var(--muted); line-height: 1.35; }
+.specializeChip:hover:not(:disabled) { border-color: #6a8d61; background: #f4f8ef; }
+.specializeChip:disabled { opacity: 0.5; cursor: not-allowed; }
+.focusLine { margin: 8px 0 0; font: 11px/1.4 var(--font-geist-mono), monospace; color: #2f6b3a; }
+.helpScrim {
+  position: fixed; inset: 0; z-index: 40; background: #1a352e55;
+  display: flex; justify-content: flex-end;
+}
+.helpDrawer {
+  width: min(100%, 380px); height: 100%; background: #f7f9ef; color: var(--ink);
+  border-left: 1px solid #c8d5c4; padding: 22px 22px 32px; overflow: auto;
+  box-shadow: -12px 0 40px #18312422; animation: hintIn 280ms ease both;
+}
+.helpHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.helpHeader h2 { margin: 0; font: 22px/1.1 Georgia, serif; }
+.helpSteps { margin: 0 0 22px; padding-left: 18px; font-size: 13px; line-height: 1.55; color: #3d4f44; }
+.helpSteps li { margin-bottom: 8px; }
+.helpFaq { margin: 0; display: flex; flex-direction: column; gap: 14px; }
+.helpFaq dt { font: 11px var(--font-geist-mono), monospace; letter-spacing: 0.04em; color: var(--ink); margin-bottom: 4px; }
+.helpFaq dd { margin: 0; font-size: 12px; line-height: 1.5; color: var(--muted); }
 .agentHeading h3 { font-size: 12px; font-weight: 650; margin: 0 0 3px; }
 .agentHeading > div > span { display: block; font: 7px var(--font-geist-mono), monospace; letter-spacing: 0.06em; color: var(--muted); }
 .score { margin-left: auto; font: 26px/1 var(--font-geist-mono), monospace; text-align: right; }

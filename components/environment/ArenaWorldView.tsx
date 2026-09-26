@@ -23,6 +23,8 @@ type WorldProps = {
   follow: ArenaCamera
   cinematic?: boolean
   coachSuggestion?: { edgeId: string } | null
+  /** Champion accent for ring + rover tint (defaults to canopy green). */
+  championAccent?: string
   onReady: () => void
   onError: (error: Error) => void
 }
@@ -386,7 +388,7 @@ function Rover({ session, id, color }: { session: ArenaSession; id: string; colo
       <group ref={group}>
         {modelUrl ? (
           <Suspense fallback={<ProceduralGeometry color={color} wheelRefs={wheelRefs} />}>
-            <MintModel url={modelUrl} transform={transform} tint={id === 'rival' ? color : undefined} />
+            <MintModel url={modelUrl} transform={transform} tint={color} />
           </Suspense>
         ) : (
           <ProceduralGeometry color={color} wheelRefs={wheelRefs} />
@@ -571,7 +573,17 @@ function ReadyOnce({ ready, onReady }: { ready: boolean; onReady: () => void }) 
   return null
 }
 
-function World({ course, session, follow, cinematic = false, coachSuggestion, onReady, onError, lite }: WorldProps & { lite: boolean }) {
+function World({
+  course,
+  session,
+  follow,
+  cinematic = false,
+  coachSuggestion,
+  championAccent = '#bce478',
+  onReady,
+  onError,
+  lite,
+}: WorldProps & { lite: boolean }) {
   // Mesh terrain is the same authored GLB the collider extracts from, so the
   // scene needs no splat layer or fallback mesh.
   const [terrainReady, setTerrainReady] = useState(false)
@@ -643,7 +655,7 @@ function World({ course, session, follow, cinematic = false, coachSuggestion, on
 
       {course.scenario.entrants.map(entrant => {
         const position = course.scenario.nodes.find(node => node.id === entrant.baseNode)!.position
-        const color = entrant.id === 'champion' ? '#bce478' : '#efad68'
+        const color = entrant.id === 'champion' ? championAccent : '#efad68'
         return (
           <group key={entrant.id}>
             <mesh position={[position[0], position[1] + 0.05, position[2]]} rotation={[-Math.PI / 2, 0, 0]}>

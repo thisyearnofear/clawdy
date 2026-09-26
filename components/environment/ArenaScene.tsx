@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { AlertTriangle, ArrowRight, BarChart3, CheckCircle2, Clapperboard, Download, Eye, Layers, Pause, Play, Printer, RotateCcw, Sparkles, Trophy, Upload, XCircle } from 'lucide-react'
+import { AlertTriangle, ArrowRight, BarChart3, CheckCircle2, Clapperboard, Download, Eye, HelpCircle, Layers, Pause, Play, Printer, RotateCcw, Sparkles, Trophy, Upload, XCircle } from 'lucide-react'
 import { ARENA_RULES, type ArenaAction, type ArenaAgentState, type ArenaObservation } from '../../services/arenaEpisode'
 import { loadArenaCourse, applyCourseMode, type ArenaCourse, type CoursePlayMode } from '../../services/arenaCourse'
 import { isEvaluationScenario, rejectEvaluationExamples } from '../../services/arenaScenarios'
@@ -24,7 +24,16 @@ import {
 import {
   COACHING_RULES,
   proposeCorrection,
+  SPECIALIZATION_CHIPS,
+  summarizeCoachFocus,
 } from '../../services/coachingEngine'
+import {
+  CHAMPION_LOOKS,
+  getChampionLook,
+  loadChampionIdentity,
+  saveChampionIdentity,
+  type ChampionIdentity,
+} from '../../services/championIdentity'
 import {
   downloadCheckpointFile,
   importCheckpointJson,
@@ -51,10 +60,10 @@ const isExecutableCheckpoint = (checkpoint: PolicyCheckpoint) =>
 const viewOnlyCheckpointMessage = (checkpoint: PolicyCheckpoint) =>
   `"${checkpoint.name}" is a view-only v1 brain — re-train its examples to upgrade, then run the new checkpoint.`
 const POLICY_LABELS: Record<CollectorStrategy, string> = {
-  learned: 'Trained champion',
-  safe: 'Careful collector',
-  greedy: 'Fast collector',
-  weather: 'Flood-aware rival',
+  learned: 'Your trained brain',
+  safe: 'Careful (house baseline)',
+  greedy: 'Fast (house baseline)',
+  weather: 'Flood-aware (house baseline)',
 }
 const PHASE_LABELS = {
   ready: 'Ready',
@@ -109,35 +118,96 @@ export function describeArenaDecision(agent: ArenaAgentState): string {
   return 'Observing the next opportunity.'
 }
 
-function BrandHeader({ activeCheckpoint }: { activeCheckpoint: PolicyCheckpoint }) {
+function BrandHeader({
+  activeCheckpoint,
+  championName,
+  onOpenHelp,
+}: {
+  activeCheckpoint: PolicyCheckpoint
+  championName: string
+  onOpenHelp: () => void
+}) {
   return (
     <header className={styles.header}>
       <div className={styles.brand}><span className={styles.brandMark} aria-hidden="true">C</span> CLAWDY</div>
-      <div className={styles.checkpointBadge}>
-        <Layers size={13} />
-        <span>{activeCheckpoint.name}</span>
+      <div className={styles.headerActions}>
+        <div className={styles.checkpointBadge}>
+          <Layers size={13} />
+          <span>{championName} · {activeCheckpoint.name}</span>
+        </div>
+        <button type="button" className={styles.helpButton} onClick={onOpenHelp} aria-label="Open help">
+          <HelpCircle size={15} /> Help
+        </button>
       </div>
     </header>
   )
 }
 
-function AgentCard({ agent, policy, unlocked, onPolicy }: {
+function AgentCard({
+  agent,
+  policy,
+  unlocked,
+  onPolicy,
+  championIdentity,
+  onChampionIdentity,
+}: {
   agent: ArenaAgentState
   policy: CollectorStrategy
   unlocked: boolean
   onPolicy: (policy: CollectorStrategy) => void
+  championIdentity?: ChampionIdentity
+  onChampionIdentity?: (next: ChampionIdentity) => void
 }) {
   const champion = agent.id === 'champion'
+  const look = championIdentity ? getChampionLook(championIdentity.lookId) : null
   return (
     <section className={styles.agentCard} data-entrant={agent.id} aria-label={champion ? 'Your champion' : 'House rival'}>
       <div className={styles.agentHeading}>
-        <span className={styles.agentMark} aria-hidden="true">{champion ? 'C' : 'R'}</span>
+        <span
+          className={styles.agentMark}
+          aria-hidden="true"
+          style={look ? { background: look.accent, color: '#233531' } : undefined}
+        >
+          {look?.mark ?? (champion ? 'C' : 'R')}
+        </span>
         <div>
-          <h3>{champion ? 'Your champion' : 'House rival'}</h3>
+          <h3>{champion ? (championIdentity?.name ?? 'Your champion') : 'House rival'}</h3>
           <span>{POLICY_LABELS[policy]}</span>
         </div>
         <span className={styles.score}>{agent.banked}<small>banked</small></span>
       </div>
+      {champion && championIdentity && onChampionIdentity && (
+        <div className={styles.identityBlock}>
+          <label className={styles.identityName}>
+            <span>Name</span>
+            <input
+              type="text"
+              maxLength={24}
+              value={championIdentity.name}
+              disabled={!unlocked}
+              onChange={event => onChampionIdentity({ ...championIdentity, name: event.target.value })}
+              onBlur={event => onChampionIdentity({ ...championIdentity, name: event.target.value.trim() || 'Champion' })}
+              aria-label="Champion name"
+            />
+          </label>
+          <div className={styles.lookRow} role="group" aria-label="Champion look">
+            {CHAMPION_LOOKS.map(option => (
+              <button
+                key={option.id}
+                type="button"
+                className={styles.lookSwatch}
+                aria-pressed={championIdentity.lookId === option.id}
+                disabled={!unlocked}
+                title={option.label}
+                style={{ background: option.accent }}
+                onClick={() => onChampionIdentity({ ...championIdentity, lookId: option.id })}
+              >
+                <span className={styles.srOnly}>{option.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <label className={styles.policyLabel}>
         <span>Style</span>
         <select value={policy} disabled={!unlocked} onChange={event => onPolicy(event.target.value as CollectorStrategy)}>
@@ -151,6 +221,54 @@ function AgentCard({ agent, policy, unlocked, onPolicy }: {
       </dl>
       <p className={styles.decision}>{describeArenaDecision(agent)}</p>
     </section>
+  )
+}
+
+function HelpDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+  if (!open) return null
+  return (
+    <div className={styles.helpScrim} role="presentation" onClick={onClose}>
+      <aside
+        className={styles.helpDrawer}
+        role="dialog"
+        aria-modal="true"
+        aria-label="How Clawdy works"
+        onClick={event => event.stopPropagation()}
+      >
+        <div className={styles.helpHeader}>
+          <h2>How to play</h2>
+          <button type="button" className={styles.helpClose} onClick={onClose} aria-label="Close help">Close</button>
+        </div>
+        <ol className={styles.helpSteps}>
+          <li><strong>Play</strong> a Practice round — watch your rover race the house rival.</li>
+          <li><strong>Replay</strong> a bad turn, then open <strong>Coach</strong> and pick a focus chip.</li>
+          <li><strong>Approve</strong> fixes and <strong>Train</strong> a new brain.</li>
+          <li>Switch to <strong>Match</strong> to test it with coaching locked.</li>
+        </ol>
+        <dl className={styles.helpFaq}>
+          <div>
+            <dt>Practice vs Match?</dt>
+            <dd>Practice is for teaching. Match uses a held-out layout and freezes coaching.</dd>
+          </div>
+          <div>
+            <dt>How do I train?</dt>
+            <dd>Coach panel → specialize chips or rules → Approve → Train. Style “Your trained brain” runs the new weights.</dd>
+          </div>
+          <div>
+            <dt>Train did nothing?</dt>
+            <dd>You need at least one approved example, and Style must be set to Your trained brain after training.</dd>
+          </div>
+          <div>
+            <dt>Name & look?</dt>
+            <dd>Edit under Your champion card while Practice is Ready. Saved in this browser.</dd>
+          </div>
+          <div>
+            <dt>How do I save?</dt>
+            <dd>Export JSON in Coach, or Save run for the recording. Cloud sync uses a guest key when Convex is on.</dd>
+          </div>
+        </dl>
+      </aside>
+    </div>
   )
 }
 
@@ -208,7 +326,20 @@ function BootScreen({ error, onRetry }: { error: string | null; onRetry: () => v
   )
 }
 
-function Workbench({ session, course, createMotion, onRetry }: LoadedSession & { onRetry: () => void }) {
+function Workbench({
+  session,
+  course,
+  createMotion,
+  onRetry,
+  championIdentity,
+  onChampionIdentity,
+  onOpenHelp,
+}: LoadedSession & {
+  onRetry: () => void
+  championIdentity: ChampionIdentity
+  onChampionIdentity: (next: ChampionIdentity) => void
+  onOpenHelp: () => void
+}) {
   const view = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot)
   const convex = useConvexClient()
   const [visualReady, setVisualReady] = useState(false)
@@ -221,6 +352,7 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
   const [studioOpen, setStudioOpen] = useState(false)
   const [hintOpen, setHintOpen] = useState(() => !readHintDismissed())
   const [coachNudgeOpen, setCoachNudgeOpen] = useState(false)
+  const [trainFocusLine, setTrainFocusLine] = useState<string | null>(null)
   const [modeBanner, setModeBanner] = useState<CoursePlayMode | null>(null)
   const [runTip, setRunTip] = useState<string | null>(null)
   const floodWarnedRef = useRef<number | null>(null)
@@ -320,6 +452,8 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
     saveStoredExamples(examples)
     void syncExamples(convex, examples)
   }, [examples, hasHydrated, convex])
+
+  const championAccent = getChampionLook(championIdentity.lookId).accent
 
   useEffect(() => {
     if (view.phase !== 'finished' || coachingLocked) {
@@ -643,18 +777,24 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
         const trained = trainPolicyCheckpoint(activeCheckpoint, approved, {
           epochs: 100,
           learningRate: 0.02,
-          name: `Champion v${checkpoints.length} (+${approved.length} examples)`,
+          name: `${championIdentity.name} v${checkpoints.length} (+${approved.length})`,
         })
 
         const baselineEval = evaluatePolicyCheckpoint(SEASON_0_BASE_CHECKPOINT, [applyCourseMode(course, 'practice').scenario])
         const trainedEval = evaluatePolicyCheckpoint(trained, [applyCourseMode(course, 'practice').scenario])
 
+        const focusLine = summarizeCoachFocus(approved)
+        setTrainFocusLine(focusLine)
         setCheckpoints(prev => [trained, ...prev])
         setActiveCheckpoint(trained)
         session.setCheckpoint(trained)
         session.selectPolicy('champion', 'learned', trained)
         setIsTraining(false)
-        setTrainMessage(`Training complete. Loss ${trained.trainingSummary.loss.toFixed(4)} · ${(trained.trainingSummary.accuracy * 100).toFixed(0)}% of the notes landed.`)
+        setTrainMessage(
+          focusLine
+            ? `Training complete. ${focusLine} Loss ${trained.trainingSummary.loss.toFixed(4)} · ${(trained.trainingSummary.accuracy * 100).toFixed(0)}% of the notes landed.`
+            : `Training complete. Loss ${trained.trainingSummary.loss.toFixed(4)} · ${(trained.trainingSummary.accuracy * 100).toFixed(0)}% of the notes landed.`,
+        )
         setTrainResult({ baseline: baselineEval, trained: trainedEval })
         void syncCheckpoint(convex, trained, approved.map(example => example.id))
         void syncTrainingJob(convex, {
@@ -763,6 +903,39 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
 
   const approvedCount = examples.filter(e => e.approved && !isEvaluationScenario(e.sourceEpisodeId)).length
 
+  const nextStep = (() => {
+    if (!visualReady) return { label: 'Settling the world…', run: null as (() => void) | null }
+    if (view.phase === 'error') return { label: 'Reload the world', run: onRetry }
+    if (view.phase === 'ready' && playMode === 'compete') {
+      return { label: 'Press Play — Match (coaching locked)', run: primaryAction }
+    }
+    if (view.phase === 'ready') return { label: 'Press Play to start Practice', run: primaryAction }
+    if (view.phase === 'running') return { label: 'Watch the race — Pause anytime', run: null }
+    if (view.phase === 'paused') return { label: 'Resume, or open Replay', run: () => session.review() }
+    if (view.phase === 'finished' && !coachingLocked) {
+      return {
+        label: 'Open Replay, then Coach the miss',
+        run: () => { session.review(); setStudioOpen(true) },
+      }
+    }
+    if (view.phase === 'finished' && coachingLocked) {
+      return {
+        label: 'Reset, then switch to Practice to teach',
+        run: () => { floodWarnedRef.current = null; setRunTip(null); session.reset() },
+      }
+    }
+    if (view.phase === 'review' && !studioOpen && !coachingLocked) {
+      return { label: 'Open Coach and pick a focus', run: () => setStudioOpen(true) }
+    }
+    if (studioOpen && !coachingLocked && approvedCount === 0) {
+      return { label: 'Pick a focus chip and Approve a fix', run: null }
+    }
+    if (studioOpen && !coachingLocked && approvedCount > 0) {
+      return { label: `Train from ${approvedCount} approved note${approvedCount === 1 ? '' : 's'}`, run: handleTrain }
+    }
+    return { label: 'Play → Replay → Coach → Train → Match', run: null }
+  })()
+
   return (
     <div className={styles.stageEnter}>
       <div className={styles.intro}>
@@ -771,17 +944,22 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
           <h1>Watch it play. Then teach it.</h1>
           <p className={styles.lede}>Two rovers race for cores. After the round, replay a mistake, approve a fix, and train a new brain.</p>
         </div>
-        <ol className={styles.progress}>
-          <li data-active={view.phase === 'ready' || view.phase === 'running'}>Play</li>
-          <li data-active={view.phase === 'paused' || view.phase === 'finished' || view.phase === 'review'}>Replay</li>
-          <li data-active={studioOpen && !coachingLocked}>Coach</li>
-        </ol>
+        <div className={styles.introAside}>
+          <ol className={styles.progress}>
+            <li data-active={view.phase === 'ready' || view.phase === 'running'}>Play</li>
+            <li data-active={view.phase === 'paused' || view.phase === 'finished' || view.phase === 'review'}>Replay</li>
+            <li data-active={studioOpen && !coachingLocked}>Coach</li>
+          </ol>
+          <button type="button" className={styles.helpInline} onClick={onOpenHelp}>
+            <HelpCircle size={13} /> What do I do?
+          </button>
+        </div>
       </div>
       <div className={styles.workbench} data-mode={playMode} data-world-ready={visualReady}>
         <section className={styles.viewport} aria-label="Generated world and autonomous rovers">
           <div className={styles.canvas} data-ready={visualReady}>
             <ErrorBoundary onError={onError} fallback={<div className={styles.canvasError}><h2>The world view could not start.</h2><button onClick={onRetry}>Reload world</button></div>}>
-              <WorldView course={activeCourse} session={session} follow={follow} cinematic={cinematic && view.phase === 'review'} coachSuggestion={coachSuggestion} onReady={onReady} onError={onError} />
+              <WorldView course={activeCourse} session={session} follow={follow} cinematic={cinematic && view.phase === 'review'} coachSuggestion={coachSuggestion} championAccent={championAccent} onReady={onReady} onError={onError} />
             </ErrorBoundary>
           </div>
           <div
@@ -929,6 +1107,8 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
               policy={view.policies[agent.id]}
               unlocked={view.phase === 'ready' && playMode === 'practice'}
               onPolicy={policy => session.selectPolicy(agent.id, policy, activeCheckpoint)}
+              championIdentity={agent.id === 'champion' ? championIdentity : undefined}
+              onChampionIdentity={agent.id === 'champion' ? onChampionIdentity : undefined}
             />
           ))}
           <div className={styles.ruleCard}>
@@ -970,7 +1150,19 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
             <Sparkles size={15} />{studioOpen ? 'Hide coach' : 'Coach'}
           </button>
         </div>
-        <div className={styles.runMeta}><span>{view.episode.tick} / {activeCourse.scenario.durationTicks}</span><button onClick={download} disabled={view.episode.tick === 0} aria-label="Download recorded run"><Download size={16} />Save run</button></div>
+        <div className={styles.runMeta}>
+          <span>{view.episode.tick} / {activeCourse.scenario.durationTicks}</span>
+          <button onClick={download} disabled={view.episode.tick === 0} aria-label="Download recorded run"><Download size={16} />Save run</button>
+        </div>
+      </div>
+
+      <div className={styles.nextStep} role="status">
+        <span>Next</span>
+        {nextStep.run ? (
+          <button type="button" onClick={nextStep.run}>{nextStep.label}</button>
+        ) : (
+          <strong>{nextStep.label}</strong>
+        )}
       </div>
 
       <section className={styles.replay} aria-label="Tournament bracket">
@@ -1088,8 +1280,9 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
         <div className={styles.coachingHeader}>
           <div>
             <h2>Coach</h2>
-            <p>Pick a rule or type a note. Approve the ones you want, then train.</p>
+            <p>Pick a focus, approve fixes, then train. Style must stay on “Your trained brain” to use the new weights.</p>
             <ConvexLineageBadge />
+            {trainFocusLine && <p className={styles.focusLine}>{trainFocusLine}</p>}
           </div>
           <div className={styles.checkpointMeta}>
             <label>
@@ -1142,6 +1335,23 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
 
         <div className={styles.coachingGrid}>
           <div className={styles.coachingCol}>
+            <h3>Specialize</h3>
+            <p className={styles.specializeHint}>Limited time — pick what this brain should get good at.</p>
+            <div className={styles.specializeRow}>
+              {SPECIALIZATION_CHIPS.map(chip => (
+                <button
+                  key={chip.id}
+                  type="button"
+                  className={styles.specializeChip}
+                  onClick={() => handlePropose(chip.prompt)}
+                  disabled={view.phase === 'running' || coachingLocked}
+                  title={chip.blurb}
+                >
+                  <strong>{chip.label}</strong>
+                  <span>{chip.blurb}</span>
+                </button>
+              ))}
+            </div>
             <h3>Suggest a fix</h3>
             <div className={styles.rulesGrid}>
               {COACHING_RULES.map(rule => (
@@ -1272,6 +1482,12 @@ export default function ArenaScene() {
   const [attempt, setAttempt] = useState(0)
   const [loaded, setLoaded] = useState<LoadedSession | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [helpOpen, setHelpOpen] = useState(false)
+  const [championIdentity, setChampionIdentity] = useState<ChampionIdentity>(() => loadChampionIdentity())
+
+  useEffect(() => {
+    saveChampionIdentity(championIdentity)
+  }, [championIdentity])
 
   useEffect(() => {
     const abort = new AbortController()
@@ -1297,10 +1513,33 @@ export default function ArenaScene() {
     setAttempt(value => value + 1)
   }
 
+  const onChampionIdentity = useCallback((next: ChampionIdentity) => {
+    setChampionIdentity({
+      name: next.name.slice(0, 24),
+      lookId: next.lookId,
+    })
+  }, [])
+
   return (
     <div className={styles.shell}>
-      <BrandHeader activeCheckpoint={loaded?.session.getSnapshot().checkpoint ?? SEASON_0_BASE_CHECKPOINT} />
-      {loaded ? <Workbench key={attempt} {...loaded} onRetry={retry} /> : <BootScreen error={error} onRetry={retry} />}
+      <BrandHeader
+        activeCheckpoint={loaded?.session.getSnapshot().checkpoint ?? SEASON_0_BASE_CHECKPOINT}
+        championName={championIdentity.name}
+        onOpenHelp={() => setHelpOpen(true)}
+      />
+      {loaded ? (
+        <Workbench
+          key={attempt}
+          {...loaded}
+          onRetry={retry}
+          championIdentity={championIdentity}
+          onChampionIdentity={onChampionIdentity}
+          onOpenHelp={() => setHelpOpen(true)}
+        />
+      ) : (
+        <BootScreen error={error} onRetry={retry} />
+      )}
+      <HelpDrawer open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   )
 }

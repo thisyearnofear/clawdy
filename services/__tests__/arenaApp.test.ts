@@ -11,6 +11,7 @@ describe('consolidated application entrypoint', () => {
     expect(html).toContain('CLAWDY')
     expect(html).toContain('Preparing the proving ground.')
     expect(html).toContain('Play → Replay → Coach')
+    expect(html).toContain('Help')
     expect(html).toContain('Champion Base')
     expect(html).not.toContain('Connect Wallet')
     expect(html).not.toContain('Joining Arena')
