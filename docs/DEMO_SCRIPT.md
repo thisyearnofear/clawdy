@@ -1,61 +1,65 @@
 # Clawdy — Two-Minute Learning Demo
 
-**Target script, not a description of a shipped build.** Follow the accepted [plan](HACKATHON.md). Only present steps that are implemented and supported by actual training and evaluation records.
+**Target script for the shipped Season 0 build** ([plan](HACKATHON.md), [roadmap](ROADMAP.md)). Only present steps that are implemented. Live: [https://clawdy-nine.vercel.app/](https://clawdy-nine.vercel.app/).
 
 ## One-Sentence Pitch
 
-Clawdy lets you coach and train an autonomous competitor in a generated world, then watch it use what it learned when you can no longer intervene. The arena throws variables your bot was never trained on — and you find out in real time whether your coaching held.
+Clawdy lets you coach and train an autonomous competitor in a physical world, then watch it use what it learned when you can no longer intervene — including when two specialized rovers clash.
 
-Track: present as a **playable training league** first. Event-specific framing lives in [TRIPOTHON.md](TRIPOTHON.md) / [HACKATHON.md](HACKATHON.md).
+Track: present as a **playable training league** first. Event framing: [TRIPOTHON.md](TRIPOTHON.md).
 
 ## Presentation Sequence
 
 | Time | Show | Say |
 | --- | --- | --- |
-| 0:00–0:15 | Press **Play**. Overview → follow champion. Amber valley paths and teal ridge ribbons visible; flood hits the valley. | "This is my agent, not my avatar. I develop its policy, then it competes without me." |
-| 0:15–0:35 | Pause / finish → **Replay**. Scrub a bad route choice. | "When the valley floods, take the ridge — don't drown the short path." |
-| 0:35–0:55 | **Coach** panel: propose/approve → **Train**. Or show a labeled prepared checkpoint. | "This correction becomes training data. A saved prompt would not be enough." |
-| 0:55–1:20 | Reset → **Match**. Coaching stays off; different flood/core layout. | "Weights are frozen. This layout is outside practice. I cannot help it." |
-| 1:20–1:40 | Show the outcome and any before/after banked comparison. | Describe the measured result honestly. |
-| 1:40–2:00 | World Labs + Mint credit lines that are actually true; reset. | "The world is the test. Developing the competitor is the game." |
+| 0:00–0:12 | Boot → world ready. Point at **Next** chip / **Help** if needed. Name + look on Your champion. Press **Play**; follow green champion. Amber valley / teal ridge. | "This is my agent, not my avatar. I name it, tint it, then develop its policy." |
+| 0:12–0:30 | Live race. If a **CLASH** fires, let it resolve (cargo / stagger). Flood tip or scorebug flood window. | "Limited training time means specialization — when they meet, coaching focus decides the clash." |
+| 0:30–0:48 | Finish → **Replay**. Scrub a bad valley turn. Open **Coach**; tap a **Specialize** chip (Weather / Ridge). Approve → **Train**. Show fingerprint + focus line. | "That correction becomes weights — not a saved prompt. The card shows what I trained for." |
+| 0:48–1:10 | Reset → **Match**. Coaching locked. Play held-out layout. | "Weights are frozen. Different floods and cores. I cannot help it." |
+| 1:10–1:35 | Outcome + any before/after banked / clash note. Convex lineage strip if online. | Describe the measured result honestly. |
+| 1:35–2:00 | Credits that are true (World Labs Spark bursts / Marble provenance, Mint rover, Convex sync); print/share if time. Reset. | "The world is the test. Developing the competitor is the game." |
 
-The schedule is presentation pacing, not an estimate of training latency. Benchmark the real workflow before deciding which parts run live.
+If a clash does not fire live, do not fake one — point at the **Focus** fingerprint and say encounters resolve from those vectors when rovers meet (`services/arenaEncounter.ts`).
+
+The schedule is presentation pacing, not training latency. Benchmark the real workflow before deciding which parts run live.
 
 ## Evidence That Must Be Visible
 
-- Which baseline or parent checkpoint is acting.
+- Which baseline or parent checkpoint is acting (Style / Active brain).
+- Champion **name / look** and **focus fingerprint** when coaching data exists.
 - The recorded observation and decision being corrected.
-- What examples were approved and where they came from.
-- A genuine new weight artifact, parent link, and training record.
+- Specialize chip or rule → approved example → Train → new checkpoint name.
+- Post-train focus line when present.
 - Whether the match is live or replayed and whether its scenario is held out.
-- Frozen weights and disabled human intervention during the scored run.
-- Actual actions and consequences, not only a natural-language decision feed.
-- The arena's variables (flooding, resource layout, rival behavior) and how the bot responded to them.
-- Evaluation sample count, comparison conditions, and failures alongside scores.
+- Frozen weights and disabled coaching during Match.
+- Actual actions and consequences (scorebug, race feed, optional clash prize) — not only language.
+- Flood / layout variables and how the bot responded.
+- Evaluation sample count / comparison when you show Train results.
 
 ## Sponsor Explanation
 
 Use only the lines corresponding to verified integrations:
 
-- **World Labs:** generated the environment the competitor inhabits.
-- **Tripo:** generated the rover or interactive objects shown.
-- **Mint:** supplied functional course pieces or helped assemble the playable interaction.
-- **Convex:** links approved examples, training status, checkpoint metadata, and match/replay records.
+- **World Labs:** Spark bank/collect bursts and Marble world provenance retained; playable ground is the authored Sandstone Basin mesh (see HACKATHON addendum).
+- **Mint:** champion rover GLB in the arena (and print STL derived from it).
+- **Convex:** dual-writes examples, training jobs, checkpoints, and match summaries under a browser guest key when configured.
+- **Tripo:** do not claim unless a Tripo asset is actually on screen.
 
-Keep the learned policy distinct from the language-model coach, authored navigation graph, shared steering controller, and physics engine. Do not attribute all of those systems to fine-tuning.
+Keep the learned policy distinct from the language-model coach, authored navigation graph, shared steering controller, and physics engine.
 
 ## Reliable Presentation Path
 
 1. Pin the world, collider, route graph, rules version, baseline, and evaluated checkpoint.
-2. Preload assets and test the full path on the presentation device.
-3. Keep one known practice example and a separately identified held-out scenario ready.
+2. Preload on the presentation device; hard-refresh [clawdy-nine.vercel.app](https://clawdy-nine.vercel.app/) or local `npm run dev`.
+3. Keep one known practice example set and Match mode ready; optional prepared checkpoint labeled as prepared.
 4. Save a fallback recording of a real complete run, including training provenance and results.
-5. If training is too slow or unavailable live, label the prepared checkpoint and recorded training explicitly. Do not simulate a progress bar or imply a new update happened live.
-6. If a run diverges, use its real outcome or switch to the labeled recording. Never secretly steer the competitor.
-7. Make reset restore all episode state and the selected checkpoint without wallet, queue, or console steps.
+5. If training is too slow live, label the prepared checkpoint and recorded training explicitly. Do not fake a progress bar.
+6. If a run diverges, use its real outcome or the labeled recording. Never secretly steer the competitor.
+7. Reset restores episode state and the selected checkpoint — no wallet, queue, or console steps.
+8. Help drawer answers “what do I do?” without leaving the compact UI.
 
 ## Do Not Demo
 
-The retired wallet, auction, vehicle-rental, treasury, chain, and indexer flows are not part of this product. Do not fill a missing learning step with them. Do not substitute a hand-authored route switch for a trained policy and call it learning.
+The retired wallet, auction, vehicle-rental, treasury, chain, and indexer flows are not part of this product. Do not fill a missing learning step with them. Do not substitute a hand-authored route switch for a trained policy and call it learning. Do not promise ranked auth — guest-key Convex is exhibition sync only.
 
 Use [SUBMISSION_CHECKLIST.md](SUBMISSION_CHECKLIST.md) to record readiness before presenting.
