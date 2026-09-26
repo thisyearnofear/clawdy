@@ -47,7 +47,7 @@ The [canonical plan](HACKATHON.md) defines the accepted direction. The following
 - [x] Any reused third-party source retains required attribution.
 
 ## Technology Contributions
-- [x] World Labs asset provenance and the validated playable route are documented (`arena.spz`, HQ textured mesh from CDN, and `collider.glb`, SHA-256 `25f82036...`).
+- [x] Playable world provenance is documented: the active Sandstone Basin terrain GLB is SHA-256-pinned in `services/arenaCourse.ts`; the earlier World Labs Marble assets (`arena.spz` / `collider.glb`) were retired September 26, 2026 and remain in git history.
 - [x] Rapier 3D 0.19.2 physics integration with deterministic queries.
 - [ ] Tripo-generated assets are integrated and performance-tested.
 - [x] Mint-created content or assembly work has a functional, visible contribution (champion rover GLB generated via Mint MCP and loaded in `ArenaWorldView`).
@@ -73,4 +73,4 @@ The [canonical plan](HACKATHON.md) defines the accepted direction. The following
 - [ ] Submitted commit SHA, starter artifact, evaluation evidence, and demo link are filled in the organizer form.
 - [x] Organizer approval for repository reuse is reflected in the pre-existing/new-work disclosure.
 - [ ] Confirm submission channel and deadline with organizers (see [TRIPOTHON.md](TRIPOTHON.md) for the active opportunity window).
-- [ ] World Labs dual-route regenerate (`npm run marble:rebuild`) after API credits are available.
+- [ ] World Labs tool-track claim re-checked against the removed Marble pipeline (see [TRIPOTHON.md](TRIPOTHON.md)); regenerate only after a fresh owner decision and API credits.

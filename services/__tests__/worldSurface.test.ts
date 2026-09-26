@@ -93,8 +93,8 @@ describe('shared generated-world surface queries', () => {
     expect(disposeSource).not.toHaveBeenCalled()
   })
 
-  it('loads the committed collider as geometry without starting a browser', async () => {
-    const bytes = await readFile(resolve(process.cwd(), 'public/marble/collider.glb'))
+  it('loads the committed terrain as geometry without starting a browser', async () => {
+    const bytes = await readFile(resolve(process.cwd(), 'public/terrain/sandstone-basin.glb'))
     const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
     const gltf = await new GLTFLoader().parseAsync(buffer, '')
     const world = createWorldSurface(gltf.scene)

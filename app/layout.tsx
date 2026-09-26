@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://clawdy-nine.vercel.app'),
   title,
   description,
-  keywords: ['world labs', 'marble', 'spark', 'agent training', 'autonomous agents', 'three.js', 'spatial intelligence'],
+  keywords: ['world labs', 'spark', 'agent training', 'autonomous agents', 'three.js', 'spatial intelligence'],
   authors: [{ name: 'Clawdy' }],
   openGraph: {
     title,

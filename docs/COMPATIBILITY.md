@@ -325,9 +325,11 @@ grounded courses prove it.
   within majors: three 0.180.0→0.186.1, @types/three 0.186.0,
   @react-three/fiber 9.5.0→9.8.1, @react-three/drei 10.7.9,
   react/react-dom →19.3.0 (fiber peers allow >=19 <19.4). Physics stays
-  **locked: @dimforge/rapier3d-compat 0.19.2 / @react-three/rapier 2.2.0**
-  (npm overrides + postinstall guard; rapier 0.21 is a breaking jump and was
-  skipped deliberately).
+  **locked: @dimforge/rapier3d-compat 0.19.2** — used directly by
+  `services/arenaPhysics.ts`; the unused `@react-three/rapier` wrapper was
+  removed September 26, 2026. The npm overrides + postinstall guard remain
+  because `@types/three` itself depends on rapier3d-compat ~0.12; rapier 0.21
+  is a breaking jump and was skipped deliberately.
 - **Verification:** `npm test` green (GLB SHA pins survive — bytes unchanged);
   `npm run eval:gate` reproduced the pin byte-for-byte; `npm run build`
   (Turbopack) clean. **Zero grounded/family drift ⇒ no `ROVER_PHYSICS.version`

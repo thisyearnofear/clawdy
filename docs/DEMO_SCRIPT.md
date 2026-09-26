@@ -40,7 +40,7 @@ The schedule is presentation pacing, not training latency. Benchmark the real wo
 
 Use only the lines corresponding to verified integrations:
 
-- **World Labs:** Spark bank/collect bursts and Marble world provenance retained; playable ground is the authored Sandstone Basin mesh (see HACKATHON addendum).
+- **World Labs:** Spark bank/collect bursts live on screen; Marble world provenance in git history (assets removed Sep 26); playable ground is the authored Sandstone Basin mesh (see HACKATHON addendum).
 - **Mint:** champion rover GLB in the arena (and print STL derived from it).
 - **Convex:** dual-writes examples, training jobs, checkpoints, and match summaries under a browser guest key when configured.
 - **Tripo:** do not claim unless a Tripo asset is actually on screen.

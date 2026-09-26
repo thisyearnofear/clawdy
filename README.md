@@ -41,7 +41,7 @@ npm run starter:train    # headless trainer, exports a checkpoint
 
 Requires Node.js 20+ and npm 10+. Production Convex + Vercel env notes: [docs/DEPLOY.md](docs/DEPLOY.md).
 
-**World visuals:** since September 18 the playable course is a mesh-first Blender-authored terrain (`public/terrain/sandstone-basin.glb` — included, no Blender needed to run the app; explicit rebuild `blender --background --factory-startup --python scripts/build-arena-terrain.py -- --force` with Blender 4.5 LTS on PATH, then re-pin the printed SHA in `services/arenaCourse.ts`), used identically for rendering and physics collision, plus path/landmark overlays. The earlier generated-world strategy is superseded — see [public/marble/IMMERSIVE_REBUILD.md](public/marble/IMMERSIVE_REBUILD.md); Marble and Mint candidate assets are retained but not active.
+**World visuals:** since September 18 the playable course is a mesh-first Blender-authored terrain (`public/terrain/sandstone-basin.glb` — included, no Blender needed to run the app; explicit rebuild `blender --background --factory-startup --python scripts/build-arena-terrain.py -- --force` with Blender 4.5 LTS on PATH, then re-pin the printed SHA in `services/arenaCourse.ts`), used identically for rendering and physics collision, plus path/landmark overlays. The earlier generated-world (Marble) pipeline was retired and removed on September 26, 2026; git history holds it.
 
 ## Documentation
 
@@ -55,9 +55,8 @@ Product, contract, demo, and submission materials live in `/docs`:
 - [Submission materials](docs/SUBMISSION_CHECKLIST.md).
 - [Scene layer architecture](docs/SCENES.md) — how recorded matches become replay cinematics and, later, generated scenes.
 - [Two-minute demo script](docs/DEMO_SCRIPT.md).
-- [Immersive world rebuild notes](public/marble/IMMERSIVE_REBUILD.md).
 
-Additional references: [deploy guide](docs/DEPLOY.md), [starter kit notes](docs/MARBLE_STARTER_KIT.md), [Mint integration](docs/MINT_INTEGRATION.md), [inspiration](docs/INSPIRATION.md).
+Additional references: [deploy guide](docs/DEPLOY.md), [Mint integration](docs/MINT_INTEGRATION.md), [inspiration](docs/INSPIRATION.md).
 
 ## Credits
 

@@ -52,7 +52,7 @@ The champion rover has already been generated and synced. To generate additional
 ## Suggested first Mint experiments
 
 1. **Generate a themed rover or champion avatar** as a `.glb` and let `ArenaWorldView` swap the procedural rover for it while keeping the same Rapier kinematic body.
-2. **Generate a single Marble world** and use it alongside the existing `course-01-v2` as a new `course-02` held-out scenario, manually authoring the collider.
+2. **Generate a world candidate** for a new held-out course version, manually authoring the collider. (The Marble generation pipeline was retired from the repo on Sep 26, 2026 — revive it from git history if this is revisited; any new world still enters as a versioned course, never a silent replacement.)
 3. **Generate a title/loading screen asset** for the main page without touching the simulation authority.
 
 ## When to keep using the hand-built pipeline

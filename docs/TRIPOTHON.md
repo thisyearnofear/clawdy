@@ -10,7 +10,7 @@
 ## Why Clawdy fits
 
 - The product is a *generated physical world with rules and a learning loop*. The hackathon's frame is to build a world.
-- The arena's playable ground is a Blender-authored mesh (Sep 18 pivot for collider truth and readability). World Labs is live on screen where it earns its place: the bank-burst celebration is Gaussian splats rendered with Spark (programmatic, credit-free), and the Marble cloud-arena origin (`public/marble/`, world id + caption in `world.json`) is retained and credited. A full Marble splat world is deferred pending API credits — see risk register. That maps onto the **Best Use of World Labs** tool track with a claim that matches the pixels.
+- The arena's playable ground is a Blender-authored mesh (Sep 18 pivot for collider truth and readability). The World Labs Marble cloud arena generated earlier in the project was retired and removed from the repo on September 26, 2026 — provenance lives in git history, so World Labs usage is now historical rather than on screen. What remains live on screen is the bank-burst celebration: Gaussian splats rendered procedurally with Spark (credit-free). **Owner action before submission:** re-check the **Best Use of World Labs** tool-track claim — with the Marble assets removed, the claim rests on historical use plus procedural Spark splats, which may not satisfy that track.
 - The replay → coach → train → compete loop is the synergy. The world is the data the policy learns from, and the policy is what the human trains. That is the strongest argument for "tool synergy" (25% of the tool-track score).
 - The replay → coach → train → compete loop is the synergy. The world is the data the policy learns from, and the policy is what the human trains. That is the strongest argument for "tool synergy" (25% of the tool-track score).
 - Two rovers compete on a real 3D physics arena with multiple resources, multiple routes, multiple floodable zones, an energy-budgeted drain, and a held-out evaluation split. That is the kind of playable, complete world a Game-track judge can run.
@@ -73,7 +73,7 @@ Tripothon runs each tool track independently and judges each on its own merits. 
 
 | Sponsor | Tool / surface | Reach for Clawdy | Ship-ability in 19 days |
 | - | - | - | - |
-| **World Labs** | Marble world generator + Spark splat renderer | Primary sponsor bet. The arena is a World Labs splat, the collider pipeline sits on top of it, and Spark (a World Labs product) is our renderer. The coach-trail overlay (Pick 3) and the gift-card capture (Pick 4) both lean on Spark at demo time. | High. Already shipped. Picks 3 and 4 strengthen the synergy score. |
+| **World Labs** | Marble world generator + Spark splat renderer | Primary sponsor bet. Marble generated the project's first arena (retired September 26, 2026; git history holds it), and Spark (a World Labs product) is our live splat renderer. The coach-trail overlay (Pick 3) and the gift-card capture (Pick 4) both lean on Spark at demo time. | High. Already shipped. Picks 3 and 4 strengthen the synergy score. |
 | **Mint** | AI 3D model generation via Mint MCP | Active source for the rival rover (Pick 1) and the energy core (Pick 2). Continues to be the source for the champion rover. The `mint-threejs-skills` skill stays wired. | High. Tooling already wired, just new prompts and registry entries. |
 | **Heygears** | 3D printing hardware (UltraCraft, Reflex series) + AI design software ("AI Box") | **Shipped (Sep 24).** `public/prints/champion-rover.stl` (4,745 tris, exported from the in-game Mint champion GLB via `npm run print:stl`), profile in `docs/PRINT_KIT.md`, "Print your champion" download button on the match-complete UI next to the share button. The "world as a gift" theme lands literally: judges can print the rover. | Done. AI Box auto-repair pass is the judges' step, documented as such. |
 | **PICO** | WebXR browser on PICO 4 / PICO 4 Ultra headsets (`developer.picoxr.com`) | Stretch only. WebXR with R3F is well-trodden via `@react-three/xr`, but the splat world plus Rapier physics step at stereo framerates is a real blocker. A PICO build would need aggressive splat LOD and a simplified physics step. | Low in 19 days (perf + stereo + on-headset validation, all of which eat days). Documented as a stretch goal for the next iteration. |
@@ -82,7 +82,7 @@ Tripothon runs each tool track independently and judges each on its own merits. 
 
 **Why we focus on World Labs first**
 
-- World Labs is the only sponsor whose tool we already ship, whose renderer (Spark) we already lean on, and whose generator (Marble) already produced our arena. We claim the full 25% synergy slot on a single sponsor instead of splitting it across three.
+- World Labs is the only sponsor whose tool we already ship, whose renderer (Spark) we already lean on, and whose generator (Marble) produced our first arena. We claim the full 25% synergy slot on a single sponsor instead of splitting it across three. (Subject to the tool-track re-check flagged above: Marble usage is historical as of Sep 26.)
 - The judging panel includes a World Labs adjudicator. A coherent World Labs submission reads as "we built this on top of your stack and it shows."
 - Mint is the cheapest path to a visually distinct rival. Zero new dependencies, just a new prompt and a few lines of registry wiring. They are now the secondary sponsor we actually lean on.
 
@@ -119,7 +119,7 @@ Buffer absorbs a lost day to a CI hiccup or a frame refactor without slipping th
 | Browser round-trip on the full coach → train → compete → replay flow is still being hardened (per project plan). | Day 3 is the hard checkpoint. If not green by Day 4, we fall back to a clearly-labeled prepared recording and surface that label on screen. |
 | "World as a gift" theme fit is narrative, not automatic. | Bake the framing into the splash and the coach UI before the asset board is captured (Day 1). |
 | Held-out generalization has to be measured, not implied. | Replay one annotated held-out success alongside the numbers on the asset board. |
-| Soft / cloudy arena readability | Path ribbons + landmarks shipped; regenerate solid dual-route world via `npm run marble:rebuild` when credits allow ([IMMERSIVE_REBUILD.md](../public/marble/IMMERSIVE_REBUILD.md)). |
+| Soft / cloudy arena readability | Path ribbons + landmarks shipped. A regenerated World Labs world would require reviving the retired Marble pipeline from git history; deferred pending credits and a fresh owner decision. |
 | Tool-track disqualification if we imply use of tools we don't have. | Enter only the World Labs and Heygears tool tracks (both live on screen); never claim Tripo / PICO / Jupiter. |
 | Replay-state equality is not cross-platform determinism. | Cite the held-out evaluation table; do not promise device-portable results. |
 
