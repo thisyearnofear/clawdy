@@ -150,6 +150,17 @@ export class ArenaSession {
     return this.#view.episode
   }
 
+  /**
+   * Fraction (0..1) of the current 50 ms tick interval already elapsed.
+   * Render-layer interpolation only — rules, policies, and recordings never
+   * read this. Returns 1 outside live play so paused/review/finished views
+   * always show the exact committed pose.
+   */
+  interpolation = (): number => {
+    if (this.#view.phase !== 'running') return 1
+    return this.#runner.interpolation
+  }
+
   subscribe = (listener: () => void) => {
     this.#assertActive()
     this.#listeners.add(listener)

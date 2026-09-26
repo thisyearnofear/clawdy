@@ -40,6 +40,72 @@ function EpisodeClock({ session }: { session: ArenaSession }) {
   return null
 }
 
+/**
+ * Render-layer tick interpolation. The simulation commits poses on a 50 ms
+ * grid; rendering the raw commit (or exponentially chasing it) reads as
+ * judder at high refresh rates. We keep the two most recent observed poses
+ * per agent and render one tick behind the authority, lerped by the
+ * session's tick-fraction — a constant 50 ms delay with zero ripple.
+ * Pure presentation: the episode authority is never touched.
+ */
+type PoseSample = { pos: THREE.Vector3; rot: THREE.Quaternion }
+type PoseHistory = { tick: number; span: number; prev: PoseSample; curr: PoseSample }
+const poseHistories = new WeakMap<ArenaSession, Map<string, PoseHistory>>()
+
+function writePose(target: PoseSample, agent: { position: ArenaPosition; rotation: [number, number, number, number] }) {
+  target.pos.fromArray(agent.position)
+  target.rot.set(agent.rotation[0], agent.rotation[1], agent.rotation[2], agent.rotation[3])
+}
+
+function sampleInterpolatedPose(
+  session: ArenaSession,
+  id: string,
+  outPos: THREE.Vector3,
+  outRot: THREE.Quaternion,
+): boolean {
+  const episode = session.liveEpisode()
+  const agent = episode.agents.find(candidate => candidate.id === id)
+  if (!agent) return false
+  let byAgent = poseHistories.get(session)
+  if (!byAgent) {
+    byAgent = new Map()
+    poseHistories.set(session, byAgent)
+  }
+  let history = byAgent.get(id)
+  if (!history) {
+    history = {
+      tick: episode.tick,
+      span: 1,
+      prev: { pos: new THREE.Vector3(), rot: new THREE.Quaternion() },
+      curr: { pos: new THREE.Vector3(), rot: new THREE.Quaternion() },
+    }
+    writePose(history.prev, agent)
+    writePose(history.curr, agent)
+    byAgent.set(id, history)
+  } else if (episode.tick !== history.tick) {
+    if (episode.tick > history.tick) {
+      // Idempotent per tick: several consumers sample within one frame.
+      history.prev.pos.copy(history.curr.pos)
+      history.prev.rot.copy(history.curr.rot)
+      history.span = episode.tick - history.tick
+    } else {
+      // Reset or backward scrub: restart from the committed pose.
+      history.span = 1
+      writePose(history.prev, agent)
+    }
+    writePose(history.curr, agent)
+    history.tick = episode.tick
+  }
+  // Render one tick behind the authority: f spans prev→curr so that
+  // f = alpha when the two poses are adjacent ticks. Outside live play
+  // interpolation() is 1, so f = 1 — the exact committed pose.
+  const alpha = session.interpolation()
+  const f = Math.min(1, Math.max(0, (history.span - 1 + alpha) / Math.max(history.span, 1)))
+  outPos.lerpVectors(history.prev.pos, history.curr.pos, f)
+  outRot.slerpQuaternions(history.prev.rot, history.curr.rot, f)
+  return true
+}
+
 function FollowCamera({ session, course, follow }: Pick<WorldProps, 'session' | 'course' | 'follow'>) {
   const { camera } = useThree()
   const desired = useRef(new THREE.Vector3())
@@ -49,12 +115,16 @@ function FollowCamera({ session, course, follow }: Pick<WorldProps, 'session' | 
     camera.position.set(course.center[0] + 9, course.center[1] + 11, course.center[2] + 13)
     camera.lookAt(course.center[0], course.center[1] + 0.4, course.center[2])
   }, [camera, course, follow])
+  const agentPos = useRef(new THREE.Vector3())
+  const agentRot = useRef(new THREE.Quaternion())
   useFrame((_, delta) => {
     if (follow === 'overview') return
-    const agent = session.liveEpisode().agents.find(candidate => candidate.id === follow)
-    if (!agent) return
-    desired.current.set(agent.position[0] + 3.2, agent.position[1] + 3.8, agent.position[2] + 4.6)
-    lookAt.current.set(agent.position[0], agent.position[1] + 0.35, agent.position[2])
+    // Track the interpolated pose so camera and rover share one motion
+    // curve — chasing the raw tick commit while the rover smooths it makes
+    // the subject swim inside the frame.
+    if (!sampleInterpolatedPose(session, follow, agentPos.current, agentRot.current)) return
+    desired.current.set(agentPos.current.x + 3.2, agentPos.current.y + 3.8, agentPos.current.z + 4.6)
+    lookAt.current.set(agentPos.current.x, agentPos.current.y + 0.35, agentPos.current.z)
     camera.position.lerp(desired.current, 1 - Math.exp(-delta * 5))
     camera.lookAt(lookAt.current)
   })
@@ -320,11 +390,12 @@ function RivalRoverGeometry({ color, wheelRefs }: { color: string; wheelRefs: Re
 
 function RoverShadow({ session, id }: { session: ArenaSession; id: string }) {
   const meshRef = useRef<THREE.Mesh>(null)
+  const pos = useRef(new THREE.Vector3())
+  const rot = useRef(new THREE.Quaternion())
   useFrame(() => {
     if (!meshRef.current) return
-    const agent = session.liveEpisode().agents.find(candidate => candidate.id === id)
-    if (!agent) return
-    meshRef.current.position.set(agent.position[0], agent.position[1] + 0.02, agent.position[2])
+    if (!sampleInterpolatedPose(session, id, pos.current, rot.current)) return
+    meshRef.current.position.set(pos.current.x, pos.current.y + 0.02, pos.current.z)
   })
   return (
     <mesh ref={meshRef} rotation={[-Math.PI / 2, 0, 0]}>
@@ -339,29 +410,17 @@ function Rover({ session, id, color }: { session: ArenaSession; id: string; colo
   const previous = useRef(new THREE.Vector3())
   const target = useRef(new THREE.Vector3())
   const targetRot = useRef(new THREE.Quaternion())
-  const lastTick = useRef(-1)
   const wheelRefs = useRef<THREE.Mesh[]>([])
 
   useFrame((_, delta) => {
     if (!group.current) return
-    const phase = session.getSnapshot().phase
-    const episode = session.liveEpisode()
-    const agent = episode.agents.find(candidate => candidate.id === id)
-    if (!agent) return
-    target.current.fromArray(agent.position)
+    // True tick interpolation (one tick behind the authority, lerped by the
+    // session tick-fraction) — replaces exponential chasing, which left a
+    // 20 Hz velocity ripple against the 50 ms commit grid.
+    if (!sampleInterpolatedPose(session, id, target.current, targetRot.current)) return
 
-    if (agent.rotation) {
-      targetRot.current.set(agent.rotation[0], agent.rotation[1], agent.rotation[2], agent.rotation[3])
-    }
-
-    // Soft follow across the 50 ms tick grid — high rates read as teleport stutter.
-    if ((phase !== 'running' && phase !== 'review') || episode.tick < lastTick.current || lastTick.current < 0) {
-      group.current.position.copy(target.current)
-      group.current.quaternion.copy(targetRot.current)
-    } else {
-      group.current.position.lerp(target.current, 1 - Math.exp(-delta * 14))
-      group.current.quaternion.slerp(targetRot.current, 1 - Math.exp(-delta * 12))
-    }
+    group.current.position.copy(target.current)
+    group.current.quaternion.copy(targetRot.current)
 
     const dx = target.current.x - previous.current.x
     const dz = target.current.z - previous.current.z
@@ -372,7 +431,6 @@ function Rover({ session, id, color }: { session: ArenaSession; id: string; colo
     }
 
     previous.current.copy(target.current)
-    lastTick.current = episode.tick
   })
 
   const assetKey = `${id}Rover`
@@ -691,7 +749,9 @@ export default memo(function ArenaWorldView(props: WorldProps) {
   const [lite] = useState(detectLiteGraphics)
   return (
     <Canvas
-      shadows={!lite}
+      // "percentage" = PCFShadowMap explicitly: fiber maps bare `true` to
+      // PCFSoftShadowMap, which three r186 removed (console warning + fallback).
+      shadows={lite ? false : 'percentage'}
       camera={{ position: [16, 12, 16], fov: 42, near: 0.05, far: 180 }}
       dpr={lite ? [1, 1] : [1, 1.25]}
       // Simulation time advances in useFrame (EpisodeClock). "never" would
