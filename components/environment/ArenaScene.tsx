@@ -25,8 +25,19 @@ import {
   COACHING_RULES,
   proposeCorrection,
   SPECIALIZATION_CHIPS,
+  SPECIALIZATION_FOCI,
   summarizeCoachFocus,
+  type FocusVector,
 } from '../../services/coachingEngine'
+import {
+  ENCOUNTER_STAGGER_TICKS,
+  fingerprintLine,
+  focusVectorForChampion,
+  focusVectorForRival,
+  resolveEncounter,
+  shouldOfferEncounter,
+  type EncounterResolution,
+} from '../../services/arenaEncounter'
 import {
   CHAMPION_LOOKS,
   getChampionLook,
@@ -150,6 +161,7 @@ function AgentCard({
   onPolicy,
   championIdentity,
   onChampionIdentity,
+  focusVector,
 }: {
   agent: ArenaAgentState
   policy: CollectorStrategy
@@ -157,9 +169,11 @@ function AgentCard({
   onPolicy: (policy: CollectorStrategy) => void
   championIdentity?: ChampionIdentity
   onChampionIdentity?: (next: ChampionIdentity) => void
+  focusVector?: FocusVector
 }) {
   const champion = agent.id === 'champion'
   const look = championIdentity ? getChampionLook(championIdentity.lookId) : null
+  const focus = focusVector ?? null
   return (
     <section className={styles.agentCard} data-entrant={agent.id} aria-label={champion ? 'Your champion' : 'House rival'}>
       <div className={styles.agentHeading}>
@@ -176,6 +190,16 @@ function AgentCard({
         </div>
         <span className={styles.score}>{agent.banked}<small>banked</small></span>
       </div>
+      {focus && (
+        <div className={styles.fingerprint} title={fingerprintLine(focus)}>
+          <span>{fingerprintLine(focus)}</span>
+          <div className={styles.fingerprintBars} aria-hidden>
+            {SPECIALIZATION_FOCI.map(key => (
+              <i key={key} style={{ transform: `scaleY(${Math.max(0.08, focus[key])})` }} data-focus={key} />
+            ))}
+          </div>
+        </div>
+      )}
       {champion && championIdentity && onChampionIdentity && (
         <div className={styles.identityBlock}>
           <label className={styles.identityName}>
@@ -355,7 +379,14 @@ function Workbench({
   const [trainFocusLine, setTrainFocusLine] = useState<string | null>(null)
   const [modeBanner, setModeBanner] = useState<CoursePlayMode | null>(null)
   const [runTip, setRunTip] = useState<string | null>(null)
+  const [encounter, setEncounter] = useState<{
+    resolution: EncounterResolution
+    transferred: number
+  } | null>(null)
   const floodWarnedRef = useRef<number | null>(null)
+  const lastEncounterTickRef = useRef<number | null>(null)
+  const encounterBusyRef = useRef(false)
+  const encounterResumeTimer = useRef<number | null>(null)
   const modeBannerTimer = useRef<number | null>(null)
   const runTipTimer = useRef<number | null>(null)
   const [checkpoints, setCheckpoints] = useState<PolicyCheckpoint[]>([SEASON_0_BASE_CHECKPOINT])
@@ -480,7 +511,18 @@ function Workbench({
   useEffect(() => () => {
     if (modeBannerTimer.current) window.clearTimeout(modeBannerTimer.current)
     if (runTipTimer.current) window.clearTimeout(runTipTimer.current)
+    if (encounterResumeTimer.current) window.clearTimeout(encounterResumeTimer.current)
   }, [])
+
+  const dismissEncounter = useCallback(() => {
+    if (encounterResumeTimer.current) {
+      window.clearTimeout(encounterResumeTimer.current)
+      encounterResumeTimer.current = null
+    }
+    setEncounter(null)
+    encounterBusyRef.current = false
+    if (view.phase === 'paused') session.start()
+  }, [session, view.phase])
 
   const lastSyncedMatchRef = useRef<string | null>(null)
 
@@ -511,6 +553,59 @@ function Workbench({
     setFeed(prev => [...prev, ...stamped].slice(-3))
     setTimeout(() => setFeed(prev => prev.filter(event => !ids.has(event.id))), 4500)
   }, [])
+
+  // Proximity clash: specialization vectors decide the winner; episode applies cargo/stagger.
+  useEffect(() => {
+    if (encounterBusyRef.current || encounter) return
+    if (view.phase !== 'running') return
+    const episode = session.liveEpisode()
+    if (!shouldOfferEncounter({
+      phaseRunning: true,
+      episode,
+      lastEncounterTick: lastEncounterTickRef.current,
+    })) return
+
+    encounterBusyRef.current = true
+    session.pause()
+    const championAgent = episode.agents.find(agent => agent.id === 'champion')
+    const rivalAgent = episode.agents.find(agent => agent.id === 'rival')
+    if (!championAgent || !rivalAgent) {
+      encounterBusyRef.current = false
+      session.start()
+      return
+    }
+    const championFocus = focusVectorForChampion(examples.filter(example => example.approved))
+    const rivalFocus = focusVectorForRival(view.policies.rival)
+    const resolution = resolveEncounter(championFocus, rivalFocus, {
+      flooded: episode.weather.flooded,
+      championCargo: championAgent.cargo,
+      rivalCargo: rivalAgent.cargo,
+    })
+    let transferred = 0
+    try {
+      transferred = session.applyEncounterClash({
+        winnerId: resolution.winnerId,
+        loserId: resolution.loserId,
+        transferCargo: resolution.transferCargo,
+        staggerTicks: ENCOUNTER_STAGGER_TICKS,
+      }).transferred
+    } catch (err) {
+      console.warn('[encounter] prize apply failed:', err)
+    }
+    lastEncounterTickRef.current = episode.tick
+    setEncounter({ resolution, transferred })
+    pushFeed([{
+      text: transferred > 0
+        ? `${resolution.reason} Cargo +${transferred}.`
+        : resolution.reason,
+      tone: 'info',
+    }])
+    encounterResumeTimer.current = window.setTimeout(() => {
+      setEncounter(null)
+      encounterBusyRef.current = false
+      if (session.getSnapshot().phase === 'paused') session.start()
+    }, 2400)
+  }, [view.phase, view.episode.tick, view.policies.rival, examples, encounter, session, pushFeed])
 
   // Live race feed: banks, flood flips, drains, and the full-time score.
   // Throttled to one decision cadence (5 ticks) so snapshot pumps never churn renders.
@@ -665,6 +760,9 @@ function Workbench({
     if (mode === 'compete') setStudioOpen(false)
     floodWarnedRef.current = null
     setRunTip(null)
+    lastEncounterTickRef.current = null
+    setEncounter(null)
+    encounterBusyRef.current = false
     setModeBanner(mode)
     if (modeBannerTimer.current) window.clearTimeout(modeBannerTimer.current)
     modeBannerTimer.current = window.setTimeout(() => setModeBanner(null), 1100)
@@ -902,6 +1000,8 @@ function Workbench({
   }
 
   const approvedCount = examples.filter(e => e.approved && !isEvaluationScenario(e.sourceEpisodeId)).length
+  const championFocus = focusVectorForChampion(examples.filter(example => example.approved))
+  const rivalFocus = focusVectorForRival(view.policies.rival)
 
   const nextStep = (() => {
     if (!visualReady) return { label: 'Settling the world…', run: null as (() => void) | null }
@@ -971,6 +1071,15 @@ function Workbench({
               <p>Settling the world…</p>
             )}
           </div>
+          {encounter && (
+            <div className={`${styles.encounterCard} ${styles.hintEnter}`} role="status">
+              <span>CLASH</span>
+              <h2>{encounter.resolution.winnerId === 'champion' ? `${championIdentity.name} holds the line.` : 'The house rival forces through.'}</h2>
+              <p>{encounter.resolution.reason}</p>
+              {encounter.transferred > 0 && <p className={styles.encounterPrize}>Cargo contested · +{encounter.transferred} to the winner</p>}
+              <button type="button" className={styles.primaryButton} onClick={dismissEncounter}>Continue</button>
+            </div>
+          )}
           {modeBanner && (
             <div className={styles.modeFlash} key={modeBanner} role="status">
               <span>{modeBanner === 'compete' ? 'MATCH' : 'PRACTICE'}</span>
@@ -1109,6 +1218,7 @@ function Workbench({
               onPolicy={policy => session.selectPolicy(agent.id, policy, activeCheckpoint)}
               championIdentity={agent.id === 'champion' ? championIdentity : undefined}
               onChampionIdentity={agent.id === 'champion' ? onChampionIdentity : undefined}
+              focusVector={agent.id === 'champion' ? championFocus : rivalFocus}
             />
           ))}
           <div className={styles.ruleCard}>
@@ -1129,7 +1239,7 @@ function Workbench({
             {view.phase === 'running' ? <Pause size={16} /> : <Play size={16} />}
             {primaryLabel}
           </button>
-          <button className={styles.secondaryButton} onClick={() => { setCinematic(false); floodWarnedRef.current = null; setRunTip(null); session.reset() }} disabled={!visualReady || view.phase === 'error'}><RotateCcw size={15} />Reset</button>
+          <button className={styles.secondaryButton} onClick={() => { setCinematic(false); floodWarnedRef.current = null; lastEncounterTickRef.current = null; setEncounter(null); encounterBusyRef.current = false; setRunTip(null); session.reset() }} disabled={!visualReady || view.phase === 'error'}><RotateCcw size={15} />Reset</button>
           <button className={styles.secondaryButton} onClick={() => session.review()} disabled={view.phase !== 'paused' && view.phase !== 'finished'}><Eye size={16} />Replay</button>
           <button
             className={styles.secondaryButton}

@@ -390,6 +390,22 @@ export class ArenaSession {
     return this.#runner.observe(agentId, options)
   }
 
+  /** Apply a resolved proximity clash, then publish a fresh snapshot. */
+  applyEncounterClash(args: {
+    winnerId: string
+    loserId: string
+    transferCargo: boolean
+    staggerTicks: number
+  }) {
+    this.#assertActive()
+    if (this.#view.phase !== 'running' && this.#view.phase !== 'paused') {
+      throw new Error('Encounter prizes only apply during an active run')
+    }
+    const result = this.#runner.applyEncounterClash(args)
+    this.#publish({ episode: this.#runner.snapshot() })
+    return result
+  }
+
   sampleGround(position: [number, number, number]): SurfaceSample | null {
     this.#assertActive()
     if ('sample' in this.#motion) return (this.#motion as { sample: (pos: [number, number, number], maxDistance?: number) => SurfaceSample | null }).sample(position, 20)

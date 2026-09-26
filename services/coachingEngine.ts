@@ -36,13 +36,25 @@ export const COACHING_RULES: readonly CoachingRule[] = Object.freeze([
 ])
 
 /** High-level training focus chips — map to proposeCorrection prompts, not new algorithms. */
+export type SpecializationFocus = 'weather' | 'banking' | 'collection' | 'contest' | 'energy'
+
 export type SpecializationChip = {
   id: string
   label: string
   blurb: string
   prompt: string
-  focus: 'weather' | 'banking' | 'collection' | 'contest' | 'energy'
+  focus: SpecializationFocus
 }
+
+export type FocusVector = Record<SpecializationFocus, number>
+
+export const SPECIALIZATION_FOCI: readonly SpecializationFocus[] = Object.freeze([
+  'weather',
+  'banking',
+  'collection',
+  'contest',
+  'energy',
+])
 
 export const SPECIALIZATION_CHIPS: readonly SpecializationChip[] = Object.freeze([
   {
@@ -82,7 +94,7 @@ export const SPECIALIZATION_CHIPS: readonly SpecializationChip[] = Object.freeze
   },
 ])
 
-const FOCUS_LABELS: Record<SpecializationChip['focus'], string> = {
+export const FOCUS_LABELS: Record<SpecializationFocus, string> = {
   weather: 'weather / ridge',
   banking: 'bank & cargo',
   collection: 'core collection',
@@ -90,7 +102,14 @@ const FOCUS_LABELS: Record<SpecializationChip['focus'], string> = {
   energy: 'energy & drain',
 }
 
-function classifyExampleFocus(example: { rationale: string; preferredAction: { type: string } }): SpecializationChip['focus'] {
+export function emptyFocusVector(): FocusVector {
+  return { weather: 0, banking: 0, collection: 0, contest: 0, energy: 0 }
+}
+
+export function classifyExampleFocus(example: {
+  rationale: string
+  preferredAction: { type: string }
+}): SpecializationFocus {
   const text = `${example.rationale} ${example.preferredAction.type}`.toLowerCase()
   if (text.includes('flood') || text.includes('ridge') || text.includes('water')) return 'weather'
   if (text.includes('drain') || text.includes('energy')) return 'energy'
@@ -104,19 +123,54 @@ function classifyExampleFocus(example: { rationale: string; preferredAction: { t
   return 'collection'
 }
 
+export function focusVectorFromExamples(
+  examples: ReadonlyArray<{ rationale: string; preferredAction: { type: string }; approved?: boolean }>,
+): FocusVector {
+  const counts = emptyFocusVector()
+  let total = 0
+  for (const example of examples) {
+    if (example.approved === false) continue
+    const focus = classifyExampleFocus(example)
+    counts[focus] += 1
+    total += 1
+  }
+  if (total === 0) return emptyFocusVector()
+  const vector = emptyFocusVector()
+  for (const key of SPECIALIZATION_FOCI) vector[key] = counts[key] / total
+  return vector
+}
+
+export function houseFocusVector(strategy: 'safe' | 'greedy' | 'weather' | 'learned'): FocusVector {
+  if (strategy === 'greedy') {
+    return { weather: 0.08, banking: 0.18, collection: 0.42, contest: 0.24, energy: 0.08 }
+  }
+  if (strategy === 'weather') {
+    return { weather: 0.48, banking: 0.1, collection: 0.12, contest: 0.05, energy: 0.25 }
+  }
+  if (strategy === 'learned') {
+    return { weather: 0.2, banking: 0.2, collection: 0.2, contest: 0.2, energy: 0.2 }
+  }
+  return { weather: 0.32, banking: 0.26, collection: 0.24, contest: 0.08, energy: 0.1 }
+}
+
+export function topFocusLabels(vector: FocusVector, limit = 2): string[] {
+  return SPECIALIZATION_FOCI
+    .map(focus => ({ focus, value: vector[focus] }))
+    .filter(entry => entry.value > 0.04)
+    .sort((a, b) => b.value - a.value)
+    .slice(0, limit)
+    .map(entry => FOCUS_LABELS[entry.focus])
+}
+
 /** One-line summary of what this training batch emphasized. */
 export function summarizeCoachFocus(
   examples: ReadonlyArray<{ rationale: string; preferredAction: { type: string }; approved?: boolean }>,
 ): string | null {
   const approved = examples.filter(example => example.approved !== false)
   if (approved.length === 0) return null
-  const counts = new Map<SpecializationChip['focus'], number>()
-  for (const example of approved) {
-    const focus = classifyExampleFocus(example)
-    counts.set(focus, (counts.get(focus) ?? 0) + 1)
-  }
-  const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1])
-  const top = ranked.slice(0, 2).map(([focus]) => FOCUS_LABELS[focus])
+  const vector = focusVectorFromExamples(approved)
+  const top = topFocusLabels(vector, 2)
+  if (top.length === 0) return null
   if (top.length === 1) return `This session focused on ${top[0]}.`
   return `This session focused on ${top[0]} and ${top[1]}.`
 }

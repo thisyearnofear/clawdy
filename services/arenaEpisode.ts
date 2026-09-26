@@ -422,6 +422,36 @@ export class ArenaEpisode {
     } satisfies ArenaRecording)
   }
 
+  /**
+   * Apply a proximity clash prize. Resolution happens outside the episode;
+   * this only mutates cargo / cooldown while the episode is running.
+   */
+  applyEncounterClash(args: {
+    winnerId: string
+    loserId: string
+    transferCargo: boolean
+    staggerTicks: number
+  }): { transferred: number } {
+    if (this.#state.status !== 'running') {
+      throw new Error('Encounter prizes only apply during a running episode')
+    }
+    const winner = this.#state.agents.find(agent => agent.id === args.winnerId)
+    const loser = this.#state.agents.find(agent => agent.id === args.loserId)
+    if (!winner || !loser) throw new Error('Encounter agents missing')
+    let transferred = 0
+    if (args.transferCargo && loser.cargo > 0) {
+      const space = Math.max(0, ARENA_RULES.capacity - winner.cargo)
+      transferred = Math.min(1, loser.cargo, space)
+      loser.cargo -= transferred
+      winner.cargo += transferred
+    }
+    loser.cooldownUntilTick = Math.max(
+      loser.cooldownUntilTick,
+      this.#state.tick + Math.max(0, args.staggerTicks),
+    )
+    return { transferred }
+  }
+
   #isFlooded() {
     return isScenarioFlooded(this.#scenario, this.#state)
   }

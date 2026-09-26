@@ -293,6 +293,15 @@ export class ArenaRunner {
     return this.#episode.recording()
   }
 
+  applyEncounterClash(args: {
+    winnerId: string
+    loserId: string
+    transferCargo: boolean
+    staggerTicks: number
+  }) {
+    return this.#episode.applyEncounterClash(args)
+  }
+
   reset() {
     this.#accumulatedUs = 0
     this.#sequence = 0

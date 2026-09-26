@@ -49,6 +49,7 @@ Product, contract, demo, and submission materials live in `/docs`:
 - [Implementation contract](AGENT.md) — module boundaries and verification rules.
 - [Compatibility policy](docs/COMPATIBILITY.md) — versioned rules, schemas, worlds, and checkpoints.
 - [Current opportunity plan](docs/TRIPOTHON.md) — the active external opportunity, timeline, and risk register.
+- [Product roadmap](docs/ROADMAP.md) — identity → encounters → league → curriculum horizons.
 - [Submission materials](docs/SUBMISSION_CHECKLIST.md).
 - [Scene layer architecture](docs/SCENES.md) — how recorded matches become replay cinematics and, later, generated scenes.
 - [Two-minute demo script](docs/DEMO_SCRIPT.md).

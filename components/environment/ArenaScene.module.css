@@ -155,7 +155,30 @@
 .agentHeading { display: flex; gap: 9px; align-items: center; }
 .agentMark { display: grid; place-items: center; width: 30px; height: 34px; border-radius: 4px; background: #bedb9c; color: #314c30; font-weight: 750; font-size: 15px; }
 .agentCard[data-entrant="rival"] .agentMark { background: #efd3aa; color: #704e2e; }
-.identityBlock { display: flex; flex-direction: column; gap: 8px; margin: 12px 0 0; }
+.fingerprint {
+  display: flex; flex-direction: column; gap: 6px; margin-top: 10px;
+  font: 9px/1.35 var(--font-geist-mono), monospace; color: #5a6a58; letter-spacing: 0.02em;
+}
+.fingerprintBars { display: flex; align-items: flex-end; gap: 3px; height: 16px; }
+.fingerprintBars i {
+  flex: 1; height: 100%; border-radius: 2px 2px 0 0; background: #9aaa90; transform-origin: bottom center;
+}
+.fingerprintBars i[data-focus='weather'] { background: #5f9eb8; }
+.fingerprintBars i[data-focus='banking'] { background: #6a8d61; }
+.fingerprintBars i[data-focus='collection'] { background: #c4a16a; }
+.fingerprintBars i[data-focus='contest'] { background: #c4785a; }
+.fingerprintBars i[data-focus='energy'] { background: #8a7ac4; }
+.encounterCard {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 5;
+  width: min(86%, 360px); padding: 22px 24px; text-align: center;
+  background: #1a352ef2; color: #eef4e6; border: 1px solid #6a8d6188; border-radius: 8px;
+  box-shadow: 0 16px 50px #0a1c1428; pointer-events: auto;
+}
+.encounterCard > span { font: 10px var(--font-geist-mono), monospace; letter-spacing: 0.18em; color: #b6d6a4; }
+.encounterCard h2 { font: 24px/1.2 Georgia, serif; margin: 10px 0 8px; }
+.encounterCard p { margin: 0; font-size: 12px; line-height: 1.5; color: #d5e3cb; }
+.encounterPrize { margin-top: 8px !important; color: #ffe08a !important; font: 11px var(--font-geist-mono), monospace !important; }
+.encounterCard .primaryButton { margin: 16px auto 0; }
 .identityName { display: flex; align-items: center; gap: 8px; font-size: 10px; color: var(--muted); }
 .identityName input {
   flex: 1; min-width: 0; border: 1px solid #cbd3c5; background: #fff; border-radius: 3px;

@@ -35,6 +35,8 @@ Conversation is the coaching interface. Training makes approved coaching persist
 
 The distinguishing moment is not an agent saying it understands. It is a new checkpoint behaving differently in an unseen scenario, without another instruction. A changed route, a successful recovery, a better-timed intervention, or a fundamentally different collection sequence is the evidence. The drama is watching whether your training held — or whether the arena exposed something your bot was never coached for.
 
+Ambitious product evolution (identity → specialization encounters → league → curriculum) lives in [ROADMAP.md](ROADMAP.md). Season 0 ships the first living slices of that plan without abandoning the learning spine.
+
 #### The Experience
 
 The player's emotional arc:
