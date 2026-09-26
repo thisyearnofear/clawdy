@@ -350,7 +350,7 @@ grounded courses prove it.
      Rover. `RoverShadow` gets the same treatment. Idempotent per tick;
      reset on scrub.
   2. **Shadow-map type pinning.** `@react-three/fiber` defaults to
-     `PCFSoftShadowMap` when `shadows={true}`. `three` r186.1 removed that
+     `PCFSoftShadowMap` when `shadows={true}`. `three` r186 deprecated that
      type → deprecation warning + fallback + a GL sampler mismatch against
      Spark's `sampler2DShadow` uniforms (71 `GL_INVALID_OPERATION` / frame).
      `ArenaWorldView` now passes `shadows={'percentage'}` explicitly, which
@@ -365,6 +365,21 @@ grounded courses prove it.
   drift (physics untouched), no policy re-pins. Browser console: the PCFSoft
   shadow warning and all 71 GL sampler-mismatch errors clear; the remaining
   deprecations are Rapier init and fiber-internal clock (out of app code).
+- **Follow-up (same day, render-only):** the pose history moved into
+  `services/arenaPresentation.ts` (`advancePoseHistory`/`samplePoseHistory`)
+  and gained three behaviours: snapshot-identity tracking so a rebuilt
+  runner or a different recording at an unchanged tick (both start at
+  tick 0) snaps instead of showing a stale pose; a display quaternion
+  rate-limited to `MAX_POSE_TURN_RAD_PER_SEC` because the kinematic
+  controller can commit ~180° yaw flips on consecutive ticks while
+  terrain-pinned or parked on a node (declared `turnRate` is unused —
+  physics is deliberately untouched since yaw steers movement; smoothing
+  is render-only so recordings, replays and the gate pin are unchanged);
+  and a missing-rotation guard for shallow-validated external recordings.
+  `FrameLimiter` now passes `advance()` a monotonic timestamp — fiber's
+  `frameloop:'never'` derives useFrame delta as `timestamp − elapsedTime`,
+  so the previous per-frame duration argument starved the sim to ~0 and
+  produced negative deltas on lite devices.
 
 ### Physics-aware rollout oracle + grounded argmax (Sep 26, evening — no version-axis change)
 

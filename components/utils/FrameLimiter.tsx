@@ -12,16 +12,24 @@ function FrameLimiter({ fps = 60 }: FrameLimiterProps) {
   const { advance, set, frameloop: initFrameloop } = useThree();
 
   useLayoutEffect(() => {
-    let elapsed = 0;
-    let then = 0;
+    let then: number | null = null;
+    // In frameloop "never" fiber derives useFrame delta as
+    // (timestamp - clock.elapsedTime), so advance() must receive a monotonic
+    // timestamp — not a per-frame duration. Accumulate emitted-frame seconds.
+    let total = 0;
     let raf: number | null = null;
     const interval = 1000 / fps;
 
     function tick(t: number) {
       raf = requestAnimationFrame(tick);
-      elapsed = t - then;
+      if (then === null) {
+        then = t;
+        return;
+      }
+      const elapsed = t - then;
       if (elapsed > interval) {
-        advance(elapsed / 1000); // Convert ms to seconds
+        total += elapsed / 1000;
+        advance(total);
         then = t - (elapsed % interval);
       }
     }

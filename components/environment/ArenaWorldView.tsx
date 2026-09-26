@@ -8,7 +8,7 @@ import type { ArenaCourse } from '../../services/arenaCourse'
 import type { ArenaSession } from '../../services/arenaSession'
 import type { ArenaPosition } from '../../services/arenaEpisode'
 import { disposeArenaTerrain, loadArenaTerrain } from '../../services/arenaTerrain'
-import { createRouteRibbonGeometry } from '../../services/arenaPresentation'
+import { createRouteRibbonGeometry, advancePoseHistory, samplePoseHistory, type PoseHistory } from '../../services/arenaPresentation'
 import { planCinematicShots, shotAt, type CinematicShot } from '../../services/arenaCinematic'
 import { MintModel } from './MintModel'
 import { BankBursts } from './BankBursts'
@@ -48,18 +48,12 @@ function EpisodeClock({ session }: { session: ArenaSession }) {
  * session's tick-fraction — a constant 50 ms delay with zero ripple.
  * Pure presentation: the episode authority is never touched.
  */
-type PoseSample = { pos: THREE.Vector3; rot: THREE.Quaternion }
-type PoseHistory = { tick: number; span: number; prev: PoseSample; curr: PoseSample }
 const poseHistories = new WeakMap<ArenaSession, Map<string, PoseHistory>>()
-
-function writePose(target: PoseSample, agent: { position: ArenaPosition; rotation: [number, number, number, number] }) {
-  target.pos.fromArray(agent.position)
-  target.rot.set(agent.rotation[0], agent.rotation[1], agent.rotation[2], agent.rotation[3])
-}
 
 function sampleInterpolatedPose(
   session: ArenaSession,
   id: string,
+  nowSeconds: number,
   outPos: THREE.Vector3,
   outRot: THREE.Quaternion,
 ): boolean {
@@ -71,38 +65,8 @@ function sampleInterpolatedPose(
     byAgent = new Map()
     poseHistories.set(session, byAgent)
   }
-  let history = byAgent.get(id)
-  if (!history) {
-    history = {
-      tick: episode.tick,
-      span: 1,
-      prev: { pos: new THREE.Vector3(), rot: new THREE.Quaternion() },
-      curr: { pos: new THREE.Vector3(), rot: new THREE.Quaternion() },
-    }
-    writePose(history.prev, agent)
-    writePose(history.curr, agent)
-    byAgent.set(id, history)
-  } else if (episode.tick !== history.tick) {
-    if (episode.tick > history.tick) {
-      // Idempotent per tick: several consumers sample within one frame.
-      history.prev.pos.copy(history.curr.pos)
-      history.prev.rot.copy(history.curr.rot)
-      history.span = episode.tick - history.tick
-    } else {
-      // Reset or backward scrub: restart from the committed pose.
-      history.span = 1
-      writePose(history.prev, agent)
-    }
-    writePose(history.curr, agent)
-    history.tick = episode.tick
-  }
-  // Render one tick behind the authority: f spans prev→curr so that
-  // f = alpha when the two poses are adjacent ticks. Outside live play
-  // interpolation() is 1, so f = 1 — the exact committed pose.
-  const alpha = session.interpolation()
-  const f = Math.min(1, Math.max(0, (history.span - 1 + alpha) / Math.max(history.span, 1)))
-  outPos.lerpVectors(history.prev.pos, history.curr.pos, f)
-  outRot.slerpQuaternions(history.prev.rot, history.curr.rot, f)
+  byAgent.set(id, advancePoseHistory(byAgent.get(id) ?? null, episode, episode.tick, agent))
+  samplePoseHistory(byAgent.get(id)!, session.interpolation(), outPos, outRot, nowSeconds)
   return true
 }
 
@@ -117,12 +81,12 @@ function FollowCamera({ session, course, follow }: Pick<WorldProps, 'session' | 
   }, [camera, course, follow])
   const agentPos = useRef(new THREE.Vector3())
   const agentRot = useRef(new THREE.Quaternion())
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     if (follow === 'overview') return
     // Track the interpolated pose so camera and rover share one motion
     // curve — chasing the raw tick commit while the rover smooths it makes
     // the subject swim inside the frame.
-    if (!sampleInterpolatedPose(session, follow, agentPos.current, agentRot.current)) return
+    if (!sampleInterpolatedPose(session, follow, state.clock.elapsedTime, agentPos.current, agentRot.current)) return
     desired.current.set(agentPos.current.x + 3.2, agentPos.current.y + 3.8, agentPos.current.z + 4.6)
     lookAt.current.set(agentPos.current.x, agentPos.current.y + 0.35, agentPos.current.z)
     camera.position.lerp(desired.current, 1 - Math.exp(-delta * 5))
@@ -392,9 +356,9 @@ function RoverShadow({ session, id }: { session: ArenaSession; id: string }) {
   const meshRef = useRef<THREE.Mesh>(null)
   const pos = useRef(new THREE.Vector3())
   const rot = useRef(new THREE.Quaternion())
-  useFrame(() => {
+  useFrame((state) => {
     if (!meshRef.current) return
-    if (!sampleInterpolatedPose(session, id, pos.current, rot.current)) return
+    if (!sampleInterpolatedPose(session, id, state.clock.elapsedTime, pos.current, rot.current)) return
     meshRef.current.position.set(pos.current.x, pos.current.y + 0.02, pos.current.z)
   })
   return (
@@ -412,12 +376,12 @@ function Rover({ session, id, color }: { session: ArenaSession; id: string; colo
   const targetRot = useRef(new THREE.Quaternion())
   const wheelRefs = useRef<THREE.Mesh[]>([])
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     if (!group.current) return
     // True tick interpolation (one tick behind the authority, lerped by the
     // session tick-fraction) — replaces exponential chasing, which left a
     // 20 Hz velocity ripple against the 50 ms commit grid.
-    if (!sampleInterpolatedPose(session, id, target.current, targetRot.current)) return
+    if (!sampleInterpolatedPose(session, id, state.clock.elapsedTime, target.current, targetRot.current)) return
 
     group.current.position.copy(target.current)
     group.current.quaternion.copy(targetRot.current)

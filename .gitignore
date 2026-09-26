@@ -51,6 +51,7 @@ next-env.d.ts
 # local CLI / AI agent artifacts
 .agents/
 .codex/
+.qoder/
 .commandcode/
 
 .letta

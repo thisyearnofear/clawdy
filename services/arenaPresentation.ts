@@ -1,6 +1,136 @@
 import * as THREE from 'three'
 import type { ArenaPosition } from './arenaEpisode'
 
+export interface PoseAgentLike {
+  position: ArenaPosition
+  rotation?: readonly number[] | null
+}
+
+export interface PoseSample {
+  pos: THREE.Vector3
+  rot: THREE.Quaternion
+}
+
+export interface PoseHistory {
+  /** Episode snapshot object identity — detects a swapped episode source at an unchanged tick. */
+  source: unknown
+  tick: number
+  span: number
+  prev: PoseSample
+  curr: PoseSample
+  /** Rate-limited rendered rotation — see MAX_POSE_TURN_RAD_PER_SEC. */
+  display: THREE.Quaternion
+  /** Last frame clock (seconds) that advanced `display`; idempotent per frame. */
+  displayTime: number
+}
+
+/**
+ * Rendered yaw turn cap. The kinematic controller declares `turnRate: 4.0`
+ * but snaps yaw instantaneously when the direction to its target flips —
+ * e.g. while pinned by terrain, or parked on a node with sub-millimetre
+ * offsets — producing committed 180° rotation flips on consecutive ticks.
+ * Committed poses are authority and stay untouched; the render layer holds
+ * the displayed rotation to a plausible slew instead.
+ */
+export const MAX_POSE_TURN_RAD_PER_SEC = 4.0
+
+const IDENTITY_ROTATION: readonly [number, number, number, number] = [0, 0, 0, 1]
+
+function writePoseSample(target: PoseSample, agent: PoseAgentLike) {
+  target.pos.fromArray(agent.position)
+  const rotation = agent.rotation ?? IDENTITY_ROTATION
+  target.rot.set(rotation[0], rotation[1], rotation[2], rotation[3])
+}
+
+/**
+ * Advances a render-layer pose history by one committed episode state.
+ * The sim commits on a 50 ms grid; the renderer keeps the two most recent
+ * observed poses and samples one tick behind the authority.
+ *
+ * Three cases:
+ * - forward tick on the same snapshot object → shift curr→prev, record the
+ *   span so a multi-tick frame still renders exactly one tick behind.
+ * - same tick on the same object → idempotent no-op (several consumers may
+ *   sample within one frame).
+ * - anything else (new runner/episode object, review clone, reset, backward
+ *   scrub) → snap both samples to the committed pose. Tick alone cannot
+ *   distinguish sources: a rebuilt runner and a fresh recording both start
+ *   at tick 0, so identity is checked alongside the tick.
+ */
+export function advancePoseHistory(
+  history: PoseHistory | null,
+  source: unknown,
+  tick: number,
+  agent: PoseAgentLike,
+): PoseHistory {
+  if (!history) {
+    const next: PoseHistory = {
+      source,
+      tick,
+      span: 1,
+      prev: { pos: new THREE.Vector3(), rot: new THREE.Quaternion() },
+      curr: { pos: new THREE.Vector3(), rot: new THREE.Quaternion() },
+      display: new THREE.Quaternion(),
+      displayTime: -1,
+    }
+    writePoseSample(next.prev, agent)
+    writePoseSample(next.curr, agent)
+    next.display.copy(next.curr.rot)
+    return next
+  }
+  if (source !== history.source || tick < history.tick) {
+    history.source = source
+    history.tick = tick
+    history.span = 1
+    writePoseSample(history.prev, agent)
+    writePoseSample(history.curr, agent)
+    history.display.copy(history.curr.rot)
+    return history
+  }
+  if (tick === history.tick) return history
+  history.prev.pos.copy(history.curr.pos)
+  history.prev.rot.copy(history.curr.rot)
+  history.span = tick - history.tick
+  writePoseSample(history.curr, agent)
+  history.tick = tick
+  return history
+}
+
+const scratchRot = new THREE.Quaternion()
+
+/**
+ * Samples a pose history one tick behind the authority, lerped by the
+ * tick-fraction `alpha` (0..1). With span=1 the render time is T−1+α;
+ * multi-tick spans linearize across the skipped commits.
+ *
+ * Rotation is additionally rate-limited: the controller can commit 180°
+ * yaw flips on consecutive ticks (blocked against terrain, parked on a
+ * node), so the displayed quaternion slews toward the interpolated target
+ * at `maxTurnRate` rad/s, advanced once per rendered frame (`nowSeconds`
+ * shared by all consumers). alpha=1 (paused/review/finished) bypasses both
+ * mechanisms and yields the exact committed pose.
+ */
+export function samplePoseHistory(
+  history: PoseHistory,
+  alpha: number,
+  outPos: THREE.Vector3,
+  outRot: THREE.Quaternion,
+  nowSeconds = 0,
+  maxTurnRate = MAX_POSE_TURN_RAD_PER_SEC,
+) {
+  const f = Math.min(1, Math.max(0, (history.span - 1 + alpha) / Math.max(history.span, 1)))
+  outPos.lerpVectors(history.prev.pos, history.curr.pos, f)
+  scratchRot.slerpQuaternions(history.prev.rot, history.curr.rot, f)
+  if (alpha >= 1) {
+    history.display.copy(scratchRot)
+  } else if (nowSeconds > history.displayTime) {
+    const step = Math.max(0, nowSeconds - Math.max(history.displayTime, 0)) * maxTurnRate
+    history.display.rotateTowards(scratchRot, step)
+  }
+  history.displayTime = nowSeconds
+  outRot.copy(history.display)
+}
+
 export function createRouteRibbonGeometry(
   points: readonly ArenaPosition[],
   width: number,
