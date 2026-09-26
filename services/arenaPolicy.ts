@@ -276,6 +276,15 @@ export class ArenaRunner {
     return this.#episode.snapshot()
   }
 
+  /** Live episode state for rAF consumers. Do not mutate. */
+  peek() {
+    return this.#episode.peek()
+  }
+
+  get finished() {
+    return this.#episode.finished
+  }
+
   observe(agentId: string, options?: { forceDecision?: boolean }) {
     return this.#episode.observe(agentId, options)
   }

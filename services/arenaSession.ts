@@ -19,8 +19,24 @@ export interface ArenaSessionView {
   scored: boolean
 }
 
+/** Soft cap on sim ticks per display frame — prefer smooth catch-up over spikes. */
+export const VISUAL_MAX_TICKS_PER_FRAME = 3
+
+/** React HUD refresh floor (~decision cadence). Score/flood/phase still publish immediately. */
+const HUD_PUBLISH_EVERY_TICKS = 5
+
 function makeMatchId(): string {
   return `match-${Date.now()}-${Math.floor(Math.random() * 1_000_000).toString(36)}`
+}
+
+function hudPublishKey(episode: ArenaSnapshot): string {
+  const bucket = Math.floor(episode.tick / HUD_PUBLISH_EVERY_TICKS)
+  // Intentionally omit energy — it drifts every tick and would defeat the throttle.
+  // Agent cards refresh energy on the decision-cadence bucket instead.
+  const agents = episode.agents
+    .map(agent => `${agent.banked},${agent.cargo},${agent.recoveries},${agent.transit?.edgeId ?? agent.nodeId}`)
+    .join(';')
+  return `${episode.status}|${bucket}|${episode.weather.flooded ? 1 : 0}|${episode.weather.drainedUntilTick}|${agents}`
 }
 
 export class ArenaSession {
@@ -38,6 +54,7 @@ export class ArenaSession {
   #ended = false
   #disposed = false
   #scored = false
+  #lastHudKey = ''
 
   constructor(course: ArenaCourse, motion: ArenaMotion) {
     this.#course = structuredClone(course)
@@ -123,6 +140,16 @@ export class ArenaSession {
 
   getSnapshot = () => this.#view
 
+  /**
+   * Live episode for WebGL / useFrame consumers. Returns the runner's peeked
+   * state while a match is active so the canvas stays smooth without waiting
+   * on throttled React publishes (and without a structuredClone every tick).
+   */
+  liveEpisode = (): ArenaSnapshot => {
+    if (this.#view.phase === 'running' || this.#view.phase === 'paused') return this.#runner.peek()
+    return this.#view.episode
+  }
+
   subscribe = (listener: () => void) => {
     this.#assertActive()
     this.#listeners.add(listener)
@@ -161,6 +188,10 @@ export class ArenaSession {
     return this.#scored
   }
 
+  get matchId() {
+    return this.#matchId
+  }
+
   selectPolicy(agentId: string, strategy: CollectorStrategy, checkpoint?: PolicyCheckpoint) {
     this.#assertActive()
     this.#assertNotScored('change policy')
@@ -191,6 +222,7 @@ export class ArenaSession {
     this.#assertActive()
     if (this.#view.phase !== 'ready' && this.#view.phase !== 'paused') throw new Error('Reset the episode before starting another run')
     const previous = this.#view.phase
+    this.#lastHudKey = hudPublishKey(this.#view.episode)
     this.#publish({ phase: 'running' })
     this.#emitPhase(previous, 'running')
     const players = this.#course.scenario.entrants.map(entrant => ({
@@ -213,7 +245,9 @@ export class ArenaSession {
     this.#assertActive()
     if (this.#view.phase === 'running') {
       const previous = this.#view.phase
-      this.#publish({ phase: 'paused' })
+      // Flush a detached snapshot so HUD/cards match the live tick after throttle gaps.
+      this.#lastHudKey = hudPublishKey(this.#runner.peek())
+      this.#publish({ phase: 'paused', episode: this.#runner.snapshot() })
       this.#emitPhase(previous, 'paused')
     }
   }
@@ -223,15 +257,24 @@ export class ArenaSession {
     if (this.#view.phase !== 'running') return
     try {
       const previousPhase = this.#view.phase
-      const ticks = this.#runner.advanceMicroseconds(elapsedUs, 8)
+      const ticks = this.#runner.advanceMicroseconds(elapsedUs, VISUAL_MAX_TICKS_PER_FRAME)
       if (ticks === 0) return
-      const episode = this.#runner.snapshot()
-      this.#publish({ episode, phase: episode.status === 'finished' ? 'finished' : 'running' })
+      const live = this.#runner.peek()
+      const nextPhase: ArenaPhase = live.status === 'finished' ? 'finished' : 'running'
+      const hudKey = hudPublishKey(live)
+      // Clone + notify React only when the scorebug / agent cards would change,
+      // or on a decision-cadence floor — never every 50 ms tick.
+      if (nextPhase === 'finished' || hudKey !== this.#lastHudKey) {
+        this.#lastHudKey = hudKey
+        this.#publish({ episode: this.#runner.snapshot(), phase: nextPhase })
+      } else if (this.#view.phase !== nextPhase) {
+        this.#publish({ phase: nextPhase })
+      }
       this.#emitPhase(previousPhase, this.#view.phase)
-      this.#emit({ type: 'tick', matchId: this.#matchId, tick: episode.tick, episode })
-      for (const agent of episode.agents) {
+      this.#emit({ type: 'tick', matchId: this.#matchId, tick: live.tick, episode: live })
+      for (const agent of live.agents) {
         const outcome = agent.lastOutcome
-        if (outcome && outcome.tick === episode.tick) {
+        if (outcome && outcome.tick === live.tick) {
           this.#emit({
             type: 'action_result',
             matchId: this.#matchId,
@@ -243,10 +286,10 @@ export class ArenaSession {
           })
         }
       }
-      if (episode.status === 'finished' && !this.#ended) {
+      if (live.status === 'finished' && !this.#ended) {
         this.#ended = true
         const score: Record<string, number> = {}
-        for (const agent of episode.agents) score[agent.id] = agent.banked
+        for (const agent of live.agents) score[agent.id] = agent.banked
         this.#emit({ type: 'match_end', matchId: this.#matchId, outcome: 'finished', score })
       }
     } catch (error) {
@@ -273,6 +316,7 @@ export class ArenaSession {
     this.#returnPhase = 'paused'
     this.#matchId = makeMatchId()
     this.#ended = false
+    this.#lastHudKey = ''
     this.#publish(this.#initialView())
   }
 

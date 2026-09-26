@@ -24,11 +24,11 @@ npm run dev
 ```
 Open [http://localhost:3000](http://localhost:3000) to access the interactive 3D arena.
 
-### Builder Starter Training
+### Convex sync (optional)
 ```bash
-npm run starter:train
+npx convex dev
 ```
-Runs the headless trainer and generates `starter/champion-checkpoint.json`.
+Writes `CONVEX_DEPLOYMENT` and `NEXT_PUBLIC_CONVEX_URL` into `.env.local`. With the URL set, Coach dual-writes checkpoints, examples, training jobs, and finished-match summaries under a browser guest key. Without it, the app stays `localStorage`-only. Convex is never on the physics or scored-match inference path.
 
 ---
 

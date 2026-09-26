@@ -33,6 +33,8 @@ import {
   saveStoredCheckpoints,
   saveStoredExamples,
 } from '../../services/checkpointStorage'
+import { ConvexLineageBadge, useConvexClient } from '../ConvexClientProvider'
+import { syncCheckpoint, syncExamples, syncMatchSummary, syncTrainingJob } from '../../services/convexSync'
 import type { ArenaCamera } from './ArenaWorldView'
 import { ErrorBoundary } from '../utils/ErrorBoundary'
 import styles from './ArenaScene.module.css'
@@ -154,6 +156,7 @@ function AgentCard({ agent, policy, unlocked, onPolicy }: {
 
 function Workbench({ session, course, createMotion, onRetry }: LoadedSession & { onRetry: () => void }) {
   const view = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot)
+  const convex = useConvexClient()
   const [visualReady, setVisualReady] = useState(false)
   const [follow, setFollow] = useState<ArenaCamera>('overview')
   const [cinematic, setCinematic] = useState(false)
@@ -172,6 +175,7 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
   const [trainResult, setTrainResult] = useState<{ baseline: EvaluationResult; trained: EvaluationResult } | null>(null)
   const [feed, setFeed] = useState<{ id: number; text: string; tone: 'bank' | 'flood' | 'info' }[]>([])
   const [clipUrl, setClipUrl] = useState<string | null>(null)
+  const [clipArmed, setClipArmed] = useState(false)
   const [hasHydrated, setHasHydrated] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const exampleCounter = useRef(0)
@@ -246,12 +250,38 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
   useEffect(() => {
     if (!hasHydrated) return
     saveStoredCheckpoints(checkpoints)
-  }, [checkpoints, hasHydrated])
+    for (const checkpoint of checkpoints) {
+      void syncCheckpoint(convex, checkpoint)
+    }
+  }, [checkpoints, hasHydrated, convex])
 
   useEffect(() => {
     if (!hasHydrated) return
     saveStoredExamples(examples)
-  }, [examples, hasHydrated])
+    void syncExamples(convex, examples)
+  }, [examples, hasHydrated, convex])
+
+  const lastSyncedMatchRef = useRef<string | null>(null)
+
+  // Persist a match summary when a round finishes (links active checkpoint).
+  useEffect(() => {
+    if (view.phase !== 'finished') return
+    if (lastSyncedMatchRef.current === session.matchId) return
+    lastSyncedMatchRef.current = session.matchId
+    const champion = view.episode.agents.find(agent => agent.id === 'champion')
+    const rival = view.episode.agents.find(agent => agent.id === 'rival')
+    void syncMatchSummary(convex, {
+      matchId: session.matchId,
+      scenarioId: activeCourse.scenario.id,
+      rulesVersion: view.episode.rulesVersion,
+      scored: view.scored,
+      checkpointId: activeCheckpoint.id,
+      championBanked: champion?.banked ?? 0,
+      rivalBanked: rival?.banked ?? 0,
+      winner: view.episode.winner,
+      linkedExampleIds: examples.filter(example => example.approved).map(example => example.id),
+    })
+  }, [view.phase, view.episode, view.scored, session, activeCourse.scenario.id, activeCheckpoint.id, examples, convex])
 
   const pushFeed = useCallback((items: { text: string; tone: 'bank' | 'flood' | 'info' }[]) => {
     if (items.length === 0) return
@@ -300,19 +330,21 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
     pushFeed(items)
   }, [view, pushFeed])
 
-  // Souvenir clip: auto-record every non-lite run to WebM; offered for download at full time.
+  // Souvenir clip: optional low-cost WebM encode. Auto-record used to hitch the
+  // GPU (captureStream + VP9 + preserveDrawingBuffer). Opt-in keeps Play smooth;
+  // enable via the Record control once the round is running.
   useEffect(() => {
     const phase = view.phase
-    if (phase === 'running' && !recorderRef.current) {
+    if (phase === 'running' && clipArmed && !recorderRef.current) {
       try {
         if (typeof window === 'undefined') return
         if (window.matchMedia('(pointer: coarse)').matches) return // spare low-end GPUs the encode
         if (typeof MediaRecorder === 'undefined') return
         const canvas = document.querySelector('canvas') as HTMLCanvasElement | null
-        const stream = canvas?.captureStream?.(30)
+        const stream = canvas?.captureStream?.(12)
         if (!stream) return
-        const mimeType = ['video/webm;codecs=vp9', 'video/webm'].find(type => MediaRecorder.isTypeSupported(type))
-        const recorder = new MediaRecorder(stream, mimeType ? { mimeType, videoBitsPerSecond: 2_500_000 } : undefined)
+        const mimeType = ['video/webm;codecs=vp8', 'video/webm'].find(type => MediaRecorder.isTypeSupported(type))
+        const recorder = new MediaRecorder(stream, mimeType ? { mimeType, videoBitsPerSecond: 900_000 } : undefined)
         recordChunksRef.current = []
         recorder.ondataavailable = event => {
           if (event.data.size > 0) recordChunksRef.current.push(event.data)
@@ -330,7 +362,7 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
           setClipUrl(url)
         }
         recordStreamRef.current = stream
-        recorder.start(1000)
+        recorder.start(2000)
         recorderRef.current = recorder
       } catch {
         // Recording is a souvenir — never break play.
@@ -347,8 +379,9 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
       URL.revokeObjectURL(clipUrlRef.current)
       clipUrlRef.current = null
       setClipUrl(null)
+      setClipArmed(false)
     }
-  }, [view.phase])
+  }, [view.phase, clipArmed])
 
   useEffect(() => () => {
     try {
@@ -506,6 +539,15 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
 
     setTimeout(() => {
       try {
+        const jobId = `train-${Date.now().toString(36)}`
+        void syncTrainingJob(convex, {
+          jobId,
+          status: 'running',
+          parentCheckpointId: activeCheckpoint.id,
+          resultCheckpointId: null,
+          exampleCount: approved.length,
+          message: null,
+        })
         const trained = trainPolicyCheckpoint(activeCheckpoint, approved, {
           epochs: 100,
           learningRate: 0.02,
@@ -522,9 +564,26 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
         setIsTraining(false)
         setTrainMessage(`Training complete. Loss ${trained.trainingSummary.loss.toFixed(4)} · ${(trained.trainingSummary.accuracy * 100).toFixed(0)}% of the notes landed.`)
         setTrainResult({ baseline: baselineEval, trained: trainedEval })
+        void syncCheckpoint(convex, trained, approved.map(example => example.id))
+        void syncTrainingJob(convex, {
+          jobId,
+          status: 'succeeded',
+          parentCheckpointId: activeCheckpoint.id,
+          resultCheckpointId: trained.id,
+          exampleCount: approved.length,
+          message: `loss ${trained.trainingSummary.loss.toFixed(4)}`,
+        })
       } catch (err) {
         setIsTraining(false)
         setTrainMessage(`Training failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
+        void syncTrainingJob(convex, {
+          jobId: `train-fail-${Date.now().toString(36)}`,
+          status: 'failed',
+          parentCheckpointId: activeCheckpoint.id,
+          resultCheckpointId: null,
+          exampleCount: approved.length,
+          message: err instanceof Error ? err.message : 'Unknown error',
+        })
       }
     }, 400)
   }
@@ -746,6 +805,16 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
           <button className={styles.secondaryButton} onClick={() => session.review()} disabled={view.phase !== 'paused' && view.phase !== 'finished'}><Eye size={16} />Replay</button>
           <button
             className={styles.secondaryButton}
+            type="button"
+            aria-pressed={clipArmed}
+            disabled={view.phase === 'finished' || view.phase === 'error' || view.phase === 'review'}
+            onClick={() => setClipArmed(armed => !armed)}
+            title={clipArmed ? 'Clip recording armed — encodes while you play' : 'Arm a low-cost souvenir clip for this run'}
+          >
+            <Clapperboard size={16} />{clipArmed ? 'Record on' : 'Record'}
+          </button>
+          <button
+            className={styles.secondaryButton}
             aria-pressed={studioOpen}
             onClick={() => setStudioOpen(open => !open)}
             disabled={coachingLocked && examples.length === 0}
@@ -872,6 +941,7 @@ function Workbench({ session, course, createMotion, onRetry }: LoadedSession & {
           <div>
             <h2>Coach</h2>
             <p>Pick a rule or type a note. Approve the ones you want, then train.</p>
+            <ConvexLineageBadge />
           </div>
           <div className={styles.checkpointMeta}>
             <label>

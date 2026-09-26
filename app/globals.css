@@ -46,6 +46,21 @@
   animation: glow-pulse 1.2s ease-in-out 2;
 }
 
+.convexLineage {
+  margin: 8px 0 0;
+  font: 10px/1.35 var(--font-geist-mono), ui-monospace, monospace;
+  letter-spacing: 0.02em;
+  color: #5a6a58;
+}
+
+.convexLineage[data-state='linked'] {
+  color: #2f6b3a;
+}
+
+.convexLineage[data-state='offline'] {
+  color: #8a7a5f;
+}
+
 @layer base {
   body {
     background: var(--background);

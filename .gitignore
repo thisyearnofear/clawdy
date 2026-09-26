@@ -42,6 +42,9 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# Convex local backend state (deployment URL lives in .env.local)
+.convex/
+
 # vercel
 .vercel
 

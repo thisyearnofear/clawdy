@@ -51,7 +51,7 @@ The [canonical plan](HACKATHON.md) defines the accepted direction. The following
 - [x] Rapier 3D 0.19.2 physics integration with deterministic queries.
 - [ ] Tripo-generated assets are integrated and performance-tested.
 - [x] Mint-created content or assembly work has a functional, visible contribution (champion rover GLB generated via Mint MCP and loaded in `ArenaWorldView`).
-- [ ] Convex connects approved examples, training status, checkpoint metadata, and match/replay records.
+- [x] Convex connects approved examples, training status, checkpoint metadata, and match/replay records.
 - [x] Submission claims name only verified integrations and distinguish pre-existing from new work.
 
 ## Consolidation and Release Verification

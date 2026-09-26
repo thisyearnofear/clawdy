@@ -254,16 +254,17 @@ export function BankBursts({
     if (lite || !readyRef.current) return
     timeRef.current += delta
     const now = timeRef.current
-    const view = session.getSnapshot()
-    const tick = view.episode.tick
+    const phase = session.getSnapshot().phase
+    const episode = session.liveEpisode()
+    const tick = episode.tick
 
-    if (view.phase === 'ready' || tick < lastTickRef.current) {
+    if (phase === 'ready' || tick < lastTickRef.current) {
       // Reset or backward scrub: re-baseline, never emit, hide live bursts.
       const banked: Record<string, number> = {}
-      for (const agent of view.episode.agents) banked[agent.id] = agent.banked
+      for (const agent of episode.agents) banked[agent.id] = agent.banked
       seenBankedRef.current = banked
       const collected: Record<string, string | null> = {}
-      for (const resource of view.episode.resources) collected[resource.id] = resource.collectedBy
+      for (const resource of episode.resources) collected[resource.id] = resource.collectedBy
       seenCollectedRef.current = collected
       for (const slots of Object.values(bankPoolsRef.current)) {
         for (const slot of slots) hide(slot)
@@ -272,7 +273,7 @@ export function BankBursts({
     } else {
       const banks = detectBankDeltas(
         seenBankedRef.current,
-        view.episode.agents.map(agent => ({ id: agent.id, banked: agent.banked })),
+        episode.agents.map(agent => ({ id: agent.id, banked: agent.banked })),
       )
       seenBankedRef.current = banks.seen
       for (const event of banks.events) {
@@ -283,7 +284,7 @@ export function BankBursts({
       }
       const collects = detectCollectEvents(
         seenCollectedRef.current,
-        view.episode.resources.map(resource => ({ id: resource.id, collectedBy: resource.collectedBy })),
+        episode.resources.map(resource => ({ id: resource.id, collectedBy: resource.collectedBy })),
       )
       seenCollectedRef.current = collects.seen
       for (const event of collects.events) {

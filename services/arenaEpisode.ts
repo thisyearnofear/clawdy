@@ -310,6 +310,14 @@ export class ArenaEpisode {
   }
 
   /**
+   * Live authority state without cloning. For render loops only — callers must
+   * not mutate. Prefer `snapshot()` when handing state to React or recordings.
+   */
+  peek(): ArenaSnapshot {
+    return this.#state
+  }
+
+  /**
    * Restore a previously recorded snapshot (same scenario). Recording
    * checkpoints are full state clones, so restoring one rehydrates agents,
    * resources, weather, and tick exactly. Used by consequence rollouts to

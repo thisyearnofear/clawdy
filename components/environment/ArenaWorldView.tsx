@@ -27,8 +27,14 @@ type WorldProps = {
   onError: (error: Error) => void
 }
 
+/** Cap one display frame's sim debt so a hitch doesn't dump a multi-tick spike. */
+const MAX_FRAME_DELTA_S = 0.1
+
 function EpisodeClock({ session }: { session: ArenaSession }) {
-  useFrame((_, delta) => session.advanceMicroseconds(Math.round(delta * 1_000_000)), -100)
+  useFrame((_, delta) => {
+    const capped = Math.min(Math.max(delta, 0), MAX_FRAME_DELTA_S)
+    session.advanceMicroseconds(Math.round(capped * 1_000_000))
+  }, -100)
   return null
 }
 
@@ -43,7 +49,7 @@ function FollowCamera({ session, course, follow }: Pick<WorldProps, 'session' | 
   }, [camera, course, follow])
   useFrame((_, delta) => {
     if (follow === 'overview') return
-    const agent = session.getSnapshot().episode.agents.find(candidate => candidate.id === follow)
+    const agent = session.liveEpisode().agents.find(candidate => candidate.id === follow)
     if (!agent) return
     desired.current.set(agent.position[0] + 3.2, agent.position[1] + 3.8, agent.position[2] + 4.6)
     lookAt.current.set(agent.position[0], agent.position[1] + 0.35, agent.position[2])
@@ -314,7 +320,7 @@ function RoverShadow({ session, id }: { session: ArenaSession; id: string }) {
   const meshRef = useRef<THREE.Mesh>(null)
   useFrame(() => {
     if (!meshRef.current) return
-    const agent = session.getSnapshot().episode.agents.find(candidate => candidate.id === id)
+    const agent = session.liveEpisode().agents.find(candidate => candidate.id === id)
     if (!agent) return
     meshRef.current.position.set(agent.position[0], agent.position[1] + 0.02, agent.position[2])
   })
@@ -336,8 +342,9 @@ function Rover({ session, id, color }: { session: ArenaSession; id: string; colo
 
   useFrame((_, delta) => {
     if (!group.current) return
-    const view = session.getSnapshot()
-    const agent = view.episode.agents.find(candidate => candidate.id === id)
+    const phase = session.getSnapshot().phase
+    const episode = session.liveEpisode()
+    const agent = episode.agents.find(candidate => candidate.id === id)
     if (!agent) return
     target.current.fromArray(agent.position)
 
@@ -345,12 +352,13 @@ function Rover({ session, id, color }: { session: ArenaSession; id: string; colo
       targetRot.current.set(agent.rotation[0], agent.rotation[1], agent.rotation[2], agent.rotation[3])
     }
 
-    if ((view.phase !== 'running' && view.phase !== 'review') || view.episode.tick < lastTick.current || lastTick.current < 0) {
+    // Soft follow across the 50 ms tick grid — high rates read as teleport stutter.
+    if ((phase !== 'running' && phase !== 'review') || episode.tick < lastTick.current || lastTick.current < 0) {
       group.current.position.copy(target.current)
       group.current.quaternion.copy(targetRot.current)
     } else {
-      group.current.position.lerp(target.current, 1 - Math.exp(-delta * 40))
-      group.current.quaternion.slerp(targetRot.current, 1 - Math.exp(-delta * 30))
+      group.current.position.lerp(target.current, 1 - Math.exp(-delta * 14))
+      group.current.quaternion.slerp(targetRot.current, 1 - Math.exp(-delta * 12))
     }
 
     const dx = target.current.x - previous.current.x
@@ -362,7 +370,7 @@ function Rover({ session, id, color }: { session: ArenaSession; id: string; colo
     }
 
     previous.current.copy(target.current)
-    lastTick.current = view.episode.tick
+    lastTick.current = episode.tick
   })
 
   const assetKey = `${id}Rover`
@@ -394,7 +402,7 @@ function Resource({ session, id, position }: { session: ArenaSession; id: string
   const innerRingRef = useRef<THREE.Mesh>(null)
   useFrame((_, delta) => {
     if (!group.current) return
-    group.current.visible = session.getSnapshot().episode.resources.some(resource => resource.id === id && resource.collectedBy === null)
+    group.current.visible = session.liveEpisode().resources.some(resource => resource.id === id && resource.collectedBy === null)
     if (outerRingRef.current) outerRingRef.current.rotation.y += delta * 0.85
     if (innerRingRef.current) innerRingRef.current.rotation.x += delta * 0.6
     group.current.position.y = position[1] + Math.sin(performance.now() * 0.003 + position[0]) * 0.04
@@ -429,7 +437,7 @@ function PathRibbon({ session, edgeId, points, color }: { session: ArenaSession;
   // mount/unmount churn.
   useFrame(() => {
     if (!group.current || !material.current) return
-    const active = session.getSnapshot().episode.agents.some(agent => agent.transit?.edgeId === edgeId)
+    const active = session.liveEpisode().agents.some(agent => agent.transit?.edgeId === edgeId)
     const target = active ? 0.95 : 0.3
     if (Math.abs(material.current.opacity - target) > 0.01) material.current.opacity = target
   })
@@ -472,7 +480,7 @@ function CoachTrailLayer({ course, coachSuggestion }: { course: ArenaCourse; coa
 function Flood({ session, course }: Pick<WorldProps, 'session' | 'course'>) {
   const group = useRef<THREE.Group>(null)
   useFrame(() => {
-    if (group.current) group.current.visible = session.getSnapshot().episode.weather.flooded
+    if (group.current) group.current.visible = session.liveEpisode().weather.flooded
   })
   return (
     <group ref={group} visible={false}>
@@ -570,7 +578,6 @@ function World({ course, session, follow, cinematic = false, coachSuggestion, on
 
   return (
     <>
-      {lite && <FrameLimiter fps={30} />}
       <EpisodeClock session={session} />
       <ReadyOnce ready={terrainReady} onReady={onReady} />
       <color attach="background" args={['#d9d4c6']} />
@@ -582,8 +589,8 @@ function World({ course, session, follow, cinematic = false, coachSuggestion, on
         intensity={2}
         color="#fff1d6"
         castShadow={!lite}
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
+        shadow-mapSize-width={512}
+        shadow-mapSize-height={512}
         shadow-camera-left={-13}
         shadow-camera-right={13}
         shadow-camera-top={13}
@@ -674,7 +681,7 @@ export default memo(function ArenaWorldView(props: WorldProps) {
     <Canvas
       shadows={!lite}
       camera={{ position: [16, 12, 16], fov: 42, near: 0.05, far: 180 }}
-      dpr={lite ? [1, 1] : [1, 1.5]}
+      dpr={lite ? [1, 1] : [1, 1.25]}
       // Simulation time advances in useFrame (EpisodeClock). "never" would
       // freeze rovers on coarse/narrow devices, so always pump frames and let
       // FrameLimiter cap the rate on lite hardware instead.
@@ -682,7 +689,7 @@ export default memo(function ArenaWorldView(props: WorldProps) {
       // preserveDrawingBuffer is required for the gift-card share capture
       // (canvas.toDataURL in ArenaScene.handleShareCard). Cost is one buffer
       // copy per frame — negligible next to the 600k-tri terrain.
-      gl={{ antialias: true, alpha: false, powerPreference: lite ? 'low-power' : 'high-performance', preserveDrawingBuffer: true }}
+      gl={{ antialias: !lite, alpha: false, powerPreference: lite ? 'low-power' : 'high-performance', preserveDrawingBuffer: true }}
       fallback={<p role="alert">This device could not create a WebGL view.</p>}
     >
       {lite ? <FrameLimiter fps={30} /> : null}
