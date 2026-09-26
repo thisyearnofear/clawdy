@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-26T15:45:22.913Z",
+  "generatedAt": "2026-09-26T19:57:52.264Z",
   "rulesVersion": "season-0.reference.2",
   "worldNamespace": "builder-abstract-v1",
   "checkpointSchema": "season-0.checkpoint.v3",
@@ -15,9 +15,9 @@
     "physicsLegsAtOrAboveHalfOfSafe": 12
   },
   "distill": {
-    "weightsHash": "9c1e938a3d6b",
-    "datasetHash": "ds:6c34309c:162",
-    "sampleCount": 162,
+    "weightsHash": "2b76a6113d66",
+    "datasetHash": "ds:efb05ad8:161",
+    "sampleCount": 161,
     "trainingConfig": {
       "epochs": 60,
       "learningRate": 0.005,
@@ -255,10 +255,10 @@
         "mode": "practice",
         "side": "swapped",
         "policy": "trained",
-        "banked": 5,
+        "banked": 6,
         "winner": "rival",
         "recoveries": 0,
-        "weatherDrains": 3,
+        "weatherDrains": 2,
         "finished": true
       },
       {
@@ -303,17 +303,17 @@
         "mode": "compete",
         "side": "swapped",
         "policy": "trained",
-        "banked": 5,
+        "banked": 8,
         "winner": "rival",
         "recoveries": 0,
-        "weatherDrains": 3,
+        "weatherDrains": 2,
         "finished": true
       }
     ],
     "aggregate": {
       "safeTotal": 35,
-      "trainedTotal": 27,
-      "totalDelta": -8
+      "trainedTotal": 31,
+      "totalDelta": -4
     }
   },
   "family": {
@@ -379,10 +379,10 @@
         "split": "evaluation",
         "side": "normal",
         "policy": "trained",
-        "banked": 4,
+        "banked": 7,
         "winner": "rival",
         "recoveries": 0,
-        "weatherDrains": 0,
+        "weatherDrains": 1,
         "finished": true
       },
       {
@@ -423,8 +423,8 @@
         "split": "evaluation",
         "side": "normal",
         "policy": "trained",
-        "banked": 7,
-        "winner": "rival",
+        "banked": 9,
+        "winner": null,
         "recoveries": 0,
         "weatherDrains": 0,
         "finished": true
@@ -467,7 +467,7 @@
         "split": "evaluation",
         "side": "normal",
         "policy": "trained",
-        "banked": 10,
+        "banked": 13,
         "winner": "champion",
         "recoveries": 0,
         "weatherDrains": 0,
@@ -531,13 +531,13 @@
     ],
     "aggregate": {
       "safeTotal": 68,
-      "trainedTotal": 55,
-      "totalDelta": -13
+      "trainedTotal": 63,
+      "totalDelta": -5
     }
   },
   "frames": {
-    "total": 24,
-    "passed": 24,
+    "total": 23,
+    "passed": 23,
     "failedIds": []
   }
 }

@@ -305,7 +305,7 @@ grounded courses prove it.
   banked of the teacher, champion-win set identical (5 = 5, same legs)** —
   up from trained 19 vs 23-normal at the prior pin with 0 parity wins.
   Grounded physics: trained 27 vs safe 35 (compete normal 11 vs 12);
-  family layouts: 55 vs 66 — every leg at or above the half-of-safe
+  family layouts: 55 vs 68 — every leg at or above the half-of-safe
   no-collapse floor. Edge-only decision divergence mass (WS1.0 analyzer):
   15.5 → 1.25. Frames 24/24, zero recoveries, all runs finished.
 - **Readability:** v2 checkpoints validate and show lineage/eval records but
@@ -335,6 +335,44 @@ grounded courses prove it.
   (Turbopack) clean. **Zero grounded/family drift ⇒ no `ROVER_PHYSICS.version`
   bump, no re-pin.** The pass rule stands: if a future rendering bump moves any
   grounded leg, revert the bump — never re-pin over physics drift.
+
+### Physics-aware rollout oracle + grounded argmax (Sep 26, evening — no version-axis change)
+
+- **What:** the consequence rollout oracle is no longer route-only on
+  grounded boards. `rolloutOutcomeDelta` (`services/arenaEpisode.ts`) accepts
+  an optional shared `ArenaMotion`, and `restoreSnapshot` re-seeds the motion
+  adapter from the restored positions (the missing primitive that made
+  physics branches impossible). Branch scores penalize recoveries at −2
+  each — only reachable under physics, so stalling roads can no longer
+  out-score slower-but-moving ones. In the distill (`scripts/eval-lib.ts`):
+  grounded phases 3a/3b/3c measure every label against the pinned collider
+  and always respect the veto (the route-only floor-at-0.5 exception is
+  deleted); new phase 3d re-enables edge-only outcome-argmax mining on
+  `sandstone-practice-01` (both sides, cap 3 per walk / 6 total) with the
+  same dual-horizon ≥ +1.0 rule, now physics-measured. Abstract argmax stays
+  cap-disabled (route-only argmax measured neutral on abstract legs, poison
+  on physics legs). `analyze-legs` deltas are physics-aware on
+  grounded/family legs. The browser coaching path
+  (`services/coachingCandidates.ts`) and all abstract mining are untouched:
+  no motion ⇒ byte-identical route-only behavior.
+- **Why:** route-only branches cannot produce stalls or recoveries, so
+  physically slow edges looked as cheap as their nominal `travelTicks` — the
+  diagnosed source of the grounded/family transfer gap.
+- **Guardrails:** restore fidelity is pinned by
+  `services/__tests__/rolloutPhysics.test.ts` — a snapshot-restored physics
+  branch reproduces the uninterrupted run exactly (positions, banked,
+  recoveries). Spawn-check failures on wall-clamped snapshot poses fall back
+  to the route-only measure for that single emit (never a crash, never a
+  physics-priced veto from a route-only number).
+- **Measured (distill `2b76a6113d66`, dataset `ds:efb05ad8:161`; phase 3d
+  found one label, `cross-vc-cc` at t370, +7.50 at both horizons):**
+  grounded trained 27→**31** vs safe 35 (gap −8→−4); family 55→**63** vs
+  safe 68 (gap −13→−5, incl. family-03 normal 10→13 and family-01 normal
+  4→7). Abstract unmoved (38 vs 40, 8/8 parity, identical 5-leg win set).
+  Zero recoveries, all runs finished, claims block green. Frames re-pinned
+  to the passing subset: 23/24 — `builder-course-04-early-flood-t80`
+  (expected class 6, policy now picks 5) dropped; the frame corpus guards
+  behavior and does not claim capability.
 
 ## 6. Non-goals
 - No cross-version *execution*: a v1 checkpoint is never run under v2 rules "to see

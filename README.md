@@ -6,7 +6,7 @@ Clawdy is an agent-training league inside a physical world. You coach a rover th
 
 > The payoff is watching your agent use something you taught it when you are no longer allowed to help — and finding out whether your coaching held when the arena throws something it has never seen.
 
-**What is proven (Sep 26, gate pin `9c1e938a3d6b`):** the coached champion **matches the careful teacher's outcomes on unseen abstract layouts** — every leg within 1 banked, the same champion-win legs (5 = 5) — and **beats the untrained baseline on all four held-out boards** (+25 banked). On physical courses it still trails the teacher (grounded 27 vs 35; layout family 55 vs 66) while clearing the harness-enforced no-collapse floor on every leg. This paragraph mirrors the CI-enforced claims block in `scripts/eval-gate.ts` — docs may never claim more than the gate checks.
+**What is proven (Sep 26, gate pin `2b76a6113d66`):** the coached champion **matches the careful teacher's outcomes on unseen abstract layouts** — every leg within 1 banked, the same champion-win legs (5 = 5) — and **beats the untrained baseline on all four held-out boards** (+25 banked). On physical courses it still trails the teacher (grounded 31 vs 35; layout family 63 vs 68 — both gaps roughly halved on Sep 26 by the physics-aware rollout oracle) while clearing the harness-enforced no-collapse floor on every leg. This paragraph mirrors the CI-enforced claims block in `scripts/eval-gate.ts` — docs may never claim more than the gate checks.
 
 ## The Loop
 

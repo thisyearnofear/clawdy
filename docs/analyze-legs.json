@@ -1,14 +1,14 @@
 {
-  "generatedAt": "2026-09-26T15:06:48.006Z",
-  "weightsHash": "1695e32a3d85",
+  "generatedAt": "2026-09-26T19:59:30.296Z",
+  "weightsHash": "2b76a6113d66",
   "legs": [
     {
       "leg": "builder-course-heldout-01",
       "side": "normal",
       "safeBanked": 6,
       "trainedBanked": 6,
-      "divergences": 19,
-      "edgeOnly": 2,
+      "divergences": 20,
+      "edgeOnly": 1,
       "deltaSum": 0.5
     },
     {
@@ -16,8 +16,8 @@
       "side": "swapped",
       "safeBanked": 6,
       "trainedBanked": 6,
-      "divergences": 19,
-      "edgeOnly": 2,
+      "divergences": 20,
+      "edgeOnly": 1,
       "deltaSum": 0.5
     },
     {
@@ -25,7 +25,7 @@
       "side": "normal",
       "safeBanked": 5,
       "trainedBanked": 5,
-      "divergences": 42,
+      "divergences": 41,
       "edgeOnly": 1,
       "deltaSum": 0.75
     },
@@ -34,7 +34,7 @@
       "side": "swapped",
       "safeBanked": 3,
       "trainedBanked": 3,
-      "divergences": 23,
+      "divergences": 26,
       "edgeOnly": 0,
       "deltaSum": 0
     },
@@ -43,7 +43,7 @@
       "side": "normal",
       "safeBanked": 5,
       "trainedBanked": 4,
-      "divergences": 27,
+      "divergences": 30,
       "edgeOnly": 0,
       "deltaSum": 0
     },
@@ -52,7 +52,7 @@
       "side": "swapped",
       "safeBanked": 5,
       "trainedBanked": 4,
-      "divergences": 27,
+      "divergences": 30,
       "edgeOnly": 0,
       "deltaSum": 0
     },
@@ -61,7 +61,7 @@
       "side": "normal",
       "safeBanked": 5,
       "trainedBanked": 5,
-      "divergences": 40,
+      "divergences": 44,
       "edgeOnly": 1,
       "deltaSum": -5
     },
@@ -70,7 +70,7 @@
       "side": "swapped",
       "safeBanked": 5,
       "trainedBanked": 5,
-      "divergences": 40,
+      "divergences": 44,
       "edgeOnly": 1,
       "deltaSum": -5
     },
@@ -78,46 +78,46 @@
       "leg": "sandstone-practice-01",
       "side": "normal",
       "safeBanked": 9,
-      "trainedBanked": 10,
-      "divergences": 44,
-      "edgeOnly": 1,
-      "deltaSum": -1.25
+      "trainedBanked": 6,
+      "divergences": 41,
+      "edgeOnly": 0,
+      "deltaSum": -0.25
     },
     {
       "leg": "sandstone-practice-01",
       "side": "swapped",
       "safeBanked": 8,
-      "trainedBanked": 5,
+      "trainedBanked": 6,
       "divergences": 32,
       "edgeOnly": 2,
-      "deltaSum": -0.25
+      "deltaSum": -0.5
     },
     {
       "leg": "sandstone-compete-01",
       "side": "normal",
       "safeBanked": 12,
-      "trainedBanked": 5,
-      "divergences": 54,
+      "trainedBanked": 11,
+      "divergences": 49,
       "edgeOnly": 0,
-      "deltaSum": 12
+      "deltaSum": 2.75
     },
     {
       "leg": "sandstone-compete-01",
       "side": "swapped",
       "safeBanked": 6,
-      "trainedBanked": 5,
-      "divergences": 30,
+      "trainedBanked": 8,
+      "divergences": 34,
       "edgeOnly": 2,
-      "deltaSum": 0.5
+      "deltaSum": 0
     },
     {
       "leg": "sandstone-family-01",
       "side": "normal",
       "safeBanked": 9,
       "trainedBanked": 7,
-      "divergences": 26,
+      "divergences": 38,
       "edgeOnly": 0,
-      "deltaSum": 0
+      "deltaSum": -1
     },
     {
       "leg": "sandstone-family-01",
@@ -133,8 +133,8 @@
       "side": "normal",
       "safeBanked": 10,
       "trainedBanked": 9,
-      "divergences": 43,
-      "edgeOnly": 1,
+      "divergences": 40,
+      "edgeOnly": 0,
       "deltaSum": -1
     },
     {
@@ -142,18 +142,18 @@
       "side": "swapped",
       "safeBanked": 6,
       "trainedBanked": 8,
-      "divergences": 26,
-      "edgeOnly": 4,
-      "deltaSum": 1
+      "divergences": 16,
+      "edgeOnly": 3,
+      "deltaSum": 0
     },
     {
       "leg": "sandstone-family-03",
       "side": "normal",
       "safeBanked": 10,
-      "trainedBanked": 10,
-      "divergences": 57,
-      "edgeOnly": 1,
-      "deltaSum": 1.25
+      "trainedBanked": 13,
+      "divergences": 58,
+      "edgeOnly": 0,
+      "deltaSum": 0.75
     },
     {
       "leg": "sandstone-family-03",
@@ -161,7 +161,7 @@
       "safeBanked": 9,
       "trainedBanked": 6,
       "divergences": 48,
-      "edgeOnly": 1,
+      "edgeOnly": 2,
       "deltaSum": 0.25
     },
     {
@@ -169,39 +169,21 @@
       "side": "normal",
       "safeBanked": 12,
       "trainedBanked": 6,
-      "divergences": 64,
+      "divergences": 83,
       "edgeOnly": 1,
-      "deltaSum": 2
+      "deltaSum": -1
     },
     {
       "leg": "sandstone-family-04",
       "side": "swapped",
       "safeBanked": 6,
-      "trainedBanked": 5,
-      "divergences": 38,
-      "edgeOnly": 5,
-      "deltaSum": 0.5
+      "trainedBanked": 6,
+      "divergences": 33,
+      "edgeOnly": 4,
+      "deltaSum": 0.25
     }
   ],
   "divergences": [
-    {
-      "leg": "sandstone-compete-01",
-      "side": "normal",
-      "tick": 1060,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-rn-r1"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 7.5,
-      "safeBanked": 9,
-      "trainedBanked": 5
-    },
     {
       "leg": "sandstone-family-01",
       "side": "swapped",
@@ -334,79 +316,6 @@
       "trainedBanked": 0
     },
     {
-      "leg": "sandstone-family-02",
-      "side": "swapped",
-      "tick": 550,
-      "safeAction": {
-        "type": "move",
-        "edgeId": "cross-far-rs3"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-rs-s3"
-      },
-      "safeClass": 5,
-      "trainedClass": 5,
-      "sameClassDiffEdge": true,
-      "edgeDelta": 1.25,
-      "safeBanked": 3,
-      "trainedBanked": 3
-    },
-    {
-      "leg": "sandstone-family-04",
-      "side": "normal",
-      "tick": 960,
-      "safeAction": {
-        "type": "move",
-        "edgeId": "valley-cb-n1"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "cross-vn-cn"
-      },
-      "safeClass": 7,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 1.25,
-      "safeBanked": 10,
-      "trainedBanked": 6
-    },
-    {
-      "leg": "sandstone-family-04",
-      "side": "normal",
-      "tick": 1070,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "cross-vn-cn"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 1.25,
-      "safeBanked": 12,
-      "trainedBanked": 6
-    },
-    {
-      "leg": "sandstone-compete-01",
-      "side": "normal",
-      "tick": 285,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "drain"
-      },
-      "safeClass": 0,
-      "trainedClass": 3,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0.75,
-      "safeBanked": 3,
-      "trainedBanked": 3
-    },
-    {
       "leg": "sandstone-compete-01",
       "side": "normal",
       "tick": 300,
@@ -433,14 +342,15 @@
         "edgeId": "valley-cb-vc"
       },
       "trainedAction": {
-        "type": "wait"
+        "type": "move",
+        "edgeId": "cross-cn-cc"
       },
       "safeClass": 4,
-      "trainedClass": 0,
+      "trainedClass": 6,
       "sameClassDiffEdge": false,
       "edgeDelta": 0.75,
       "safeBanked": 9,
-      "trainedBanked": 5
+      "trainedBanked": 8
     },
     {
       "leg": "sandstone-compete-01",
@@ -458,6 +368,24 @@
       "edgeDelta": 0.75,
       "safeBanked": 3,
       "trainedBanked": 3
+    },
+    {
+      "leg": "sandstone-family-01",
+      "side": "normal",
+      "tick": 555,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "valley-cb-vc"
+      },
+      "safeClass": 0,
+      "trainedClass": 7,
+      "sameClassDiffEdge": false,
+      "edgeDelta": -0.75,
+      "safeBanked": 6,
+      "trainedBanked": 6
     },
     {
       "leg": "sandstone-family-03",
@@ -504,11 +432,11 @@
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "ridge-r1-rc"
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 6,
-      "trainedClass": 6,
-      "sameClassDiffEdge": true,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
       "edgeDelta": 0.25,
       "safeBanked": 6,
       "trainedBanked": 6
@@ -541,11 +469,11 @@
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "ridge-rc-r1s"
+        "edgeId": "cross-vs-cs"
       },
       "safeClass": 6,
-      "trainedClass": 6,
-      "sameClassDiffEdge": true,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
       "edgeDelta": 0.25,
       "safeBanked": 6,
       "trainedBanked": 6
@@ -571,25 +499,6 @@
     {
       "leg": "builder-course-heldout-02",
       "side": "normal",
-      "tick": 155,
-      "safeAction": {
-        "type": "move",
-        "edgeId": "cross-cc-cs"
-      },
-      "trainedAction": {
-        "type": "collect",
-        "resourceId": "core-6"
-      },
-      "safeClass": 5,
-      "trainedClass": 2,
-      "sameClassDiffEdge": false,
-      "edgeDelta": -0.25,
-      "safeBanked": 3,
-      "trainedBanked": 2
-    },
-    {
-      "leg": "builder-course-heldout-02",
-      "side": "normal",
       "tick": 245,
       "safeAction": {
         "type": "bank"
@@ -603,7 +512,25 @@
       "sameClassDiffEdge": false,
       "edgeDelta": -0.25,
       "safeBanked": 3,
-      "trainedBanked": 3
+      "trainedBanked": 2
+    },
+    {
+      "leg": "builder-course-heldout-02",
+      "side": "normal",
+      "tick": 285,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "collect",
+        "resourceId": "core-6"
+      },
+      "safeClass": 0,
+      "trainedClass": 2,
+      "sameClassDiffEdge": false,
+      "edgeDelta": -0.25,
+      "safeBanked": 5,
+      "trainedBanked": 2
     },
     {
       "leg": "builder-course-heldout-04",
@@ -735,7 +662,7 @@
     {
       "leg": "sandstone-practice-01",
       "side": "normal",
-      "tick": 360,
+      "tick": 355,
       "safeAction": {
         "type": "wait"
       },
@@ -753,94 +680,20 @@
     {
       "leg": "sandstone-practice-01",
       "side": "normal",
-      "tick": 395,
+      "tick": 390,
       "safeAction": {
-        "type": "collect",
-        "resourceId": "core-9"
+        "type": "wait"
       },
       "trainedAction": {
         "type": "collect",
         "resourceId": "core-12"
       },
-      "safeClass": 2,
+      "safeClass": 0,
       "trainedClass": 2,
       "sameClassDiffEdge": false,
       "edgeDelta": -0.25,
       "safeBanked": 3,
       "trainedBanked": 3
-    },
-    {
-      "leg": "sandstone-practice-01",
-      "side": "normal",
-      "tick": 730,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "collect",
-        "resourceId": "core-1"
-      },
-      "safeClass": 0,
-      "trainedClass": 2,
-      "sameClassDiffEdge": false,
-      "edgeDelta": -0.25,
-      "safeBanked": 6,
-      "trainedBanked": 6
-    },
-    {
-      "leg": "sandstone-practice-01",
-      "side": "normal",
-      "tick": 735,
-      "safeAction": {
-        "type": "move",
-        "edgeId": "valley-cb-n1"
-      },
-      "trainedAction": {
-        "type": "collect",
-        "resourceId": "core-2"
-      },
-      "safeClass": 4,
-      "trainedClass": 2,
-      "sameClassDiffEdge": false,
-      "edgeDelta": -0.25,
-      "safeBanked": 6,
-      "trainedBanked": 6
-    },
-    {
-      "leg": "sandstone-practice-01",
-      "side": "normal",
-      "tick": 740,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "collect",
-        "resourceId": "core-3"
-      },
-      "safeClass": 0,
-      "trainedClass": 2,
-      "sameClassDiffEdge": false,
-      "edgeDelta": -0.25,
-      "safeBanked": 6,
-      "trainedBanked": 6
-    },
-    {
-      "leg": "sandstone-practice-01",
-      "side": "normal",
-      "tick": 985,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "collect",
-        "resourceId": "core-4"
-      },
-      "safeClass": 0,
-      "trainedClass": 2,
-      "sameClassDiffEdge": false,
-      "edgeDelta": -0.25,
-      "safeBanked": 6,
-      "trainedBanked": 9
     },
     {
       "leg": "sandstone-practice-01",
@@ -852,6 +705,24 @@
       "trainedAction": {
         "type": "collect",
         "resourceId": "core-17"
+      },
+      "safeClass": 0,
+      "trainedClass": 2,
+      "sameClassDiffEdge": false,
+      "edgeDelta": -0.25,
+      "safeBanked": 3,
+      "trainedBanked": 3
+    },
+    {
+      "leg": "sandstone-practice-01",
+      "side": "swapped",
+      "tick": 530,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "collect",
+        "resourceId": "core-15"
       },
       "safeClass": 0,
       "trainedClass": 2,
@@ -880,6 +751,78 @@
     },
     {
       "leg": "sandstone-compete-01",
+      "side": "normal",
+      "tick": 480,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "collect",
+        "resourceId": "core-12"
+      },
+      "safeClass": 0,
+      "trainedClass": 2,
+      "sameClassDiffEdge": false,
+      "edgeDelta": -0.25,
+      "safeBanked": 6,
+      "trainedBanked": 5
+    },
+    {
+      "leg": "sandstone-compete-01",
+      "side": "normal",
+      "tick": 700,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "collect",
+        "resourceId": "core-5"
+      },
+      "safeClass": 0,
+      "trainedClass": 2,
+      "sameClassDiffEdge": false,
+      "edgeDelta": -0.25,
+      "safeBanked": 9,
+      "trainedBanked": 8
+    },
+    {
+      "leg": "sandstone-compete-01",
+      "side": "normal",
+      "tick": 730,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "collect",
+        "resourceId": "core-9"
+      },
+      "safeClass": 0,
+      "trainedClass": 2,
+      "sameClassDiffEdge": false,
+      "edgeDelta": -0.25,
+      "safeBanked": 9,
+      "trainedBanked": 8
+    },
+    {
+      "leg": "sandstone-compete-01",
+      "side": "normal",
+      "tick": 765,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "collect",
+        "resourceId": "core-6"
+      },
+      "safeClass": 0,
+      "trainedClass": 2,
+      "sameClassDiffEdge": false,
+      "edgeDelta": -0.25,
+      "safeBanked": 9,
+      "trainedBanked": 8
+    },
+    {
+      "leg": "sandstone-compete-01",
       "side": "swapped",
       "tick": 460,
       "safeAction": {
@@ -895,6 +838,61 @@
       "edgeDelta": -0.25,
       "safeBanked": 3,
       "trainedBanked": 3
+    },
+    {
+      "leg": "sandstone-compete-01",
+      "side": "swapped",
+      "tick": 660,
+      "safeAction": {
+        "type": "move",
+        "edgeId": "shortcut-rb-far"
+      },
+      "trainedAction": {
+        "type": "collect",
+        "resourceId": "core-2"
+      },
+      "safeClass": 7,
+      "trainedClass": 2,
+      "sameClassDiffEdge": false,
+      "edgeDelta": -0.25,
+      "safeBanked": 3,
+      "trainedBanked": 5
+    },
+    {
+      "leg": "sandstone-compete-01",
+      "side": "swapped",
+      "tick": 770,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "collect",
+        "resourceId": "core-14"
+      },
+      "safeClass": 0,
+      "trainedClass": 2,
+      "sameClassDiffEdge": false,
+      "edgeDelta": -0.25,
+      "safeBanked": 6,
+      "trainedBanked": 5
+    },
+    {
+      "leg": "sandstone-family-01",
+      "side": "normal",
+      "tick": 535,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "collect",
+        "resourceId": "core-4"
+      },
+      "safeClass": 0,
+      "trainedClass": 2,
+      "sameClassDiffEdge": false,
+      "edgeDelta": -0.25,
+      "safeBanked": 6,
+      "trainedBanked": 6
     },
     {
       "leg": "sandstone-family-01",
@@ -1008,7 +1006,7 @@
     {
       "leg": "sandstone-family-02",
       "side": "normal",
-      "tick": 610,
+      "tick": 550,
       "safeAction": {
         "type": "wait"
       },
@@ -1020,13 +1018,13 @@
       "trainedClass": 2,
       "sameClassDiffEdge": false,
       "edgeDelta": -0.25,
-      "safeBanked": 7,
+      "safeBanked": 6,
       "trainedBanked": 6
     },
     {
       "leg": "sandstone-family-02",
       "side": "normal",
-      "tick": 800,
+      "tick": 700,
       "safeAction": {
         "type": "wait"
       },
@@ -1044,7 +1042,7 @@
     {
       "leg": "sandstone-family-02",
       "side": "normal",
-      "tick": 805,
+      "tick": 705,
       "safeAction": {
         "type": "wait"
       },
@@ -1058,24 +1056,6 @@
       "edgeDelta": -0.25,
       "safeBanked": 7,
       "trainedBanked": 7
-    },
-    {
-      "leg": "sandstone-family-02",
-      "side": "swapped",
-      "tick": 850,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "collect",
-        "resourceId": "core-17"
-      },
-      "safeClass": 0,
-      "trainedClass": 2,
-      "sameClassDiffEdge": false,
-      "edgeDelta": -0.25,
-      "safeBanked": 6,
-      "trainedBanked": 6
     },
     {
       "leg": "sandstone-family-03",
@@ -1206,6 +1186,42 @@
     },
     {
       "leg": "sandstone-family-03",
+      "side": "normal",
+      "tick": 860,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "collect",
+        "resourceId": "core-10"
+      },
+      "safeClass": 0,
+      "trainedClass": 2,
+      "sameClassDiffEdge": false,
+      "edgeDelta": -0.25,
+      "safeBanked": 7,
+      "trainedBanked": 10
+    },
+    {
+      "leg": "sandstone-family-03",
+      "side": "normal",
+      "tick": 935,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "collect",
+        "resourceId": "core-6"
+      },
+      "safeClass": 0,
+      "trainedClass": 2,
+      "sameClassDiffEdge": false,
+      "edgeDelta": -0.25,
+      "safeBanked": 10,
+      "trainedBanked": 10
+    },
+    {
+      "leg": "sandstone-family-03",
       "side": "swapped",
       "tick": 295,
       "safeAction": {
@@ -1282,6 +1298,42 @@
     },
     {
       "leg": "sandstone-family-04",
+      "side": "normal",
+      "tick": 630,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "collect",
+        "resourceId": "core-9"
+      },
+      "safeClass": 0,
+      "trainedClass": 2,
+      "sameClassDiffEdge": false,
+      "edgeDelta": -0.25,
+      "safeBanked": 9,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-04",
+      "side": "normal",
+      "tick": 635,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "collect",
+        "resourceId": "core-10"
+      },
+      "safeClass": 0,
+      "trainedClass": 2,
+      "sameClassDiffEdge": false,
+      "edgeDelta": -0.25,
+      "safeBanked": 9,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-04",
       "side": "swapped",
       "tick": 515,
       "safeAction": {
@@ -1290,6 +1342,24 @@
       "trainedAction": {
         "type": "collect",
         "resourceId": "core-17"
+      },
+      "safeClass": 0,
+      "trainedClass": 2,
+      "sameClassDiffEdge": false,
+      "edgeDelta": -0.25,
+      "safeBanked": 3,
+      "trainedBanked": 3
+    },
+    {
+      "leg": "sandstone-family-04",
+      "side": "swapped",
+      "tick": 630,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "collect",
+        "resourceId": "core-15"
       },
       "safeClass": 0,
       "trainedClass": 2,
@@ -1362,7 +1432,7 @@
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-cn-r1"
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -1374,13 +1444,13 @@
     {
       "leg": "builder-course-heldout-01",
       "side": "normal",
-      "tick": 460,
+      "tick": 450,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-cc-rc"
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -1392,13 +1462,13 @@
     {
       "leg": "builder-course-heldout-01",
       "side": "normal",
-      "tick": 485,
+      "tick": 475,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vc-cc"
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -1410,13 +1480,13 @@
     {
       "leg": "builder-course-heldout-01",
       "side": "normal",
-      "tick": 510,
+      "tick": 500,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vc-cc"
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -1428,13 +1498,13 @@
     {
       "leg": "builder-course-heldout-01",
       "side": "normal",
-      "tick": 535,
+      "tick": 525,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vc-cc"
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -1446,13 +1516,13 @@
     {
       "leg": "builder-course-heldout-01",
       "side": "normal",
-      "tick": 565,
+      "tick": 555,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vc-cc"
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -1464,13 +1534,13 @@
     {
       "leg": "builder-course-heldout-01",
       "side": "normal",
-      "tick": 590,
+      "tick": 580,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-cc-rc"
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -1482,13 +1552,13 @@
     {
       "leg": "builder-course-heldout-01",
       "side": "normal",
-      "tick": 615,
+      "tick": 605,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-cc-rc"
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -1500,13 +1570,13 @@
     {
       "leg": "builder-course-heldout-01",
       "side": "normal",
-      "tick": 640,
+      "tick": 630,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-cc-rc"
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -1518,13 +1588,13 @@
     {
       "leg": "builder-course-heldout-01",
       "side": "normal",
-      "tick": 670,
+      "tick": 660,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-cc-rc"
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -1536,13 +1606,13 @@
     {
       "leg": "builder-course-heldout-01",
       "side": "normal",
-      "tick": 695,
+      "tick": 685,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-cc-rc"
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -1554,13 +1624,13 @@
     {
       "leg": "builder-course-heldout-01",
       "side": "normal",
-      "tick": 720,
+      "tick": 710,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-cc-rc"
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -1572,13 +1642,13 @@
     {
       "leg": "builder-course-heldout-01",
       "side": "normal",
-      "tick": 745,
+      "tick": 735,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vc-cc"
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -1590,13 +1660,31 @@
     {
       "leg": "builder-course-heldout-01",
       "side": "normal",
-      "tick": 775,
+      "tick": 765,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vc-cc"
+        "edgeId": "cross-vn-cn"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 6,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "builder-course-heldout-01",
+      "side": "normal",
+      "tick": 790,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -1669,7 +1757,7 @@
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-cs-r1s"
+        "edgeId": "cross-vs-cs"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -1681,13 +1769,13 @@
     {
       "leg": "builder-course-heldout-01",
       "side": "swapped",
-      "tick": 460,
+      "tick": 450,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-cc-rc"
+        "edgeId": "cross-vs-cs"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -1699,13 +1787,13 @@
     {
       "leg": "builder-course-heldout-01",
       "side": "swapped",
-      "tick": 485,
+      "tick": 475,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vc-cc"
+        "edgeId": "cross-vs-cs"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -1717,13 +1805,13 @@
     {
       "leg": "builder-course-heldout-01",
       "side": "swapped",
-      "tick": 510,
+      "tick": 500,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vc-cc"
+        "edgeId": "cross-vs-cs"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -1735,13 +1823,13 @@
     {
       "leg": "builder-course-heldout-01",
       "side": "swapped",
-      "tick": 535,
+      "tick": 525,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vc-cc"
+        "edgeId": "cross-vs-cs"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -1753,13 +1841,13 @@
     {
       "leg": "builder-course-heldout-01",
       "side": "swapped",
-      "tick": 565,
+      "tick": 555,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vc-cc"
+        "edgeId": "cross-vs-cs"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -1771,13 +1859,13 @@
     {
       "leg": "builder-course-heldout-01",
       "side": "swapped",
-      "tick": 590,
+      "tick": 580,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-cc-rc"
+        "edgeId": "cross-vs-cs"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -1789,13 +1877,13 @@
     {
       "leg": "builder-course-heldout-01",
       "side": "swapped",
-      "tick": 615,
+      "tick": 605,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-cc-rc"
+        "edgeId": "cross-vs-cs"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -1807,13 +1895,13 @@
     {
       "leg": "builder-course-heldout-01",
       "side": "swapped",
-      "tick": 640,
+      "tick": 630,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-cc-rc"
+        "edgeId": "cross-vs-cs"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -1825,13 +1913,13 @@
     {
       "leg": "builder-course-heldout-01",
       "side": "swapped",
-      "tick": 670,
+      "tick": 660,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-cc-rc"
+        "edgeId": "cross-vs-cs"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -1843,13 +1931,13 @@
     {
       "leg": "builder-course-heldout-01",
       "side": "swapped",
-      "tick": 695,
+      "tick": 685,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-cc-rc"
+        "edgeId": "cross-vs-cs"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -1861,13 +1949,13 @@
     {
       "leg": "builder-course-heldout-01",
       "side": "swapped",
-      "tick": 720,
+      "tick": 710,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-cc-rc"
+        "edgeId": "cross-vs-cs"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -1879,13 +1967,13 @@
     {
       "leg": "builder-course-heldout-01",
       "side": "swapped",
-      "tick": 745,
+      "tick": 735,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vc-cc"
+        "edgeId": "cross-vs-cs"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -1897,13 +1985,31 @@
     {
       "leg": "builder-course-heldout-01",
       "side": "swapped",
-      "tick": 775,
+      "tick": 765,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vc-cc"
+        "edgeId": "cross-vs-cs"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 6,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "builder-course-heldout-01",
+      "side": "swapped",
+      "tick": 790,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vs-cs"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -1975,10 +2081,10 @@
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "ridge-rc-r1s"
+        "edgeId": "cross-cc-rc"
       },
       "safeClass": 0,
-      "trainedClass": 6,
+      "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 0,
@@ -2022,16 +2128,52 @@
     {
       "leg": "builder-course-heldout-02",
       "side": "normal",
+      "tick": 145,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vc-cc"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 3,
+      "trainedBanked": 2
+    },
+    {
+      "leg": "builder-course-heldout-02",
+      "side": "normal",
+      "tick": 155,
+      "safeAction": {
+        "type": "move",
+        "edgeId": "cross-cc-cs"
+      },
+      "trainedAction": {
+        "type": "wait"
+      },
+      "safeClass": 5,
+      "trainedClass": 0,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 3,
+      "trainedBanked": 2
+    },
+    {
+      "leg": "builder-course-heldout-02",
+      "side": "normal",
       "tick": 160,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "ridge-rc-r1s"
+        "edgeId": "cross-vc-cc"
       },
       "safeClass": 0,
-      "trainedClass": 7,
+      "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
@@ -2046,27 +2188,11 @@
         "edgeId": "cross-vs-cs"
       },
       "trainedAction": {
-        "type": "wait"
+        "type": "move",
+        "edgeId": "cross-vc-cc"
       },
       "safeClass": 6,
-      "trainedClass": 0,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 3,
-      "trainedBanked": 2
-    },
-    {
-      "leg": "builder-course-heldout-02",
-      "side": "normal",
-      "tick": 185,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "bank"
-      },
-      "safeClass": 0,
-      "trainedClass": 1,
+      "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
@@ -2082,14 +2208,14 @@
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-cc-rc"
+        "edgeId": "cross-vc-cc"
       },
       "safeClass": 2,
       "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
-      "trainedBanked": 3
+      "trainedBanked": 2
     },
     {
       "leg": "builder-course-heldout-02",
@@ -2107,7 +2233,7 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
-      "trainedBanked": 3
+      "trainedBanked": 2
     },
     {
       "leg": "builder-course-heldout-02",
@@ -2125,7 +2251,7 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
-      "trainedBanked": 3
+      "trainedBanked": 2
     },
     {
       "leg": "builder-course-heldout-02",
@@ -2143,7 +2269,7 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
-      "trainedBanked": 3
+      "trainedBanked": 2
     },
     {
       "leg": "builder-course-heldout-02",
@@ -2161,7 +2287,7 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
-      "trainedBanked": 3
+      "trainedBanked": 2
     },
     {
       "leg": "builder-course-heldout-02",
@@ -2179,7 +2305,7 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
-      "trainedBanked": 3
+      "trainedBanked": 2
     },
     {
       "leg": "builder-course-heldout-02",
@@ -2197,48 +2323,48 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 5,
-      "trainedBanked": 3
+      "trainedBanked": 2
     },
     {
       "leg": "builder-course-heldout-02",
       "side": "normal",
-      "tick": 265,
+      "tick": 270,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-cc-cs"
+        "edgeId": "cross-cs-r1s"
       },
       "safeClass": 0,
-      "trainedClass": 5,
+      "trainedClass": 6,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 5,
-      "trainedBanked": 3
+      "trainedBanked": 2
     },
     {
       "leg": "builder-course-heldout-02",
       "side": "normal",
-      "tick": 285,
+      "tick": 295,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-cc-rc"
+        "edgeId": "ridge-rc-r1s"
       },
       "safeClass": 0,
       "trainedClass": 7,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 5,
-      "trainedBanked": 3
+      "trainedBanked": 2
     },
     {
       "leg": "builder-course-heldout-02",
       "side": "normal",
-      "tick": 300,
+      "tick": 320,
       "safeAction": {
         "type": "wait"
       },
@@ -2250,12 +2376,12 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 5,
-      "trainedBanked": 3
+      "trainedBanked": 2
     },
     {
       "leg": "builder-course-heldout-02",
       "side": "normal",
-      "tick": 305,
+      "tick": 330,
       "safeAction": {
         "type": "wait"
       },
@@ -2273,7 +2399,7 @@
     {
       "leg": "builder-course-heldout-02",
       "side": "normal",
-      "tick": 320,
+      "tick": 355,
       "safeAction": {
         "type": "wait"
       },
@@ -2291,7 +2417,7 @@
     {
       "leg": "builder-course-heldout-02",
       "side": "normal",
-      "tick": 345,
+      "tick": 385,
       "safeAction": {
         "type": "wait"
       },
@@ -2309,7 +2435,7 @@
     {
       "leg": "builder-course-heldout-02",
       "side": "normal",
-      "tick": 370,
+      "tick": 410,
       "safeAction": {
         "type": "wait"
       },
@@ -2327,7 +2453,7 @@
     {
       "leg": "builder-course-heldout-02",
       "side": "normal",
-      "tick": 400,
+      "tick": 435,
       "safeAction": {
         "type": "wait"
       },
@@ -2345,7 +2471,7 @@
     {
       "leg": "builder-course-heldout-02",
       "side": "normal",
-      "tick": 425,
+      "tick": 460,
       "safeAction": {
         "type": "wait"
       },
@@ -2363,7 +2489,7 @@
     {
       "leg": "builder-course-heldout-02",
       "side": "normal",
-      "tick": 450,
+      "tick": 490,
       "safeAction": {
         "type": "wait"
       },
@@ -2381,7 +2507,7 @@
     {
       "leg": "builder-course-heldout-02",
       "side": "normal",
-      "tick": 475,
+      "tick": 515,
       "safeAction": {
         "type": "wait"
       },
@@ -2399,7 +2525,7 @@
     {
       "leg": "builder-course-heldout-02",
       "side": "normal",
-      "tick": 505,
+      "tick": 540,
       "safeAction": {
         "type": "wait"
       },
@@ -2417,7 +2543,7 @@
     {
       "leg": "builder-course-heldout-02",
       "side": "normal",
-      "tick": 530,
+      "tick": 565,
       "safeAction": {
         "type": "wait"
       },
@@ -2435,7 +2561,7 @@
     {
       "leg": "builder-course-heldout-02",
       "side": "normal",
-      "tick": 555,
+      "tick": 595,
       "safeAction": {
         "type": "wait"
       },
@@ -2453,7 +2579,7 @@
     {
       "leg": "builder-course-heldout-02",
       "side": "normal",
-      "tick": 580,
+      "tick": 620,
       "safeAction": {
         "type": "wait"
       },
@@ -2471,7 +2597,7 @@
     {
       "leg": "builder-course-heldout-02",
       "side": "normal",
-      "tick": 610,
+      "tick": 645,
       "safeAction": {
         "type": "wait"
       },
@@ -2489,7 +2615,7 @@
     {
       "leg": "builder-course-heldout-02",
       "side": "normal",
-      "tick": 635,
+      "tick": 670,
       "safeAction": {
         "type": "wait"
       },
@@ -2507,7 +2633,7 @@
     {
       "leg": "builder-course-heldout-02",
       "side": "normal",
-      "tick": 660,
+      "tick": 700,
       "safeAction": {
         "type": "wait"
       },
@@ -2525,7 +2651,7 @@
     {
       "leg": "builder-course-heldout-02",
       "side": "normal",
-      "tick": 685,
+      "tick": 725,
       "safeAction": {
         "type": "wait"
       },
@@ -2543,7 +2669,7 @@
     {
       "leg": "builder-course-heldout-02",
       "side": "normal",
-      "tick": 715,
+      "tick": 750,
       "safeAction": {
         "type": "wait"
       },
@@ -2561,43 +2687,7 @@
     {
       "leg": "builder-course-heldout-02",
       "side": "normal",
-      "tick": 740,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "cross-vc-cc"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 5,
-      "trainedBanked": 5
-    },
-    {
-      "leg": "builder-course-heldout-02",
-      "side": "normal",
-      "tick": 765,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "cross-vc-cc"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 5,
-      "trainedBanked": 5
-    },
-    {
-      "leg": "builder-course-heldout-02",
-      "side": "normal",
-      "tick": 790,
+      "tick": 775,
       "safeAction": {
         "type": "wait"
       },
@@ -2657,7 +2747,7 @@
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "ridge-rn-r1"
+        "edgeId": "cross-cn-r1"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -2669,115 +2759,7 @@
     {
       "leg": "builder-course-heldout-02",
       "side": "swapped",
-      "tick": 210,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "base-cb-rn"
-      },
-      "safeClass": 0,
-      "trainedClass": 7,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 3,
-      "trainedBanked": 3
-    },
-    {
-      "leg": "builder-course-heldout-02",
-      "side": "swapped",
-      "tick": 245,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "base-cb-rn"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 3,
-      "trainedBanked": 3
-    },
-    {
-      "leg": "builder-course-heldout-02",
-      "side": "swapped",
-      "tick": 280,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "base-cb-rn"
-      },
-      "safeClass": 0,
-      "trainedClass": 7,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 3,
-      "trainedBanked": 3
-    },
-    {
-      "leg": "builder-course-heldout-02",
-      "side": "swapped",
-      "tick": 315,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "valley-cb-n1"
-      },
-      "safeClass": 0,
-      "trainedClass": 4,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 3,
-      "trainedBanked": 3
-    },
-    {
-      "leg": "builder-course-heldout-02",
-      "side": "swapped",
-      "tick": 350,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "valley-cb-n1"
-      },
-      "safeClass": 0,
-      "trainedClass": 7,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 3,
-      "trainedBanked": 3
-    },
-    {
-      "leg": "builder-course-heldout-02",
-      "side": "swapped",
-      "tick": 380,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "valley-cb-n1"
-      },
-      "safeClass": 0,
-      "trainedClass": 4,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 3,
-      "trainedBanked": 3
-    },
-    {
-      "leg": "builder-course-heldout-02",
-      "side": "swapped",
-      "tick": 410,
+      "tick": 205,
       "safeAction": {
         "type": "wait"
       },
@@ -2795,13 +2777,31 @@
     {
       "leg": "builder-course-heldout-02",
       "side": "swapped",
-      "tick": 435,
+      "tick": 220,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-cn-r1"
+        "edgeId": "valley-cb-n1"
+      },
+      "safeClass": 0,
+      "trainedClass": 7,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 3,
+      "trainedBanked": 3
+    },
+    {
+      "leg": "builder-course-heldout-02",
+      "side": "swapped",
+      "tick": 240,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "base-cb-rn"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -2813,13 +2813,49 @@
     {
       "leg": "builder-course-heldout-02",
       "side": "swapped",
-      "tick": 465,
+      "tick": 275,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "ridge-rn-r1"
+        "edgeId": "base-cb-rn"
+      },
+      "safeClass": 0,
+      "trainedClass": 7,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 3,
+      "trainedBanked": 3
+    },
+    {
+      "leg": "builder-course-heldout-02",
+      "side": "swapped",
+      "tick": 310,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "valley-cb-n1"
+      },
+      "safeClass": 0,
+      "trainedClass": 4,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 3,
+      "trainedBanked": 3
+    },
+    {
+      "leg": "builder-course-heldout-02",
+      "side": "swapped",
+      "tick": 340,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -2831,13 +2867,103 @@
     {
       "leg": "builder-course-heldout-02",
       "side": "swapped",
-      "tick": 495,
+      "tick": 370,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "ridge-rn-r1"
+        "edgeId": "cross-vn-cn"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 3,
+      "trainedBanked": 3
+    },
+    {
+      "leg": "builder-course-heldout-02",
+      "side": "swapped",
+      "tick": 395,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vn-cn"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 3,
+      "trainedBanked": 3
+    },
+    {
+      "leg": "builder-course-heldout-02",
+      "side": "swapped",
+      "tick": 420,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vn-cn"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 3,
+      "trainedBanked": 3
+    },
+    {
+      "leg": "builder-course-heldout-02",
+      "side": "swapped",
+      "tick": 445,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vn-cn"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 3,
+      "trainedBanked": 3
+    },
+    {
+      "leg": "builder-course-heldout-02",
+      "side": "swapped",
+      "tick": 475,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vn-cn"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 3,
+      "trainedBanked": 3
+    },
+    {
+      "leg": "builder-course-heldout-02",
+      "side": "swapped",
+      "tick": 500,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -2855,7 +2981,7 @@
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "ridge-rn-r1"
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -2867,43 +2993,7 @@
     {
       "leg": "builder-course-heldout-02",
       "side": "swapped",
-      "tick": 555,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-rn-r1"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 3,
-      "trainedBanked": 3
-    },
-    {
-      "leg": "builder-course-heldout-02",
-      "side": "swapped",
-      "tick": 590,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "cross-cn-r1"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 3,
-      "trainedBanked": 3
-    },
-    {
-      "leg": "builder-course-heldout-02",
-      "side": "swapped",
-      "tick": 615,
+      "tick": 550,
       "safeAction": {
         "type": "wait"
       },
@@ -2921,16 +3011,16 @@
     {
       "leg": "builder-course-heldout-02",
       "side": "swapped",
-      "tick": 640,
+      "tick": 580,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "valley-cb-n1"
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
-      "trainedClass": 7,
+      "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
@@ -2939,16 +3029,16 @@
     {
       "leg": "builder-course-heldout-02",
       "side": "swapped",
-      "tick": 670,
+      "tick": 605,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "valley-cb-n1"
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
-      "trainedClass": 4,
+      "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
@@ -2957,16 +3047,70 @@
     {
       "leg": "builder-course-heldout-02",
       "side": "swapped",
-      "tick": 705,
+      "tick": 630,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "valley-cb-n1"
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
-      "trainedClass": 7,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 3,
+      "trainedBanked": 3
+    },
+    {
+      "leg": "builder-course-heldout-02",
+      "side": "swapped",
+      "tick": 655,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vn-cn"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 3,
+      "trainedBanked": 3
+    },
+    {
+      "leg": "builder-course-heldout-02",
+      "side": "swapped",
+      "tick": 685,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vn-cn"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 3,
+      "trainedBanked": 3
+    },
+    {
+      "leg": "builder-course-heldout-02",
+      "side": "swapped",
+      "tick": 710,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vn-cn"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
@@ -2981,10 +3125,10 @@
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "valley-cb-n1"
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
-      "trainedClass": 4,
+      "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
@@ -2993,16 +3137,16 @@
     {
       "leg": "builder-course-heldout-02",
       "side": "swapped",
-      "tick": 765,
+      "tick": 760,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "valley-cb-n1"
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
-      "trainedClass": 7,
+      "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
@@ -3011,16 +3155,16 @@
     {
       "leg": "builder-course-heldout-02",
       "side": "swapped",
-      "tick": 795,
+      "tick": 790,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "valley-cb-n1"
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
-      "trainedClass": 4,
+      "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
@@ -3071,7 +3215,25 @@
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "ridge-rn-r1"
+        "edgeId": "cross-cn-r1"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 4,
+      "trainedBanked": 4
+    },
+    {
+      "leg": "builder-course-heldout-03",
+      "side": "normal",
+      "tick": 400,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -3089,10 +3251,27 @@
         "edgeId": "ridge-rc-r1s"
       },
       "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-rn-r1"
+        "type": "wait"
       },
       "safeClass": 6,
+      "trainedClass": 0,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 4,
+      "trainedBanked": 4
+    },
+    {
+      "leg": "builder-course-heldout-03",
+      "side": "normal",
+      "tick": 425,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vn-cn"
+      },
+      "safeClass": 0,
       "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
@@ -3120,24 +3299,6 @@
     {
       "leg": "builder-course-heldout-03",
       "side": "normal",
-      "tick": 435,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-rn-r1"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 4,
-      "trainedBanked": 4
-    },
-    {
-      "leg": "builder-course-heldout-03",
-      "side": "normal",
       "tick": 440,
       "safeAction": {
         "type": "move",
@@ -3156,13 +3317,31 @@
     {
       "leg": "builder-course-heldout-03",
       "side": "normal",
-      "tick": 465,
+      "tick": 450,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "ridge-rn-r1"
+        "edgeId": "cross-vn-cn"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 4,
+      "trainedBanked": 4
+    },
+    {
+      "leg": "builder-course-heldout-03",
+      "side": "normal",
+      "tick": 480,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -3192,13 +3371,13 @@
     {
       "leg": "builder-course-heldout-03",
       "side": "normal",
-      "tick": 500,
+      "tick": 505,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "ridge-rn-r1"
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -3216,7 +3395,7 @@
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "ridge-rn-r1"
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -3234,10 +3413,11 @@
         "edgeId": "base-cb-rn"
       },
       "trainedAction": {
-        "type": "wait"
+        "type": "move",
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 7,
-      "trainedClass": 0,
+      "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 4,
@@ -3246,13 +3426,13 @@
     {
       "leg": "builder-course-heldout-03",
       "side": "normal",
-      "tick": 560,
+      "tick": 585,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "ridge-rn-r1"
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -3269,11 +3449,10 @@
         "type": "bank"
       },
       "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-rn-r1"
+        "type": "wait"
       },
       "safeClass": 1,
-      "trainedClass": 5,
+      "trainedClass": 0,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 4,
@@ -3282,97 +3461,7 @@
     {
       "leg": "builder-course-heldout-03",
       "side": "normal",
-      "tick": 625,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-rn-r1"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 5,
-      "trainedBanked": 4
-    },
-    {
-      "leg": "builder-course-heldout-03",
-      "side": "normal",
-      "tick": 655,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-rn-r1"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 5,
-      "trainedBanked": 4
-    },
-    {
-      "leg": "builder-course-heldout-03",
-      "side": "normal",
-      "tick": 685,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-rn-r1"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 5,
-      "trainedBanked": 4
-    },
-    {
-      "leg": "builder-course-heldout-03",
-      "side": "normal",
-      "tick": 715,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-rn-r1"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 5,
-      "trainedBanked": 4
-    },
-    {
-      "leg": "builder-course-heldout-03",
-      "side": "normal",
-      "tick": 750,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "cross-cn-r1"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 5,
-      "trainedBanked": 4
-    },
-    {
-      "leg": "builder-course-heldout-03",
-      "side": "normal",
-      "tick": 775,
+      "tick": 610,
       "safeAction": {
         "type": "wait"
       },
@@ -3390,7 +3479,79 @@
     {
       "leg": "builder-course-heldout-03",
       "side": "normal",
-      "tick": 800,
+      "tick": 635,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vn-cn"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 5,
+      "trainedBanked": 4
+    },
+    {
+      "leg": "builder-course-heldout-03",
+      "side": "normal",
+      "tick": 660,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vn-cn"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 5,
+      "trainedBanked": 4
+    },
+    {
+      "leg": "builder-course-heldout-03",
+      "side": "normal",
+      "tick": 690,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vn-cn"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 5,
+      "trainedBanked": 4
+    },
+    {
+      "leg": "builder-course-heldout-03",
+      "side": "normal",
+      "tick": 715,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vn-cn"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 5,
+      "trainedBanked": 4
+    },
+    {
+      "leg": "builder-course-heldout-03",
+      "side": "normal",
+      "tick": 740,
       "safeAction": {
         "type": "wait"
       },
@@ -3408,7 +3569,43 @@
     {
       "leg": "builder-course-heldout-03",
       "side": "normal",
-      "tick": 830,
+      "tick": 770,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "valley-cb-n1"
+      },
+      "safeClass": 0,
+      "trainedClass": 4,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 5,
+      "trainedBanked": 4
+    },
+    {
+      "leg": "builder-course-heldout-03",
+      "side": "normal",
+      "tick": 805,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "valley-cb-n1"
+      },
+      "safeClass": 0,
+      "trainedClass": 7,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 5,
+      "trainedBanked": 4
+    },
+    {
+      "leg": "builder-course-heldout-03",
+      "side": "normal",
+      "tick": 835,
       "safeAction": {
         "type": "wait"
       },
@@ -3462,7 +3659,7 @@
     {
       "leg": "builder-course-heldout-03",
       "side": "normal",
-      "tick": 925,
+      "tick": 930,
       "safeAction": {
         "type": "wait"
       },
@@ -3480,7 +3677,7 @@
     {
       "leg": "builder-course-heldout-03",
       "side": "normal",
-      "tick": 955,
+      "tick": 960,
       "safeAction": {
         "type": "wait"
       },
@@ -3558,7 +3755,25 @@
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "ridge-r1s-rs"
+        "edgeId": "cross-cs-r1s"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 4,
+      "trainedBanked": 4
+    },
+    {
+      "leg": "builder-course-heldout-03",
+      "side": "swapped",
+      "tick": 400,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vs-cs"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -3576,10 +3791,27 @@
         "edgeId": "ridge-r1-rc"
       },
       "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-r1s-rs"
+        "type": "wait"
       },
       "safeClass": 6,
+      "trainedClass": 0,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 4,
+      "trainedBanked": 4
+    },
+    {
+      "leg": "builder-course-heldout-03",
+      "side": "swapped",
+      "tick": 425,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vs-cs"
+      },
+      "safeClass": 0,
       "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
@@ -3607,24 +3839,6 @@
     {
       "leg": "builder-course-heldout-03",
       "side": "swapped",
-      "tick": 435,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-r1s-rs"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 4,
-      "trainedBanked": 4
-    },
-    {
-      "leg": "builder-course-heldout-03",
-      "side": "swapped",
       "tick": 440,
       "safeAction": {
         "type": "move",
@@ -3643,13 +3857,31 @@
     {
       "leg": "builder-course-heldout-03",
       "side": "swapped",
-      "tick": 465,
+      "tick": 450,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "ridge-r1s-rs"
+        "edgeId": "cross-vs-cs"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 4,
+      "trainedBanked": 4
+    },
+    {
+      "leg": "builder-course-heldout-03",
+      "side": "swapped",
+      "tick": 480,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vs-cs"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -3679,13 +3911,13 @@
     {
       "leg": "builder-course-heldout-03",
       "side": "swapped",
-      "tick": 500,
+      "tick": 505,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "ridge-r1s-rs"
+        "edgeId": "cross-vs-cs"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -3703,7 +3935,7 @@
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "ridge-r1s-rs"
+        "edgeId": "cross-vs-cs"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -3721,10 +3953,11 @@
         "edgeId": "base-rb-rs"
       },
       "trainedAction": {
-        "type": "wait"
+        "type": "move",
+        "edgeId": "cross-vs-cs"
       },
       "safeClass": 7,
-      "trainedClass": 0,
+      "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 4,
@@ -3733,13 +3966,13 @@
     {
       "leg": "builder-course-heldout-03",
       "side": "swapped",
-      "tick": 560,
+      "tick": 585,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "ridge-r1s-rs"
+        "edgeId": "cross-vs-cs"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -3756,11 +3989,10 @@
         "type": "bank"
       },
       "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-r1s-rs"
+        "type": "wait"
       },
       "safeClass": 1,
-      "trainedClass": 5,
+      "trainedClass": 0,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 4,
@@ -3769,97 +4001,7 @@
     {
       "leg": "builder-course-heldout-03",
       "side": "swapped",
-      "tick": 625,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-r1s-rs"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 5,
-      "trainedBanked": 4
-    },
-    {
-      "leg": "builder-course-heldout-03",
-      "side": "swapped",
-      "tick": 655,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-r1s-rs"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 5,
-      "trainedBanked": 4
-    },
-    {
-      "leg": "builder-course-heldout-03",
-      "side": "swapped",
-      "tick": 685,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-r1s-rs"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 5,
-      "trainedBanked": 4
-    },
-    {
-      "leg": "builder-course-heldout-03",
-      "side": "swapped",
-      "tick": 715,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-r1s-rs"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 5,
-      "trainedBanked": 4
-    },
-    {
-      "leg": "builder-course-heldout-03",
-      "side": "swapped",
-      "tick": 750,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "cross-cs-r1s"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 5,
-      "trainedBanked": 4
-    },
-    {
-      "leg": "builder-course-heldout-03",
-      "side": "swapped",
-      "tick": 775,
+      "tick": 610,
       "safeAction": {
         "type": "wait"
       },
@@ -3877,7 +4019,79 @@
     {
       "leg": "builder-course-heldout-03",
       "side": "swapped",
-      "tick": 800,
+      "tick": 635,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vs-cs"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 5,
+      "trainedBanked": 4
+    },
+    {
+      "leg": "builder-course-heldout-03",
+      "side": "swapped",
+      "tick": 660,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vs-cs"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 5,
+      "trainedBanked": 4
+    },
+    {
+      "leg": "builder-course-heldout-03",
+      "side": "swapped",
+      "tick": 690,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vs-cs"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 5,
+      "trainedBanked": 4
+    },
+    {
+      "leg": "builder-course-heldout-03",
+      "side": "swapped",
+      "tick": 715,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vs-cs"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 5,
+      "trainedBanked": 4
+    },
+    {
+      "leg": "builder-course-heldout-03",
+      "side": "swapped",
+      "tick": 740,
       "safeAction": {
         "type": "wait"
       },
@@ -3895,7 +4109,43 @@
     {
       "leg": "builder-course-heldout-03",
       "side": "swapped",
-      "tick": 830,
+      "tick": 770,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "valley-s1-rb"
+      },
+      "safeClass": 0,
+      "trainedClass": 4,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 5,
+      "trainedBanked": 4
+    },
+    {
+      "leg": "builder-course-heldout-03",
+      "side": "swapped",
+      "tick": 805,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "valley-s1-rb"
+      },
+      "safeClass": 0,
+      "trainedClass": 7,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 5,
+      "trainedBanked": 4
+    },
+    {
+      "leg": "builder-course-heldout-03",
+      "side": "swapped",
+      "tick": 835,
       "safeAction": {
         "type": "wait"
       },
@@ -3949,7 +4199,7 @@
     {
       "leg": "builder-course-heldout-03",
       "side": "swapped",
-      "tick": 925,
+      "tick": 930,
       "safeAction": {
         "type": "wait"
       },
@@ -3967,7 +4217,7 @@
     {
       "leg": "builder-course-heldout-03",
       "side": "swapped",
-      "tick": 955,
+      "tick": 960,
       "safeAction": {
         "type": "wait"
       },
@@ -4441,10 +4691,10 @@
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "valley-cb-n1"
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
-      "trainedClass": 7,
+      "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
@@ -4470,25 +4720,7 @@
     {
       "leg": "builder-course-heldout-04",
       "side": "normal",
-      "tick": 455,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "valley-cb-n1"
-      },
-      "safeClass": 0,
-      "trainedClass": 4,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 5,
-      "trainedBanked": 5
-    },
-    {
-      "leg": "builder-course-heldout-04",
-      "side": "normal",
-      "tick": 545,
+      "tick": 450,
       "safeAction": {
         "type": "wait"
       },
@@ -4506,43 +4738,7 @@
     {
       "leg": "builder-course-heldout-04",
       "side": "normal",
-      "tick": 570,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "cross-cn-r1"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 5,
-      "trainedBanked": 5
-    },
-    {
-      "leg": "builder-course-heldout-04",
-      "side": "normal",
-      "tick": 600,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "cross-cn-r1"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 5,
-      "trainedBanked": 5
-    },
-    {
-      "leg": "builder-course-heldout-04",
-      "side": "normal",
-      "tick": 625,
+      "tick": 475,
       "safeAction": {
         "type": "wait"
       },
@@ -4560,16 +4756,16 @@
     {
       "leg": "builder-course-heldout-04",
       "side": "normal",
-      "tick": 650,
+      "tick": 500,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "valley-cb-n1"
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
-      "trainedClass": 7,
+      "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 5,
@@ -4578,16 +4774,16 @@
     {
       "leg": "builder-course-heldout-04",
       "side": "normal",
-      "tick": 680,
+      "tick": 530,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "valley-cb-n1"
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
-      "trainedClass": 4,
+      "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 5,
@@ -4596,16 +4792,16 @@
     {
       "leg": "builder-course-heldout-04",
       "side": "normal",
-      "tick": 715,
+      "tick": 555,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "valley-cb-n1"
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
-      "trainedClass": 7,
+      "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 5,
@@ -4614,16 +4810,16 @@
     {
       "leg": "builder-course-heldout-04",
       "side": "normal",
-      "tick": 745,
+      "tick": 580,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "valley-cb-n1"
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
-      "trainedClass": 4,
+      "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 5,
@@ -4632,7 +4828,133 @@
     {
       "leg": "builder-course-heldout-04",
       "side": "normal",
-      "tick": 775,
+      "tick": 605,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vn-cn"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 5,
+      "trainedBanked": 5
+    },
+    {
+      "leg": "builder-course-heldout-04",
+      "side": "normal",
+      "tick": 635,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vn-cn"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 5,
+      "trainedBanked": 5
+    },
+    {
+      "leg": "builder-course-heldout-04",
+      "side": "normal",
+      "tick": 660,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vn-cn"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 5,
+      "trainedBanked": 5
+    },
+    {
+      "leg": "builder-course-heldout-04",
+      "side": "normal",
+      "tick": 685,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vn-cn"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 5,
+      "trainedBanked": 5
+    },
+    {
+      "leg": "builder-course-heldout-04",
+      "side": "normal",
+      "tick": 710,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vn-cn"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 5,
+      "trainedBanked": 5
+    },
+    {
+      "leg": "builder-course-heldout-04",
+      "side": "normal",
+      "tick": 740,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vn-cn"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 5,
+      "trainedBanked": 5
+    },
+    {
+      "leg": "builder-course-heldout-04",
+      "side": "normal",
+      "tick": 765,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vn-cn"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 5,
+      "trainedBanked": 5
+    },
+    {
+      "leg": "builder-course-heldout-04",
+      "side": "normal",
+      "tick": 790,
       "safeAction": {
         "type": "wait"
       },
@@ -5088,10 +5410,10 @@
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "valley-s1-rb"
+        "edgeId": "cross-vs-cs"
       },
       "safeClass": 0,
-      "trainedClass": 7,
+      "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
@@ -5117,25 +5439,7 @@
     {
       "leg": "builder-course-heldout-04",
       "side": "swapped",
-      "tick": 455,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "valley-s1-rb"
-      },
-      "safeClass": 0,
-      "trainedClass": 4,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 5,
-      "trainedBanked": 5
-    },
-    {
-      "leg": "builder-course-heldout-04",
-      "side": "swapped",
-      "tick": 545,
+      "tick": 450,
       "safeAction": {
         "type": "wait"
       },
@@ -5153,43 +5457,7 @@
     {
       "leg": "builder-course-heldout-04",
       "side": "swapped",
-      "tick": 570,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "cross-cs-r1s"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 5,
-      "trainedBanked": 5
-    },
-    {
-      "leg": "builder-course-heldout-04",
-      "side": "swapped",
-      "tick": 600,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "cross-cs-r1s"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 5,
-      "trainedBanked": 5
-    },
-    {
-      "leg": "builder-course-heldout-04",
-      "side": "swapped",
-      "tick": 625,
+      "tick": 475,
       "safeAction": {
         "type": "wait"
       },
@@ -5207,16 +5475,16 @@
     {
       "leg": "builder-course-heldout-04",
       "side": "swapped",
-      "tick": 650,
+      "tick": 500,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "valley-s1-rb"
+        "edgeId": "cross-vs-cs"
       },
       "safeClass": 0,
-      "trainedClass": 7,
+      "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 5,
@@ -5225,16 +5493,16 @@
     {
       "leg": "builder-course-heldout-04",
       "side": "swapped",
-      "tick": 680,
+      "tick": 530,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "valley-s1-rb"
+        "edgeId": "cross-vs-cs"
       },
       "safeClass": 0,
-      "trainedClass": 4,
+      "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 5,
@@ -5243,16 +5511,16 @@
     {
       "leg": "builder-course-heldout-04",
       "side": "swapped",
-      "tick": 715,
+      "tick": 555,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "valley-s1-rb"
+        "edgeId": "cross-vs-cs"
       },
       "safeClass": 0,
-      "trainedClass": 7,
+      "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 5,
@@ -5261,16 +5529,16 @@
     {
       "leg": "builder-course-heldout-04",
       "side": "swapped",
-      "tick": 745,
+      "tick": 580,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "valley-s1-rb"
+        "edgeId": "cross-vs-cs"
       },
       "safeClass": 0,
-      "trainedClass": 4,
+      "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 5,
@@ -5279,7 +5547,133 @@
     {
       "leg": "builder-course-heldout-04",
       "side": "swapped",
-      "tick": 775,
+      "tick": 605,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vs-cs"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 5,
+      "trainedBanked": 5
+    },
+    {
+      "leg": "builder-course-heldout-04",
+      "side": "swapped",
+      "tick": 635,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vs-cs"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 5,
+      "trainedBanked": 5
+    },
+    {
+      "leg": "builder-course-heldout-04",
+      "side": "swapped",
+      "tick": 660,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vs-cs"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 5,
+      "trainedBanked": 5
+    },
+    {
+      "leg": "builder-course-heldout-04",
+      "side": "swapped",
+      "tick": 685,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vs-cs"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 5,
+      "trainedBanked": 5
+    },
+    {
+      "leg": "builder-course-heldout-04",
+      "side": "swapped",
+      "tick": 710,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vs-cs"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 5,
+      "trainedBanked": 5
+    },
+    {
+      "leg": "builder-course-heldout-04",
+      "side": "swapped",
+      "tick": 740,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vs-cs"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 5,
+      "trainedBanked": 5
+    },
+    {
+      "leg": "builder-course-heldout-04",
+      "side": "swapped",
+      "tick": 765,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vs-cs"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 5,
+      "trainedBanked": 5
+    },
+    {
+      "leg": "builder-course-heldout-04",
+      "side": "swapped",
+      "tick": 790,
       "safeAction": {
         "type": "wait"
       },
@@ -5304,27 +5698,9 @@
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "ridge-rn-r1"
+        "edgeId": "ridge-rn-rc"
       },
       "safeClass": 5,
-      "trainedClass": 5,
-      "sameClassDiffEdge": true,
-      "edgeDelta": 0,
-      "safeBanked": 3,
-      "trainedBanked": 3
-    },
-    {
-      "leg": "sandstone-practice-01",
-      "side": "normal",
-      "tick": 330,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-r1-rc"
-      },
-      "safeClass": 0,
       "trainedClass": 6,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
@@ -5352,7 +5728,7 @@
     {
       "leg": "sandstone-practice-01",
       "side": "normal",
-      "tick": 365,
+      "tick": 360,
       "safeAction": {
         "type": "wait"
       },
@@ -5388,6 +5764,25 @@
     {
       "leg": "sandstone-practice-01",
       "side": "normal",
+      "tick": 395,
+      "safeAction": {
+        "type": "collect",
+        "resourceId": "core-9"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "ridge-rc-r1s"
+      },
+      "safeClass": 2,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 3,
+      "trainedBanked": 3
+    },
+    {
+      "leg": "sandstone-practice-01",
+      "side": "normal",
       "tick": 400,
       "safeAction": {
         "type": "collect",
@@ -5397,6 +5792,24 @@
         "type": "wait"
       },
       "safeClass": 2,
+      "trainedClass": 0,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 3,
+      "trainedBanked": 3
+    },
+    {
+      "leg": "sandstone-practice-01",
+      "side": "normal",
+      "tick": 405,
+      "safeAction": {
+        "type": "move",
+        "edgeId": "cross-cs-r1s"
+      },
+      "trainedAction": {
+        "type": "wait"
+      },
+      "safeClass": 6,
       "trainedClass": 0,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
@@ -5424,13 +5837,13 @@
     {
       "leg": "sandstone-practice-01",
       "side": "normal",
-      "tick": 455,
+      "tick": 450,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-cc-cs"
+        "edgeId": "cross-cc-rc"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -5460,7 +5873,7 @@
     {
       "leg": "sandstone-practice-01",
       "side": "normal",
-      "tick": 485,
+      "tick": 495,
       "safeAction": {
         "type": "wait"
       },
@@ -5496,15 +5909,16 @@
     {
       "leg": "sandstone-practice-01",
       "side": "normal",
-      "tick": 535,
+      "tick": 540,
       "safeAction": {
-        "type": "wait"
+        "type": "move",
+        "edgeId": "cross-cn-cc"
       },
       "trainedAction": {
         "type": "move",
         "edgeId": "shortcut-cb-cn"
       },
-      "safeClass": 0,
+      "safeClass": 5,
       "trainedClass": 7,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
@@ -5514,25 +5928,7 @@
     {
       "leg": "sandstone-practice-01",
       "side": "normal",
-      "tick": 540,
-      "safeAction": {
-        "type": "move",
-        "edgeId": "cross-cn-cc"
-      },
-      "trainedAction": {
-        "type": "wait"
-      },
-      "safeClass": 5,
-      "trainedClass": 0,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 3,
-      "trainedBanked": 3
-    },
-    {
-      "leg": "sandstone-practice-01",
-      "side": "normal",
-      "tick": 580,
+      "tick": 585,
       "safeAction": {
         "type": "wait"
       },
@@ -5572,10 +5968,11 @@
         "type": "wait"
       },
       "trainedAction": {
-        "type": "drain"
+        "type": "move",
+        "edgeId": "valley-cb-n1"
       },
       "safeClass": 0,
-      "trainedClass": 3,
+      "trainedClass": 4,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
@@ -5584,16 +5981,16 @@
     {
       "leg": "sandstone-practice-01",
       "side": "normal",
-      "tick": 625,
+      "tick": 670,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "valley-cb-vc"
+        "edgeId": "valley-cb-n1"
       },
       "safeClass": 0,
-      "trainedClass": 6,
+      "trainedClass": 7,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
@@ -5619,16 +6016,16 @@
     {
       "leg": "sandstone-practice-01",
       "side": "normal",
-      "tick": 750,
+      "tick": 735,
       "safeAction": {
-        "type": "wait"
+        "type": "move",
+        "edgeId": "valley-cb-n1"
       },
       "trainedAction": {
-        "type": "move",
-        "edgeId": "cross-vc-cc"
+        "type": "wait"
       },
-      "safeClass": 0,
-      "trainedClass": 5,
+      "safeClass": 4,
+      "trainedClass": 0,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
@@ -5637,16 +6034,16 @@
     {
       "leg": "sandstone-practice-01",
       "side": "normal",
-      "tick": 795,
+      "tick": 750,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-cn-cc"
+        "edgeId": "valley-cb-n1"
       },
       "safeClass": 0,
-      "trainedClass": 5,
+      "trainedClass": 4,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
@@ -5673,16 +6070,16 @@
     {
       "leg": "sandstone-practice-01",
       "side": "normal",
-      "tick": 845,
+      "tick": 830,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vn-cn"
+        "edgeId": "valley-cb-n1"
       },
       "safeClass": 0,
-      "trainedClass": 5,
+      "trainedClass": 7,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
@@ -5709,7 +6106,7 @@
     {
       "leg": "sandstone-practice-01",
       "side": "normal",
-      "tick": 890,
+      "tick": 910,
       "safeAction": {
         "type": "wait"
       },
@@ -5718,7 +6115,7 @@
         "edgeId": "valley-cb-n1"
       },
       "safeClass": 0,
-      "trainedClass": 7,
+      "trainedClass": 4,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
@@ -5733,10 +6130,10 @@
         "edgeId": "cross-vc-cc"
       },
       "trainedAction": {
-        "type": "bank"
+        "type": "wait"
       },
       "safeClass": 6,
-      "trainedClass": 1,
+      "trainedClass": 0,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
@@ -5745,7 +6142,7 @@
     {
       "leg": "sandstone-practice-01",
       "side": "normal",
-      "tick": 925,
+      "tick": 935,
       "safeAction": {
         "type": "wait"
       },
@@ -5754,11 +6151,11 @@
         "edgeId": "valley-cb-n1"
       },
       "safeClass": 0,
-      "trainedClass": 4,
+      "trainedClass": 7,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 9
+      "trainedBanked": 6
     },
     {
       "leg": "sandstone-practice-01",
@@ -5776,7 +6173,7 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 9
+      "trainedBanked": 6
     },
     {
       "leg": "sandstone-practice-01",
@@ -5787,15 +6184,14 @@
         "resourceId": "core-2"
       },
       "trainedAction": {
-        "type": "move",
-        "edgeId": "valley-n1-vc"
+        "type": "wait"
       },
       "safeClass": 2,
-      "trainedClass": 6,
+      "trainedClass": 0,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 9
+      "trainedBanked": 6
     },
     {
       "leg": "sandstone-practice-01",
@@ -5813,7 +6209,25 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 9
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-practice-01",
+      "side": "normal",
+      "tick": 965,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "valley-cb-n1"
+      },
+      "safeClass": 0,
+      "trainedClass": 4,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 6,
+      "trainedBanked": 6
     },
     {
       "leg": "sandstone-practice-01",
@@ -5831,7 +6245,7 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 9
+      "trainedBanked": 6
     },
     {
       "leg": "sandstone-practice-01",
@@ -5842,14 +6256,32 @@
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "valley-n1-vc"
+        "edgeId": "valley-cb-n1"
+      },
+      "safeClass": 0,
+      "trainedClass": 7,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 6,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-practice-01",
+      "side": "normal",
+      "tick": 1040,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "valley-cb-n1"
       },
       "safeClass": 0,
       "trainedClass": 4,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 9
+      "trainedBanked": 6
     },
     {
       "leg": "sandstone-practice-01",
@@ -5866,25 +6298,7 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 9
-    },
-    {
-      "leg": "sandstone-practice-01",
-      "side": "normal",
-      "tick": 1085,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "valley-cb-n1"
-      },
-      "safeClass": 0,
-      "trainedClass": 7,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 9,
-      "trainedBanked": 9
+      "trainedBanked": 6
     },
     {
       "leg": "sandstone-practice-01",
@@ -5902,29 +6316,12 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 9,
-      "trainedBanked": 9
+      "trainedBanked": 6
     },
     {
       "leg": "sandstone-practice-01",
       "side": "normal",
-      "tick": 1155,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "bank"
-      },
-      "safeClass": 0,
-      "trainedClass": 1,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 9,
-      "trainedBanked": 9
-    },
-    {
-      "leg": "sandstone-practice-01",
-      "side": "normal",
-      "tick": 1165,
+      "tick": 1120,
       "safeAction": {
         "type": "wait"
       },
@@ -5933,11 +6330,11 @@
         "edgeId": "valley-cb-n1"
       },
       "safeClass": 0,
-      "trainedClass": 4,
+      "trainedClass": 7,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 9,
-      "trainedBanked": 10
+      "trainedBanked": 6
     },
     {
       "leg": "sandstone-practice-01",
@@ -5955,7 +6352,25 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 9,
-      "trainedBanked": 10
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-practice-01",
+      "side": "normal",
+      "tick": 1195,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "valley-cb-n1"
+      },
+      "safeClass": 0,
+      "trainedClass": 4,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 9,
+      "trainedBanked": 6
     },
     {
       "leg": "sandstone-practice-01",
@@ -6075,10 +6490,10 @@
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "shortcut-rb-far"
+        "edgeId": "cross-far-rs3"
       },
       "safeClass": 0,
-      "trainedClass": 7,
+      "trainedClass": 6,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
@@ -6105,23 +6520,6 @@
     {
       "leg": "sandstone-practice-01",
       "side": "swapped",
-      "tick": 480,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "bank"
-      },
-      "safeClass": 0,
-      "trainedClass": 1,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 3,
-      "trainedBanked": 3
-    },
-    {
-      "leg": "sandstone-practice-01",
-      "side": "swapped",
       "tick": 490,
       "safeAction": {
         "type": "move",
@@ -6135,25 +6533,25 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
-      "trainedBanked": 5
+      "trainedBanked": 3
     },
     {
       "leg": "sandstone-practice-01",
       "side": "swapped",
-      "tick": 505,
+      "tick": 495,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "valley-rb-vs3"
+        "edgeId": "ridge-s2-s3"
       },
       "safeClass": 0,
-      "trainedClass": 4,
+      "trainedClass": 6,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
-      "trainedBanked": 5
+      "trainedBanked": 3
     },
     {
       "leg": "sandstone-practice-01",
@@ -6171,7 +6569,7 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
-      "trainedBanked": 5
+      "trainedBanked": 3
     },
     {
       "leg": "sandstone-practice-01",
@@ -6189,25 +6587,25 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
-      "trainedBanked": 5
+      "trainedBanked": 3
     },
     {
       "leg": "sandstone-practice-01",
       "side": "swapped",
-      "tick": 560,
+      "tick": 550,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "valley-rb-vs3"
+        "edgeId": "cross-s2-rs2"
       },
       "safeClass": 0,
-      "trainedClass": 7,
+      "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
-      "trainedBanked": 5
+      "trainedBanked": 3
     },
     {
       "leg": "sandstone-practice-01",
@@ -6225,42 +6623,43 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
-      "trainedBanked": 5
+      "trainedBanked": 3
     },
     {
       "leg": "sandstone-practice-01",
       "side": "swapped",
-      "tick": 620,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "drain"
-      },
-      "safeClass": 0,
-      "trainedClass": 3,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 3,
-      "trainedBanked": 5
-    },
-    {
-      "leg": "sandstone-practice-01",
-      "side": "swapped",
-      "tick": 640,
+      "tick": 610,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "valley-rb-vs3"
+        "edgeId": "cross-s2-far"
       },
       "safeClass": 0,
-      "trainedClass": 4,
+      "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
-      "trainedBanked": 5
+      "trainedBanked": 3
+    },
+    {
+      "leg": "sandstone-practice-01",
+      "side": "swapped",
+      "tick": 670,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "shortcut-rb-far"
+      },
+      "safeClass": 0,
+      "trainedClass": 7,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 3,
+      "trainedBanked": 3
     },
     {
       "leg": "sandstone-practice-01",
@@ -6278,25 +6677,7 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
-      "trainedBanked": 5
-    },
-    {
-      "leg": "sandstone-practice-01",
-      "side": "swapped",
-      "tick": 710,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "valley-rb-vs3"
-      },
-      "safeClass": 0,
-      "trainedClass": 7,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 3,
-      "trainedBanked": 5
+      "trainedBanked": 3
     },
     {
       "leg": "sandstone-practice-01",
@@ -6313,7 +6694,7 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
-      "trainedBanked": 5
+      "trainedBanked": 3
     },
     {
       "leg": "sandstone-practice-01",
@@ -6331,7 +6712,24 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 5
+      "trainedBanked": 3
+    },
+    {
+      "leg": "sandstone-practice-01",
+      "side": "swapped",
+      "tick": 850,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "bank"
+      },
+      "safeClass": 0,
+      "trainedClass": 1,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 6,
+      "trainedBanked": 3
     },
     {
       "leg": "sandstone-practice-01",
@@ -6349,7 +6747,7 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 5
+      "trainedBanked": 6
     },
     {
       "leg": "sandstone-practice-01",
@@ -6367,7 +6765,7 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 5
+      "trainedBanked": 6
     },
     {
       "leg": "sandstone-practice-01",
@@ -6385,7 +6783,7 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 5
+      "trainedBanked": 6
     },
     {
       "leg": "sandstone-practice-01",
@@ -6403,7 +6801,7 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 5
+      "trainedBanked": 6
     },
     {
       "leg": "sandstone-practice-01",
@@ -6421,7 +6819,7 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 5
+      "trainedBanked": 6
     },
     {
       "leg": "sandstone-practice-01",
@@ -6439,7 +6837,7 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 5
+      "trainedBanked": 6
     },
     {
       "leg": "sandstone-practice-01",
@@ -6457,7 +6855,7 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 5
+      "trainedBanked": 6
     },
     {
       "leg": "sandstone-practice-01",
@@ -6474,7 +6872,7 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 5
+      "trainedBanked": 6
     },
     {
       "leg": "sandstone-practice-01",
@@ -6492,7 +6890,7 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 8,
-      "trainedBanked": 5
+      "trainedBanked": 6
     },
     {
       "leg": "sandstone-practice-01",
@@ -6510,7 +6908,7 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 8,
-      "trainedBanked": 5
+      "trainedBanked": 6
     },
     {
       "leg": "sandstone-compete-01",
@@ -6639,16 +7037,16 @@
     {
       "leg": "sandstone-compete-01",
       "side": "normal",
-      "tick": 455,
+      "tick": 450,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "ridge-rn-r1"
+        "edgeId": "ridge-r1-rc"
       },
       "safeClass": 0,
-      "trainedClass": 5,
+      "trainedClass": 6,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
@@ -6675,13 +7073,13 @@
     {
       "leg": "sandstone-compete-01",
       "side": "normal",
-      "tick": 480,
+      "tick": 485,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "ridge-rn-r1"
+        "edgeId": "ridge-rn-rc"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -6717,11 +7115,10 @@
         "edgeId": "cross-cn-cc"
       },
       "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-rn-r1"
+        "type": "wait"
       },
       "safeClass": 6,
-      "trainedClass": 5,
+      "trainedClass": 0,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
@@ -6736,11 +7133,10 @@
         "resourceId": "core-9"
       },
       "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-rn-r1"
+        "type": "wait"
       },
       "safeClass": 2,
-      "trainedClass": 5,
+      "trainedClass": 0,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
@@ -6767,17 +7163,34 @@
     {
       "leg": "sandstone-compete-01",
       "side": "normal",
+      "tick": 560,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "base-cb-rn"
+      },
+      "safeClass": 0,
+      "trainedClass": 7,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 6,
+      "trainedBanked": 5
+    },
+    {
+      "leg": "sandstone-compete-01",
+      "side": "normal",
       "tick": 565,
       "safeAction": {
         "type": "collect",
         "resourceId": "core-6"
       },
       "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-rn-r1"
+        "type": "wait"
       },
       "safeClass": 2,
-      "trainedClass": 5,
+      "trainedClass": 0,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
@@ -6804,24 +7217,6 @@
     {
       "leg": "sandstone-compete-01",
       "side": "normal",
-      "tick": 590,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-rn-r1"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 6,
-      "trainedBanked": 5
-    },
-    {
-      "leg": "sandstone-compete-01",
-      "side": "normal",
       "tick": 595,
       "safeAction": {
         "type": "move",
@@ -6840,16 +7235,15 @@
     {
       "leg": "sandstone-compete-01",
       "side": "normal",
-      "tick": 620,
+      "tick": 630,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-rn-r1"
+        "type": "bank"
       },
       "safeClass": 0,
-      "trainedClass": 5,
+      "trainedClass": 1,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
@@ -6871,43 +7265,25 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 5
+      "trainedBanked": 8
     },
     {
       "leg": "sandstone-compete-01",
       "side": "normal",
-      "tick": 645,
+      "tick": 655,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "ridge-rn-r1"
+        "edgeId": "shortcut-cb-cn"
       },
       "safeClass": 0,
-      "trainedClass": 5,
+      "trainedClass": 6,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 5
-    },
-    {
-      "leg": "sandstone-compete-01",
-      "side": "normal",
-      "tick": 675,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-rn-r1"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 6,
-      "trainedBanked": 5
+      "trainedBanked": 8
     },
     {
       "leg": "sandstone-compete-01",
@@ -6924,79 +7300,43 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 5
+      "trainedBanked": 8
     },
     {
       "leg": "sandstone-compete-01",
       "side": "normal",
-      "tick": 700,
+      "tick": 740,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "ridge-rn-r1"
+        "edgeId": "cross-cc-cs"
+      },
+      "safeClass": 0,
+      "trainedClass": 6,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 9,
+      "trainedBanked": 8
+    },
+    {
+      "leg": "sandstone-compete-01",
+      "side": "normal",
+      "tick": 775,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-cc-cs"
       },
       "safeClass": 0,
       "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 9,
-      "trainedBanked": 5
-    },
-    {
-      "leg": "sandstone-compete-01",
-      "side": "normal",
-      "tick": 730,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-rn-r1"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 9,
-      "trainedBanked": 5
-    },
-    {
-      "leg": "sandstone-compete-01",
-      "side": "normal",
-      "tick": 755,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-rn-r1"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 9,
-      "trainedBanked": 5
-    },
-    {
-      "leg": "sandstone-compete-01",
-      "side": "normal",
-      "tick": 785,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-rn-r1"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 9,
-      "trainedBanked": 5
+      "trainedBanked": 8
     },
     {
       "leg": "sandstone-compete-01",
@@ -7014,43 +7354,43 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 9,
-      "trainedBanked": 5
+      "trainedBanked": 8
     },
     {
       "leg": "sandstone-compete-01",
       "side": "normal",
-      "tick": 810,
+      "tick": 805,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "ridge-rn-r1"
+        "edgeId": "cross-cn-cc"
       },
       "safeClass": 0,
       "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 9,
-      "trainedBanked": 5
+      "trainedBanked": 8
     },
     {
       "leg": "sandstone-compete-01",
       "side": "normal",
-      "tick": 840,
+      "tick": 855,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "ridge-rn-r1"
+        "edgeId": "cross-vn-cn"
       },
       "safeClass": 0,
       "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 9,
-      "trainedBanked": 5
+      "trainedBanked": 8
     },
     {
       "leg": "sandstone-compete-01",
@@ -7068,25 +7408,7 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 9,
-      "trainedBanked": 5
-    },
-    {
-      "leg": "sandstone-compete-01",
-      "side": "normal",
-      "tick": 865,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-rn-r1"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 9,
-      "trainedBanked": 5
+      "trainedBanked": 8
     },
     {
       "leg": "sandstone-compete-01",
@@ -7097,15 +7419,32 @@
         "resourceId": "core-12"
       },
       "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-rn-r1"
+        "type": "wait"
       },
       "safeClass": 2,
-      "trainedClass": 5,
+      "trainedClass": 0,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 9,
-      "trainedBanked": 5
+      "trainedBanked": 8
+    },
+    {
+      "leg": "sandstone-compete-01",
+      "side": "normal",
+      "tick": 900,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "valley-cb-n1"
+      },
+      "safeClass": 0,
+      "trainedClass": 7,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 9,
+      "trainedBanked": 8
     },
     {
       "leg": "sandstone-compete-01",
@@ -7123,25 +7462,7 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 9,
-      "trainedBanked": 5
-    },
-    {
-      "leg": "sandstone-compete-01",
-      "side": "normal",
-      "tick": 920,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-rn-r1"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 9,
-      "trainedBanked": 5
+      "trainedBanked": 8
     },
     {
       "leg": "sandstone-compete-01",
@@ -7159,7 +7480,7 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 9,
-      "trainedBanked": 5
+      "trainedBanked": 8
     },
     {
       "leg": "sandstone-compete-01",
@@ -7177,43 +7498,42 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 9,
-      "trainedBanked": 5
+      "trainedBanked": 8
     },
     {
       "leg": "sandstone-compete-01",
       "side": "normal",
-      "tick": 950,
+      "tick": 970,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "bank"
+      },
+      "safeClass": 0,
+      "trainedClass": 1,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 9,
+      "trainedBanked": 8
+    },
+    {
+      "leg": "sandstone-compete-01",
+      "side": "normal",
+      "tick": 980,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "ridge-rn-r1"
+        "edgeId": "valley-cb-n1"
       },
       "safeClass": 0,
-      "trainedClass": 5,
+      "trainedClass": 4,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 9,
-      "trainedBanked": 5
-    },
-    {
-      "leg": "sandstone-compete-01",
-      "side": "normal",
-      "tick": 975,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-rn-r1"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 9,
-      "trainedBanked": 5
+      "trainedBanked": 11
     },
     {
       "leg": "sandstone-compete-01",
@@ -7231,43 +7551,25 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 9,
-      "trainedBanked": 5
+      "trainedBanked": 11
     },
     {
       "leg": "sandstone-compete-01",
       "side": "normal",
-      "tick": 1005,
+      "tick": 1055,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "ridge-rn-r1"
+        "edgeId": "valley-cb-n1"
       },
       "safeClass": 0,
-      "trainedClass": 5,
+      "trainedClass": 7,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 9,
-      "trainedBanked": 5
-    },
-    {
-      "leg": "sandstone-compete-01",
-      "side": "normal",
-      "tick": 1030,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-rn-r1"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 9,
-      "trainedBanked": 5
+      "trainedBanked": 11
     },
     {
       "leg": "sandstone-compete-01",
@@ -7285,43 +7587,25 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 9,
-      "trainedBanked": 5
+      "trainedBanked": 11
     },
     {
       "leg": "sandstone-compete-01",
       "side": "normal",
-      "tick": 1085,
+      "tick": 1135,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "ridge-rn-r1"
+        "edgeId": "valley-cb-n1"
       },
       "safeClass": 0,
-      "trainedClass": 5,
+      "trainedClass": 4,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 9,
-      "trainedBanked": 5
-    },
-    {
-      "leg": "sandstone-compete-01",
-      "side": "normal",
-      "tick": 1115,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-rn-r1"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 9,
-      "trainedBanked": 5
+      "trainedBanked": 11
     },
     {
       "leg": "sandstone-compete-01",
@@ -7338,7 +7622,7 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 9,
-      "trainedBanked": 5
+      "trainedBanked": 11
     },
     {
       "leg": "sandstone-compete-01",
@@ -7356,25 +7640,7 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 12,
-      "trainedBanked": 5
-    },
-    {
-      "leg": "sandstone-compete-01",
-      "side": "normal",
-      "tick": 1165,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "base-cb-rn"
-      },
-      "safeClass": 0,
-      "trainedClass": 7,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 12,
-      "trainedBanked": 5
+      "trainedBanked": 11
     },
     {
       "leg": "sandstone-compete-01",
@@ -7584,10 +7850,10 @@
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "valley-rb-vs3"
+        "edgeId": "base-rb-rs"
       },
       "safeClass": 0,
-      "trainedClass": 4,
+      "trainedClass": 6,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
@@ -7614,52 +7880,16 @@
     {
       "leg": "sandstone-compete-01",
       "side": "swapped",
-      "tick": 635,
+      "tick": 680,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "valley-rb-vs3"
+        "edgeId": "ridge-rs-s3"
       },
       "safeClass": 0,
-      "trainedClass": 7,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 3,
-      "trainedBanked": 5
-    },
-    {
-      "leg": "sandstone-compete-01",
-      "side": "swapped",
-      "tick": 660,
-      "safeAction": {
-        "type": "move",
-        "edgeId": "shortcut-rb-far"
-      },
-      "trainedAction": {
-        "type": "wait"
-      },
-      "safeClass": 7,
-      "trainedClass": 0,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 3,
-      "trainedBanked": 5
-    },
-    {
-      "leg": "sandstone-compete-01",
-      "side": "swapped",
-      "tick": 700,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "valley-rb-vs3"
-      },
-      "safeClass": 0,
-      "trainedClass": 4,
+      "trainedClass": 6,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
@@ -7703,16 +7933,52 @@
     {
       "leg": "sandstone-compete-01",
       "side": "swapped",
-      "tick": 745,
+      "tick": 735,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "valley-rb-vs3"
+        "edgeId": "ridge-s2-s3"
       },
       "safeClass": 0,
-      "trainedClass": 7,
+      "trainedClass": 6,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 6,
+      "trainedBanked": 5
+    },
+    {
+      "leg": "sandstone-compete-01",
+      "side": "swapped",
+      "tick": 795,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "ridge-s2-s3"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 6,
+      "trainedBanked": 5
+    },
+    {
+      "leg": "sandstone-compete-01",
+      "side": "swapped",
+      "tick": 850,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "ridge-rs-s3"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
@@ -7757,33 +8023,16 @@
     {
       "leg": "sandstone-compete-01",
       "side": "swapped",
-      "tick": 905,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "drain"
-      },
-      "safeClass": 0,
-      "trainedClass": 3,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 6,
-      "trainedBanked": 5
-    },
-    {
-      "leg": "sandstone-compete-01",
-      "side": "swapped",
-      "tick": 930,
+      "tick": 920,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "valley-rb-vs3"
+        "edgeId": "base-rb-rs"
       },
       "safeClass": 0,
-      "trainedClass": 4,
+      "trainedClass": 7,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
@@ -7810,21 +8059,72 @@
     {
       "leg": "sandstone-compete-01",
       "side": "swapped",
+      "tick": 990,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "bank"
+      },
+      "safeClass": 0,
+      "trainedClass": 1,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 6,
+      "trainedBanked": 5
+    },
+    {
+      "leg": "sandstone-compete-01",
+      "side": "swapped",
+      "tick": 1010,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "drain"
+      },
+      "safeClass": 0,
+      "trainedClass": 3,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 6,
+      "trainedBanked": 8
+    },
+    {
+      "leg": "sandstone-compete-01",
+      "side": "swapped",
       "tick": 1015,
       "safeAction": {
         "type": "move",
         "edgeId": "ridge-s1-s2"
       },
       "trainedAction": {
-        "type": "move",
-        "edgeId": "valley-rb-vs3"
+        "type": "wait"
       },
       "safeClass": 5,
-      "trainedClass": 7,
+      "trainedClass": 0,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 5
+      "trainedBanked": 8
+    },
+    {
+      "leg": "sandstone-compete-01",
+      "side": "swapped",
+      "tick": 1035,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "valley-rb-vs3"
+      },
+      "safeClass": 0,
+      "trainedClass": 4,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 6,
+      "trainedBanked": 8
     },
     {
       "leg": "sandstone-compete-01",
@@ -7842,7 +8142,25 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 5
+      "trainedBanked": 8
+    },
+    {
+      "leg": "sandstone-compete-01",
+      "side": "swapped",
+      "tick": 1120,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "valley-rb-vs3"
+      },
+      "safeClass": 0,
+      "trainedClass": 7,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 6,
+      "trainedBanked": 8
     },
     {
       "leg": "sandstone-compete-01",
@@ -7860,29 +8178,172 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 5
-    },
-    {
-      "leg": "sandstone-compete-01",
-      "side": "swapped",
-      "tick": 1175,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "drain"
-      },
-      "safeClass": 0,
-      "trainedClass": 3,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 6,
-      "trainedBanked": 5
+      "trainedBanked": 8
     },
     {
       "leg": "sandstone-family-01",
       "side": "normal",
-      "tick": 685,
+      "tick": 455,
+      "safeAction": {
+        "type": "move",
+        "edgeId": "valley-cb-vc"
+      },
+      "trainedAction": {
+        "type": "drain"
+      },
+      "safeClass": 6,
+      "trainedClass": 3,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 6,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-01",
+      "side": "normal",
+      "tick": 480,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "valley-cb-vc"
+      },
+      "safeClass": 0,
+      "trainedClass": 6,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 6,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-01",
+      "side": "normal",
+      "tick": 545,
+      "safeAction": {
+        "type": "collect",
+        "resourceId": "core-4"
+      },
+      "trainedAction": {
+        "type": "wait"
+      },
+      "safeClass": 2,
+      "trainedClass": 0,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 6,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-01",
+      "side": "normal",
+      "tick": 570,
+      "safeAction": {
+        "type": "move",
+        "edgeId": "valley-cb-vc"
+      },
+      "trainedAction": {
+        "type": "wait"
+      },
+      "safeClass": 7,
+      "trainedClass": 0,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 6,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-01",
+      "side": "normal",
+      "tick": 600,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "bank"
+      },
+      "safeClass": 0,
+      "trainedClass": 1,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 6,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-01",
+      "side": "normal",
+      "tick": 615,
+      "safeAction": {
+        "type": "bank"
+      },
+      "trainedAction": {
+        "type": "wait"
+      },
+      "safeClass": 1,
+      "trainedClass": 0,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 6,
+      "trainedBanked": 7
+    },
+    {
+      "leg": "sandstone-family-01",
+      "side": "normal",
+      "tick": 620,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "valley-cb-vc"
+      },
+      "safeClass": 0,
+      "trainedClass": 4,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 7,
+      "trainedBanked": 7
+    },
+    {
+      "leg": "sandstone-family-01",
+      "side": "normal",
+      "tick": 635,
+      "safeAction": {
+        "type": "move",
+        "edgeId": "valley-cb-vc"
+      },
+      "trainedAction": {
+        "type": "wait"
+      },
+      "safeClass": 4,
+      "trainedClass": 0,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 7,
+      "trainedBanked": 7
+    },
+    {
+      "leg": "sandstone-family-01",
+      "side": "normal",
+      "tick": 675,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "valley-n1-vc"
+      },
+      "safeClass": 0,
+      "trainedClass": 4,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 7,
+      "trainedBanked": 7
+    },
+    {
+      "leg": "sandstone-family-01",
+      "side": "normal",
+      "tick": 690,
       "safeAction": {
         "type": "wait"
       },
@@ -7918,7 +8379,7 @@
     {
       "leg": "sandstone-family-01",
       "side": "normal",
-      "tick": 705,
+      "tick": 710,
       "safeAction": {
         "type": "wait"
       },
@@ -7936,7 +8397,7 @@
     {
       "leg": "sandstone-family-01",
       "side": "normal",
-      "tick": 720,
+      "tick": 725,
       "safeAction": {
         "type": "wait"
       },
@@ -7954,7 +8415,7 @@
     {
       "leg": "sandstone-family-01",
       "side": "normal",
-      "tick": 740,
+      "tick": 745,
       "safeAction": {
         "type": "wait"
       },
@@ -7990,7 +8451,7 @@
     {
       "leg": "sandstone-family-01",
       "side": "normal",
-      "tick": 780,
+      "tick": 785,
       "safeAction": {
         "type": "wait"
       },
@@ -8032,10 +8493,27 @@
         "edgeId": "cross-cs-r1s"
       },
       "trainedAction": {
+        "type": "wait"
+      },
+      "safeClass": 6,
+      "trainedClass": 0,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 7,
+      "trainedBanked": 7
+    },
+    {
+      "leg": "sandstone-family-01",
+      "side": "normal",
+      "tick": 820,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
         "type": "move",
         "edgeId": "valley-n1-vc"
       },
-      "safeClass": 6,
+      "safeClass": 0,
       "trainedClass": 4,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
@@ -8045,7 +8523,7 @@
     {
       "leg": "sandstone-family-01",
       "side": "normal",
-      "tick": 855,
+      "tick": 860,
       "safeAction": {
         "type": "wait"
       },
@@ -8099,7 +8577,7 @@
     {
       "leg": "sandstone-family-01",
       "side": "normal",
-      "tick": 895,
+      "tick": 900,
       "safeAction": {
         "type": "wait"
       },
@@ -8135,7 +8613,7 @@
     {
       "leg": "sandstone-family-01",
       "side": "normal",
-      "tick": 935,
+      "tick": 940,
       "safeAction": {
         "type": "wait"
       },
@@ -8153,7 +8631,7 @@
     {
       "leg": "sandstone-family-01",
       "side": "normal",
-      "tick": 970,
+      "tick": 975,
       "safeAction": {
         "type": "wait"
       },
@@ -8189,7 +8667,7 @@
     {
       "leg": "sandstone-family-01",
       "side": "normal",
-      "tick": 1010,
+      "tick": 1015,
       "safeAction": {
         "type": "wait"
       },
@@ -8225,7 +8703,7 @@
     {
       "leg": "sandstone-family-01",
       "side": "normal",
-      "tick": 1050,
+      "tick": 1055,
       "safeAction": {
         "type": "wait"
       },
@@ -8243,7 +8721,7 @@
     {
       "leg": "sandstone-family-01",
       "side": "normal",
-      "tick": 1090,
+      "tick": 1095,
       "safeAction": {
         "type": "wait"
       },
@@ -8278,7 +8756,7 @@
     {
       "leg": "sandstone-family-01",
       "side": "normal",
-      "tick": 1125,
+      "tick": 1130,
       "safeAction": {
         "type": "wait"
       },
@@ -8314,7 +8792,7 @@
     {
       "leg": "sandstone-family-01",
       "side": "normal",
-      "tick": 1165,
+      "tick": 1170,
       "safeAction": {
         "type": "wait"
       },
@@ -9131,10 +9609,10 @@
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "valley-cb-n1"
+        "edgeId": "valley-n1-vc"
       },
       "safeClass": 0,
-      "trainedClass": 7,
+      "trainedClass": 6,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
@@ -9167,10 +9645,11 @@
         "edgeId": "valley-cb-vc"
       },
       "trainedAction": {
-        "type": "wait"
+        "type": "move",
+        "edgeId": "valley-n1-vc"
       },
       "safeClass": 7,
-      "trainedClass": 0,
+      "trainedClass": 4,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
@@ -9179,16 +9658,16 @@
     {
       "leg": "sandstone-family-02",
       "side": "normal",
-      "tick": 565,
+      "tick": 600,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "valley-cb-vc"
+        "edgeId": "valley-cb-n1"
       },
       "safeClass": 0,
-      "trainedClass": 6,
+      "trainedClass": 7,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
@@ -9219,11 +9698,10 @@
         "type": "wait"
       },
       "trainedAction": {
-        "type": "move",
-        "edgeId": "valley-n1-vc"
+        "type": "bank"
       },
       "safeClass": 0,
-      "trainedClass": 4,
+      "trainedClass": 1,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 7,
@@ -9245,47 +9723,12 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 7,
-      "trainedBanked": 6
+      "trainedBanked": 7
     },
     {
       "leg": "sandstone-family-02",
       "side": "normal",
-      "tick": 655,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "valley-cb-n1"
-      },
-      "safeClass": 0,
-      "trainedClass": 7,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 7,
-      "trainedBanked": 6
-    },
-    {
-      "leg": "sandstone-family-02",
-      "side": "normal",
-      "tick": 675,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "bank"
-      },
-      "safeClass": 0,
-      "trainedClass": 1,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 7,
-      "trainedBanked": 6
-    },
-    {
-      "leg": "sandstone-family-02",
-      "side": "normal",
-      "tick": 695,
+      "tick": 640,
       "safeAction": {
         "type": "wait"
       },
@@ -9313,6 +9756,24 @@
       },
       "safeClass": 5,
       "trainedClass": 0,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 7,
+      "trainedBanked": 7
+    },
+    {
+      "leg": "sandstone-family-02",
+      "side": "normal",
+      "tick": 720,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "shortcut-cb-cn"
+      },
+      "safeClass": 0,
+      "trainedClass": 7,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 7,
@@ -9399,12 +9860,11 @@
         "edgeId": "ridge-rc-r1s"
       },
       "trainedAction": {
-        "type": "move",
-        "edgeId": "cross-vn-cn"
+        "type": "wait"
       },
       "safeClass": 5,
-      "trainedClass": 5,
-      "sameClassDiffEdge": true,
+      "trainedClass": 0,
+      "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 7,
       "trainedBanked": 7
@@ -9430,25 +9890,7 @@
     {
       "leg": "sandstone-family-02",
       "side": "normal",
-      "tick": 880,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "valley-cb-n1"
-      },
-      "safeClass": 0,
-      "trainedClass": 7,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 7,
-      "trainedBanked": 7
-    },
-    {
-      "leg": "sandstone-family-02",
-      "side": "normal",
-      "tick": 950,
+      "tick": 900,
       "safeAction": {
         "type": "wait"
       },
@@ -9461,6 +9903,24 @@
       "edgeDelta": 0,
       "safeBanked": 7,
       "trainedBanked": 7
+    },
+    {
+      "leg": "sandstone-family-02",
+      "side": "normal",
+      "tick": 910,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "valley-cb-n1"
+      },
+      "safeClass": 0,
+      "trainedClass": 4,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 7,
+      "trainedBanked": 9
     },
     {
       "leg": "sandstone-family-02",
@@ -9483,7 +9943,7 @@
     {
       "leg": "sandstone-family-02",
       "side": "normal",
-      "tick": 960,
+      "tick": 985,
       "safeAction": {
         "type": "wait"
       },
@@ -9492,7 +9952,7 @@
         "edgeId": "valley-cb-n1"
       },
       "safeClass": 0,
-      "trainedClass": 4,
+      "trainedClass": 7,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 7,
@@ -9518,7 +9978,26 @@
     {
       "leg": "sandstone-family-02",
       "side": "normal",
-      "tick": 1035,
+      "tick": 1065,
+      "safeAction": {
+        "type": "move",
+        "edgeId": "base-cb-rn"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "valley-cb-n1"
+      },
+      "safeClass": 5,
+      "trainedClass": 4,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 10,
+      "trainedBanked": 9
+    },
+    {
+      "leg": "sandstone-family-02",
+      "side": "normal",
+      "tick": 1145,
       "safeAction": {
         "type": "wait"
       },
@@ -9528,42 +10007,6 @@
       },
       "safeClass": 0,
       "trainedClass": 7,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 10,
-      "trainedBanked": 9
-    },
-    {
-      "leg": "sandstone-family-02",
-      "side": "normal",
-      "tick": 1065,
-      "safeAction": {
-        "type": "move",
-        "edgeId": "base-cb-rn"
-      },
-      "trainedAction": {
-        "type": "wait"
-      },
-      "safeClass": 5,
-      "trainedClass": 0,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 10,
-      "trainedBanked": 9
-    },
-    {
-      "leg": "sandstone-family-02",
-      "side": "normal",
-      "tick": 1115,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "valley-cb-n1"
-      },
-      "safeClass": 0,
-      "trainedClass": 4,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 10,
@@ -9582,24 +10025,6 @@
       },
       "safeClass": 6,
       "trainedClass": 0,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 10,
-      "trainedBanked": 9
-    },
-    {
-      "leg": "sandstone-family-02",
-      "side": "normal",
-      "tick": 1195,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "valley-cb-n1"
-      },
-      "safeClass": 0,
-      "trainedClass": 7,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 10,
@@ -9665,148 +10090,6 @@
     {
       "leg": "sandstone-family-02",
       "side": "swapped",
-      "tick": 610,
-      "safeAction": {
-        "type": "move",
-        "edgeId": "shortcut-rb-far"
-      },
-      "trainedAction": {
-        "type": "wait"
-      },
-      "safeClass": 7,
-      "trainedClass": 0,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 3,
-      "trainedBanked": 3
-    },
-    {
-      "leg": "sandstone-family-02",
-      "side": "swapped",
-      "tick": 625,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "base-rb-rs"
-      },
-      "safeClass": 0,
-      "trainedClass": 7,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 3,
-      "trainedBanked": 3
-    },
-    {
-      "leg": "sandstone-family-02",
-      "side": "swapped",
-      "tick": 660,
-      "safeAction": {
-        "type": "bank"
-      },
-      "trainedAction": {
-        "type": "wait"
-      },
-      "safeClass": 1,
-      "trainedClass": 0,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 3,
-      "trainedBanked": 3
-    },
-    {
-      "leg": "sandstone-family-02",
-      "side": "swapped",
-      "tick": 680,
-      "safeAction": {
-        "type": "move",
-        "edgeId": "shortcut-rb-far"
-      },
-      "trainedAction": {
-        "type": "wait"
-      },
-      "safeClass": 6,
-      "trainedClass": 0,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 6,
-      "trainedBanked": 3
-    },
-    {
-      "leg": "sandstone-family-02",
-      "side": "swapped",
-      "tick": 700,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "bank"
-      },
-      "safeClass": 0,
-      "trainedClass": 1,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 6,
-      "trainedBanked": 3
-    },
-    {
-      "leg": "sandstone-family-02",
-      "side": "swapped",
-      "tick": 720,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "shortcut-rb-far"
-      },
-      "safeClass": 0,
-      "trainedClass": 6,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 6,
-      "trainedBanked": 6
-    },
-    {
-      "leg": "sandstone-family-02",
-      "side": "swapped",
-      "tick": 730,
-      "safeAction": {
-        "type": "collect",
-        "resourceId": "core-17"
-      },
-      "trainedAction": {
-        "type": "wait"
-      },
-      "safeClass": 2,
-      "trainedClass": 0,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 6,
-      "trainedBanked": 6
-    },
-    {
-      "leg": "sandstone-family-02",
-      "side": "swapped",
-      "tick": 750,
-      "safeAction": {
-        "type": "move",
-        "edgeId": "cross-far-rs3"
-      },
-      "trainedAction": {
-        "type": "wait"
-      },
-      "safeClass": 5,
-      "trainedClass": 0,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 6,
-      "trainedBanked": 6
-    },
-    {
-      "leg": "sandstone-family-02",
-      "side": "swapped",
       "tick": 800,
       "safeAction": {
         "type": "move",
@@ -9817,6 +10100,24 @@
       },
       "safeClass": 5,
       "trainedClass": 0,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 6,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-02",
+      "side": "swapped",
+      "tick": 810,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "ridge-rs-s3"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
@@ -9848,11 +10149,28 @@
         "type": "wait"
       },
       "trainedAction": {
-        "type": "move",
-        "edgeId": "cross-far-rs3"
+        "type": "drain"
       },
       "safeClass": 0,
-      "trainedClass": 5,
+      "trainedClass": 3,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 6,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-02",
+      "side": "swapped",
+      "tick": 910,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "base-rb-rs"
+      },
+      "safeClass": 0,
+      "trainedClass": 7,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
@@ -9879,24 +10197,6 @@
     {
       "leg": "sandstone-family-02",
       "side": "swapped",
-      "tick": 930,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "ridge-rs-s3"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 6,
-      "trainedBanked": 6
-    },
-    {
-      "leg": "sandstone-family-02",
-      "side": "swapped",
       "tick": 935,
       "safeAction": {
         "type": "move",
@@ -9915,15 +10215,15 @@
     {
       "leg": "sandstone-family-02",
       "side": "swapped",
-      "tick": 995,
+      "tick": 985,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
-        "type": "drain"
+        "type": "bank"
       },
       "safeClass": 0,
-      "trainedClass": 3,
+      "trainedClass": 1,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
@@ -9945,25 +10245,25 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 6
+      "trainedBanked": 8
     },
     {
       "leg": "sandstone-family-02",
       "side": "swapped",
-      "tick": 1030,
+      "tick": 1005,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "base-rb-rs"
+        "edgeId": "valley-rb-vs3"
       },
       "safeClass": 0,
-      "trainedClass": 7,
+      "trainedClass": 4,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 6
+      "trainedBanked": 8
     },
     {
       "leg": "sandstone-family-02",
@@ -9978,41 +10278,6 @@
       },
       "safeClass": 5,
       "trainedClass": 0,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 6,
-      "trainedBanked": 6
-    },
-    {
-      "leg": "sandstone-family-02",
-      "side": "swapped",
-      "tick": 1105,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "bank"
-      },
-      "safeClass": 0,
-      "trainedClass": 1,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 6,
-      "trainedBanked": 6
-    },
-    {
-      "leg": "sandstone-family-02",
-      "side": "swapped",
-      "tick": 1125,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "valley-rb-vs3"
-      },
-      "safeClass": 0,
-      "trainedClass": 4,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
@@ -10031,6 +10296,24 @@
       },
       "safeClass": 7,
       "trainedClass": 0,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 6,
+      "trainedBanked": 8
+    },
+    {
+      "leg": "sandstone-family-02",
+      "side": "swapped",
+      "tick": 1160,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "valley-s2-s3"
+      },
+      "safeClass": 0,
+      "trainedClass": 4,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
@@ -10585,7 +10868,7 @@
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vn-cn"
+        "edgeId": "cross-cn-cc"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -10615,13 +10898,31 @@
     {
       "leg": "sandstone-family-03",
       "side": "normal",
-      "tick": 840,
+      "tick": 835,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vn-cn"
+        "edgeId": "cross-cc-cs"
+      },
+      "safeClass": 0,
+      "trainedClass": 6,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 7,
+      "trainedBanked": 10
+    },
+    {
+      "leg": "sandstone-family-03",
+      "side": "normal",
+      "tick": 870,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-cc-cs"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -10650,24 +10951,6 @@
     {
       "leg": "sandstone-family-03",
       "side": "normal",
-      "tick": 880,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "cross-vn-cn"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 10,
-      "trainedBanked": 10
-    },
-    {
-      "leg": "sandstone-family-03",
-      "side": "normal",
       "tick": 885,
       "safeAction": {
         "type": "move",
@@ -10686,16 +10969,16 @@
     {
       "leg": "sandstone-family-03",
       "side": "normal",
-      "tick": 925,
+      "tick": 905,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vn-cn"
+        "edgeId": "cross-cc-rc"
       },
       "safeClass": 0,
-      "trainedClass": 5,
+      "trainedClass": 6,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 10,
@@ -10704,13 +10987,13 @@
     {
       "leg": "sandstone-family-03",
       "side": "normal",
-      "tick": 965,
+      "tick": 960,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vn-cn"
+        "edgeId": "ridge-rn-rc"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -10732,24 +11015,6 @@
       },
       "safeClass": 6,
       "trainedClass": 0,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 10,
-      "trainedBanked": 10
-    },
-    {
-      "leg": "sandstone-family-03",
-      "side": "normal",
-      "tick": 1010,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "cross-vn-cn"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 10,
@@ -10782,10 +11047,11 @@
         "edgeId": "cross-cc-rc"
       },
       "trainedAction": {
-        "type": "wait"
+        "type": "move",
+        "edgeId": "base-cb-rn"
       },
       "safeClass": 5,
-      "trainedClass": 0,
+      "trainedClass": 7,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 10,
@@ -10794,16 +11060,15 @@
     {
       "leg": "sandstone-family-03",
       "side": "normal",
-      "tick": 1050,
+      "tick": 1090,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
-        "type": "move",
-        "edgeId": "cross-vn-cn"
+        "type": "bank"
       },
       "safeClass": 0,
-      "trainedClass": 5,
+      "trainedClass": 1,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 10,
@@ -10812,20 +11077,20 @@
     {
       "leg": "sandstone-family-03",
       "side": "normal",
-      "tick": 1095,
+      "tick": 1100,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vn-cn"
+        "edgeId": "valley-cb-n1"
       },
       "safeClass": 0,
-      "trainedClass": 5,
+      "trainedClass": 4,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 10,
-      "trainedBanked": 10
+      "trainedBanked": 13
     },
     {
       "leg": "sandstone-family-03",
@@ -10843,25 +11108,7 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 10,
-      "trainedBanked": 10
-    },
-    {
-      "leg": "sandstone-family-03",
-      "side": "normal",
-      "tick": 1135,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "cross-vn-cn"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 10,
-      "trainedBanked": 10
+      "trainedBanked": 13
     },
     {
       "leg": "sandstone-family-03",
@@ -10879,7 +11126,25 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 10,
-      "trainedBanked": 10
+      "trainedBanked": 13
+    },
+    {
+      "leg": "sandstone-family-03",
+      "side": "normal",
+      "tick": 1170,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-vn-cn"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 10,
+      "trainedBanked": 13
     },
     {
       "leg": "sandstone-family-03",
@@ -10890,15 +11155,14 @@
         "edgeId": "shortcut-cb-cn"
       },
       "trainedAction": {
-        "type": "move",
-        "edgeId": "valley-cb-n1"
+        "type": "wait"
       },
       "safeClass": 7,
-      "trainedClass": 7,
-      "sameClassDiffEdge": true,
+      "trainedClass": 0,
+      "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 10,
-      "trainedBanked": 10
+      "trainedBanked": 13
     },
     {
       "leg": "sandstone-family-03",
@@ -11449,7 +11713,7 @@
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vs3-far"
+        "edgeId": "cross-far-rs3"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -11467,29 +11731,12 @@
         "edgeId": "cross-s2-far"
       },
       "trainedAction": {
-        "type": "wait"
+        "type": "move",
+        "edgeId": "cross-far-rs3"
       },
       "safeClass": 5,
-      "trainedClass": 0,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 6,
-      "trainedBanked": 6
-    },
-    {
-      "leg": "sandstone-family-03",
-      "side": "swapped",
-      "tick": 880,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "cross-vs3-far"
-      },
-      "safeClass": 0,
       "trainedClass": 5,
-      "sameClassDiffEdge": false,
+      "sameClassDiffEdge": true,
       "edgeDelta": 0,
       "safeBanked": 6,
       "trainedBanked": 6
@@ -11497,13 +11744,13 @@
     {
       "leg": "sandstone-family-03",
       "side": "swapped",
-      "tick": 920,
+      "tick": 910,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vs3-far"
+        "edgeId": "cross-far-rs3"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -11533,13 +11780,13 @@
     {
       "leg": "sandstone-family-03",
       "side": "swapped",
-      "tick": 960,
+      "tick": 950,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vs3-far"
+        "edgeId": "cross-far-rs3"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -11569,13 +11816,13 @@
     {
       "leg": "sandstone-family-03",
       "side": "swapped",
-      "tick": 1000,
+      "tick": 985,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vs3-far"
+        "edgeId": "cross-far-rs3"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -11587,13 +11834,31 @@
     {
       "leg": "sandstone-family-03",
       "side": "swapped",
-      "tick": 1045,
+      "tick": 1025,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vs3-far"
+        "edgeId": "cross-far-rs3"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 6,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-03",
+      "side": "swapped",
+      "tick": 1060,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-far-rs3"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -11640,13 +11905,13 @@
     {
       "leg": "sandstone-family-03",
       "side": "swapped",
-      "tick": 1085,
+      "tick": 1100,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vs3-far"
+        "edgeId": "cross-far-rs3"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -11658,31 +11923,13 @@
     {
       "leg": "sandstone-family-03",
       "side": "swapped",
-      "tick": 1125,
+      "tick": 1135,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vs3-far"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 9,
-      "trainedBanked": 6
-    },
-    {
-      "leg": "sandstone-family-03",
-      "side": "swapped",
-      "tick": 1165,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "cross-vs3-far"
+        "edgeId": "cross-far-rs3"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -11704,6 +11951,24 @@
       },
       "safeClass": 5,
       "trainedClass": 0,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 9,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-03",
+      "side": "swapped",
+      "tick": 1175,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-far-rs3"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 9,
@@ -11971,10 +12236,10 @@
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vn-cn"
+        "edgeId": "shortcut-cb-cn"
       },
       "safeClass": 0,
-      "trainedClass": 5,
+      "trainedClass": 7,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
@@ -12001,24 +12266,6 @@
     {
       "leg": "sandstone-family-04",
       "side": "normal",
-      "tick": 455,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "valley-cb-n1"
-      },
-      "safeClass": 0,
-      "trainedClass": 7,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 3,
-      "trainedBanked": 3
-    },
-    {
-      "leg": "sandstone-family-04",
-      "side": "normal",
       "tick": 475,
       "safeAction": {
         "type": "bank"
@@ -12031,23 +12278,6 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
-      "trainedBanked": 3
-    },
-    {
-      "leg": "sandstone-family-04",
-      "side": "normal",
-      "tick": 480,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "bank"
-      },
-      "safeClass": 0,
-      "trainedClass": 1,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 6,
       "trainedBanked": 3
     },
     {
@@ -12066,12 +12296,30 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 6
+      "trainedBanked": 3
     },
     {
       "leg": "sandstone-family-04",
       "side": "normal",
-      "tick": 490,
+      "tick": 520,
+      "safeAction": {
+        "type": "move",
+        "edgeId": "valley-n1-vc"
+      },
+      "trainedAction": {
+        "type": "bank"
+      },
+      "safeClass": 6,
+      "trainedClass": 1,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 6,
+      "trainedBanked": 3
+    },
+    {
+      "leg": "sandstone-family-04",
+      "side": "normal",
+      "tick": 530,
       "safeAction": {
         "type": "wait"
       },
@@ -12089,25 +12337,7 @@
     {
       "leg": "sandstone-family-04",
       "side": "normal",
-      "tick": 520,
-      "safeAction": {
-        "type": "move",
-        "edgeId": "valley-n1-vc"
-      },
-      "trainedAction": {
-        "type": "wait"
-      },
-      "safeClass": 6,
-      "trainedClass": 0,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 6,
-      "trainedBanked": 6
-    },
-    {
-      "leg": "sandstone-family-04",
-      "side": "normal",
-      "tick": 525,
+      "tick": 550,
       "safeAction": {
         "type": "wait"
       },
@@ -12167,11 +12397,10 @@
         "resourceId": "core-3"
       },
       "trainedAction": {
-        "type": "move",
-        "edgeId": "cross-vn-cn"
+        "type": "wait"
       },
       "safeClass": 2,
-      "trainedClass": 5,
+      "trainedClass": 0,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
@@ -12198,13 +12427,13 @@
     {
       "leg": "sandstone-family-04",
       "side": "normal",
-      "tick": 600,
+      "tick": 585,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vn-cn"
+        "edgeId": "cross-cn-cc"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -12251,6 +12480,24 @@
     {
       "leg": "sandstone-family-04",
       "side": "normal",
+      "tick": 620,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-cc-cs"
+      },
+      "safeClass": 0,
+      "trainedClass": 6,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 9,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-04",
+      "side": "normal",
       "tick": 625,
       "safeAction": {
         "type": "move",
@@ -12269,15 +12516,16 @@
     {
       "leg": "sandstone-family-04",
       "side": "normal",
-      "tick": 635,
+      "tick": 640,
       "safeAction": {
-        "type": "wait"
+        "type": "move",
+        "edgeId": "valley-n1-vc"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vn-cn"
+        "edgeId": "cross-cc-cs"
       },
-      "safeClass": 0,
+      "safeClass": 6,
       "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
@@ -12287,31 +12535,13 @@
     {
       "leg": "sandstone-family-04",
       "side": "normal",
-      "tick": 640,
-      "safeAction": {
-        "type": "move",
-        "edgeId": "valley-n1-vc"
-      },
-      "trainedAction": {
-        "type": "wait"
-      },
-      "safeClass": 6,
-      "trainedClass": 0,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 9,
-      "trainedBanked": 6
-    },
-    {
-      "leg": "sandstone-family-04",
-      "side": "normal",
-      "tick": 670,
+      "tick": 655,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vn-cn"
+        "edgeId": "cross-cc-cs"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -12329,10 +12559,11 @@
         "resourceId": "core-4"
       },
       "trainedAction": {
-        "type": "wait"
+        "type": "move",
+        "edgeId": "cross-cc-cs"
       },
       "safeClass": 2,
-      "trainedClass": 0,
+      "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 9,
@@ -12359,13 +12590,49 @@
     {
       "leg": "sandstone-family-04",
       "side": "normal",
+      "tick": 690,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-cc-cs"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 9,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-04",
+      "side": "normal",
       "tick": 710,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vn-cn"
+        "edgeId": "cross-cc-cs"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 9,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-04",
+      "side": "normal",
+      "tick": 725,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-cc-cs"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -12419,9 +12686,64 @@
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vn-cn"
+        "edgeId": "cross-cc-cs"
       },
       "safeClass": 4,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 10,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-04",
+      "side": "normal",
+      "tick": 760,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-cc-cs"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 10,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-04",
+      "side": "normal",
+      "tick": 780,
+      "safeAction": {
+        "type": "move",
+        "edgeId": "cross-vn-cn"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-cc-cs"
+      },
+      "safeClass": 5,
+      "trainedClass": 5,
+      "sameClassDiffEdge": true,
+      "edgeDelta": 0,
+      "safeBanked": 10,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-04",
+      "side": "normal",
+      "tick": 795,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-cc-cs"
+      },
+      "safeClass": 0,
       "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
@@ -12437,7 +12759,7 @@
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vn-cn"
+        "edgeId": "cross-cc-cs"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -12467,17 +12789,52 @@
     {
       "leg": "sandstone-family-04",
       "side": "normal",
+      "tick": 830,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-cc-cs"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 10,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-04",
+      "side": "normal",
+      "tick": 850,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-cc-cs"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 10,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-04",
+      "side": "normal",
       "tick": 855,
       "safeAction": {
         "type": "move",
         "edgeId": "cross-cc-cs"
       },
       "trainedAction": {
-        "type": "move",
-        "edgeId": "cross-vn-cn"
+        "type": "wait"
       },
       "safeClass": 6,
-      "trainedClass": 5,
+      "trainedClass": 0,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 10,
@@ -12492,10 +12849,11 @@
         "resourceId": "core-9"
       },
       "trainedAction": {
-        "type": "wait"
+        "type": "move",
+        "edgeId": "cross-cc-cs"
       },
       "safeClass": 2,
-      "trainedClass": 0,
+      "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 10,
@@ -12540,18 +12898,161 @@
     {
       "leg": "sandstone-family-04",
       "side": "normal",
+      "tick": 885,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-cc-cs"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 10,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-04",
+      "side": "normal",
       "tick": 890,
       "safeAction": {
         "type": "move",
         "edgeId": "cross-cn-cc"
       },
       "trainedAction": {
+        "type": "wait"
+      },
+      "safeClass": 5,
+      "trainedClass": 0,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 10,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-04",
+      "side": "normal",
+      "tick": 900,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-cc-cs"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 10,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-04",
+      "side": "normal",
+      "tick": 920,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-cc-cs"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 10,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-04",
+      "side": "normal",
+      "tick": 925,
+      "safeAction": {
         "type": "move",
         "edgeId": "cross-vn-cn"
       },
+      "trainedAction": {
+        "type": "wait"
+      },
       "safeClass": 5,
+      "trainedClass": 0,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 10,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-04",
+      "side": "normal",
+      "tick": 935,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-cc-cs"
+      },
+      "safeClass": 0,
       "trainedClass": 5,
-      "sameClassDiffEdge": true,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 10,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-04",
+      "side": "normal",
+      "tick": 955,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-cc-cs"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 10,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-04",
+      "side": "normal",
+      "tick": 960,
+      "safeAction": {
+        "type": "move",
+        "edgeId": "valley-cb-n1"
+      },
+      "trainedAction": {
+        "type": "wait"
+      },
+      "safeClass": 7,
+      "trainedClass": 0,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 10,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-04",
+      "side": "normal",
+      "tick": 970,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-cc-cs"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 10,
       "trainedBanked": 6
@@ -12576,6 +13077,24 @@
     {
       "leg": "sandstone-family-04",
       "side": "normal",
+      "tick": 990,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-cc-cs"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 12,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-04",
+      "side": "normal",
       "tick": 995,
       "safeAction": {
         "type": "move",
@@ -12594,13 +13113,31 @@
     {
       "leg": "sandstone-family-04",
       "side": "normal",
-      "tick": 1000,
+      "tick": 1005,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vn-cn"
+        "edgeId": "cross-cc-cs"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 12,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-04",
+      "side": "normal",
+      "tick": 1025,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-cc-cs"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -12630,13 +13167,49 @@
     {
       "leg": "sandstone-family-04",
       "side": "normal",
-      "tick": 1035,
+      "tick": 1040,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vn-cn"
+        "edgeId": "cross-cc-cs"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 12,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-04",
+      "side": "normal",
+      "tick": 1060,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-cc-cs"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 12,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-04",
+      "side": "normal",
+      "tick": 1075,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-cc-cs"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -12666,13 +13239,49 @@
     {
       "leg": "sandstone-family-04",
       "side": "normal",
-      "tick": 1105,
+      "tick": 1095,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vn-cn"
+        "edgeId": "cross-cc-cs"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 12,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-04",
+      "side": "normal",
+      "tick": 1110,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-cc-cs"
+      },
+      "safeClass": 0,
+      "trainedClass": 5,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 12,
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-04",
+      "side": "normal",
+      "tick": 1130,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "move",
+        "edgeId": "cross-cc-cs"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -12726,7 +13335,7 @@
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vn-cn"
+        "edgeId": "cross-cn-cc"
       },
       "safeClass": 0,
       "trainedClass": 5,
@@ -12774,7 +13383,7 @@
     {
       "leg": "sandstone-family-04",
       "side": "normal",
-      "tick": 1180,
+      "tick": 1185,
       "safeAction": {
         "type": "wait"
       },
@@ -12964,10 +13573,10 @@
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "shortcut-rb-far"
+        "edgeId": "cross-far-rs3"
       },
       "safeClass": 0,
-      "trainedClass": 7,
+      "trainedClass": 6,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
@@ -13012,37 +13621,20 @@
     {
       "leg": "sandstone-family-04",
       "side": "swapped",
-      "tick": 590,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "bank"
-      },
-      "safeClass": 0,
-      "trainedClass": 1,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 3,
-      "trainedBanked": 3
-    },
-    {
-      "leg": "sandstone-family-04",
-      "side": "swapped",
-      "tick": 615,
+      "tick": 595,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "valley-rb-vs3"
+        "edgeId": "ridge-s2-s3"
       },
       "safeClass": 0,
-      "trainedClass": 4,
+      "trainedClass": 6,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
-      "trainedBanked": 5
+      "trainedBanked": 3
     },
     {
       "leg": "sandstone-family-04",
@@ -13060,25 +13652,25 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
-      "trainedBanked": 5
+      "trainedBanked": 3
     },
     {
       "leg": "sandstone-family-04",
       "side": "swapped",
-      "tick": 680,
+      "tick": 655,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "valley-s2-s3"
+        "edgeId": "cross-s2-rs2"
       },
       "safeClass": 0,
-      "trainedClass": 4,
+      "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
-      "trainedBanked": 5
+      "trainedBanked": 3
     },
     {
       "leg": "sandstone-family-04",
@@ -13096,43 +13688,43 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
-      "trainedBanked": 5
+      "trainedBanked": 3
     },
     {
       "leg": "sandstone-family-04",
       "side": "swapped",
-      "tick": 720,
+      "tick": 725,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vs2-s2"
+        "edgeId": "cross-s2-far"
       },
       "safeClass": 0,
       "trainedClass": 5,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
-      "trainedBanked": 5
+      "trainedBanked": 3
     },
     {
       "leg": "sandstone-family-04",
       "side": "swapped",
-      "tick": 760,
+      "tick": 795,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vs2-s2"
+        "edgeId": "shortcut-rb-far"
       },
       "safeClass": 0,
-      "trainedClass": 5,
+      "trainedClass": 7,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
-      "trainedBanked": 5
+      "trainedBanked": 3
     },
     {
       "leg": "sandstone-family-04",
@@ -13149,25 +13741,7 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 3,
-      "trainedBanked": 5
-    },
-    {
-      "leg": "sandstone-family-04",
-      "side": "swapped",
-      "tick": 805,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "cross-vs2-s2"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 6,
-      "trainedBanked": 5
+      "trainedBanked": 3
     },
     {
       "leg": "sandstone-family-04",
@@ -13185,43 +13759,7 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 5
-    },
-    {
-      "leg": "sandstone-family-04",
-      "side": "swapped",
-      "tick": 845,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "cross-vs2-s2"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 6,
-      "trainedBanked": 5
-    },
-    {
-      "leg": "sandstone-family-04",
-      "side": "swapped",
-      "tick": 890,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "cross-vs2-s2"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 6,
-      "trainedBanked": 5
+      "trainedBanked": 3
     },
     {
       "leg": "sandstone-family-04",
@@ -13232,33 +13770,14 @@
         "edgeId": "ridge-s3-rs"
       },
       "trainedAction": {
-        "type": "move",
-        "edgeId": "cross-vs2-s2"
-      },
-      "safeClass": 5,
-      "trainedClass": 5,
-      "sameClassDiffEdge": true,
-      "edgeDelta": 0,
-      "safeBanked": 6,
-      "trainedBanked": 5
-    },
-    {
-      "leg": "sandstone-family-04",
-      "side": "swapped",
-      "tick": 975,
-      "safeAction": {
         "type": "wait"
       },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "cross-vs2-s2"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
+      "safeClass": 5,
+      "trainedClass": 0,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 5
+      "trainedBanked": 3
     },
     {
       "leg": "sandstone-family-04",
@@ -13276,7 +13795,7 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 5
+      "trainedBanked": 3
     },
     {
       "leg": "sandstone-family-04",
@@ -13286,15 +13805,14 @@
         "type": "wait"
       },
       "trainedAction": {
-        "type": "move",
-        "edgeId": "cross-vs2-s2"
+        "type": "bank"
       },
       "safeClass": 0,
-      "trainedClass": 5,
+      "trainedClass": 1,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 5
+      "trainedBanked": 3
     },
     {
       "leg": "sandstone-family-04",
@@ -13312,7 +13830,24 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 5
+      "trainedBanked": 6
+    },
+    {
+      "leg": "sandstone-family-04",
+      "side": "swapped",
+      "tick": 1040,
+      "safeAction": {
+        "type": "wait"
+      },
+      "trainedAction": {
+        "type": "drain"
+      },
+      "safeClass": 0,
+      "trainedClass": 3,
+      "sameClassDiffEdge": false,
+      "edgeDelta": 0,
+      "safeBanked": 6,
+      "trainedBanked": 6
     },
     {
       "leg": "sandstone-family-04",
@@ -13330,43 +13865,25 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 5
+      "trainedBanked": 6
     },
     {
       "leg": "sandstone-family-04",
       "side": "swapped",
-      "tick": 1060,
+      "tick": 1065,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vs2-s2"
+        "edgeId": "valley-rb-vs3"
       },
       "safeClass": 0,
-      "trainedClass": 5,
+      "trainedClass": 4,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 5
-    },
-    {
-      "leg": "sandstone-family-04",
-      "side": "swapped",
-      "tick": 1100,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "cross-vs2-s2"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 6,
-      "trainedBanked": 5
+      "trainedBanked": 6
     },
     {
       "leg": "sandstone-family-04",
@@ -13384,25 +13901,7 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 5
-    },
-    {
-      "leg": "sandstone-family-04",
-      "side": "swapped",
-      "tick": 1145,
-      "safeAction": {
-        "type": "wait"
-      },
-      "trainedAction": {
-        "type": "move",
-        "edgeId": "cross-vs2-s2"
-      },
-      "safeClass": 0,
-      "trainedClass": 5,
-      "sameClassDiffEdge": false,
-      "edgeDelta": 0,
-      "safeBanked": 6,
-      "trainedBanked": 5
+      "trainedBanked": 6
     },
     {
       "leg": "sandstone-family-04",
@@ -13420,25 +13919,25 @@
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 5
+      "trainedBanked": 6
     },
     {
       "leg": "sandstone-family-04",
       "side": "swapped",
-      "tick": 1185,
+      "tick": 1195,
       "safeAction": {
         "type": "wait"
       },
       "trainedAction": {
         "type": "move",
-        "edgeId": "cross-vs2-s2"
+        "edgeId": "valley-s2-s3"
       },
       "safeClass": 0,
-      "trainedClass": 5,
+      "trainedClass": 4,
       "sameClassDiffEdge": false,
       "edgeDelta": 0,
       "safeBanked": 6,
-      "trainedBanked": 5
+      "trainedBanked": 6
     }
   ]
 }

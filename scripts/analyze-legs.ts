@@ -4,13 +4,14 @@
  * Diagnostic leg analyzer (WS1.0): walks the safe teacher and the trained
  * champion tick-for-tick on every eval leg (abstract held-outs, grounded
  * modes, family layouts, both sides) and dumps decision divergences with a
- * route-only counterfactual value (rolloutOutcomeDelta: trained pick vs the
- * safe pick, safe continuation, greedy rival).
+ * counterfactual value (rolloutOutcomeDelta: trained pick vs the safe pick,
+ * safe continuation, greedy rival).
  *
  * Not gated, not pinned — pure instrumentation for executor-symmetrization
- * and label work. The delta is route-only even for grounded legs (physics
- * snapshots mis-price travel time; COMPATIBILITY.md), so treat magnitudes as
- * hints and tick/timing as truth.
+ * and label work. Deltas are route-only on abstract legs (exact there) and
+ * physics-aware on grounded/family legs since Sep 26 (collider-backed
+ * branches restored from the safe runner's live snapshot, recovery penalty
+ * included), so magnitudes are now meaningful on physics courses.
  *
  * Usage: npm run analyze:legs
  */
@@ -72,7 +73,8 @@ const rivalContinuation = (obs: ArenaObservation) => collectorPolicy(obs, 'greed
 /**
  * Drive one leg with two runners (safe / trained) advancing tick-by-tick,
  * compare the champion decision at every decision tick, and value the
- * divergence with a route-only rollout from the safe runner's live snapshot.
+ * divergence with a rollout from the safe runner's live snapshot —
+ * collider-backed when the leg runs on physics.
  */
 function analyzeLeg(
   scenario: ArenaScenario,
@@ -91,6 +93,9 @@ function analyzeLeg(
 
   const motionSafe = collider ? new ArenaPhysics(collider) : undefined
   const motionTrained = collider ? new ArenaPhysics(collider) : undefined
+  // Dedicated rollout adapter — never the runners' live physics, which a
+  // branch restoreSnapshot would re-seed mid-walk.
+  const motionRollout = collider ? new ArenaPhysics(collider) : undefined
   try {
     const safeRunner = new ArenaRunner(
       evalScenario,
@@ -129,15 +134,31 @@ function analyzeLeg(
         const safeAction = collectorPolicy(safeObs, 'safe')
         const trainedAction = trainedPolicy(trainedObs)
         if (JSON.stringify(safeAction) !== JSON.stringify(trainedAction) && safeObs.decisionDue) {
-          const edgeDelta = rolloutOutcomeDelta(
-            evalScenario,
-            safeSnap,
-            safeAction,
-            trainedAction,
-            championContinuation,
-            rivalContinuation,
-            horizonTicks,
-          )
+          let edgeDelta: number
+          try {
+            edgeDelta = rolloutOutcomeDelta(
+              evalScenario,
+              safeSnap,
+              safeAction,
+              trainedAction,
+              championContinuation,
+              rivalContinuation,
+              horizonTicks,
+              motionRollout,
+            )
+          } catch {
+            // Restored wall-clamped poses can fail the physics spawn check;
+            // fall back to the route-only value for this divergence.
+            edgeDelta = rolloutOutcomeDelta(
+              evalScenario,
+              safeSnap,
+              safeAction,
+              trainedAction,
+              championContinuation,
+              rivalContinuation,
+              horizonTicks,
+            )
+          }
           divergences.push({
             leg: evalScenario.id,
             side,
@@ -176,6 +197,7 @@ function analyzeLeg(
   } finally {
     motionSafe?.dispose()
     motionTrained?.dispose()
+    motionRollout?.dispose()
   }
 }
 
@@ -224,7 +246,7 @@ async function main() {
     `trained=${d.trainedAction.type}${d.trainedAction.type === 'move' ? `(${(d.trainedAction as { edgeId: string }).edgeId})` : ''}[c${d.trainedClass}] ` +
     `delta=${d.edgeDelta.toFixed(2)} banked ${d.safeBanked}|${d.trainedBanked}`
 
-  console.log(`\nTop divergences where TRAINED was worse (route-only value of safe pick − trained pick):`)
+  console.log(`\nTop divergences where TRAINED was worse (counterfactual value of safe pick − trained pick; physics-aware on grounded legs):`)
   for (const d of worst) console.log(fmt(d))
   console.log(`\nTop divergences where TRAINED was better:`)
   for (const d of best) console.log(fmt(d))

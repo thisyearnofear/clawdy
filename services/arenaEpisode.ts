@@ -325,6 +325,12 @@ export class ArenaEpisode {
    */
   restoreSnapshot(state: ArenaSnapshot) {
     this.#state = structuredClone(state)
+    // Re-seed the motion adapter from the restored positions; without this a
+    // physics-backed branch would chase targets from stale (construction-time)
+    // body poses. May throw when a restored position fails the spawn overlap
+    // check (wall-clamped mid-edge poses) — callers branching from physics
+    // snapshots should handle that and fall back to a route-only branch.
+    this.#motion?.reset(this.#state.agents.map(agent => ({ id: agent.id, position: [...agent.position] })))
   }
 
   observe(agentId: string, options?: { forceDecision?: boolean }): ArenaObservation {
@@ -551,12 +557,19 @@ export class ArenaEpisode {
 }
 
 /**
- * Branch an episode from a recorded snapshot state (route-only path, no
- * physics): restore the snapshot into a fresh episode over the same
- * scenario, apply one champion action, then run both branches with fixed
- * policies to `horizonTicks`. Returns banked delta (oracle branch minus
- * learner branch). Deterministic: same snapshot + same actions → same delta.
+ * Branch an episode from a recorded snapshot state: restore the snapshot into
+ * a fresh episode over the same scenario, apply one champion action, then run
+ * both branches with fixed policies to `horizonTicks`. Returns banked delta
+ * (oracle branch minus learner branch). Deterministic: same snapshot + same
+ * actions (+ same collider, when motion is given) → same delta.
  * Used to weight consequence supervision.
+ *
+ * Route-only by default. Pass a shared `motion` adapter (caller owns its
+ * lifecycle) to price both branches with real traversal physics — required
+ * for snapshots recorded on grounded courses, where route-only branches
+ * cannot produce the stalls/recoveries that dominate physical travel time.
+ * The adapter is re-seeded from the snapshot via restoreSnapshot, so one
+ * instance can serve both branches (they run sequentially).
  */
 export function rolloutOutcomeDelta(
   scenario: ArenaScenario,
@@ -566,12 +579,15 @@ export function rolloutOutcomeDelta(
   championPolicy: (obs: ArenaObservation) => ArenaAction,
   rivalPolicy: (obs: ArenaObservation) => ArenaAction,
   horizonTicks = 120,
+  motion?: ArenaMotion,
 ): number {
-  const runBranch = (firstAction: ArenaAction): { banked: number; cargo: number; collected: number } => {
-    const branch = new ArenaEpisode({ ...scenario, entrants: scenario.entrants.map(e => ({ ...e })) })
+  const runBranch = (firstAction: ArenaAction): { banked: number; cargo: number; collected: number; recoveries: number } => {
+    const branch = new ArenaEpisode({ ...scenario, entrants: scenario.entrants.map(e => ({ ...e })) }, motion)
     branch.restoreSnapshot(structuredClone(state))
     const startTick = branch.tick
-    const startBanked = branch.snapshot().agents.find(a => a.id === 'champion')?.banked ?? 0
+    const start = branch.snapshot().agents.find(a => a.id === 'champion')
+    const startBanked = start?.banked ?? 0
+    const startRecoveries = start?.recoveries ?? 0
     const endTick = Math.min(startTick + horizonTicks, scenario.durationTicks)
     let first = true
     let collected = 0
@@ -588,14 +604,21 @@ export function rolloutOutcomeDelta(
       ])
     }
     const end = branch.snapshot().agents.find(a => a.id === 'champion')
-    return { banked: (end?.banked ?? 0) - startBanked, cargo: end?.cargo ?? 0, collected }
+    return {
+      banked: (end?.banked ?? 0) - startBanked,
+      cargo: end?.cargo ?? 0,
+      collected,
+      recoveries: (end?.recoveries ?? 0) - startRecoveries,
+    }
   }
   const oracle = runBranch(oracleAction)
   const learner = runBranch(learnerAction)
   // Progress score: banked is sparse (horizon rarely reaches a bank trip),
   // so credit cargo aboard + collects too. Scale: 1 banked ≈ 3 cargo-equivalents.
-  const score = (r: { banked: number; cargo: number; collected: number }) =>
-    r.banked * 3 + r.cargo * 0.5 + r.collected * 0.25
+  // Recoveries (only possible under physics motion) cost 2: a stalling road
+  // must never out-score a slower-but-moving alternative.
+  const score = (r: { banked: number; cargo: number; collected: number; recoveries: number }) =>
+    r.banked * 3 + r.cargo * 0.5 + r.collected * 0.25 - r.recoveries * 2
   return score(oracle) - score(learner)
 }
 

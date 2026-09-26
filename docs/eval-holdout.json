@@ -1,20 +1,20 @@
 {
-  "generatedAt": "2026-09-26T15:46:01.821Z",
+  "generatedAt": "2026-09-26T19:58:33.791Z",
   "baseCheckpoint": {
     "id": "champion-baseline-s0",
     "weightsHash": "a4d4de133bf4",
     "note": "Randomly initialized base; safe collector is the meaningful baseline."
   },
   "trainedCheckpoint": {
-    "id": "checkpoint-muikao2q-8a3d6b",
-    "name": "Champion v1 (+162 synthetic examples)",
-    "weightsHash": "9c1e938a3d6b",
+    "id": "checkpoint-muitbfjd-113d66",
+    "name": "Champion v1 (+161 synthetic examples)",
+    "weightsHash": "2b76a6113d66",
     "trainingSummary": {
       "epochs": 60,
-      "loss": 0.0805,
-      "sampleCount": 162,
-      "datasetHash": "ds:6c34309c:162",
-      "accuracy": 0.988
+      "loss": 0.1653,
+      "sampleCount": 161,
+      "datasetHash": "ds:efb05ad8:161",
+      "accuracy": 0.994
     }
   },
   "examples": [
@@ -811,12 +811,6 @@
       "rationale": "Safe collector would move along a non-floodable route when applicable."
     },
     {
-      "id": "distill-sandstone-practice-01-95",
-      "sourceEpisodeId": "sandstone-practice-01",
-      "tick": 95,
-      "rationale": "Safe collector would move along a non-floodable route when applicable."
-    },
-    {
       "id": "distill-sandstone-practice-01-130",
       "sourceEpisodeId": "sandstone-practice-01",
       "tick": 130,
@@ -841,21 +835,21 @@
       "rationale": "Safe collector would move along a non-floodable route when applicable."
     },
     {
-      "id": "distill-sandstone-practice-01-590",
-      "sourceEpisodeId": "sandstone-practice-01",
-      "tick": 590,
-      "rationale": "Safe collector would move along a non-floodable route when applicable."
-    },
-    {
       "id": "distill-sandstone-practice-01-975",
       "sourceEpisodeId": "sandstone-practice-01",
       "tick": 975,
       "rationale": "Safe collector would move along a non-floodable route when applicable."
     },
     {
-      "id": "distill-sandstone-practice-01-55",
+      "id": "distill-sandstone-practice-01-310",
       "sourceEpisodeId": "sandstone-practice-01",
-      "tick": 55,
+      "tick": 310,
+      "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-sandstone-practice-01-345",
+      "sourceEpisodeId": "sandstone-practice-01",
+      "tick": 345,
       "rationale": "Safe collector would move along a non-floodable route when applicable."
     },
     {
@@ -871,16 +865,10 @@
       "rationale": "Weather oracle would drain while swimming flood water (measured)."
     },
     {
-      "id": "distill-sandstone-practice-01-310",
+      "id": "distill-sandstone-practice-01-180",
       "sourceEpisodeId": "sandstone-practice-01",
-      "tick": 310,
-      "rationale": "Safe collector would move along a non-floodable route when applicable."
-    },
-    {
-      "id": "distill-sandstone-practice-01-370",
-      "sourceEpisodeId": "sandstone-practice-01",
-      "tick": 370,
-      "rationale": "Safe collector would move along a non-floodable route when applicable."
+      "tick": 180,
+      "rationale": "Weather oracle would drain while swimming flood water (measured)."
     },
     {
       "id": "distill-sandstone-practice-01-915",
@@ -989,6 +977,12 @@
       "sourceEpisodeId": "sandstone-practice-01",
       "tick": 1150,
       "rationale": "Safe collector would move along a non-floodable route when applicable."
+    },
+    {
+      "id": "distill-sandstone-practice-01:argmax-370",
+      "sourceEpisodeId": "sandstone-practice-01",
+      "tick": 370,
+      "rationale": "Measured consequence (physics): same-class road cross-vc-cc out-banks the safe teacher's pick at the 120- and 240-tick horizons on the real collider (+7.50)."
     }
   ],
   "perScenario": [

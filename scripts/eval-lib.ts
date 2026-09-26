@@ -258,6 +258,12 @@ export function buildSyllabusExamples(groundedBoards: GroundedSyllabusBoard[] = 
       contrastAction?: ArenaAction
       /** Consequence horizon ticks (default 120). Pad-flood mines need ≥240. */
       horizonTicks?: number
+      /**
+       * Measure the consequence delta with real traversal physics over this
+       * collider (grounded boards). When set, a negative delta is an honest
+       * contradiction and always vetoes the label.
+       */
+      physics?: { collider: GroundedSyllabusBoard['collider'] }
     } = {},
   ): boolean => {
     const key = `${practice.id}${opts.keySuffix ?? ''}:${tick}`
@@ -290,31 +296,54 @@ export function buildSyllabusExamples(groundedBoards: GroundedSyllabusBoard[] = 
       : (sameTypeContrast
         ?? candidates.find(candidate => JSON.stringify(candidate) !== JSON.stringify(label.action))
         ?? candidates[0])
-    const outcomeDelta = rolloutOutcomeDelta(
-      practice,
-      snapshot,
-      label.action,
-      recorded,
-      championContinuation,
-      rivalContinuation,
-      opts.horizonTicks ?? 120,
-    )
+    // Consequence measure: physics-aware when a collider is supplied
+    // (grounded boards), route-only otherwise (abstract boards, where the
+    // route model IS the eval dynamics, and the browser coaching path).
+    let outcomeDelta: number
+    let physicsMeasured = false
+    if (opts.physics) {
+      const motion = new ArenaPhysics(opts.physics.collider)
+      try {
+        outcomeDelta = rolloutOutcomeDelta(
+          practice, snapshot, label.action, recorded,
+          championContinuation, rivalContinuation, opts.horizonTicks ?? 120, motion,
+        )
+        physicsMeasured = true
+      } catch {
+        // Physics branch setup can fail on restored wall-clamped mid-edge
+        // poses (spawn overlap check). Fall back to the route-only measure
+        // for this emit rather than crashing the distill.
+        outcomeDelta = rolloutOutcomeDelta(
+          practice, snapshot, label.action, recorded,
+          championContinuation, rivalContinuation, opts.horizonTicks ?? 120,
+        )
+      } finally {
+        motion.dispose()
+      }
+    } else {
+      outcomeDelta = rolloutOutcomeDelta(
+        practice, snapshot, label.action, recorded,
+        championContinuation, rivalContinuation, opts.horizonTicks ?? 120,
+      )
+    }
     // Labels the rollout contradicts are dropped — the teacher was wrong
     // there and the outcome overrides. Tolerance: fractional deltas below
     // 0.25 are rollout noise (cargo/collect weighting), not contradiction;
     // only strictly negative, meaningful deltas veto.
     //
-    // Grounded exception: route-only rollouts restored from physics
-    // snapshots mis-price travel-time geometry (the whole reason grounded
-    // labels exist). Never veto teacher-path grounded emits; floor the
-    // recorded delta so sample weights stay honest.
+    // Physics-measured deltas are honest about travel geometry, so a
+    // negative delta ALWAYS vetoes — this replaces the pre-Sep-26 grounded
+    // exception that floored route-only deltas at 0.5 (route-only rollouts
+    // restored from physics snapshots mis-priced travel-time geometry).
     //
-    // Student-path mines (two-pass interim walk) DO respect the veto —
-    // floored false-positive labels at champion-base post-bank flood
-    // regressed practice 10→7 when forced in.
+    // Route-only fallback emits (physics setup failure) keep the legacy
+    // floor: a mis-priced measure may weight a grounded teacher label but
+    // must not filter it. Student-path mines (two-pass interim walk) also
+    // respect the veto — floored false-positive labels at champion-base
+    // post-bank flood regressed practice 10→7 when forced in.
     let weightDelta = outcomeDelta
     if (outcomeDelta < -0.25) {
-      if (!opts.bypassTeacherCaps || opts.respectRolloutVeto) return false
+      if (physicsMeasured || opts.respectRolloutVeto || !opts.bypassTeacherCaps) return false
       weightDelta = 0.5
     }
     seenTicks.add(key)
@@ -510,7 +539,10 @@ export function buildSyllabusExamples(groundedBoards: GroundedSyllabusBoard[] = 
   // poison (see cap history below). Still supervised: labels are measured
   // consequences at states this practice walk actually visits; practice
   // boards only, held-out states never appear.
-  // STATUS: cap-disabled pending a physics-aware rollout (see history).
+  // STATUS: abstract boards stay cap-disabled (route-only argmax measured
+  // neutral on abstract legs, poison on physics legs — history below).
+  // Re-enabled on GROUNDED boards with the physics-aware rollout oracle —
+  // see phase 3d.
   const outcomeCandidates = (obs: ArenaObservation, teacherAction: ArenaAction): ArenaAction[] => {
     if (teacherAction.type !== 'move') return []
     const cls = classifyAction(teacherAction, obs)
@@ -609,9 +641,10 @@ export function buildSyllabusExamples(groundedBoards: GroundedSyllabusBoard[] = 
   // practice-split, never compete/family/held-out. Swapped teaches rival-base
   // openings (valley-s3-rb vs shortcut-rb-far) that normal-side labels never see.
   //
-  // Physics observations ARE the training observations. Consequence rollouts
-  // stay route-only; grounded emits never veto on negative route-only deltas
-  // (physics snapshots mis-price travel).
+  // Physics observations ARE the training observations, and consequence
+  // rollouts are physics-aware (collider-backed branches restored from the
+  // live snapshot): a negative measured delta vetoes the label, replacing
+  // the old floor-at-0.5 exception for route-only mis-pricing.
   for (const board of groundedBoards) {
     // practice-deep is reserved for phase 3c student pad-flood mines — full
     // 3a/3b walks on compete-like cores poison practice openings (33→20).
@@ -636,6 +669,7 @@ export function buildSyllabusExamples(groundedBoards: GroundedSyllabusBoard[] = 
         tryEmit(board.scenario, tick, champObs, snap, label, candidates, {
           bypassTeacherCaps: true,
           keySuffix: side === 'swapped' ? ':swapped' : '',
+          physics: { collider: board.collider },
         }) && examples.length > before
       )
     }
@@ -830,6 +864,7 @@ export function buildSyllabusExamples(groundedBoards: GroundedSyllabusBoard[] = 
                           contrastAction: studentAction,
                           horizonTicks: 240,
                           keySuffix: ':student',
+                          physics: { collider: board.collider },
                         },
                       ) &&
                       examples.length > before
@@ -905,6 +940,7 @@ export function buildSyllabusExamples(groundedBoards: GroundedSyllabusBoard[] = 
                             contrastAction: baseAction,
                             horizonTicks: 240,
                             keySuffix: ':pad',
+                            physics: { collider: board.collider },
                           },
                         ) &&
                         examples.length > before
@@ -929,6 +965,117 @@ export function buildSyllabusExamples(groundedBoards: GroundedSyllabusBoard[] = 
             motion.dispose()
           }
         }
+      }
+    }
+  }
+
+  // Phase 3d — grounded outcome-argmax (expert iteration under physics).
+  // Phase 1d stays cap-disabled on abstract boards: route-only argmax was
+  // measured neutral on abstract legs and poison on physics legs. On the
+  // grounded practice board the rollout oracle is physics-aware, so
+  // same-class edge alternatives are priced with real traversal geometry
+  // (stalls and recoveries included; a recovery costs 2 in the branch
+  // score). A candidate replaces the teacher label at its exact state only
+  // when it beats the teacher by ≥ +1.0 at BOTH the 120- and 240-tick
+  // horizons on the real collider.
+  const ARGMAX_GROUNDED_PER_WALK = 3
+  const ARGMAX_GROUNDED_TOTAL = 6
+  let argmaxGrounded = 0
+  for (const board of groundedBoards) {
+    // practice-01 only: the deep board's compete-like cores made full
+    // teacher walks poison practice openings (33→20); its mining surface
+    // stays at the 3c pad-flood junctions.
+    if (board.scenario.id !== 'sandstone-practice-01') continue
+    for (const swapSides of [false, true]) {
+      if (argmaxGrounded >= ARGMAX_GROUNDED_TOTAL) break
+      const keySuffix = swapSides ? ':swapped' : ''
+      const scenario: ArenaScenario = !swapSides ? board.scenario : {
+        ...board.scenario,
+        entrants: [
+          { ...board.scenario.entrants[0], baseNode: board.scenario.entrants[1].baseNode },
+          { ...board.scenario.entrants[1], baseNode: board.scenario.entrants[0].baseNode },
+        ],
+      }
+      const motion = new ArenaPhysics(board.collider)
+      try {
+        const runner = new ArenaRunner(scenario, { champion: 'safe', rival: 'greedy' }, motion)
+        let minedHere = 0
+        let guard = 0
+        while (
+          runner.snapshot().status !== 'finished' &&
+          minedHere < ARGMAX_GROUNDED_PER_WALK &&
+          argmaxGrounded < ARGMAX_GROUNDED_TOTAL &&
+          examples.length < 400
+        ) {
+          if (++guard > scenario.durationTicks + 10) break
+          const snap = runner.snapshot()
+          if (snap.tick % ARENA_RULES.decisionEveryTicks === 0) {
+            const champObs = runner.observe('champion')
+            const label = routeOracle(champObs)
+            const key = `${board.scenario.id}${keySuffix}:argmax:${snap.tick}`
+            if (label && champObs.decisionDue && !seenTicks.has(key)) {
+              let best: { action: ArenaAction; delta: number } | null = null
+              for (const candidate of outcomeCandidates(champObs, label.action)) {
+                const candidateMotion = new ArenaPhysics(board.collider)
+                try {
+                  const delta120 = rolloutOutcomeDelta(
+                    scenario, snap, candidate, label.action,
+                    championContinuation, rivalContinuation, 120, candidateMotion,
+                  )
+                  if (delta120 < 1.0) continue
+                  const delta240 = rolloutOutcomeDelta(
+                    scenario, snap, candidate, label.action,
+                    championContinuation, rivalContinuation, 240, candidateMotion,
+                  )
+                  if (delta240 < 1.0) continue
+                  if (!best || delta120 > best.delta) best = { action: candidate, delta: delta120 }
+                } catch {
+                  // Restored wall-clamped poses can fail the physics spawn
+                  // check; skip the candidate rather than crashing the distill.
+                  continue
+                } finally {
+                  candidateMotion.dispose()
+                }
+              }
+              if (best) {
+                seenTicks.add(key)
+                // Expert iteration: the measured label REPLACES the teacher
+                // label for this exact state — this side only (normal and
+                // swapped share a scenario id; the id prefix carries the side).
+                const prefix = `distill-${board.scenario.id}${keySuffix}-`
+                for (let i = examples.length - 1; i >= 0; i--) {
+                  const e = examples[i]
+                  if (
+                    e.sourceEpisodeId === board.scenario.id && e.tick === snap.tick &&
+                    e.observation.self.nodeId === champObs.self.nodeId &&
+                    e.observation.self.cargo === champObs.self.cargo &&
+                    e.id.startsWith(prefix)
+                  ) {
+                    examples.splice(i, 1)
+                  }
+                }
+                examples.push({
+                  id: `distill-${board.scenario.id}${keySuffix}:argmax-${snap.tick}`,
+                  sourceEpisodeId: board.scenario.id,
+                  tick: snap.tick,
+                  observation: champObs,
+                  originalAction: label.action,
+                  preferredAction: best.action,
+                  rationale: `Measured consequence (physics): same-class road ${best.action.type === 'move' ? best.action.edgeId : '?'} out-banks the ${label.teacher} teacher's pick at the 120- and 240-tick horizons on the real collider (+${best.delta.toFixed(2)}).`,
+                  approved: true,
+                  source: 'approved',
+                  provenance: { kind: 'outcome-argmax', teacher: label.teacher, reason: label.reason, outcomeDelta: best.delta },
+                  outcomeDelta: best.delta,
+                })
+                minedHere++
+                argmaxGrounded++
+              }
+            }
+          }
+          runner.advanceTicks(1)
+        }
+      } finally {
+        motion.dispose()
       }
     }
   }
