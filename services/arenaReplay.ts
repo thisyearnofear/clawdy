@@ -1,5 +1,23 @@
-import { ARENA_RULES, ArenaEpisode, type ArenaRecording } from './arenaEpisode'
+import { ARENA_RULES, ArenaEpisode, type ArenaRecording, type ArenaSnapshot } from './arenaEpisode'
 import type { ArenaMotion } from './arenaPhysics'
+
+/**
+ * Rotation-equivalent controller pairs. `rapier-kinematic-terrain-0.19.2.v2`
+ * rate-limits the committed chassis yaw (v1 snapped it instantly); steering
+ * and positions are bit-identical, so v1 recordings replay faithfully under
+ * v2 once `agent.rotation` is normalized out of the state comparison.
+ * Divergence on any other field is still reported.
+ */
+const ROTATION_EQUIVALENT_CONTROLLERS: Record<string, readonly string[]> = {
+  'rapier-kinematic-terrain-0.19.2.v2': ['rapier-kinematic-terrain-0.19.2.v1'],
+}
+
+function withoutRotation(state: ArenaSnapshot): ArenaSnapshot {
+  return {
+    ...state,
+    agents: state.agents.map(agent => ({ ...agent, rotation: [0, 0, 0, 1] as [number, number, number, number] })),
+  }
+}
 
 export function replayArenaEpisode(recording: ArenaRecording, motion?: ArenaMotion) {
   if (recording.schemaVersion !== 'arena-recording-v1') {
@@ -9,9 +27,11 @@ export function replayArenaEpisode(recording: ArenaRecording, motion?: ArenaMoti
     throw new Error(`rules-mismatch (recording pinned ${recording.rulesVersion}, runtime ${ARENA_RULES.version})`)
   }
   const wantController = motion?.version ?? 'route-reference-v2'
-  if (recording.controllerVersion !== wantController) {
+  const rotationEquivalent = (ROTATION_EQUIVALENT_CONTROLLERS[wantController] ?? []).includes(recording.controllerVersion)
+  if (recording.controllerVersion !== wantController && !rotationEquivalent) {
     throw new Error(`controller-mismatch (got ${recording.controllerVersion}, want ${wantController})`)
   }
+  const stateKey = (state: ArenaSnapshot) => JSON.stringify(rotationEquivalent ? withoutRotation(state) : state)
   const episode = new ArenaEpisode(recording.scenario, motion)
   if (!Number.isSafeInteger(recording.finalTick) || recording.finalTick < 0 || recording.finalTick > recording.scenario.durationTicks) {
     throw new Error('Invalid replay length')
@@ -36,7 +56,7 @@ export function replayArenaEpisode(recording: ArenaRecording, motion?: ArenaMoti
   for (let tick = 0; tick <= recording.finalTick; tick++) {
     if (checkpointTicks[checkpointIndex] === tick) {
       const expected = recording.checkpoints[checkpointIndex].state
-      if (JSON.stringify(episode.snapshot()) !== JSON.stringify(expected)) {
+      if (stateKey(episode.snapshot()) !== stateKey(expected)) {
         divergedAt = tick
         break
       }

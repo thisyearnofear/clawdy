@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { SEASON_0_BASE_CHECKPOINT, type PolicyCheckpoint } from './policyModel'
+import { type PolicyCheckpoint } from './policyModel'
+import { SEASON_0_STARTER_CHECKPOINT } from './starterCheckpoint'
 import type { ArenaTrainingExample } from './policyTrainer'
 import { saveStoredCheckpoints, saveStoredExamples } from './checkpointStorage'
 
@@ -33,9 +34,12 @@ interface ArenaState {
 }
 
 export const useArenaStore = create<ArenaState>(set => ({
-  checkpoints: [SEASON_0_BASE_CHECKPOINT],
+  // Fresh installs boot on the bundled trained starter (SEASON_0_STARTER_
+  // CHECKPOINT) rather than the untrained base MLP, so first-run play is
+  // competent before the user has coached anything.
+  checkpoints: [SEASON_0_STARTER_CHECKPOINT],
   examples: [],
-  activeCheckpoint: SEASON_0_BASE_CHECKPOINT,
+  activeCheckpoint: SEASON_0_STARTER_CHECKPOINT,
   hydrated: false,
   sync: { phase: 'off', queued: 0, message: null },
   setCheckpoints: next =>

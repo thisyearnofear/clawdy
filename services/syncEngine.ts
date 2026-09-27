@@ -1,6 +1,7 @@
 import type { ConvexReactClient } from 'convex/react'
 import { api } from '../convex/_generated/api'
-import { SEASON_0_BASE_CHECKPOINT, validateCheckpoint, type PolicyCheckpoint } from './policyModel'
+import { POLICY_SCHEMA_VERSION, validateCheckpoint, type PolicyCheckpoint } from './policyModel'
+import { SEASON_0_STARTER_CHECKPOINT } from './starterCheckpoint'
 import type { ArenaTrainingExample } from './policyTrainer'
 import { getOrCreateGuestKey } from './guestIdentity'
 import { useArenaStore, attachLocalCache, type SyncSnapshot } from './arenaStore'
@@ -566,7 +567,7 @@ export function deleteCheckpointRecord(id: string): void {
   state.setCheckpoints(prev => prev.filter(checkpoint => checkpoint.id !== id))
   if (state.activeCheckpoint.id === id) {
     const remaining = useArenaStore.getState().checkpoints
-    state.setActiveCheckpoint(remaining.find(c => c.id !== id) ?? SEASON_0_BASE_CHECKPOINT)
+    state.setActiveCheckpoint(remaining.find(c => c.id !== id) ?? SEASON_0_STARTER_CHECKPOINT)
   }
   if (!startedClient || !isConvexConfigured()) return
   const key = checkpointKey(id)
@@ -612,7 +613,12 @@ export function startArenaSync(client: ConvexReactClient | null): () => void {
       if (plan.checkpoints.length > 0) state.setCheckpoints(plan.checkpoints)
       state.setExamples(plan.examples)
       const active = state.activeCheckpoint
-      if (!plan.checkpoints.some(c => c.id === active.id && c.schemaVersion === active.schemaVersion)) {
+      if (active.id === SEASON_0_STARTER_CHECKPOINT.id) {
+        // The bundled starter is only a first-run default — a synced
+        // executable brain always takes priority once one exists.
+        const own = plan.checkpoints.find(c => c.id !== active.id && c.schemaVersion === POLICY_SCHEMA_VERSION)
+        if (own) state.setActiveCheckpoint(own)
+      } else if (!plan.checkpoints.some(c => c.id === active.id && c.schemaVersion === active.schemaVersion)) {
         const executable = plan.checkpoints.find(c => c.schemaVersion === active.schemaVersion) ?? plan.checkpoints[0]
         if (executable) state.setActiveCheckpoint(executable)
       }

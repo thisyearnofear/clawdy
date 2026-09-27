@@ -9,6 +9,7 @@ import {
   saveStoredExamples,
 } from '../checkpointStorage'
 import { SEASON_0_BASE_CHECKPOINT } from '../policyModel'
+import { SEASON_0_STARTER_CHECKPOINT } from '../starterCheckpoint'
 import type { ArenaTrainingExample } from '../policyTrainer'
 
 describe('checkpointStorage', () => {
@@ -32,14 +33,14 @@ describe('checkpointStorage', () => {
     })
   })
 
-  it('loads base checkpoint when storage is empty or invalid', () => {
-    expect(loadStoredCheckpoints()).toEqual([SEASON_0_BASE_CHECKPOINT])
+  it('loads the bundled starter checkpoint when storage is empty or invalid', () => {
+    expect(loadStoredCheckpoints()).toEqual([SEASON_0_STARTER_CHECKPOINT])
 
     localStorage.setItem(CHECKPOINT_STORAGE_KEY, 'not-json')
-    expect(loadStoredCheckpoints()).toEqual([SEASON_0_BASE_CHECKPOINT])
+    expect(loadStoredCheckpoints()).toEqual([SEASON_0_STARTER_CHECKPOINT])
 
     localStorage.setItem(CHECKPOINT_STORAGE_KEY, JSON.stringify([{ invalid: true }]))
-    expect(loadStoredCheckpoints()).toEqual([SEASON_0_BASE_CHECKPOINT])
+    expect(loadStoredCheckpoints()).toEqual([SEASON_0_STARTER_CHECKPOINT])
   })
 
   it('saves and loads valid checkpoints and preserves base checkpoint', () => {

@@ -25,12 +25,10 @@ export interface PoseHistory {
 }
 
 /**
- * Rendered yaw turn cap. The kinematic controller declares `turnRate: 4.0`
- * but snaps yaw instantaneously when the direction to its target flips —
- * e.g. while pinned by terrain, or parked on a node with sub-millimetre
- * offsets — producing committed 180° rotation flips on consecutive ticks.
- * Committed poses are authority and stay untouched; the render layer holds
- * the displayed rotation to a plausible slew instead.
+ * Rendered yaw turn cap. Controller v2 rate-limits committed chassis yaw,
+ * so this is belt-and-braces smoothing over the tick interpolation — plus
+ * protection for v1/foreign recordings whose committed poses can still
+ * contain instant ~180° flips. Matches ROVER_PHYSICS.turnRate (4 rad/s).
  */
 export const MAX_POSE_TURN_RAD_PER_SEC = 4.0
 
@@ -103,12 +101,12 @@ const scratchRot = new THREE.Quaternion()
  * tick-fraction `alpha` (0..1). With span=1 the render time is T−1+α;
  * multi-tick spans linearize across the skipped commits.
  *
- * Rotation is additionally rate-limited: the controller can commit 180°
- * yaw flips on consecutive ticks (blocked against terrain, parked on a
- * node), so the displayed quaternion slews toward the interpolated target
- * at `maxTurnRate` rad/s, advanced once per rendered frame (`nowSeconds`
- * shared by all consumers). alpha=1 (paused/review/finished) bypasses both
- * mechanisms and yields the exact committed pose.
+ * Rotation is additionally rate-limited: committed yaw is already slewed
+ * by controller v2, but v1-era/external recordings can contain instant
+ * ~180° flips, so the displayed quaternion slews toward the interpolated
+ * target at `maxTurnRate` rad/s, advanced once per rendered frame
+ * (`nowSeconds` shared by all consumers). alpha=1 (paused/review/finished)
+ * bypasses both mechanisms and yields the exact committed pose.
  */
 export function samplePoseHistory(
   history: PoseHistory,

@@ -12,7 +12,8 @@ describe('consolidated application entrypoint', () => {
     expect(html).toContain('Preparing the proving ground.')
     expect(html).toContain('Play → Replay → Coach')
     expect(html).toContain('Help')
-    expect(html).toContain('Champion Base')
+    // First-run brain is the bundled trained starter, not the untrained base.
+    expect(html).toContain('Builder Champion')
     expect(html).not.toContain('Connect Wallet')
     expect(html).not.toContain('Joining Arena')
     expect(html).not.toContain('Agentic Wallet')

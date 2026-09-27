@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import * as THREE from 'three'
-import { ArenaPhysics, initializeArenaPhysics } from '../arenaPhysics'
+import { ArenaPhysics, initializeArenaPhysics, ROVER_PHYSICS } from '../arenaPhysics'
 import { createWorldSurface } from '../worldSurface'
 import { ArenaEpisode, ARENA_RULES, type ArenaScenario } from '../arenaEpisode'
 import { ArenaRunner } from '../arenaPolicy'
@@ -34,7 +34,93 @@ function fixture(wall = false) {
   return { data, scenario }
 }
 
+/** Yaw of the committed quaternion's forward axis, robust to pitch/roll. */
+function poseYaw(rotation: [number, number, number, number]): number {
+  const [x, y, z, w] = rotation
+  const fx = 2 * (x * z + w * y)
+  const fz = 1 - 2 * (x * x + y * y)
+  return Math.atan2(fx, fz)
+}
+
+function wrapAngle(a: number): number {
+  return Math.atan2(Math.sin(a), Math.cos(a))
+}
+
 describe('shared Rapier rover controller', () => {
+  it('rate-limits committed chassis yaw instead of snapping to the target', () => {
+    const { data } = fixture()
+    const physics = new ArenaPhysics(data)
+    try {
+      physics.reset([{ id: 'rover', position: [-2, 0, 0] }])
+      const dt = ARENA_RULES.stepMs / 1000
+      physics.step([{ id: 'rover', position: [2, 0, 0] }], dt)
+      let [pose] = physics.step([{ id: 'rover', position: [2, 0, 0] }], dt)
+      // Reverse the target — v1 committed an instant ~180° flip here.
+      const maxTurn = ROVER_PHYSICS.turnRate * dt
+      for (let i = 0; i < 15; i++) {
+        const prevYaw = poseYaw(pose.rotation)
+        ;[pose] = physics.step([{ id: 'rover', position: [-5.5, 0, 0] }], dt)
+        const flip = Math.abs(wrapAngle(poseYaw(pose.rotation) - prevYaw))
+        expect(flip).toBeLessThanOrEqual(maxTurn + 1e-6)
+      }
+      // The slew converged: still en route, now facing the travel heading.
+      expect(pose.position[0]).toBeGreaterThan(-5.5)
+      const heading = Math.atan2(-5.5 - pose.position[0], 0 - pose.position[2])
+      expect(Math.abs(wrapAngle(poseYaw(pose.rotation) - heading))).toBeLessThan(0.15)
+    } finally {
+      physics.dispose()
+    }
+  })
+
+  it('holds chassis yaw inside the deadzone while still reaching the target', () => {
+    const { data } = fixture()
+    const physics = new ArenaPhysics(data)
+    try {
+      physics.reset([{ id: 'rover', position: [-2, 0, 0] }])
+      const dt = ARENA_RULES.stepMs / 1000
+      // Target 6cm away in +x: inside yawDeadzone, outside arrivalDistance.
+      const [creep] = physics.step([{ id: 'rover', position: [-1.94, 0, 0] }], dt)
+      expect(creep.position[0]).toBeGreaterThan(-2)
+      expect(Math.abs(wrapAngle(poseYaw(creep.rotation)))).toBeLessThan(1e-6)
+    } finally {
+      physics.dispose()
+    }
+  })
+
+  it('replays v1 recordings under v2 with rotation normalized, but still reports positional divergence', () => {
+    const { data, scenario } = fixture()
+    const physics = new ArenaPhysics(data)
+    const replayPhysics = new ArenaPhysics(data)
+    try {
+      const runner = new ArenaRunner(scenario, { champion: 'safe', rival: 'greedy' }, physics)
+      runner.advanceTicks(300)
+      const recording = structuredClone(runner.recording())
+      expect(recording.controllerVersion).toBe(ROVER_PHYSICS.version)
+
+      // A recording written by the v1 controller (positions identical by
+      // construction; rotations committed the old instant-snap values).
+      const v1 = structuredClone(recording)
+      v1.controllerVersion = 'rapier-kinematic-terrain-0.19.2.v1'
+      for (const checkpoint of v1.checkpoints) {
+        for (const agent of checkpoint.state.agents) agent.rotation = [0, 0, 0, 1]
+      }
+      expect(replayArenaEpisode(v1, replayPhysics).divergedAt).toBeNull()
+
+      // Rotation equivalence never hides positional divergence.
+      const corrupted = structuredClone(v1)
+      corrupted.checkpoints[2].state.agents[0].position[0] += 0.5
+      expect(replayArenaEpisode(corrupted, replayPhysics).divergedAt).toBe(corrupted.checkpoints[2].state.tick)
+
+      // Unknown controllers are still a hard mismatch.
+      const bogus = structuredClone(recording)
+      bogus.controllerVersion = 'rapier-kinematic-terrain-0.19.2.v0'
+      expect(() => replayArenaEpisode(bogus, replayPhysics)).toThrow('controller-mismatch')
+    } finally {
+      physics.dispose()
+      replayPhysics.dispose()
+    }
+  })
+
   it('grounds a rover and sweeps against walls instead of teleporting through them', () => {
     const { data } = fixture(true)
     const physics = new ArenaPhysics(data)

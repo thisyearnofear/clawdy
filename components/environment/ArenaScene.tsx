@@ -10,10 +10,8 @@ import { ArenaSession } from '../../services/arenaSession'
 import type { ArenaMotion } from '../../services/arenaPhysics'
 import { collectorPolicy } from '../../services/arenaPolicy'
 import { createTournament, runTournament, type ArenaTournament, type TournamentEntrant, type TournamentMatch } from '../../services/arenaTournament'
-import {
-  type PolicyCheckpoint,
-  SEASON_0_BASE_CHECKPOINT,
-} from '../../services/policyModel'
+import { type PolicyCheckpoint } from '../../services/policyModel'
+import { SEASON_0_STARTER_CHECKPOINT } from '../../services/starterCheckpoint'
 import {
   type ArenaTrainingExample,
   type EvaluationResult,
@@ -179,24 +177,27 @@ function Workbench({
     const store = useArenaStore.getState()
     const storedCheckpoints = loadStoredCheckpoints()
     const storedExamples = loadStoredExamples()
+    const executable = storedCheckpoints.filter(isExecutableCheckpoint)
+    const legacy = storedCheckpoints.filter(c => !isExecutableCheckpoint(c))
     if (storedCheckpoints.length > 0) {
-      const executable = storedCheckpoints.filter(isExecutableCheckpoint)
-      const legacy = storedCheckpoints.filter(c => !isExecutableCheckpoint(c))
       store.setCheckpoints([...executable, ...legacy])
-      const first = executable[0] ?? SEASON_0_BASE_CHECKPOINT
-      store.setActiveCheckpoint(first)
-      try {
-        session.setCheckpoint(first)
-        session.selectPolicy('champion', 'learned', first)
-      } catch (err) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot boot read of localStorage; the quarantine notice must land before first paint
-        setTrainMessage(`Stored brain refused: ${err instanceof Error ? err.message : 'incompatible checkpoint'}`)
-      }
       if (legacy.length > 0) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot boot read of localStorage; the quarantine notice must land before first paint
         setTrainMessage(
           `${legacy.length} stored brain${legacy.length === 1 ? ' is' : 's are'} view-only (v1 schema) — re-train ${legacy.length === 1 ? 'its' : 'their'} examples to upgrade.`,
         )
       }
+    }
+    // Always install a live brain: the newest stored executable checkpoint,
+    // else the bundled trained starter (first-run default — the untrained
+    // base MLP wanders and banks ~0, which reads as a broken game).
+    const first = executable[0] ?? SEASON_0_STARTER_CHECKPOINT
+    store.setActiveCheckpoint(first)
+    try {
+      session.setCheckpoint(first)
+      session.selectPolicy('champion', 'learned', first)
+    } catch (err) {
+      setTrainMessage(`Stored brain refused: ${err instanceof Error ? err.message : 'incompatible checkpoint'}`)
     }
     if (storedExamples.length > 0) {
       store.setExamples(storedExamples)
@@ -620,7 +621,10 @@ function Workbench({
           name: `${championIdentity.name} v${checkpoints.length} (+${approved.length})`,
         })
 
-        const baselineEval = evaluatePolicyCheckpoint(SEASON_0_BASE_CHECKPOINT, [applyCourseMode(course, 'practice').scenario])
+        // Baseline = the checkpoint actually trained (the parent), so the
+        // before/after delta reflects coaching — not the gap between the
+        // bundled starter and the untrained base MLP.
+        const baselineEval = evaluatePolicyCheckpoint(activeCheckpoint, [applyCourseMode(course, 'practice').scenario])
         const trainedEval = evaluatePolicyCheckpoint(trained, [applyCourseMode(course, 'practice').scenario])
 
         const focusLine = summarizeCoachFocus(approved)
@@ -1158,7 +1162,7 @@ export default function ArenaScene() {
   return (
     <div className={styles.shell}>
       <BrandHeader
-        activeCheckpoint={loaded?.session.getSnapshot().checkpoint ?? SEASON_0_BASE_CHECKPOINT}
+        activeCheckpoint={loaded?.session.getSnapshot().checkpoint ?? SEASON_0_STARTER_CHECKPOINT}
         championName={championIdentity.name}
         onOpenHelp={() => setHelpOpen(true)}
       />

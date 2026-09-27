@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { ARENA_RULES } from '../arenaEpisode'
+import { ROVER_PHYSICS } from '../arenaPhysics'
 import { ARENA_WORLD } from '../arenaCourse'
 import { HELD_OUT_SCENARIOS, PRACTICE_SCENARIOS, SYLLABUS_EXTRA_SCENARIOS } from '../arenaScenarios'
 import { replayArenaEpisode } from '../arenaReplay'
@@ -38,6 +39,10 @@ describe('v1 compatibility inventory', () => {
     expect(CHECKPOINT_SCHEMA_V2).toBe('season-0.checkpoint.v2')
     expect(ENCODER_VERSION).toBe('season-0.encoder.v2')
     expect(OBSERVATION_SCHEMA_VERSION).toBe('arena-observation-v2')
+    // v2: committed chassis yaw is rate-limited (v1 snapped instantly);
+    // movement/positions are bit-identical, v1 recordings replay with
+    // rotation normalized — see COMPATIBILITY.md migration log.
+    expect(ROVER_PHYSICS.version).toBe('rapier-kinematic-terrain-0.19.2.v2')
     expect(ARENA_WORLD.version).toBe('sandstone-basin-course-2')
     expect(ARENA_WORLD.id).toBe('sandstone-basin')
     expect(ARENA_WORLD.colliderSha256).toBe('7633067b2624fb476f36adfb14e1a13b1325c71143fbd4d5087cfaf209c993af')

@@ -3,13 +3,19 @@ import type { ArenaPosition } from './arenaEpisode'
 import type { SurfaceSample } from './worldSurface'
 
 export const ROVER_PHYSICS = Object.freeze({
-  version: 'rapier-kinematic-terrain-0.19.2.v1',
+  version: 'rapier-kinematic-terrain-0.19.2.v2',
   // Chassis
   chassisHalfExtents: { x: 0.28, y: 0.12, z: 0.42 },
   // Motion
   maxSpeed: 2.4,
   acceleration: 12.0,
+  // Chassis yaw slew (rad/s). v1 snapped yaw to atan2(dx,dz) instantly, which
+  // committed ~180° flips whenever the direction to the target whipsawed —
+  // terrain-pinned rovers pirouetted and parked rovers overshoot-oscillated.
+  // v2 rate-limits the committed/displayed yaw; steering is unchanged.
   turnRate: 4.0,
+  // Below this horizontal distance to target, chassis yaw holds its heading.
+  yawDeadzone: 0.08,
   arrivalDistance: 0.05,
   // Ground query
   groundProbeOffset: 0.32,
@@ -141,17 +147,32 @@ export class ArenaPhysics implements ArenaMotion {
       const dz = target.position[2] - current.z
       const horizontalDistance = Math.hypot(dx, dz)
 
-      // Snap yaw to face the target directly (kinematic body has no inertia)
+      // Steering direction toward the target. v1 wrote atan2(dx,dz) straight
+      // into agent.yaw and moved along sin/cos of it — keeping the identical
+      // expression here preserves v1 trajectories bit-for-bit.
+      let steerYaw = agent.yaw
       if (horizontalDistance > 0.001) {
-        agent.yaw = Math.atan2(dx, dz)
+        steerYaw = Math.atan2(dx, dz)
+      }
+
+      // Committed chassis yaw slews toward the steering heading at turnRate
+      // and holds inside the deadzone — pinned or parked rovers no longer
+      // commit instant ~180° flips. Rotation is display-facing only and
+      // never steers the body, so positions (and every downstream result)
+      // are unchanged from v1.
+      if (horizontalDistance > ROVER_PHYSICS.yawDeadzone) {
+        const delta = Math.atan2(Math.sin(steerYaw - agent.yaw), Math.cos(steerYaw - agent.yaw))
+        const maxTurn = ROVER_PHYSICS.turnRate * dtSeconds
+        const nextYaw = agent.yaw + Math.max(-maxTurn, Math.min(maxTurn, delta))
+        agent.yaw = Math.atan2(Math.sin(nextYaw), Math.cos(nextYaw))
       }
 
       // Set speed: full when far from target, stop when close
       agent.speed = horizontalDistance > ROVER_PHYSICS.arrivalDistance ? ROVER_PHYSICS.maxSpeed : 0
 
-      // Move in the direction the chassis is facing
-      const forwardX = Math.sin(agent.yaw)
-      const forwardZ = Math.cos(agent.yaw)
+      // Move toward the target along the steering direction
+      const forwardX = Math.sin(steerYaw)
+      const forwardZ = Math.cos(steerYaw)
       const moveX = forwardX * agent.speed * dtSeconds
       const moveZ = forwardZ * agent.speed * dtSeconds
       const moveDist = Math.hypot(moveX, moveZ)

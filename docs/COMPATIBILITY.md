@@ -15,7 +15,7 @@ across a year of future work.
 | Simulation rules | `ARENA_RULES.version` | `season-0.reference.2` | `services/arenaEpisode.ts` |
 | Observation schema | observation `schemaVersion` | `arena-observation-v2` (v1 data still valid) | `services/arenaEpisode.ts` |
 | Recording schema | recording `schemaVersion` | `arena-recording-v1` | `services/arenaEpisode.ts` |
-| Motion controller | `ROVER_PHYSICS.version` / route fallback | `rapier-kinematic-terrain-0.19.2.v1` / `route-reference-v2` | `services/arenaPhysics.ts`, `services/arenaEpisode.ts` |
+| Motion controller | `ROVER_PHYSICS.version` / route fallback | `rapier-kinematic-terrain-0.19.2.v2` / `route-reference-v2` | `services/arenaPhysics.ts`, `services/arenaEpisode.ts` |
 | Checkpoint | `POLICY_SCHEMA_VERSION` | `season-0.checkpoint.v3` (v1/v2 metadata-readable) | `services/policyModel.ts` |
 | Encoder | `ENCODER_VERSION` / `OBSERVATION_FEATURE_DIM` | `season-0.encoder.v2` / 36 | `services/policyModel.ts` |
 | World | `ARENA_WORLD.version` + `colliderSha256` | `sandstone-basin-course-2` + `7633067b2624fb476f36adfb14e1a13b1325c71143fbd4d5087cfaf209c993af` | `services/arenaCourse.ts` |
@@ -418,6 +418,46 @@ grounded courses prove it.
   to the passing subset: 23/24 — `builder-course-04-early-flood-t80`
   (expected class 6, policy now picks 5) dropped; the frame corpus guards
   behavior and does not claim capability.
+
+### Rate-limited committed yaw + bundled starter checkpoint (controller v2; first-run UX)
+
+- **What (physics):** `ROVER_PHYSICS.version` bumped
+  `rapier-kinematic-terrain-0.19.2.v1` → `...v2`. v1 wrote
+  `yaw = atan2(dx, dz)` straight into the committed pose every tick — the
+  declared `turnRate` was dead code — so terrain-pinned rovers committed
+  ~180° flips per tick (174 on `shortcut-rb-far` alone in one traced match)
+  and parked rovers overshoot-oscillated on sub-mm direction noise (103
+  node-side flips in the same trace). v2 decouples the axes: `steerYaw`
+  keeps the *identical* `atan2` expression for movement (positions and every
+  downstream result are bit-identical to v1), while the committed
+  `agent.yaw` slews toward it at `turnRate` (4 rad/s) and holds inside a
+  0.08 `yawDeadzone`. Rotation never steers the body. The render-layer slew
+  (`MAX_POSE_TURN_RAD_PER_SEC`) stays as interpolation smoothing; the
+  committed data is now clean on its own.
+- **Why no rules bump:** per Rule 2, the controller axis is independent —
+  rotation is not part of `arena-observation-v2`, never enters
+  `datasetHash`/`weightsHash`, and positions/arrivals are unchanged, so
+  `season-0.reference.2` and gate pin `2b76a6113d66` hold.
+- **Replay compat:** `replayArenaEpisode` accepts v1-labeled physical
+  recordings under the v2 controller with `agent.rotation` normalized out of
+  the state comparison (positions are bit-identical by construction).
+  Positional divergence still reports `divergedAt`; unknown controllers
+  still refuse with `controller-mismatch`. Pinned by new cases in
+  `services/__tests__/arenaPhysics.test.ts`.
+- **What (first run):** the app previously defaulted a fresh install to
+  `SEASON_0_BASE_CHECKPOINT` — a seeded-random MLP that wanders and banks
+  ~0. `services/starterCheckpoint.ts` now bundles
+  `starter/champion-checkpoint.json` ("Builder Champion (Safe Baseline
+  Clone)", schema v3, 500 epochs on builder examples) as
+  `SEASON_0_STARTER_CHECKPOINT`, validated at import. It is the
+  `loadStoredCheckpoints` empty/corrupt sentinel, the `arenaStore` default,
+  and the boot-time selection when no stored executable checkpoint exists;
+  synced user checkpoints still take priority on merge (syncEngine prefers
+  a non-starter executable). Training compares against the *parent* (the
+  checkpoint actually trained), not vs the untrained base, so the displayed
+  before/after delta reflects coaching. Service-level defaults
+  (`ArenaSession`, `createLearnedPolicy`, eval/gate harness) keep
+  `SEASON_0_BASE_CHECKPOINT` — the shipped artifact is an app-layer choice.
 
 ## 6. Non-goals
 - No cross-version *execution*: a v1 checkpoint is never run under v2 rules "to see

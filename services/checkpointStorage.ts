@@ -1,4 +1,5 @@
 import { type PolicyCheckpoint, SEASON_0_BASE_CHECKPOINT, validateCheckpoint } from './policyModel'
+import { SEASON_0_STARTER_CHECKPOINT } from './starterCheckpoint'
 import type { ArenaTrainingExample } from './policyTrainer'
 
 export const CHECKPOINT_STORAGE_KEY = 'clawdy_checkpoints_v1'
@@ -20,14 +21,14 @@ function getLocalStorage(): Storage | null {
 
 export function loadStoredCheckpoints(): PolicyCheckpoint[] {
   const storage = getLocalStorage()
-  if (!storage) return [SEASON_0_BASE_CHECKPOINT]
+  if (!storage) return [SEASON_0_STARTER_CHECKPOINT]
 
   try {
     const raw = storage.getItem(CHECKPOINT_STORAGE_KEY)
-    if (!raw) return [SEASON_0_BASE_CHECKPOINT]
+    if (!raw) return [SEASON_0_STARTER_CHECKPOINT]
 
     const parsed = JSON.parse(raw)
-    if (!Array.isArray(parsed) || parsed.length === 0) return [SEASON_0_BASE_CHECKPOINT]
+    if (!Array.isArray(parsed) || parsed.length === 0) return [SEASON_0_STARTER_CHECKPOINT]
 
     const validCheckpoints: PolicyCheckpoint[] = []
     for (const item of parsed) {
@@ -39,7 +40,7 @@ export function loadStoredCheckpoints(): PolicyCheckpoint[] {
       }
     }
 
-    if (validCheckpoints.length === 0) return [SEASON_0_BASE_CHECKPOINT]
+    if (validCheckpoints.length === 0) return [SEASON_0_STARTER_CHECKPOINT]
     // Ensure base checkpoint is present in the list, matched by id AND schema:
     // a legacy v1 base must not shadow the executable v2 base.
     if (!validCheckpoints.some(c => c.id === SEASON_0_BASE_CHECKPOINT.id && c.schemaVersion === SEASON_0_BASE_CHECKPOINT.schemaVersion)) {
@@ -47,7 +48,7 @@ export function loadStoredCheckpoints(): PolicyCheckpoint[] {
     }
     return validCheckpoints
   } catch {
-    return [SEASON_0_BASE_CHECKPOINT]
+    return [SEASON_0_STARTER_CHECKPOINT]
   }
 }
 
