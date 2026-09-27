@@ -63,11 +63,11 @@ export function HelpDrawer({ open, onClose }: { open: boolean; onClose: () => vo
           </div>
           <div>
             <dt>How do I train?</dt>
-            <dd>Coach panel → specialize chips or rules → Approve → Train. Style “Your trained brain” runs the new weights.</dd>
+            <dd>Coach panel → specialize chips or rules → Approve → Train. Style “Trained brain” runs the new weights.</dd>
           </div>
           <div>
             <dt>Train did nothing?</dt>
-            <dd>You need at least one approved example, and Style must be set to Your trained brain after training.</dd>
+            <dd>You need at least one approved example, and Style must be set to Trained brain after training.</dd>
           </div>
           <div>
             <dt>Name & look?</dt>

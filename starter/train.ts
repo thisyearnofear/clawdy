@@ -114,7 +114,7 @@ async function runBuilderTrainer() {
     epochs: 500,
     learningRate: 0.01,
     momentum: 0.9,
-    name: 'Builder Champion (Safe Baseline Clone)',
+    name: 'Starter brain (house-trained)',
   })
 
   validateCheckpoint(trainedCheckpoint)

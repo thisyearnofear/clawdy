@@ -444,11 +444,15 @@ grounded courses prove it.
   Positional divergence still reports `divergedAt`; unknown controllers
   still refuse with `controller-mismatch`. Pinned by new cases in
   `services/__tests__/arenaPhysics.test.ts`.
+- **Artifact tracking:** `starter/champion-checkpoint.json` was previously
+  gitignored as a regenerable output. It is now a runtime dependency
+  (bundled into the client), so it is committed — regenerate via
+  `npm run starter:train` and commit the diff deliberately.
 - **What (first run):** the app previously defaulted a fresh install to
   `SEASON_0_BASE_CHECKPOINT` — a seeded-random MLP that wanders and banks
   ~0. `services/starterCheckpoint.ts` now bundles
-  `starter/champion-checkpoint.json` ("Builder Champion (Safe Baseline
-  Clone)", schema v3, 500 epochs on builder examples) as
+  `starter/champion-checkpoint.json` ("Starter brain (house-trained)",
+  schema v3, 500 epochs on builder examples) as
   `SEASON_0_STARTER_CHECKPOINT`, validated at import. It is the
   `loadStoredCheckpoints` empty/corrupt sentinel, the `arenaStore` default,
   and the boot-time selection when no stored executable checkpoint exists;

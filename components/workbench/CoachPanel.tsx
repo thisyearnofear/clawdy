@@ -63,7 +63,7 @@ export function CoachPanel({
       <div className={styles.coachingHeader}>
         <div>
           <h2>Coach</h2>
-          <p>Pick a focus, approve fixes, then train. Style must stay on “Your trained brain” to use the new weights.</p>
+          <p>Pick a focus, approve fixes, then train. Style must stay on “Trained brain” to use the new weights.</p>
           <ConvexLineageBadge />
           <SyncStatusChip />
           {trainFocusLine && <p className={styles.focusLine}>{trainFocusLine}</p>}

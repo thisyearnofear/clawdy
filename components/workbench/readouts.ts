@@ -11,7 +11,7 @@ export const isExecutableCheckpoint = (checkpoint: PolicyCheckpoint) =>
   checkpoint.schemaVersion === POLICY_SCHEMA_VERSION
 
 export const POLICY_LABELS: Record<CollectorStrategy, string> = {
-  learned: 'Your trained brain',
+  learned: 'Trained brain',
   safe: 'Careful (house baseline)',
   greedy: 'Fast (house baseline)',
   weather: 'Flood-aware (house baseline)',
