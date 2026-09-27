@@ -60,7 +60,7 @@ import { HelpDrawer } from '../workbench/HelpDrawer'
 import { ReplayPanel } from '../workbench/ReplayPanel'
 import { TournamentBracket } from '../workbench/TournamentBracket'
 import { ViewportHud, type HudFeedEvent } from '../workbench/ViewportHud'
-import { actionLabel, actionsEqual, COACH_ANYTIME_KEY, COACH_NUDGE_KEY, isExecutableCheckpoint, PLAY_HINT_KEY, readHintDismissed } from '../workbench/readouts'
+import { actionLabel, actionsEqual, COACH_ANYTIME_KEY, COACH_MISTAKE_KEY, COACH_NUDGE_KEY, isExecutableCheckpoint, PLAY_HINT_KEY, readHintDismissed } from '../workbench/readouts'
 import styles from './ArenaScene.module.css'
 
 const WorldView = dynamic(() => import('./ArenaWorldView'), { ssr: false })
@@ -102,6 +102,7 @@ function Workbench({
   const [hintOpen, setHintOpen] = useState(() => !readHintDismissed())
   const [coachNudgeOpen, setCoachNudgeOpen] = useState(false)
   const [hasCompletedRun, setHasCompletedRun] = useState(false)
+  const [mistakeMoment, setMistakeMoment] = useState<{ tick: number; headline: string; detail: string } | null>(null)
   const [trainFocusLine, setTrainFocusLine] = useState<string | null>(null)
   const [modeBanner, setModeBanner] = useState<CoursePlayMode | null>(null)
   const [runTip, setRunTip] = useState<string | null>(null)
@@ -115,6 +116,8 @@ function Workbench({
   const encounterResumeTimer = useRef<number | null>(null)
   const modeBannerTimer = useRef<number | null>(null)
   const runTipTimer = useRef<number | null>(null)
+  const mistakeTimer = useRef<number | null>(null)
+  const prevRecoveriesRef = useRef(0)
   const checkpoints = useArenaStore(state => state.checkpoints)
   // True once the user owns a brain that isn't a bundled built-in (trained
   // or imported) — gates the tournament bracket, which is framed around
@@ -243,12 +246,14 @@ function Workbench({
   // Mid-run coaching discoverability: coaching is legal any time in Practice
   // (the lock is compete-only), but nothing told the user that — they watched
   // a full ~60s round before the finish nudge. One-shot tip ~10s in, deferred
-  // while a flood tip is already up.
+  // while a flood tip is already up, and skipped once the stronger
+  // mistake-moment banner has surfaced.
   useEffect(() => {
     if (view.phase !== 'running' || playMode !== 'practice') return
     if (view.episode.tick < 200 || runTip) return
     try {
-      if (window.sessionStorage.getItem(COACH_ANYTIME_KEY) === '1') return
+      if (window.sessionStorage.getItem(COACH_ANYTIME_KEY) === '1'
+        || window.sessionStorage.getItem(COACH_MISTAKE_KEY) === '1') return
       window.sessionStorage.setItem(COACH_ANYTIME_KEY, '1')
     } catch { /* ignore */ }
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot ambient tip, same lifecycle contract as the flood warning above
@@ -257,10 +262,95 @@ function Workbench({
     runTipTimer.current = window.setTimeout(() => setRunTip(null), 5200)
   }, [view.phase, view.episode.tick, playMode, runTip])
 
+  // First-mistake trigger: the first *visible* champion error in Practice —
+  // a rescue, a non-cadence rejection, or a flood-caught transit — surfaces
+  // a "coach that moment" card that jumps straight into review of that
+  // frame. Once per session; in-transit rejections are cadence noise and
+  // invisible to the player, so they never trigger.
+  useEffect(() => {
+    if (view.phase !== 'running' || playMode !== 'practice') return
+    if (mistakeMoment) return
+    try {
+      if (window.sessionStorage.getItem(COACH_MISTAKE_KEY) === '1') return
+    } catch { /* ignore */ }
+    const championAgent = view.episode.agents.find(agent => agent.id === 'champion')
+    if (!championAgent) return
+    let signal: { headline: string; detail: string } | null = null
+    if (championAgent.recoveries > prevRecoveriesRef.current) {
+      signal = {
+        headline: 'Your champion got pinned and needed a rescue',
+        detail: 'A stuck rover can be taught better routes — coach the decision that led there.',
+      }
+    } else if (
+      championAgent.lastOutcome
+      && !championAgent.lastOutcome.accepted
+      && championAgent.lastOutcome.tick === view.episode.tick
+      && championAgent.lastOutcome.reason !== 'in-transit'
+    ) {
+      signal = {
+        headline: `Your champion's call was rejected (${championAgent.lastOutcome.reason?.replaceAll('-', ' ') ?? 'invalid'})`,
+        detail: 'A rejected decision is a coachable decision.',
+      }
+    } else if (
+      flooded
+      && championAgent.transit
+      && activeCourse.scenario.edges.some(edge => edge.id === championAgent.transit!.edgeId && edge.floodable)
+    ) {
+      signal = {
+        headline: 'Your champion is crawling through the flood',
+        detail: 'Ridge routes stay fast — you can teach that preference.',
+      }
+    }
+    prevRecoveriesRef.current = championAgent.recoveries
+    if (!signal) return
+    try { window.sessionStorage.setItem(COACH_MISTAKE_KEY, '1') } catch { /* ignore */ }
+    setMistakeMoment({ tick: view.episode.tick, ...signal })
+    if (mistakeTimer.current) window.clearTimeout(mistakeTimer.current)
+    mistakeTimer.current = window.setTimeout(() => setMistakeMoment(null), 15000)
+  }, [view.phase, view.episode, playMode, mistakeMoment, flooded, activeCourse.scenario.edges])
+
+  // Clear the moment card when play leaves the live phases — finished has
+  // its own coach nudge and review is already the destination.
+  useEffect(() => {
+    if (view.phase === 'running' || view.phase === 'paused') return
+    if (mistakeTimer.current) {
+      window.clearTimeout(mistakeTimer.current)
+      mistakeTimer.current = null
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the card is scoped to the live run it was raised from
+    setMistakeMoment(null)
+  }, [view.phase])
+
   useEffect(() => () => {
     if (modeBannerTimer.current) window.clearTimeout(modeBannerTimer.current)
     if (runTipTimer.current) window.clearTimeout(runTipTimer.current)
     if (encounterResumeTimer.current) window.clearTimeout(encounterResumeTimer.current)
+    if (mistakeTimer.current) window.clearTimeout(mistakeTimer.current)
+  }, [])
+
+  // Jump the mistake moment straight into replay review: pause, review the
+  // live recording, seek to the decision frame that produced the signal,
+  // and open the Coach studio so the frame's fixes are one click away.
+  const coachMistake = useCallback(() => {
+    if (!mistakeMoment) return
+    try {
+      session.pause()
+      session.review()
+      session.seek(Math.floor(mistakeMoment.tick / ARENA_RULES.decisionEveryTicks))
+    } catch {
+      // Session may already be reviewing, or the frame index raced a trim —
+      // the studio still gives the user the coaching path.
+    }
+    setStudioOpen(true)
+    setMistakeMoment(null)
+  }, [mistakeMoment, session])
+
+  const dismissMistake = useCallback(() => {
+    if (mistakeTimer.current) {
+      window.clearTimeout(mistakeTimer.current)
+      mistakeTimer.current = null
+    }
+    setMistakeMoment(null)
   }, [])
 
   const dismissEncounter = useCallback(() => {
@@ -935,6 +1025,19 @@ function Workbench({
               >
                 Got it
               </button>
+            </div>
+          )}
+          {mistakeMoment && (view.phase === 'running' || view.phase === 'paused') && (
+            <div className={`${styles.playHint} ${styles.hintEnter}`} role="status">
+              <p><strong>{mistakeMoment.headline}.</strong> {mistakeMoment.detail}</p>
+              <div className={styles.replayButtons}>
+                <button type="button" onClick={coachMistake}>
+                  <Sparkles size={14} /> Coach that moment
+                </button>
+                <button type="button" onClick={dismissMistake} aria-label="Dismiss coaching suggestion">
+                  Not now
+                </button>
+              </div>
             </div>
           )}
           {coachNudgeOpen && view.phase === 'finished' && !coachingLocked && (
