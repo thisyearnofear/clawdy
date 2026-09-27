@@ -2,13 +2,14 @@
 
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { ArrowRight, Clapperboard, Download, Eye, HelpCircle, Pause, Play, Printer, RotateCcw, Sparkles } from 'lucide-react'
+import { ArrowRight, Clapperboard, Download, Eye, FastForward, HelpCircle, Pause, Play, Printer, RotateCcw, SkipForward, Sparkles } from 'lucide-react'
 import { ARENA_RULES, observeSnapshot, type ArenaAction, type ArenaObservation } from '../../services/arenaEpisode'
 import { loadArenaCourse, applyCourseMode, type ArenaCourse, type CoursePlayMode } from '../../services/arenaCourse'
 import { isEvaluationScenario, rejectEvaluationExamples } from '../../services/arenaScenarios'
-import { ArenaSession } from '../../services/arenaSession'
+import { ArenaSession, SESSION_SPEEDS, type SessionSpeed } from '../../services/arenaSession'
 import type { ArenaMotion } from '../../services/arenaPhysics'
-import { collectorPolicy } from '../../services/arenaPolicy'
+import { collectorPolicy, type EntrantPolicyOption } from '../../services/arenaPolicy'
+import { buildMatchTimeline, MOMENT_LABELS, MOMENT_LEAD_TICKS, nextMomentAfter, type MatchMoment } from '../../services/matchTimeline'
 import { createTournament, runTournament, type ArenaTournament, type TournamentEntrant, type TournamentMatch } from '../../services/arenaTournament'
 import { type PolicyCheckpoint, SEASON_0_BASE_CHECKPOINT } from '../../services/policyModel'
 import { isBundledStarter, SEASON_0_STARTER_CHECKPOINT } from '../../services/starterCheckpoint'
@@ -121,6 +122,20 @@ function Workbench({
   const runTipTimer = useRef<number | null>(null)
   const mistakeTimer = useRef<number | null>(null)
   const prevRecoveriesRef = useRef(0)
+  const prevObservedTickRef = useRef(0)
+  const [speed, setSpeedState] = useState<SessionSpeed>(1)
+  const speedRef = useRef<SessionSpeed>(1)
+  // Director's track: a headless clone of this run computes where the beats
+  // will land. Keyed by matchId so a reset/mode switch can't serve stale
+  // predictions; built once on run start (deferred a task so Play doesn't
+  // eat the whole match's sim cost inside the click). State, not a ref —
+  // the skip button's label renders from it.
+  const [director, setDirector] = useState<{ matchId: string; moments: MatchMoment[] } | null>(null)
+  const applySpeed = useCallback((next: SessionSpeed) => {
+    speedRef.current = next
+    session.setSpeed(next)
+    setSpeedState(next)
+  }, [session])
   const checkpoints = useArenaStore(state => state.checkpoints)
   // True once the user owns a brain that isn't a bundled built-in (trained
   // or imported) — gates the tournament bracket, which is framed around
@@ -245,10 +260,12 @@ function Workbench({
     if (!coming || floodWarnedRef.current === coming.startTick) return
     floodWarnedRef.current = coming.startTick
     recordFunnelEvent('tip.flood', `in=${nextFloodIn}s`)
+    // An approaching flood is a watchable beat — pull FF back to real time.
+    if (speedRef.current > 1) applySpeed(1)
     setRunTip(`Flood in ${nextFloodIn}s — amber valley slows. Take the ridge.`)
     if (runTipTimer.current) window.clearTimeout(runTipTimer.current)
     runTipTimer.current = window.setTimeout(() => setRunTip(null), 5200)
-  }, [view.phase, view.episode.tick, flooded, nextFloodIn, activeCourse.scenario.floods])
+  }, [view.phase, view.episode.tick, flooded, nextFloodIn, activeCourse.scenario.floods, applySpeed])
 
   // Mid-run coaching discoverability: coaching is legal any time in Practice
   // (the lock is compete-only), but nothing told the user that — they watched
@@ -291,20 +308,25 @@ function Workbench({
       lastOutcome: championAgent.lastOutcome,
       transitEdgeId: championAgent.transit?.edgeId ?? null,
       floodableEdgeIds: new Set(activeCourse.scenario.edges.filter(e => e.floodable).map(e => e.id)),
+      sinceTick: prevObservedTickRef.current,
     })
-    // Re-sync the cursor every tick — a reset dropping recoveries below the
-    // ref must not wedge the next run's first rescue.
+    // Re-sync the cursors every observed tick — a reset dropping recoveries
+    // below the ref must not wedge the next run's first rescue, and a
+    // fast-forward pump must not make a fresh rejection look stale.
     prevRecoveriesRef.current = championAgent.recoveries
+    prevObservedTickRef.current = view.episode.tick
     if (!signal) return
     try { window.sessionStorage.setItem(COACH_MISTAKE_KEY, '1') } catch { /* ignore */ }
     recordFunnelEvent('mistake.shown', signal.headline)
+    // Coachable moments pull the match back to real time.
+    if (speedRef.current > 1) applySpeed(1)
     setMistakeMoment({ tick: view.episode.tick, ...signal })
     if (mistakeTimer.current) window.clearTimeout(mistakeTimer.current)
     mistakeTimer.current = window.setTimeout(() => {
       setMistakeMoment(null)
       recordFunnelEvent('mistake.timeout')
     }, 15000)
-  }, [view.phase, view.episode, playMode, mistakeMoment, flooded, activeCourse.scenario.edges])
+  }, [view.phase, view.episode, playMode, mistakeMoment, flooded, activeCourse.scenario.edges, applySpeed])
 
   // Funnel: first paint of the play hint, each coach-studio open, and the
   // moment a user-owned brain exists (tournament unlock) — the three
@@ -496,11 +518,48 @@ function Workbench({
     const distance = encounterDistance(episode)
     recordFunnelEvent('encounter.sighted', distance !== null ? `d=${distance.toFixed(1)}m` : undefined)
     pushFeed([{ text: 'Rival sighted on the same stretch — close enough to contest.', tone: 'info' }])
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- same one-shot ambient-tip contract as the flood warning above
+    // A beat worth watching pulls fast-forward back to real time.
+    if (speedRef.current > 1) applySpeed(1)
     setRunTip('Rival sighted nearby — a clash resolves by coaching focus.')
     if (runTipTimer.current) window.clearTimeout(runTipTimer.current)
     runTipTimer.current = window.setTimeout(() => setRunTip(null), 4200)
-  }, [view.phase, view.episode.tick, encounter, runTip, session, pushFeed])
+  }, [view.phase, view.episode.tick, encounter, runTip, session, pushFeed, applySpeed])
+
+  // Director's track: once per match, run a headless clone of this episode
+  // (same scenario, same locked policies/checkpoint, same physics adapter)
+  // and record where the beats land — clashes included, with their cargo
+  // transfer and stagger applied so the forecast stays on the watched
+  // trajectory. Powers "Skip to next moment" and drops the user a few ticks
+  // ahead of each beat.
+  useEffect(() => {
+    // First publish after start can already be tick ~5 (HUD throttle) — the
+    // build window is wide enough to catch it, narrow enough that a resume
+    // mid-match never rebuilds.
+    if (view.phase !== 'running' || view.episode.tick > 10) return
+    if (director?.matchId === session.matchId) return
+    const matchId = session.matchId
+    const scenario = activeCourse.scenario
+    // A learned entrant without its checkpoint in view means the session is
+    // running a brain the director can't see — skip the forecast rather than
+    // predict the wrong match.
+    if (Object.values(view.policies).includes('learned') && !view.checkpoint) return
+    const options: Record<string, EntrantPolicyOption> = {}
+    for (const [id, strategy] of Object.entries(view.policies)) {
+      options[id] = strategy === 'learned' ? { strategy: 'learned', checkpoint: view.checkpoint! } : strategy
+    }
+    const championFocus = focusVectorForChampion(examples.filter(example => example.approved))
+    const rivalFocus = focusVectorForRival(view.policies.rival)
+    const timer = window.setTimeout(() => {
+      try {
+        const moments = buildMatchTimeline(scenario, options, createMotion, { championFocus, rivalFocus })
+        setDirector({ matchId, moments })
+      } catch {
+        // No forecast, no problem — Skip still falls through to the finish.
+        setDirector({ matchId, moments: [{ tick: scenario.durationTicks, kind: 'finish' }] })
+      }
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [view.phase, view.episode.tick, session, activeCourse.scenario, view.policies, view.checkpoint, examples, createMotion, director])
 
   // Live race feed: banks, flood flips, drains, and the full-time score.
   // Throttled to one decision cadence (5 ticks) so snapshot pumps never churn renders.
@@ -645,6 +704,34 @@ function Workbench({
   }
   const primaryLabel = view.phase === 'running' ? 'Pause' : view.phase === 'paused' ? 'Resume' : view.phase === 'finished' ? 'Play again' : view.phase === 'review' ? 'Back to match' : view.phase === 'error' ? 'Reload world' : 'Play'
 
+  // Fast-forward is pure presentation: the episode is deterministic and the
+  // checkpoint is locked at start, so skipping can never change the result —
+  // it only trades away live observation. The beats pull playback back to
+  // 1× on their own (see the sighting/mistake/flood effects), so the user
+  // can't FF past the moments they'd want to coach.
+  const cycleSpeed = () => {
+    const next = SESSION_SPEEDS[(SESSION_SPEEDS.indexOf(speed) + 1) % SESSION_SPEEDS.length]
+    recordFunnelEvent('run.speed', `${next}x`)
+    applySpeed(next)
+  }
+
+  const liveDirector = director?.matchId === session.matchId ? director : null
+  const upcomingMoment = liveDirector ? nextMomentAfter(liveDirector.moments, view.episode.tick) : null
+
+  const skipAhead = () => {
+    const live = session.liveEpisode()
+    const upcoming = liveDirector ? nextMomentAfter(liveDirector.moments, live.tick) : null
+    recordFunnelEvent('run.skip', upcoming ? `${upcoming.kind}@t${upcoming.tick}` : 'finish')
+    // Land at real time just ahead of the beat so the approach is watchable;
+    // skipping past a predicted clash forgoes its cargo swing — the user's call.
+    applySpeed(1)
+    if (upcoming) {
+      session.skipToTick(Math.max(live.tick + 1, upcoming.tick - MOMENT_LEAD_TICKS[upcoming.kind]))
+    } else {
+      session.skipToEnd()
+    }
+  }
+
   // Space / P toggles play-pause, except while typing, while a button has
   // focus (space already activates it), or while an encounter card is up.
   useEffect(() => {
@@ -674,6 +761,7 @@ function Workbench({
     lastEncounterTickRef.current = null
     lastSightingTickRef.current = null
     sightingCountRef.current = 0
+    setDirector(null)
     setEncounter(null)
     encounterBusyRef.current = false
     setModeBanner(mode)
@@ -982,6 +1070,7 @@ function Workbench({
 
   const resetForTeaching = useCallback(() => {
     floodWarnedRef.current = null
+    setDirector(null)
     setRunTip(null)
     session.reset()
   }, [session])
@@ -1211,7 +1300,28 @@ function Workbench({
             {view.phase === 'running' ? <Pause size={16} /> : <Play size={16} />}
             {primaryLabel}
           </button>
-          <button className={styles.secondaryButton} onClick={() => { setCinematic(false); floodWarnedRef.current = null; lastEncounterTickRef.current = null; lastSightingTickRef.current = null; sightingCountRef.current = 0; setEncounter(null); encounterBusyRef.current = false; setRunTip(null); session.reset() }} disabled={!visualReady || view.phase === 'error'}><RotateCcw size={15} />Reset</button>
+          {(view.phase === 'running' || view.phase === 'paused') && !encounter && (
+            <>
+              <button
+                className={styles.secondaryButton}
+                onClick={cycleSpeed}
+                title="Playback speed — presentation only; the sim stays deterministic"
+              >
+                <FastForward size={15} />{speed}×
+              </button>
+              <button
+                className={styles.secondaryButton}
+                onClick={skipAhead}
+                disabled={!visualReady}
+                title={upcomingMoment && upcomingMoment.kind !== 'finish'
+                  ? `Skip ahead to the next ${MOMENT_LABELS[upcomingMoment.kind]}`
+                  : 'Skip to the final whistle'}
+              >
+                <SkipForward size={15} />Skip{upcomingMoment && upcomingMoment.kind !== 'finish' ? ` · ${MOMENT_LABELS[upcomingMoment.kind]}` : ''}
+              </button>
+            </>
+          )}
+          <button className={styles.secondaryButton} onClick={() => { setCinematic(false); floodWarnedRef.current = null; lastEncounterTickRef.current = null; lastSightingTickRef.current = null; sightingCountRef.current = 0; setDirector(null); setEncounter(null); encounterBusyRef.current = false; setRunTip(null); session.reset() }} disabled={!visualReady || view.phase === 'error'}><RotateCcw size={15} />Reset</button>
           <button className={styles.secondaryButton} onClick={() => session.review()} disabled={view.phase !== 'paused' && view.phase !== 'finished'}><Eye size={16} />Replay</button>
           {(hasCompletedRun || view.phase !== 'ready' || view.episode.tick > 0) && (
             <button

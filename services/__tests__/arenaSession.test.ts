@@ -226,4 +226,96 @@ describe('application episode session', () => {
     expect(() => session.setCourse(nextCourse)).toThrow('after the match')
     session.dispose()
   })
+
+  it('setSpeed multiplies sim time per pump and widens the catch-up cap', () => {
+    const { session } = setup()
+    session.start()
+    session.setSpeed(4)
+    // 250ms wall at 4× = 1000ms sim debt = 20 ticks; the per-frame cap widens
+    // to 12 under 4× so the first pump takes 12 and debt carries forward.
+    session.advanceMicroseconds(250000)
+    expect(session.liveEpisode().tick).toBe(12)
+    session.advanceMicroseconds(0)
+    expect(session.liveEpisode().tick).toBe(20)
+    session.dispose()
+  })
+
+  it('still emits action_result for outcomes committed inside a multi-tick pump', () => {
+    const { session } = setup()
+    const seen: number[] = []
+    session.on('action_result', event => { seen.push(event.tick) })
+    session.start()
+    session.setSpeed(4)
+    session.advanceMicroseconds(250000) // 12 ticks; lastOutcome lands on a decision tick inside the window
+    session.advanceMicroseconds(0) // flush the rest of the debt
+    // The last decision before tick 20 is at tick 15 — under the old
+    // same-tick check (outcome.tick === live.tick === 20) it would be dropped.
+    expect(seen).toContain(15)
+    session.dispose()
+  })
+
+  it('skipToTick jumps the running episode synchronously and publishes it', () => {
+    const { session } = setup()
+    session.start()
+    const landed = session.skipToTick(15)
+    expect(landed).toBe(15)
+    expect(session.liveEpisode().tick).toBe(15)
+    expect(session.getSnapshot().episode.tick).toBe(15)
+    expect(session.getSnapshot().phase).toBe('running')
+    session.dispose()
+  })
+
+  it('skip while paused lands on a frozen frame and resumes from there', () => {
+    const { session } = setup()
+    session.start()
+    session.advanceMicroseconds(100000)
+    session.pause()
+    const tickBefore = session.getSnapshot().episode.tick
+    session.skipToTick(18)
+    expect(session.getSnapshot().phase).toBe('paused')
+    expect(session.getSnapshot().episode.tick).toBe(18)
+    expect(tickBefore).toBeLessThan(18)
+    session.start()
+    session.advanceMicroseconds(0)
+    expect(session.liveEpisode().tick).toBeGreaterThanOrEqual(18)
+    session.dispose()
+  })
+
+  it('skipToEnd finishes the episode and emits match_end once', () => {
+    const { session } = setup()
+    const ends: string[] = []
+    session.on('match_end', event => { ends.push(event.outcome) })
+    session.start()
+    const landed = session.skipToEnd()
+    expect(landed).toBe(20)
+    expect(session.getSnapshot().phase).toBe('finished')
+    expect(ends).toEqual(['finished'])
+    // Skipping again must not re-emit or rewind.
+    expect(session.skipToEnd()).toBe(20)
+    expect(ends).toEqual(['finished'])
+    session.dispose()
+  })
+
+  it('skip is a no-op outside running/paused phases', () => {
+    const { session } = setup()
+    expect(session.skipToTick(10)).toBe(0)
+    expect(session.getSnapshot().phase).toBe('ready')
+    session.dispose()
+  })
+
+  it('a skipped run records the same outcome as a watched one — skipping cannot change scoring', () => {
+    const watched = setup()
+    watched.session.start()
+    while (watched.session.getSnapshot().phase === 'running') watched.session.advanceMicroseconds(50000)
+    const skipped = setup()
+    skipped.session.start()
+    skipped.session.skipToEnd()
+    const watchedSnap = watched.session.getSnapshot().episode
+    const skippedSnap = skipped.session.getSnapshot().episode
+    expect(skippedSnap.tick).toBe(watchedSnap.tick)
+    expect(skippedSnap.winner).toBe(watchedSnap.winner)
+    expect(skippedSnap.agents.map(a => a.banked)).toEqual(watchedSnap.agents.map(a => a.banked))
+    watched.session.dispose()
+    skipped.session.dispose()
+  })
 })

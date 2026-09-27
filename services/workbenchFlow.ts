@@ -65,12 +65,15 @@ export interface MistakeSignal {
  * error worth interrupting for. Three signals, first match wins:
  *
  * - a rescue (recoveries ticked up) — the rover visibly teleported home;
- * - a same-tick rejection that ISN'T 'in-transit' — in-transit rejections
- *   are decision-cadence noise the player never sees;
+ * - a rejection committed since the caller last observed (`sinceTick`) that
+ *   ISN'T 'in-transit' — in-transit rejections are decision-cadence noise
+ *   the player never sees. Fast-forward publishes several sim ticks at
+ *   once, so freshness is a window, not same-tick equality;
  * - in transit on a floodable edge while flooded — the thematic crawl.
  *
- * The caller owns the prevRecoveries cursor (pass the prior tick's count)
- * and the once-per-session marker.
+ * The caller owns the prevRecoveries cursor (pass the prior tick's count),
+ * the sinceTick cursor (the previous observed tick), and the
+ * once-per-session marker.
  */
 export function detectMistakeSignal(input: {
   tick: number
@@ -80,15 +83,17 @@ export function detectMistakeSignal(input: {
   lastOutcome: { tick: number; accepted: boolean; reason?: string | null } | null
   transitEdgeId: string | null
   floodableEdgeIds: ReadonlySet<string>
+  sinceTick?: number
 }): MistakeSignal | null {
   const { tick, flooded, recoveries, prevRecoveries, lastOutcome, transitEdgeId, floodableEdgeIds } = input
+  const sinceTick = input.sinceTick ?? tick - 1
   if (recoveries > prevRecoveries) {
     return {
       headline: 'Your champion got pinned and needed a rescue',
       detail: 'A stuck rover can be taught better routes — coach the decision that led there.',
     }
   }
-  if (lastOutcome && !lastOutcome.accepted && lastOutcome.tick === tick && lastOutcome.reason !== 'in-transit') {
+  if (lastOutcome && !lastOutcome.accepted && lastOutcome.tick > sinceTick && lastOutcome.tick <= tick && lastOutcome.reason !== 'in-transit') {
     return {
       headline: `Your champion's call was rejected (${lastOutcome.reason?.replaceAll('-', ' ') ?? 'invalid'})`,
       detail: 'A rejected decision is a coachable decision.',

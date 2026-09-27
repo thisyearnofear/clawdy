@@ -166,4 +166,21 @@ describe('detectMistakeSignal — visible-error trigger for the first-mistake ca
     })
     expect(signal?.headline).toContain('rescue')
   })
+
+  it('fires on a rejection inside the observed window — fast-forward publishes skip ticks', () => {
+    const signal = mistake({
+      tick: 205,
+      sinceTick: 198,
+      lastOutcome: { tick: 201, accepted: false, reason: 'movement-blocked' },
+    })
+    expect(signal?.headline).toContain('movement blocked')
+  })
+
+  it('still ignores rejections older than the observed window', () => {
+    expect(mistake({
+      tick: 205,
+      sinceTick: 198,
+      lastOutcome: { tick: 195, accepted: false, reason: 'movement-blocked' },
+    })).toBeNull()
+  })
 })

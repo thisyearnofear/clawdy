@@ -22,6 +22,11 @@ export interface ArenaSessionView {
 /** Soft cap on sim ticks per display frame — prefer smooth catch-up over spikes. */
 export const VISUAL_MAX_TICKS_PER_FRAME = 3
 
+/** Playback multipliers the workbench offers. Presentation only — the sim
+ *  stays fixed-step and deterministic regardless of pump speed. */
+export type SessionSpeed = 1 | 2 | 4
+export const SESSION_SPEEDS: readonly SessionSpeed[] = [1, 2, 4]
+
 /** React HUD refresh floor (~decision cadence). Score/flood/phase still publish immediately. */
 const HUD_PUBLISH_EVERY_TICKS = 5
 
@@ -55,6 +60,7 @@ export class ArenaSession {
   #disposed = false
   #scored = false
   #lastHudKey = ''
+  #speed: SessionSpeed = 1
 
   constructor(course: ArenaCourse, motion: ArenaMotion) {
     this.#course = structuredClone(course)
@@ -268,43 +274,101 @@ export class ArenaSession {
     if (this.#view.phase !== 'running') return
     try {
       const previousPhase = this.#view.phase
-      const ticks = this.#runner.advanceMicroseconds(elapsedUs, VISUAL_MAX_TICKS_PER_FRAME)
+      // Fast-forward is an elapsed-time multiplier with a proportionally
+      // wider per-frame cap; under it the episode still advances tick-by-tick.
+      const ticks = this.#runner.advanceMicroseconds(
+        elapsedUs * this.#speed,
+        VISUAL_MAX_TICKS_PER_FRAME * this.#speed,
+      )
       if (ticks === 0) return
-      const live = this.#runner.peek()
-      const nextPhase: ArenaPhase = live.status === 'finished' ? 'finished' : 'running'
-      const hudKey = hudPublishKey(live)
-      // Clone + notify React only when the scorebug / agent cards would change,
-      // or on a decision-cadence floor — never every 50 ms tick.
-      if (nextPhase === 'finished' || hudKey !== this.#lastHudKey) {
-        this.#lastHudKey = hudKey
-        this.#publish({ episode: this.#runner.snapshot(), phase: nextPhase })
-      } else if (this.#view.phase !== nextPhase) {
-        this.#publish({ phase: nextPhase })
-      }
-      this.#emitPhase(previousPhase, this.#view.phase)
-      this.#emit({ type: 'tick', matchId: this.#matchId, tick: live.tick, episode: live })
-      for (const agent of live.agents) {
-        const outcome = agent.lastOutcome
-        if (outcome && outcome.tick === live.tick) {
-          this.#emit({
-            type: 'action_result',
-            matchId: this.#matchId,
-            agentId: agent.id,
-            tick: outcome.tick,
-            action: outcome.action,
-            accepted: outcome.accepted,
-            reason: outcome.reason,
-          })
-        }
-      }
-      if (live.status === 'finished' && !this.#ended) {
-        this.#ended = true
-        const score: Record<string, number> = {}
-        for (const agent of live.agents) score[agent.id] = agent.banked
-        this.#emit({ type: 'match_end', matchId: this.#matchId, outcome: 'finished', score })
-      }
+      this.#afterAdvance(previousPhase, ticks)
     } catch (error) {
       this.fail(error instanceof Error ? error.message : 'Simulation failed')
+    }
+  }
+
+  /**
+   * Jump the live episode forward synchronously — deterministic, so the
+   * result is identical to having watched it. Allowed while running or
+   * paused; a paused run stays paused at the target tick so the user lands
+   * on a frozen frame. Returns the tick it settled on.
+   */
+  skipToTick(targetTick: number) {
+    this.#assertActive()
+    if (this.#view.phase !== 'running' && this.#view.phase !== 'paused') return this.#runner.peek().tick
+    const live = this.#runner.peek()
+    const target = Math.min(Math.max(targetTick, live.tick), this.#course.scenario.durationTicks)
+    if (target <= live.tick) return live.tick
+    const previousPhase = this.#view.phase
+    this.#runner.advanceTicks(target - live.tick)
+    const now = this.#runner.peek()
+    // A skip always lands on a fresh HUD snapshot — publish unconditionally.
+    const nextPhase: ArenaPhase = now.status === 'finished' ? 'finished' : this.#view.phase
+    this.#lastHudKey = hudPublishKey(now)
+    this.#publish({ episode: this.#runner.snapshot(), phase: nextPhase })
+    this.#emitPhase(previousPhase, nextPhase)
+    this.#emit({ type: 'tick', matchId: this.#matchId, tick: now.tick, episode: now })
+    this.#emitActionResults(now, target - live.tick)
+    this.#emitMatchEnd(now)
+    return now.tick
+  }
+
+  skipToEnd() {
+    return this.skipToTick(this.#course.scenario.durationTicks)
+  }
+
+  setSpeed(speed: SessionSpeed) {
+    this.#speed = SESSION_SPEEDS.includes(speed) ? speed : 1
+  }
+
+  get speed(): SessionSpeed {
+    return this.#speed
+  }
+
+  /** Shared tail for pumped and skipped advancement: publish, emit, finish. */
+  #afterAdvance(previousPhase: ArenaPhase, ticksAdvanced: number) {
+    const live = this.#runner.peek()
+    const nextPhase: ArenaPhase = live.status === 'finished' ? 'finished' : 'running'
+    const hudKey = hudPublishKey(live)
+    // Clone + notify React only when the scorebug / agent cards would change,
+    // or on a decision-cadence floor — never every 50 ms tick.
+    if (nextPhase === 'finished' || hudKey !== this.#lastHudKey) {
+      this.#lastHudKey = hudKey
+      this.#publish({ episode: this.#runner.snapshot(), phase: nextPhase })
+    } else if (this.#view.phase !== nextPhase) {
+      this.#publish({ phase: nextPhase })
+    }
+    this.#emitPhase(previousPhase, this.#view.phase)
+    this.#emit({ type: 'tick', matchId: this.#matchId, tick: live.tick, episode: live })
+    this.#emitActionResults(live, ticksAdvanced)
+    this.#emitMatchEnd(live)
+  }
+
+  /** Emit outcomes committed inside the tick window this pump covered —
+   *  multi-tick pumps (catch-up debt, fast-forward) must not drop them. */
+  #emitActionResults(live: ReturnType<ArenaRunner['peek']>, ticksAdvanced: number) {
+    for (const agent of live.agents) {
+      const outcome = agent.lastOutcome
+      if (outcome && outcome.tick > live.tick - ticksAdvanced) {
+        this.#emit({
+          type: 'action_result',
+          matchId: this.#matchId,
+          agentId: agent.id,
+          tick: outcome.tick,
+          action: outcome.action,
+          accepted: outcome.accepted,
+          reason: outcome.reason,
+        })
+      }
+    }
+  }
+
+  #emitMatchEnd(live: ReturnType<ArenaRunner['peek']>) {
+    if (live.status === 'finished' && !this.#ended) {
+      this.#ended = true
+      const score: Record<string, number> = {}
+      for (const agent of live.agents) score[agent.id] = agent.banked
+      this.#emit({ type: 'match_end', matchId: this.#matchId, outcome: 'finished', score })
     }
   }
 
