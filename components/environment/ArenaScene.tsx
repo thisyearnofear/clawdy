@@ -10,7 +10,7 @@ import { ArenaSession } from '../../services/arenaSession'
 import type { ArenaMotion } from '../../services/arenaPhysics'
 import { collectorPolicy } from '../../services/arenaPolicy'
 import { createTournament, runTournament, type ArenaTournament, type TournamentEntrant, type TournamentMatch } from '../../services/arenaTournament'
-import { type PolicyCheckpoint } from '../../services/policyModel'
+import { type PolicyCheckpoint, SEASON_0_BASE_CHECKPOINT } from '../../services/policyModel'
 import { SEASON_0_STARTER_CHECKPOINT } from '../../services/starterCheckpoint'
 import {
   type ArenaTrainingExample,
@@ -60,7 +60,7 @@ import { HelpDrawer } from '../workbench/HelpDrawer'
 import { ReplayPanel } from '../workbench/ReplayPanel'
 import { TournamentBracket } from '../workbench/TournamentBracket'
 import { ViewportHud, type HudFeedEvent } from '../workbench/ViewportHud'
-import { actionLabel, actionsEqual, COACH_NUDGE_KEY, isExecutableCheckpoint, PLAY_HINT_KEY, readHintDismissed } from '../workbench/readouts'
+import { actionLabel, actionsEqual, COACH_ANYTIME_KEY, COACH_NUDGE_KEY, isExecutableCheckpoint, PLAY_HINT_KEY, readHintDismissed } from '../workbench/readouts'
 import styles from './ArenaScene.module.css'
 
 const WorldView = dynamic(() => import('./ArenaWorldView'), { ssr: false })
@@ -101,6 +101,7 @@ function Workbench({
   const [studioOpen, setStudioOpen] = useState(false)
   const [hintOpen, setHintOpen] = useState(() => !readHintDismissed())
   const [coachNudgeOpen, setCoachNudgeOpen] = useState(false)
+  const [hasCompletedRun, setHasCompletedRun] = useState(false)
   const [trainFocusLine, setTrainFocusLine] = useState<string | null>(null)
   const [modeBanner, setModeBanner] = useState<CoursePlayMode | null>(null)
   const [runTip, setRunTip] = useState<string | null>(null)
@@ -115,6 +116,14 @@ function Workbench({
   const modeBannerTimer = useRef<number | null>(null)
   const runTipTimer = useRef<number | null>(null)
   const checkpoints = useArenaStore(state => state.checkpoints)
+  // True once the user owns a brain that isn't a bundled built-in (trained
+  // or imported) — gates the tournament bracket, which is framed around
+  // "your trained champion vs the house field".
+  const hasOwnBrain = checkpoints.some(checkpoint =>
+    isExecutableCheckpoint(checkpoint)
+    && checkpoint.id !== SEASON_0_STARTER_CHECKPOINT.id
+    && checkpoint.id !== SEASON_0_BASE_CHECKPOINT.id,
+  )
   const setCheckpoints = useArenaStore(state => state.setCheckpoints)
   const activeCheckpoint = useArenaStore(state => state.activeCheckpoint)
   const setActiveCheckpoint = useArenaStore(state => state.setActiveCheckpoint)
@@ -231,6 +240,23 @@ function Workbench({
     runTipTimer.current = window.setTimeout(() => setRunTip(null), 5200)
   }, [view.phase, view.episode.tick, flooded, nextFloodIn, activeCourse.scenario.floods])
 
+  // Mid-run coaching discoverability: coaching is legal any time in Practice
+  // (the lock is compete-only), but nothing told the user that — they watched
+  // a full ~60s round before the finish nudge. One-shot tip ~10s in, deferred
+  // while a flood tip is already up.
+  useEffect(() => {
+    if (view.phase !== 'running' || playMode !== 'practice') return
+    if (view.episode.tick < 200 || runTip) return
+    try {
+      if (window.sessionStorage.getItem(COACH_ANYTIME_KEY) === '1') return
+      window.sessionStorage.setItem(COACH_ANYTIME_KEY, '1')
+    } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot ambient tip, same lifecycle contract as the flood warning above
+    setRunTip('Practice lets you coach mid-run — Pause anytime and open Coach to teach a moment.')
+    if (runTipTimer.current) window.clearTimeout(runTipTimer.current)
+    runTipTimer.current = window.setTimeout(() => setRunTip(null), 5200)
+  }, [view.phase, view.episode.tick, playMode, runTip])
+
   useEffect(() => () => {
     if (modeBannerTimer.current) window.clearTimeout(modeBannerTimer.current)
     if (runTipTimer.current) window.clearTimeout(runTipTimer.current)
@@ -252,6 +278,8 @@ function Workbench({
   // re-render or remount never double-records the same match.
   useEffect(() => {
     if (view.phase !== 'finished') return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- first finish unlocks the souvenir controls; phase transitions only land here
+    setHasCompletedRun(true)
     const champion = view.episode.agents.find(agent => agent.id === 'champion')
     const rival = view.episode.agents.find(agent => agent.id === 'rival')
     queueMatchSync({
@@ -896,7 +924,7 @@ function Workbench({
           />
           {visualReady && hintOpen && view.phase === 'ready' && !modeBanner && (
             <div className={`${styles.playHint} ${styles.hintEnter}`} role="status">
-              <p><strong>Press Play.</strong> Follow your green champion — amber routes flood first.</p>
+              <p><strong>Press Play.</strong> Follow your champion — it runs the house starter brain until you coach it into your own.</p>
               <button
                 type="button"
                 onClick={() => {
@@ -1019,16 +1047,18 @@ function Workbench({
           </button>
           <button className={styles.secondaryButton} onClick={() => { setCinematic(false); floodWarnedRef.current = null; lastEncounterTickRef.current = null; setEncounter(null); encounterBusyRef.current = false; setRunTip(null); session.reset() }} disabled={!visualReady || view.phase === 'error'}><RotateCcw size={15} />Reset</button>
           <button className={styles.secondaryButton} onClick={() => session.review()} disabled={view.phase !== 'paused' && view.phase !== 'finished'}><Eye size={16} />Replay</button>
-          <button
-            className={styles.secondaryButton}
-            type="button"
-            aria-pressed={clipArmed}
-            disabled={view.phase === 'finished' || view.phase === 'error' || view.phase === 'review'}
-            onClick={() => setClipArmed(armed => !armed)}
-            title={clipArmed ? 'Clip recording armed — encodes while you play' : 'Arm a low-cost souvenir clip for this run'}
-          >
-            <Clapperboard size={16} />{clipArmed ? 'Record on' : 'Record'}
-          </button>
+          {(hasCompletedRun || view.phase !== 'ready' || view.episode.tick > 0) && (
+            <button
+              className={styles.secondaryButton}
+              type="button"
+              aria-pressed={clipArmed}
+              disabled={view.phase === 'finished' || view.phase === 'error' || view.phase === 'review'}
+              onClick={() => setClipArmed(armed => !armed)}
+              title={clipArmed ? 'Clip recording armed — encodes while you play' : 'Arm a low-cost souvenir clip for this run'}
+            >
+              <Clapperboard size={16} />{clipArmed ? 'Record on' : 'Record'}
+            </button>
+          )}
           <button
             className={styles.secondaryButton}
             aria-pressed={studioOpen}
@@ -1040,7 +1070,9 @@ function Workbench({
         </div>
         <div className={styles.runMeta}>
           <span>{view.episode.tick} / {activeCourse.scenario.durationTicks}</span>
-          <button onClick={download} disabled={view.episode.tick === 0} aria-label="Download recorded run"><Download size={16} />Save run</button>
+          {view.episode.tick > 0 && (
+            <button onClick={download} aria-label="Download recorded run"><Download size={16} />Save run</button>
+          )}
         </div>
       </div>
 
@@ -1053,14 +1085,23 @@ function Workbench({
         )}
       </div>
 
-      <TournamentBracket
-        tournament={tournament}
-        running={tournamentRunning}
-        visualReady={visualReady}
-        phase={view.phase}
-        onRun={runBracket}
-        onWatch={watchMatch}
-      />
+      {hasOwnBrain ? (
+        <TournamentBracket
+          tournament={tournament}
+          running={tournamentRunning}
+          visualReady={visualReady}
+          phase={view.phase}
+          onRun={runBracket}
+          onWatch={watchMatch}
+        />
+      ) : (
+        <section className={styles.replay} aria-label="Tournament bracket">
+          <div>
+            <strong>Tournament · single elimination</strong>
+            <span>Unlocks once you train or import your first brain</span>
+          </div>
+        </section>
+      )}
 
       {view.phase === 'review' && (
         <ReplayPanel

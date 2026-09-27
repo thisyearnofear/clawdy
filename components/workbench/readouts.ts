@@ -19,6 +19,7 @@ export const POLICY_LABELS: Record<CollectorStrategy, string> = {
 
 export const PLAY_HINT_KEY = 'clawdy_play_hint_v1'
 export const COACH_NUDGE_KEY = 'clawdy_coach_nudge_v1'
+export const COACH_ANYTIME_KEY = 'clawdy_coach_anytime_v1'
 
 export function readHintDismissed(): boolean {
   if (typeof window === 'undefined') return false
