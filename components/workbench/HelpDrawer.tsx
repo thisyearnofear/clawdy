@@ -1,12 +1,21 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { formatFunnelLog, getFunnelEvents } from '../../services/funnelLog'
 import styles from '../environment/ArenaScene.module.css'
 
 const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
 
 export function HelpDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const panelRef = useRef<HTMLElement>(null)
+  const [copied, setCopied] = useState(false)
+
+  const copySessionLog = () => {
+    const log = formatFunnelLog()
+    void navigator.clipboard?.writeText(log || '(no events recorded yet)')
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 1500)
+  }
 
   useEffect(() => {
     if (!open) return
@@ -78,6 +87,14 @@ export function HelpDrawer({ open, onClose }: { open: boolean; onClose: () => vo
             <dd>Export JSON in Coach, or Save run for the recording. Cloud sync uses a guest key when Convex is on.</dd>
           </div>
         </dl>
+        <div className={styles.helpFooter}>
+          <button type="button" className={styles.helpClose} onClick={copySessionLog}>
+            {copied ? 'Copied!' : 'Copy session log'}
+          </button>
+          <span className={styles.helpFooterNote}>
+            Local-only funnel events ({getFunnelEvents().length}) — nothing leaves this browser.
+          </span>
+        </div>
       </aside>
     </div>
   )

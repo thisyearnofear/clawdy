@@ -49,6 +49,7 @@ import {
   startArenaSync,
 } from '../../services/syncEngine'
 import { useArenaStore } from '../../services/arenaStore'
+import { recordFunnelEvent } from '../../services/funnelLog'
 import { computeNextStep, detectMistakeSignal } from '../../services/workbenchFlow'
 import type { ArenaCamera } from './ArenaWorldView'
 import { ErrorBoundary } from '../utils/ErrorBoundary'
@@ -153,7 +154,7 @@ function Workbench({
   const recordChunksRef = useRef<Blob[]>([])
   const clipUrlRef = useRef<string | null>(null)
 
-  const onReady = useCallback(() => setVisualReady(true), [])
+  const onReady = useCallback(() => { setVisualReady(true); recordFunnelEvent('boot.ready') }, [])
   const onError = useCallback((error: Error) => session.fail(error.message), [session])
   const remaining = Math.max(0, Math.ceil((activeCourse.scenario.durationTicks - view.episode.tick) * ARENA_RULES.stepMs / 1000))
   const clock = `${Math.floor(remaining / 60).toString().padStart(2, '0')}:${(remaining % 60).toString().padStart(2, '0')}`
@@ -241,6 +242,7 @@ function Workbench({
     const coming = activeCourse.scenario.floods.find(window => window.startTick > view.episode.tick)
     if (!coming || floodWarnedRef.current === coming.startTick) return
     floodWarnedRef.current = coming.startTick
+    recordFunnelEvent('tip.flood', `in=${nextFloodIn}s`)
     setRunTip(`Flood in ${nextFloodIn}s — amber valley slows. Take the ridge.`)
     if (runTipTimer.current) window.clearTimeout(runTipTimer.current)
     runTipTimer.current = window.setTimeout(() => setRunTip(null), 5200)
@@ -259,6 +261,7 @@ function Workbench({
         || window.sessionStorage.getItem(COACH_MISTAKE_KEY) === '1') return
       window.sessionStorage.setItem(COACH_ANYTIME_KEY, '1')
     } catch { /* ignore */ }
+    recordFunnelEvent('tip.midrun')
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot ambient tip, same lifecycle contract as the flood warning above
     setRunTip('Practice lets you coach mid-run — Pause anytime and open Coach to teach a moment.')
     if (runTipTimer.current) window.clearTimeout(runTipTimer.current)
@@ -292,10 +295,33 @@ function Workbench({
     prevRecoveriesRef.current = championAgent.recoveries
     if (!signal) return
     try { window.sessionStorage.setItem(COACH_MISTAKE_KEY, '1') } catch { /* ignore */ }
+    recordFunnelEvent('mistake.shown', signal.headline)
     setMistakeMoment({ tick: view.episode.tick, ...signal })
     if (mistakeTimer.current) window.clearTimeout(mistakeTimer.current)
-    mistakeTimer.current = window.setTimeout(() => setMistakeMoment(null), 15000)
+    mistakeTimer.current = window.setTimeout(() => {
+      setMistakeMoment(null)
+      recordFunnelEvent('mistake.timeout')
+    }, 15000)
   }, [view.phase, view.episode, playMode, mistakeMoment, flooded, activeCourse.scenario.edges])
+
+  // Funnel: first paint of the play hint, each coach-studio open, and the
+  // moment a user-owned brain exists (tournament unlock) — the three
+  // disclosures whose conversion decides whether the ladder works.
+  const playTipLoggedRef = useRef(false)
+  const ownBrainLoggedRef = useRef(false)
+  useEffect(() => {
+    if (playTipLoggedRef.current || !visualReady || !hintOpen || view.phase !== 'ready') return
+    playTipLoggedRef.current = true
+    recordFunnelEvent('tip.play')
+  }, [visualReady, hintOpen, view.phase])
+  useEffect(() => {
+    if (studioOpen) recordFunnelEvent('studio.open')
+  }, [studioOpen])
+  useEffect(() => {
+    if (ownBrainLoggedRef.current || !hasOwnBrain) return
+    ownBrainLoggedRef.current = true
+    recordFunnelEvent('brain.own')
+  }, [hasOwnBrain])
 
   // Clear the moment card when play leaves the live phases — finished has
   // its own coach nudge and review is already the destination.
@@ -321,6 +347,10 @@ function Workbench({
   // and open the Coach studio so the frame's fixes are one click away.
   const coachMistake = useCallback(() => {
     if (!mistakeMoment) return
+    if (mistakeTimer.current) {
+      window.clearTimeout(mistakeTimer.current)
+      mistakeTimer.current = null
+    }
     try {
       session.pause()
       session.review()
@@ -329,6 +359,7 @@ function Workbench({
       // Session may already be reviewing, or the frame index raced a trim —
       // the studio still gives the user the coaching path.
     }
+    recordFunnelEvent('mistake.coach', `t${mistakeMoment.tick}`)
     setStudioOpen(true)
     setMistakeMoment(null)
   }, [mistakeMoment, session])
@@ -338,6 +369,7 @@ function Workbench({
       window.clearTimeout(mistakeTimer.current)
       mistakeTimer.current = null
     }
+    recordFunnelEvent('mistake.dismiss')
     setMistakeMoment(null)
   }, [])
 
@@ -354,12 +386,17 @@ function Workbench({
   // Persist a match summary when a round finishes (links active checkpoint).
   // Idempotency by (matchId, payload) lives in the sync engine's meta, so a
   // re-render or remount never double-records the same match.
+  const finishedLoggedRef = useRef<string | null>(null)
   useEffect(() => {
     if (view.phase !== 'finished') return
     // eslint-disable-next-line react-hooks/set-state-in-effect -- first finish unlocks the souvenir controls; phase transitions only land here
     setHasCompletedRun(true)
     const champion = view.episode.agents.find(agent => agent.id === 'champion')
     const rival = view.episode.agents.find(agent => agent.id === 'rival')
+    if (finishedLoggedRef.current !== session.matchId) {
+      finishedLoggedRef.current = session.matchId
+      recordFunnelEvent('run.finished', `mode=${playMode} scored=${view.scored} banked=${champion?.banked ?? 0} winner=${view.episode.winner ?? 'draw'}`)
+    }
     queueMatchSync({
       matchId: session.matchId,
       scenarioId: activeCourse.scenario.id,
@@ -371,7 +408,7 @@ function Workbench({
       winner: view.episode.winner,
       linkedExampleIds: examples.filter(example => example.approved).map(example => example.id),
     })
-  }, [view.phase, view.episode, view.scored, session, activeCourse.scenario.id, activeCheckpoint.id, examples])
+  }, [view.phase, view.episode, view.scored, session, activeCourse.scenario.id, activeCheckpoint.id, examples, playMode])
 
   const pushFeed = useCallback((items: { text: string; tone: 'bank' | 'flood' | 'info' }[]) => {
     if (items.length === 0) return
@@ -573,6 +610,7 @@ function Workbench({
     if (view.phase === 'finished') session.reset()
     setHintOpen(false)
     if (follow === 'overview') setFollow('champion')
+    recordFunnelEvent('run.start', `mode=${playMode} from=${view.phase}`)
     session.start()
   }
   const primaryLabel = view.phase === 'running' ? 'Pause' : view.phase === 'paused' ? 'Resume' : view.phase === 'finished' ? 'Play again' : view.phase === 'review' ? 'Back to match' : view.phase === 'error' ? 'Reload world' : 'Play'
@@ -597,6 +635,7 @@ function Workbench({
     const next = applyCourseMode(course, mode)
     setPlayMode(mode)
     setActiveCourse(next)
+    recordFunnelEvent('mode.select', mode)
     session.setCourse(next)
     session.setScored(mode === 'compete')
     if (mode === 'compete') setStudioOpen(false)
@@ -630,6 +669,7 @@ function Workbench({
       const example = proposeCorrection(text, champObs, currentAction, activeCourse.scenario.id)
     if (example) {
       setExamples(prev => [example, ...prev])
+      recordFunnelEvent('example.draft', 'prompt')
       setPromptText('')
       setStudioOpen(true)
       setTrainMessage(`Proposed a fix at ${example.tick}: ${example.rationale} Approve it, then train.`)
@@ -675,15 +715,15 @@ function Workbench({
   }
 
   const toggleApprove = (id: string) => {
-    setExamples(prev => prev.map(ex => {
-      if (ex.id !== id) return ex
-      if (isEvaluationScenario(ex.sourceEpisodeId)) {
-        setTrainMessage(`Cannot approve an example from held-out scenario "${ex.sourceEpisodeId}". It is reserved for evaluation.`)
-        return ex
-      }
-      const approved = !ex.approved
-      return { ...ex, approved, source: approved ? 'approved' as const : 'draft' as const }
-    }))
+    const target = examples.find(ex => ex.id === id)
+    if (!target) return
+    if (isEvaluationScenario(target.sourceEpisodeId)) {
+      setTrainMessage(`Cannot approve an example from held-out scenario "${target.sourceEpisodeId}". It is reserved for evaluation.`)
+      return
+    }
+    const approved = !target.approved
+    recordFunnelEvent(approved ? 'example.approve' : 'example.unapprove', `t${target.tick}`)
+    setExamples(prev => prev.map(ex => ex.id === id ? { ...ex, approved, source: approved ? 'approved' as const : 'draft' as const } : ex))
   }
 
   const removeExample = (id: string) => {
@@ -746,6 +786,7 @@ function Workbench({
             : `Training complete. Loss ${trained.trainingSummary.loss.toFixed(4)} · ${(trained.trainingSummary.accuracy * 100).toFixed(0)}% of the notes landed.`,
         )
         setTrainResult({ baseline: baselineEval, trained: trainedEval })
+        recordFunnelEvent('train.done', `n=${approved.length} loss=${trained.trainingSummary.loss.toFixed(4)} banked ${baselineEval.totalBanked}→${trainedEval.totalBanked}`)
         queueCheckpointSync(trained, approved.map(example => example.id))
         queueTrainingJobSync({
           jobId,
@@ -806,6 +847,7 @@ function Workbench({
       source: 'draft',
     }
     setExamples(prev => [example, ...prev])
+    recordFunnelEvent('example.draft', 'mistake')
     setStudioOpen(true)
     setTrainMessage(`Queued a fix at ${example.tick}. Approve it, then train.`)
   }
@@ -855,6 +897,7 @@ function Workbench({
       outcomeDelta: candidate.delta120,
     }
     setExamples(prev => [example, ...prev])
+    recordFunnelEvent('example.draft', 'candidate')
     setStudioOpen(true)
     setFrameAdvice(prev => prev ? { ...prev, candidates: prev.candidates.filter(c => c !== candidate) } : null)
     setTrainMessage(`Queued a measured fix at ${example.tick}: ${candidate.rationale} Approve it, then train.`)

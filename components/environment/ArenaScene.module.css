@@ -233,6 +233,8 @@
 .helpFaq { margin: 0; display: flex; flex-direction: column; gap: 14px; }
 .helpFaq dt { font: 11px var(--font-geist-mono), monospace; letter-spacing: 0.04em; color: var(--ink); margin-bottom: 4px; }
 .helpFaq dd { margin: 0; font-size: 12px; line-height: 1.5; color: var(--muted); }
+.helpFooter { display: flex; align-items: center; gap: 10px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.helpFooterNote { font-size: 11px; color: var(--muted); }
 .agentHeading h3 { font-size: 12px; font-weight: 650; margin: 0 0 3px; }
 .agentHeading > div > span { display: block; font: 7px var(--font-geist-mono), monospace; letter-spacing: 0.06em; color: var(--muted); }
 .score { margin-left: auto; font: 26px/1 var(--font-geist-mono), monospace; text-align: right; }
