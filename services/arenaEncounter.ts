@@ -9,14 +9,29 @@ import {
 } from './coachingEngine'
 import type { ArenaPosition, ArenaSnapshot } from './arenaEpisode'
 
-/** Horizontal distance (XZ) at which a clash can fire. */
-export const ENCOUNTER_TRIGGER_DISTANCE = 1.65
+/** Horizontal distance (XZ) at which a clash can fire. On the Sandstone
+ *  course the lanes run ~6m apart and the controller rules + energy model
+ *  drag any cargo-carrying rover home through barren stretches, so true
+ *  contact is nearly unreachable — the clash is a "contested stretch" beat
+ *  sized to the lane spacing: two rovers visibly working the same ground. */
+export const ENCOUNTER_TRIGGER_DISTANCE = 6.5
 
 /** Minimum ticks between clashes in one episode. */
-export const ENCOUNTER_COOLDOWN_TICKS = 280
+export const ENCOUNTER_COOLDOWN_TICKS = 200
 
 /** Ignore the opening scramble. */
 export const ENCOUNTER_MIN_TICK = 80
+
+/** Distance for the passive "rival sighted" beat — the outer ring beyond
+ *  clash range, close enough that both rovers are on-screen together. */
+export const ENCOUNTER_SIGHT_DISTANCE = 9.5
+
+/** Long cooldown — sightings are seasoning, not the event. */
+export const ENCOUNTER_SIGHT_COOLDOWN_TICKS = 320
+
+/** Cap sightings per match: after the first couple, proximity is either a
+ *  clash (handled by the clash tier) or unremarkable. */
+export const ENCOUNTER_MAX_SIGHTINGS = 3
 
 /** How long the loser is action-locked after a clash. */
 export const ENCOUNTER_STAGGER_TICKS = 24
@@ -71,6 +86,44 @@ export function shouldOfferEncounter(args: {
     return false
   }
   return agentsWithinEncounterRange(args.episode)
+}
+
+/**
+ * Passive proximity beat: fires when the rovers are near each other but not
+ * in clash range. No pause, no prize — just a feed/HUD note so the match
+ * feels like a contest instead of two parallel time trials. The clash tier
+ * owns close range; a recent clash also mutes sightings.
+ */
+export function shouldOfferSighting(args: {
+  phaseRunning: boolean
+  episode: ArenaSnapshot
+  lastEncounterTick: number | null
+  lastSightingTick: number | null
+  sightingCount: number
+}): boolean {
+  if (!args.phaseRunning) return false
+  if (args.episode.status !== 'running') return false
+  if (args.episode.tick < ENCOUNTER_MIN_TICK) return false
+  if (args.sightingCount >= ENCOUNTER_MAX_SIGHTINGS) return false
+  if (args.lastEncounterTick !== null && args.episode.tick - args.lastEncounterTick < ENCOUNTER_SIGHT_COOLDOWN_TICKS) {
+    return false
+  }
+  if (args.lastSightingTick !== null && args.episode.tick - args.lastSightingTick < ENCOUNTER_SIGHT_COOLDOWN_TICKS) {
+    return false
+  }
+  const champion = args.episode.agents.find(agent => agent.id === 'champion')
+  const rival = args.episode.agents.find(agent => agent.id === 'rival')
+  if (!champion || !rival) return false
+  const distance = horizontalDistance(champion.position, rival.position)
+  return distance > ENCOUNTER_TRIGGER_DISTANCE && distance <= ENCOUNTER_SIGHT_DISTANCE
+}
+
+/** Champion↔rival separation for feed copy ("how close was the sighting"). */
+export function encounterDistance(episode: ArenaSnapshot): number | null {
+  const champion = episode.agents.find(agent => agent.id === 'champion')
+  const rival = episode.agents.find(agent => agent.id === 'rival')
+  if (!champion || !rival) return null
+  return horizontalDistance(champion.position, rival.position)
 }
 
 function encounterScore(self: FocusVector, foe: FocusVector, flooded: boolean): number {

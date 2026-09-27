@@ -140,9 +140,12 @@ export function focusVectorFromExamples(
   return vector
 }
 
-export function houseFocusVector(strategy: 'safe' | 'greedy' | 'weather' | 'learned'): FocusVector {
+export function houseFocusVector(strategy: 'safe' | 'greedy' | 'weather' | 'learned' | 'poach'): FocusVector {
   if (strategy === 'greedy') {
     return { weather: 0.08, banking: 0.18, collection: 0.42, contest: 0.24, energy: 0.08 }
+  }
+  if (strategy === 'poach') {
+    return { weather: 0.1, banking: 0.12, collection: 0.16, contest: 0.52, energy: 0.1 }
   }
   if (strategy === 'weather') {
     return { weather: 0.48, banking: 0.1, collection: 0.12, contest: 0.05, energy: 0.25 }

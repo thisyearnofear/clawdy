@@ -15,7 +15,7 @@ import {
   createLearnedPolicy,
 } from './policyModel'
 
-export type CollectorStrategy = 'safe' | 'greedy' | 'weather' | 'learned'
+export type CollectorStrategy = 'safe' | 'greedy' | 'weather' | 'learned' | 'poach'
 
 export type EntrantPolicyOption =
   | CollectorStrategy
@@ -184,12 +184,23 @@ export function routeOracle(observation: ArenaObservation): OracleLabel | null {
  *
  * Baseline entry point (unchanged semantics): run one named strategy.
  */
-export function collectorPolicy(observation: ArenaObservation, strategy: CollectorStrategy): ArenaAction {
+/**
+ * `rivalHint` is a house-director privilege: the live episode may hand the
+ * `poach` baseline the opponent's destination node so the show rival can
+ * intercept where the champion is *going* (fog hides it until adjacent).
+ * Entrant-facing strategies never receive it — the observation contract
+ * stands untouched.
+ */
+export function collectorPolicy(
+  observation: ArenaObservation,
+  strategy: CollectorStrategy,
+  rivalHint?: () => { targetNodeId: string | null },
+): ArenaAction {
   if (!observation.decisionDue) return { type: 'wait' }
-  return applyControllerRules(observation, proposeCollectorAction(observation, strategy))
+  return applyControllerRules(observation, proposeCollectorAction(observation, strategy, rivalHint))
 }
 
-function proposeCollectorAction(observation: ArenaObservation, strategy: CollectorStrategy): ArenaAction {
+function proposeCollectorAction(observation: ArenaObservation, strategy: CollectorStrategy, rivalHint?: () => { targetNodeId: string | null }): ArenaAction {
   const wait: ArenaAction = { type: 'wait' }
   const available = observation.availableActions
   if (strategy === 'weather' && observation.self.transit &&
@@ -205,6 +216,27 @@ function proposeCollectorAction(observation: ArenaObservation, strategy: Collect
   if (shouldBank) return home?.firstEdge ? { type: 'move', edgeId: home.firstEdge } : wait
   const collect = available.find(action => action.type === 'collect')
   if (collect) return collect
+  // Poach: the house agitator. Fog hides the rival until it is adjacent, so
+  // the runner passes a director hint with the champion's destination — the
+  // poacher intercepts where the champion is *going* rather than where it
+  // was, which is what actually produces a meeting. Without the hint it
+  // races to the node nearest a visible rival. Controller rules (auto-bank,
+  // forced homeward when the radar is bare) still govern it like anyone else.
+  if (strategy === 'poach') {
+    const hintedTarget = rivalHint?.()?.targetNodeId ?? null
+    const seen = !hintedTarget
+      ? observation.rivals.find(candidate => candidate.visible && candidate.position)
+      : undefined
+    const targetId = hintedTarget ?? (seen?.position
+      ? observation.nodes
+          .map(node => ({ node, d: Math.hypot(node.position[0] - seen.position![0], node.position[2] - seen.position![2]) }))
+          .sort((a, b) => a.d - b.d || (a.node.id < b.node.id ? -1 : 1))[0]?.node.id ?? null
+      : null)
+    if (targetId && targetId !== observation.self.nodeId) {
+      const contest = findArenaRoute(observation, targetId, 'greedy')
+      if (contest?.firstEdge) return { type: 'move', edgeId: contest.firstEdge }
+    }
+  }
   const targets = observation.resources
     .filter(resource => resource.value + observation.self.cargo <= ARENA_RULES.capacity)
     .map(resource => ({ resource, route: findArenaRoute(observation, resource.nodeId, strategy === 'learned' ? 'safe' : strategy) }))
@@ -240,7 +272,7 @@ export class ArenaRunner {
     const entrants = scenario.entrants.map(entrant => {
       const option = strategies[entrant.id]
       const strategy: CollectorStrategy = typeof option === 'string' ? option : option?.strategy
-      if (strategy !== 'safe' && strategy !== 'greedy' && strategy !== 'weather' && strategy !== 'learned') {
+      if (strategy !== 'safe' && strategy !== 'greedy' && strategy !== 'weather' && strategy !== 'learned' && strategy !== 'poach') {
         throw new Error(`Missing or unsupported baseline for ${entrant.id}`)
       }
 
@@ -253,7 +285,19 @@ export class ArenaRunner {
         return { ...entrant, policyVersion: `learned.${checkpoint.weightsHash.slice(0, 12)}` }
       }
 
-      this.#policies.set(entrant.id, (obs: ArenaObservation) => collectorPolicy(obs, strategy))
+      // House-director privilege: `poach` is a pacing device, not an entrant,
+      // so it may consult the opponent's true destination. The closure reads
+      // the episode lazily (assigned just below) at decision time.
+      this.#policies.set(entrant.id, (obs: ArenaObservation) => collectorPolicy(
+        obs,
+        strategy,
+        strategy === 'poach'
+          ? () => {
+              const foe = this.#episode.peek().agents.find(agent => agent.id !== entrant.id)
+              return { targetNodeId: foe ? (foe.transit?.to ?? foe.nodeId) : null }
+            }
+          : undefined,
+      ))
       return { ...entrant, policyVersion: `baseline.${strategy}.v2` }
     })
     this.#episode = new ArenaEpisode({ ...scenario, entrants }, motion)

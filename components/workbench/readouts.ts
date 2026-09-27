@@ -15,6 +15,7 @@ export const POLICY_LABELS: Record<CollectorStrategy, string> = {
   safe: 'Careful (house baseline)',
   greedy: 'Fast (house baseline)',
   weather: 'Flood-aware (house baseline)',
+  poach: 'Poacher (house baseline)',
 }
 
 export const PLAY_HINT_KEY = 'clawdy_play_hint_v1'

@@ -258,6 +258,25 @@ describe('baseline execution and replay', () => {
     expect(collectorPolicy(episode.observe('champion'), 'greedy')).toEqual({ type: 'move', edgeId: 'west-low' })
   })
 
+  it('poach intercepts the champion destination via the director hint', () => {
+    const episode = new ArenaEpisode(scenario())
+    const obs = episode.observe('rival', { forceDecision: true })
+    // Champion is heading for the ridge (no resources there); the house rival
+    // should race there anyway instead of farming the field.
+    expect(collectorPolicy(obs, 'poach', () => ({ targetNodeId: 'ridge' }))).toEqual({ type: 'move', edgeId: 'east-high' })
+    // Without the hint, poach behaves like a normal collector (nearest target).
+    expect(collectorPolicy(obs, 'poach')).toEqual({ type: 'move', edgeId: 'east-low' })
+  })
+
+  it('poach still honors the shared controller rules — the hint only steers targeting', () => {
+    const episode = new ArenaEpisode(scenario())
+    const obs = episode.observe('rival', { forceDecision: true })
+    // Hint an unreachable/unknown node: poach must degrade to normal behavior
+    // rather than emit an illegal move.
+    const hinted = collectorPolicy(obs, 'poach', () => ({ targetNodeId: 'nowhere-real' }))
+    expect(['east-low', 'east-high', 'wait']).toContain(hinted.type === 'move' ? hinted.edgeId : hinted.type)
+  })
+
   it('runs complete autonomous episodes without clocks, browsers, or unseeded randomness', () => {
     const now = vi.spyOn(Date, 'now').mockImplementation(() => { throw new Error('wall clock') })
     const random = vi.spyOn(Math, 'random').mockImplementation(() => { throw new Error('unseeded') })

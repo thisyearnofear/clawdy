@@ -43,7 +43,7 @@ export class ArenaSession {
   #course: ArenaCourse
   #motion: ArenaMotion
   #runner: ArenaRunner
-  #policies: Record<string, CollectorStrategy> = { champion: 'learned', rival: 'weather' }
+  #policies: Record<string, CollectorStrategy> = { champion: 'learned', rival: 'poach' }
   #checkpoint: PolicyCheckpoint = SEASON_0_BASE_CHECKPOINT
   #view: ArenaSessionView
   #review: ArenaRecording | null = null

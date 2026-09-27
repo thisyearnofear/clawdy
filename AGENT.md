@@ -86,7 +86,7 @@ The concrete model is a 2-layer MLP (36 inputs → 32 → 16 → 8 action classe
 The new reference modules are:
 
 - `services/arenaEpisode.ts`: validated scenario and action types, detached observations, budget/resource rules, round termination, reset, and recording.
-- `services/arenaPolicy.ts`: safe/greedy/weather reference routing, a `learned` strategy that loads a `PolicyCheckpoint`, and a pinned `ArenaRunner` advanced through explicit ticks or integer microseconds.
+- `services/arenaPolicy.ts`: safe/greedy/weather reference routing, a `learned` strategy that loads a `PolicyCheckpoint`, a house-only `poach` pacing rival (live matches; steered by a director hint to the champion's destination so encounters actually occur — never used in evaluation or tournament entrants), and a pinned `ArenaRunner` advanced through explicit ticks or integer microseconds.
 - `services/arenaReplay.ts`: version-checked replay with mandatory state checkpoints and divergence reporting.
 - `services/worldSurface.ts`: world-space static collider extraction, downward surface queries, and bounded route-grounding checks.
 - `services/arenaPhysics.ts`: Rapier 0.19.2 kinematic rigid body with terrain-following pitch/roll, wall collision via ray casts, grounding, reset, recovery, and controller version tracking.

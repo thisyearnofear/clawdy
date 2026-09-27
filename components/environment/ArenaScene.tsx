@@ -22,10 +22,12 @@ import { proposeCorrection, summarizeCoachFocus } from '../../services/coachingE
 import { rankCoachingCandidates, type CoachingCandidate } from '../../services/coachingCandidates'
 import {
   ENCOUNTER_STAGGER_TICKS,
+  encounterDistance,
   focusVectorForChampion,
   focusVectorForRival,
   resolveEncounter,
   shouldOfferEncounter,
+  shouldOfferSighting,
   type EncounterResolution,
 } from '../../services/arenaEncounter'
 import {
@@ -457,6 +459,7 @@ function Workbench({
       console.warn('[encounter] prize apply failed:', err)
     }
     lastEncounterTickRef.current = episode.tick
+    recordFunnelEvent('encounter.clash', `winner=${resolution.winnerId} cargo=${transferred}`)
     // eslint-disable-next-line react-hooks/set-state-in-effect -- the clash modal must appear on the same tick the episode is paused; deferring a render lets the race visibly stall
     setEncounter({ resolution, transferred })
     pushFeed([{
@@ -471,6 +474,33 @@ function Workbench({
       if (session.getSnapshot().phase === 'paused') session.start()
     }, 2400)
   }, [view.phase, view.episode.tick, view.policies.rival, examples, encounter, session, pushFeed])
+
+  // Passive "rival sighted" beat: near-range proximity that never pauses the
+  // sim — a feed note plus a short HUD tip. On the Sandstone course the lanes
+  // run ~6m apart, so this is what turns "two parallel time trials" into a
+  // match the player can feel; the clash card owns the close-range band.
+  const lastSightingTickRef = useRef<number | null>(null)
+  const sightingCountRef = useRef(0)
+  useEffect(() => {
+    if (view.phase !== 'running' || encounter || runTip) return
+    const episode = session.liveEpisode()
+    if (!shouldOfferSighting({
+      phaseRunning: true,
+      episode,
+      lastEncounterTick: lastEncounterTickRef.current,
+      lastSightingTick: lastSightingTickRef.current,
+      sightingCount: sightingCountRef.current,
+    })) return
+    lastSightingTickRef.current = episode.tick
+    sightingCountRef.current += 1
+    const distance = encounterDistance(episode)
+    recordFunnelEvent('encounter.sighted', distance !== null ? `d=${distance.toFixed(1)}m` : undefined)
+    pushFeed([{ text: 'Rival sighted on the same stretch — close enough to contest.', tone: 'info' }])
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- same one-shot ambient-tip contract as the flood warning above
+    setRunTip('Rival sighted nearby — a clash resolves by coaching focus.')
+    if (runTipTimer.current) window.clearTimeout(runTipTimer.current)
+    runTipTimer.current = window.setTimeout(() => setRunTip(null), 4200)
+  }, [view.phase, view.episode.tick, encounter, runTip, session, pushFeed])
 
   // Live race feed: banks, flood flips, drains, and the full-time score.
   // Throttled to one decision cadence (5 ticks) so snapshot pumps never churn renders.
@@ -642,6 +672,8 @@ function Workbench({
     floodWarnedRef.current = null
     setRunTip(null)
     lastEncounterTickRef.current = null
+    lastSightingTickRef.current = null
+    sightingCountRef.current = 0
     setEncounter(null)
     encounterBusyRef.current = false
     setModeBanner(mode)
@@ -1179,7 +1211,7 @@ function Workbench({
             {view.phase === 'running' ? <Pause size={16} /> : <Play size={16} />}
             {primaryLabel}
           </button>
-          <button className={styles.secondaryButton} onClick={() => { setCinematic(false); floodWarnedRef.current = null; lastEncounterTickRef.current = null; setEncounter(null); encounterBusyRef.current = false; setRunTip(null); session.reset() }} disabled={!visualReady || view.phase === 'error'}><RotateCcw size={15} />Reset</button>
+          <button className={styles.secondaryButton} onClick={() => { setCinematic(false); floodWarnedRef.current = null; lastEncounterTickRef.current = null; lastSightingTickRef.current = null; sightingCountRef.current = 0; setEncounter(null); encounterBusyRef.current = false; setRunTip(null); session.reset() }} disabled={!visualReady || view.phase === 'error'}><RotateCcw size={15} />Reset</button>
           <button className={styles.secondaryButton} onClick={() => session.review()} disabled={view.phase !== 'paused' && view.phase !== 'finished'}><Eye size={16} />Replay</button>
           {(hasCompletedRun || view.phase !== 'ready' || view.episode.tick > 0) && (
             <button
