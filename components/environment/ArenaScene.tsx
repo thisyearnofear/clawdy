@@ -11,7 +11,7 @@ import type { ArenaMotion } from '../../services/arenaPhysics'
 import { collectorPolicy } from '../../services/arenaPolicy'
 import { createTournament, runTournament, type ArenaTournament, type TournamentEntrant, type TournamentMatch } from '../../services/arenaTournament'
 import { type PolicyCheckpoint, SEASON_0_BASE_CHECKPOINT } from '../../services/policyModel'
-import { SEASON_0_STARTER_CHECKPOINT } from '../../services/starterCheckpoint'
+import { isBundledStarter, SEASON_0_STARTER_CHECKPOINT } from '../../services/starterCheckpoint'
 import {
   type ArenaTrainingExample,
   type EvaluationResult,
@@ -49,7 +49,7 @@ import {
   startArenaSync,
 } from '../../services/syncEngine'
 import { useArenaStore } from '../../services/arenaStore'
-import { computeNextStep } from '../../services/workbenchFlow'
+import { computeNextStep, detectMistakeSignal } from '../../services/workbenchFlow'
 import type { ArenaCamera } from './ArenaWorldView'
 import { ErrorBoundary } from '../utils/ErrorBoundary'
 import { AgentCard } from '../workbench/AgentCard'
@@ -124,7 +124,7 @@ function Workbench({
   // "your trained champion vs the house field".
   const hasOwnBrain = checkpoints.some(checkpoint =>
     isExecutableCheckpoint(checkpoint)
-    && checkpoint.id !== SEASON_0_STARTER_CHECKPOINT.id
+    && !isBundledStarter(checkpoint)
     && checkpoint.id !== SEASON_0_BASE_CHECKPOINT.id,
   )
   const setCheckpoints = useArenaStore(state => state.setCheckpoints)
@@ -200,10 +200,13 @@ function Workbench({
         )
       }
     }
-    // Always install a live brain: the newest stored executable checkpoint,
-    // else the bundled trained starter (first-run default — the untrained
-    // base MLP wanders and banks ~0, which reads as a broken game).
-    const first = executable[0] ?? SEASON_0_STARTER_CHECKPOINT
+    // Always install a live brain: prefer a user-owned executable
+    // checkpoint, then the bundled starter, then whatever is stored (the
+    // untrained base MLP wanders and banks ~0 — last resort only).
+    const first = executable.find(c => !isBundledStarter(c) && c.id !== SEASON_0_BASE_CHECKPOINT.id)
+      ?? executable.find(isBundledStarter)
+      ?? executable[0]
+      ?? SEASON_0_STARTER_CHECKPOINT
     store.setActiveCheckpoint(first)
     try {
       session.setCheckpoint(first)
@@ -275,32 +278,17 @@ function Workbench({
     } catch { /* ignore */ }
     const championAgent = view.episode.agents.find(agent => agent.id === 'champion')
     if (!championAgent) return
-    let signal: { headline: string; detail: string } | null = null
-    if (championAgent.recoveries > prevRecoveriesRef.current) {
-      signal = {
-        headline: 'Your champion got pinned and needed a rescue',
-        detail: 'A stuck rover can be taught better routes — coach the decision that led there.',
-      }
-    } else if (
-      championAgent.lastOutcome
-      && !championAgent.lastOutcome.accepted
-      && championAgent.lastOutcome.tick === view.episode.tick
-      && championAgent.lastOutcome.reason !== 'in-transit'
-    ) {
-      signal = {
-        headline: `Your champion's call was rejected (${championAgent.lastOutcome.reason?.replaceAll('-', ' ') ?? 'invalid'})`,
-        detail: 'A rejected decision is a coachable decision.',
-      }
-    } else if (
-      flooded
-      && championAgent.transit
-      && activeCourse.scenario.edges.some(edge => edge.id === championAgent.transit!.edgeId && edge.floodable)
-    ) {
-      signal = {
-        headline: 'Your champion is crawling through the flood',
-        detail: 'Ridge routes stay fast — you can teach that preference.',
-      }
-    }
+    const signal = detectMistakeSignal({
+      tick: view.episode.tick,
+      flooded,
+      recoveries: championAgent.recoveries,
+      prevRecoveries: prevRecoveriesRef.current,
+      lastOutcome: championAgent.lastOutcome,
+      transitEdgeId: championAgent.transit?.edgeId ?? null,
+      floodableEdgeIds: new Set(activeCourse.scenario.edges.filter(e => e.floodable).map(e => e.id)),
+    })
+    // Re-sync the cursor every tick — a reset dropping recoveries below the
+    // ref must not wedge the next run's first rescue.
     prevRecoveriesRef.current = championAgent.recoveries
     if (!signal) return
     try { window.sessionStorage.setItem(COACH_MISTAKE_KEY, '1') } catch { /* ignore */ }

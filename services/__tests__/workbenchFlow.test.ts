@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computeNextStep, type NextStepInput } from '../workbenchFlow'
+import { computeNextStep, detectMistakeSignal, type NextStepInput } from '../workbenchFlow'
 
 const base: NextStepInput = {
   visualReady: true,
@@ -92,5 +92,78 @@ describe('computeNextStep — golden branch order (mirrors the pre-extraction Ar
       label: 'Play → Replay → Coach → Train → Match',
       run: null,
     })
+  })
+})
+
+type MistakeInput = Parameters<typeof detectMistakeSignal>[0]
+
+const mistakeBase: MistakeInput = {
+  tick: 200,
+  flooded: false,
+  recoveries: 0,
+  prevRecoveries: 0,
+  lastOutcome: null,
+  transitEdgeId: null,
+  floodableEdgeIds: new Set(['edge-flood']),
+}
+
+const mistake = (over: Partial<MistakeInput>) => detectMistakeSignal({ ...mistakeBase, ...over })
+
+describe('detectMistakeSignal — visible-error trigger for the first-mistake card', () => {
+  it('fires when a rescue increments recoveries', () => {
+    expect(mistake({ recoveries: 1 })?.headline).toContain('rescue')
+  })
+
+  it('does not re-fire while the recovery count merely holds', () => {
+    expect(mistake({ recoveries: 1, prevRecoveries: 1 })).toBeNull()
+  })
+
+  it('a reset dropping recoveries below the cursor does not fire (self-heals next tick)', () => {
+    expect(mistake({ recoveries: 0, prevRecoveries: 2 })).toBeNull()
+  })
+
+  it('fires on a same-tick non-cadence rejection and names the reason', () => {
+    const signal = mistake({
+      lastOutcome: { tick: 200, accepted: false, reason: 'movement-blocked' },
+    })
+    expect(signal?.headline).toContain('movement blocked')
+  })
+
+  it('ignores stale rejections from earlier ticks', () => {
+    expect(mistake({
+      lastOutcome: { tick: 199, accepted: false, reason: 'movement-blocked' },
+    })).toBeNull()
+  })
+
+  it('ignores in-transit rejections — cadence noise the player never sees', () => {
+    expect(mistake({
+      lastOutcome: { tick: 200, accepted: false, reason: 'in-transit' },
+    })).toBeNull()
+  })
+
+  it('ignores accepted outcomes', () => {
+    expect(mistake({
+      lastOutcome: { tick: 200, accepted: true },
+    })).toBeNull()
+  })
+
+  it('fires on flood-caught transit over a floodable edge', () => {
+    expect(mistake({ flooded: true, transitEdgeId: 'edge-flood' })?.headline).toContain('flood')
+  })
+
+  it('does not flood-fire on a dry edge or a dry transit', () => {
+    expect(mistake({ flooded: true, transitEdgeId: 'edge-dry' })).toBeNull()
+    expect(mistake({ flooded: false, transitEdgeId: 'edge-flood' })).toBeNull()
+    expect(mistake({ flooded: true, transitEdgeId: null })).toBeNull()
+  })
+
+  it('rescue outranks rejection outranks flood (first match wins)', () => {
+    const signal = mistake({
+      recoveries: 1,
+      lastOutcome: { tick: 200, accepted: false, reason: 'no-cargo' },
+      flooded: true,
+      transitEdgeId: 'edge-flood',
+    })
+    expect(signal?.headline).toContain('rescue')
   })
 })

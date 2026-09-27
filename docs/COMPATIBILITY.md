@@ -424,8 +424,10 @@ grounded courses prove it.
 - **What (physics):** `ROVER_PHYSICS.version` bumped
   `rapier-kinematic-terrain-0.19.2.v1` → `...v2`. v1 wrote
   `yaw = atan2(dx, dz)` straight into the committed pose every tick — the
-  declared `turnRate` was dead code — so terrain-pinned rovers committed
-  ~180° flips per tick (174 on `shortcut-rb-far` alone in one traced match)
+  declared `turnRate` was dead code — so direction-to-target whipsaws
+  committed ~180° flips per tick (174 during a flooded crawl of
+  `shortcut-rb-far` in one traced match — later audit showed that edge was
+  flood-crawling at quarter speed, not collider-pinned)
   and parked rovers overshoot-oscillated on sub-mm direction noise (103
   node-side flips in the same trace). v2 decouples the axes: `steerYaw`
   keeps the *identical* `atan2` expression for movement (positions and every
@@ -447,7 +449,8 @@ grounded courses prove it.
 - **Artifact tracking:** `starter/champion-checkpoint.json` was previously
   gitignored as a regenerable output. It is now a runtime dependency
   (bundled into the client), so it is committed — regenerate via
-  `npm run starter:train` and commit the diff deliberately.
+  `npx tsx scripts/build-starter.ts` (grounded syllabus; see next entry)
+  and commit the diff deliberately.
 - **What (first run):** the app previously defaulted a fresh install to
   `SEASON_0_BASE_CHECKPOINT` — a seeded-random MLP that wanders and banks
   ~0. `services/starterCheckpoint.ts` now bundles
@@ -462,6 +465,33 @@ grounded courses prove it.
   before/after delta reflects coaching. Service-level defaults
   (`ArenaSession`, `createLearnedPolicy`, eval/gate harness) keep
   `SEASON_0_BASE_CHECKPOINT` — the shipped artifact is an app-layer choice.
+
+### Grounded-distilled starter + `shortcut-rb-far` audit (no version-axis change)
+
+- **Edge audit result:** `shortcut-rb-far` is healthy — zero
+  `blockedTicks` across full grounded practice matches and a clean
+  isolated polyline traversal (`scripts/trace-edge-pin.ts`). The earlier
+  "170-tick pin" was a flooded traversal at quarter speed (176 required
+  units at 1/tick) misread under v1 yaw whipsaw, plus the match's greedy
+  rival re-entering it 4×. No course or collider change, no terrain
+  re-pin.
+- **Real defect found instead:** the abstract-only starter artifact
+  limit-cycled in grounded play — 31 consecutive `ridge-north`↔`ridge-n1`
+  round-trips (t355–t1125, banked 3). The distilled checkpoint trained on
+  the *grounded* syllabus (`buildSyllabusExamples` with the pinned
+  collider) banks 6 on the same match and keeps purposeful movement.
+- **Artifact regen:** `scripts/build-starter.ts` regenerates the bundled
+  starter via that pipeline, reports incumbent-vs-candidate on abstract +
+  grounded surfaces, and refuses to overwrite unless the candidate clears
+  both. The regenerated artifact's `weightsHash` equals gate pin
+  `2b76a6113d66` by construction — it is the same distillation the gate's
+  trained legs run. A residual base↔`valley-n1` oscillation remains in
+  flood windows (t600+, ~10 round-trips) — bounded, flood-plausible, and
+  coachable rather than a hard loop.
+- **Detection extraction:** the first-mistake trigger's predicate moved to
+  `detectMistakeSignal` in `services/workbenchFlow.ts` (pure, unit-tested
+  in `workbenchFlow.test.ts`) — ArenaScene now supplies the cursor and the
+  session marker only.
 
 ## 6. Non-goals
 - No cross-version *execution*: a v1 checkpoint is never run under v2 rules "to see

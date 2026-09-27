@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { SEASON_0_BASE_CHECKPOINT, type PolicyCheckpoint } from '../policyModel'
+import { SEASON_0_STARTER_CHECKPOINT } from '../starterCheckpoint'
 import type { ArenaTrainingExample } from '../policyTrainer'
 import { checkpointKey, exampleKey, hashRecord, planMerge, type PulledState, type SyncMeta } from '../syncEngine'
 
@@ -132,6 +133,27 @@ describe('syncEngine.planMerge', () => {
     )
     expect(plan.checkpoints[0].id).toBe('b')
     expect(plan.checkpoints[1].id).toBe('a')
+  })
+
+  it('never adopts a pulled bundled starter — house brains are build constants', () => {
+    const staleStarter = { ...checkpoint('stale'), id: 'checkpoint-muithmeq-f13d82' }
+    const plan = planMerge(
+      { checkpoints: [checkpoint('local')], examples: [] },
+      { ...EMPTY_PULL, checkpoints: [toRow(staleStarter, { updatedAtMs: 1000 })] },
+      { records: {}, matches: {} },
+    )
+    expect(plan.checkpoints.map(c => c.id)).toEqual(['local'])
+  })
+
+  it('never uploads house brains — bundled starters and the base stay local', () => {
+    const bundled = { ...checkpoint('whatever'), id: SEASON_0_STARTER_CHECKPOINT.id }
+    const plan = planMerge(
+      { checkpoints: [bundled, SEASON_0_BASE_CHECKPOINT, checkpoint('mine')], examples: [] },
+      EMPTY_PULL,
+      { records: {}, matches: {} },
+    )
+    expect(plan.checkpoints.map(c => c.id)).toContain(SEASON_0_STARTER_CHECKPOINT.id) // roster keeps it
+    expect(plan.pushCheckpoints.map(c => c.id)).toEqual(['mine'])
   })
 })
 

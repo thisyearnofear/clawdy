@@ -1,7 +1,7 @@
 import type { ConvexReactClient } from 'convex/react'
 import { api } from '../convex/_generated/api'
-import { POLICY_SCHEMA_VERSION, validateCheckpoint, type PolicyCheckpoint } from './policyModel'
-import { SEASON_0_STARTER_CHECKPOINT } from './starterCheckpoint'
+import { POLICY_SCHEMA_VERSION, SEASON_0_BASE_CHECKPOINT, validateCheckpoint, type PolicyCheckpoint } from './policyModel'
+import { isBundledStarter, isBundledStarterId, SEASON_0_STARTER_CHECKPOINT } from './starterCheckpoint'
 import type { ArenaTrainingExample } from './policyTrainer'
 import { getOrCreateGuestKey } from './guestIdentity'
 import { useArenaStore, attachLocalCache, type SyncSnapshot } from './arenaStore'
@@ -242,7 +242,9 @@ export function planMerge(
 } {
   const ckpt = mergeTable<PolicyCheckpoint>({
     local: local.checkpoints,
-    rows: pulled.checkpoints.map(row => ({
+    // Bundled starters are house artifacts of the client build — never
+    // user data. Rows pushed by older builds must not rejoin the roster.
+    rows: pulled.checkpoints.filter(row => !isBundledStarterId(row.checkpointId)).map(row => ({
       rowKey: checkpointKey(row.checkpointId),
       rowMs: row.updatedAtMs ?? 0,
       rowTombstone: row.tombstone === true,
@@ -267,7 +269,10 @@ export function planMerge(
   return {
     checkpoints: ckpt.records,
     examples: ex.records,
-    pushCheckpoints: ckpt.pushKeys.map(key => ckptByKey.get(key)).filter(Boolean) as PolicyCheckpoint[],
+    // House brains (bundled starters, the untrained base) are constants of
+    // the client build — upload only user-owned checkpoints.
+    pushCheckpoints: (ckpt.pushKeys.map(key => ckptByKey.get(key)).filter(Boolean) as PolicyCheckpoint[])
+      .filter(c => !isBundledStarter(c) && c.id !== SEASON_0_BASE_CHECKPOINT.id),
     pushExamples: ex.pushKeys.map(key => exByKey.get(key)).filter(Boolean) as ArenaTrainingExample[],
     meta: { records: ex.meta, matches: meta.matches },
   }
@@ -567,7 +572,11 @@ export function deleteCheckpointRecord(id: string): void {
   state.setCheckpoints(prev => prev.filter(checkpoint => checkpoint.id !== id))
   if (state.activeCheckpoint.id === id) {
     const remaining = useArenaStore.getState().checkpoints
-    state.setActiveCheckpoint(remaining.find(c => c.id !== id) ?? SEASON_0_STARTER_CHECKPOINT)
+    state.setActiveCheckpoint(
+      remaining.find(c => c.id !== id && !isBundledStarter(c) && c.id !== SEASON_0_BASE_CHECKPOINT.id)
+        ?? remaining.find(c => c.id !== id)
+        ?? SEASON_0_STARTER_CHECKPOINT,
+    )
   }
   if (!startedClient || !isConvexConfigured()) return
   const key = checkpointKey(id)
@@ -613,10 +622,14 @@ export function startArenaSync(client: ConvexReactClient | null): () => void {
       if (plan.checkpoints.length > 0) state.setCheckpoints(plan.checkpoints)
       state.setExamples(plan.examples)
       const active = state.activeCheckpoint
-      if (active.id === SEASON_0_STARTER_CHECKPOINT.id) {
+      if (isBundledStarter(active)) {
         // The bundled starter is only a first-run default — a synced
-        // executable brain always takes priority once one exists.
-        const own = plan.checkpoints.find(c => c.id !== active.id && c.schemaVersion === POLICY_SCHEMA_VERSION)
+        // user-owned executable brain always takes priority once one
+        // exists (house constants never count).
+        const own = plan.checkpoints.find(c =>
+          !isBundledStarter(c)
+          && c.id !== SEASON_0_BASE_CHECKPOINT.id
+          && c.schemaVersion === POLICY_SCHEMA_VERSION)
         if (own) state.setActiveCheckpoint(own)
       } else if (!plan.checkpoints.some(c => c.id === active.id && c.schemaVersion === active.schemaVersion)) {
         const executable = plan.checkpoints.find(c => c.schemaVersion === active.schemaVersion) ?? plan.checkpoints[0]

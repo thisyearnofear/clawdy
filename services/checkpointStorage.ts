@@ -1,5 +1,5 @@
 import { type PolicyCheckpoint, SEASON_0_BASE_CHECKPOINT, validateCheckpoint } from './policyModel'
-import { SEASON_0_STARTER_CHECKPOINT } from './starterCheckpoint'
+import { isBundledStarter, SEASON_0_STARTER_CHECKPOINT } from './starterCheckpoint'
 import type { ArenaTrainingExample } from './policyTrainer'
 
 export const CHECKPOINT_STORAGE_KEY = 'clawdy_checkpoints_v1'
@@ -40,13 +40,21 @@ export function loadStoredCheckpoints(): PolicyCheckpoint[] {
       }
     }
 
-    if (validCheckpoints.length === 0) return [SEASON_0_STARTER_CHECKPOINT]
-    // Ensure base checkpoint is present in the list, matched by id AND schema:
-    // a legacy v1 base must not shadow the executable v2 base.
-    if (!validCheckpoints.some(c => c.id === SEASON_0_BASE_CHECKPOINT.id && c.schemaVersion === SEASON_0_BASE_CHECKPOINT.schemaVersion)) {
-      validCheckpoints.push(SEASON_0_BASE_CHECKPOINT)
+    // Bundled starters are house artifacts, not user data: drop every
+    // generation except the current bundle so a stored stale starter never
+    // shadows the upgraded artifact (or unlocks user-owned gates).
+    const roster = validCheckpoints.filter(
+      c => !isBundledStarter(c) || c.id === SEASON_0_STARTER_CHECKPOINT.id,
+    )
+    if (roster.length === 0) return [SEASON_0_STARTER_CHECKPOINT]
+    // Keep the current house brains present: starter first (the default
+    // active pick when no user brain exists), then base (matched by id AND
+    // schema — a legacy v1 base must not shadow the executable v3 base).
+    if (!roster.some(isBundledStarter)) roster.push(SEASON_0_STARTER_CHECKPOINT)
+    if (!roster.some(c => c.id === SEASON_0_BASE_CHECKPOINT.id && c.schemaVersion === SEASON_0_BASE_CHECKPOINT.schemaVersion)) {
+      roster.push(SEASON_0_BASE_CHECKPOINT)
     }
-    return validCheckpoints
+    return roster
   } catch {
     return [SEASON_0_STARTER_CHECKPOINT]
   }

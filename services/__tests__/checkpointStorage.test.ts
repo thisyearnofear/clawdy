@@ -43,7 +43,7 @@ describe('checkpointStorage', () => {
     expect(loadStoredCheckpoints()).toEqual([SEASON_0_STARTER_CHECKPOINT])
   })
 
-  it('saves and loads valid checkpoints and preserves base checkpoint', () => {
+  it('saves and loads valid checkpoints and keeps house brains present', () => {
     const customCheckpoint = {
       ...SEASON_0_BASE_CHECKPOINT,
       id: 'custom-ckpt-1',
@@ -52,9 +52,25 @@ describe('checkpointStorage', () => {
 
     saveStoredCheckpoints([customCheckpoint])
     const loaded = loadStoredCheckpoints()
-    expect(loaded.length).toBe(2)
+    // User brain first, then the current bundled starter, then base.
+    expect(loaded.length).toBe(3)
     expect(loaded[0].id).toBe('custom-ckpt-1')
-    expect(loaded[1].id).toBe(SEASON_0_BASE_CHECKPOINT.id)
+    expect(loaded[1].id).toBe(SEASON_0_STARTER_CHECKPOINT.id)
+    expect(loaded[2].id).toBe(SEASON_0_BASE_CHECKPOINT.id)
+  })
+
+  it('replaces a stored superseded starter with the current bundle', () => {
+    // A persisted copy of an older bundled starter is a stale house
+    // artifact, not a user-owned brain — loading swaps in the current one.
+    const staleStarter = {
+      ...SEASON_0_STARTER_CHECKPOINT,
+      id: 'checkpoint-muithmeq-f13d82',
+      name: 'Starter brain (house-trained)',
+    }
+    saveStoredCheckpoints([staleStarter, SEASON_0_BASE_CHECKPOINT])
+    const loaded = loadStoredCheckpoints()
+    expect(loaded.map(c => c.id)).toEqual([SEASON_0_BASE_CHECKPOINT.id, SEASON_0_STARTER_CHECKPOINT.id])
+    expect(loaded.some(c => c.id === 'checkpoint-muithmeq-f13d82')).toBe(false)
   })
 
   it('loads and saves coaching examples safely', () => {
