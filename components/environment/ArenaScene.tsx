@@ -55,8 +55,10 @@ import { useArenaStore } from '../../services/arenaStore'
 import { recordFunnelEvent } from '../../services/funnelLog'
 import { computeNextStep, detectMistakeSignal } from '../../services/workbenchFlow'
 import type { ArenaCamera } from './ArenaWorldView'
+import type { FxCue } from './WorldFX'
 import { ErrorBoundary } from '../utils/ErrorBoundary'
 import { AgentCard } from '../workbench/AgentCard'
+import { BeatTimeline } from '../workbench/BeatTimeline'
 import { BootScreen } from '../workbench/BootScreen'
 import { BrandHeader } from '../workbench/BrandHeader'
 import { CoachPanel } from '../workbench/CoachPanel'
@@ -131,6 +133,10 @@ function Workbench({
   // eat the whole match's sim cost inside the click). State, not a ref —
   // the skip button's label renders from it.
   const [director, setDirector] = useState<{ matchId: string; moments: MatchMoment[] } | null>(null)
+  // World-space dramatization cue for clash/sighting beats — the scene owns
+  // detection (and the card); the cue carries positions at detection time so
+  // the world can animate the beat even while the run is paused.
+  const [fxCue, setFxCue] = useState<FxCue | null>(null)
   const applySpeed = useCallback((next: SessionSpeed) => {
     speedRef.current = next
     session.setSpeed(next)
@@ -482,7 +488,19 @@ function Workbench({
     }
     lastEncounterTickRef.current = episode.tick
     recordFunnelEvent('encounter.clash', `winner=${resolution.winnerId} cargo=${transferred}`)
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- the clash modal must appear on the same tick the episode is paused; deferring a render lets the race visibly stall
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the world-space clash FX must fire on the same paused tick as the card
+    setFxCue({
+      id: episode.tick * 2,
+      kind: 'clash',
+      tick: episode.tick,
+      positions: {
+        champion: [...championAgent.position],
+        rival: [...rivalAgent.position],
+      },
+      winnerId: resolution.winnerId,
+      loserId: resolution.loserId,
+      transferred,
+    })
     setEncounter({ resolution, transferred })
     pushFeed([{
       text: transferred > 0
@@ -517,6 +535,12 @@ function Workbench({
     sightingCountRef.current += 1
     const distance = encounterDistance(episode)
     recordFunnelEvent('encounter.sighted', distance !== null ? `d=${distance.toFixed(1)}m` : undefined)
+    setFxCue({
+      id: episode.tick * 2 + 1,
+      kind: 'sighting',
+      tick: episode.tick,
+      positions: Object.fromEntries(episode.agents.map(agent => [agent.id, [...agent.position]])),
+    })
     pushFeed([{ text: 'Rival sighted on the same stretch — close enough to contest.', tone: 'info' }])
     // A beat worth watching pulls fast-forward back to real time.
     if (speedRef.current > 1) applySpeed(1)
@@ -1122,7 +1146,7 @@ function Workbench({
         <section className={styles.viewport} aria-label="Generated world and autonomous rovers">
           <div className={styles.canvas} data-ready={visualReady}>
             <ErrorBoundary onError={onError} fallback={<div className={styles.canvasError}><h2>The world view could not start.</h2><button onClick={onRetry}>Reload world</button></div>}>
-              <WorldView course={activeCourse} session={session} follow={follow} cinematic={cinematic && view.phase === 'review'} coachSuggestion={coachSuggestion} championAccent={championAccent} onReady={onReady} onError={onError} />
+              <WorldView course={activeCourse} session={session} follow={follow} cinematic={cinematic && view.phase === 'review'} coachSuggestion={coachSuggestion} championAccent={championAccent} fxCue={fxCue} onReady={onReady} onError={onError} />
             </ErrorBoundary>
           </div>
           <div
@@ -1291,6 +1315,15 @@ function Workbench({
       </div>
 
       <div className={styles.controlBar}>
+        {(view.phase === 'running' || view.phase === 'paused') && !encounter && (
+          <BeatTimeline
+            moments={liveDirector?.moments ?? null}
+            floods={activeCourse.scenario.floods}
+            tick={view.episode.tick}
+            durationTicks={activeCourse.scenario.durationTicks}
+            onJump={target => { applySpeed(1); session.skipToTick(Math.max(view.episode.tick + 1, target)) }}
+          />
+        )}
         <div className={styles.mainControls}>
           <button
             className={`${styles.primaryButton}${visualReady && hintOpen && view.phase === 'ready' ? ` ${styles.playPulse}` : ''}`}

@@ -254,7 +254,8 @@
 .legend { display: flex; gap: 12px; font-size: 9px; color: var(--muted); }
 .legend i { display: inline-block; vertical-align: middle; width: 14px; height: 2px; background: #438b79; margin-right: 5px; }
 .legend span:last-child i { background: #d9904a; }
-.controlBar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 17px 0; border-bottom: 1px solid var(--line); }
+.controlBar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 17px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.beatTrack { flex: 0 0 100%; order: -1; margin-bottom: 10px; }
 .mainControls { display: flex; align-items: center; gap: 9px; }
 .primaryButton, .secondaryButton { display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; border-radius: 4px; font-size: 11px; font-weight: 550; min-height: 39px; padding: 0 15px; transition: background 140ms ease; }
 .primaryButton { border: 1px solid #233531; background: #233531; color: #e7f6d7; }
@@ -818,4 +819,52 @@ a.secondaryButton { text-decoration: none; }
   .primaryButton, .secondaryButton { padding-inline: 10px; font-size: 10px; min-height: 42px; }
   .runMeta { margin-left: auto; }
   .footer { flex-direction: column; gap: 12px; }
+}
+
+/* Beat timeline — director's forecast as a scrub track above transport */
+.beatTrack {
+  position: relative;
+  height: 18px;
+  margin: 2px 2px 4px;
+  border-radius: 4px;
+  background: rgba(24, 34, 30, 0.55);
+  border: 1px solid rgba(120, 150, 135, 0.22);
+}
+.beatPip {
+  position: absolute;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #8fd6e8;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+.beatPip:hover, .beatPip:focus-visible { transform: scale(1.7); outline: none; }
+.beatClash { background: #ffb14d; }
+.beatSighting { background: #bfeaf4; }
+.beatBank { background: #ffd27a; }
+.beatFlood { background: #4eb4d0; width: 10px; height: 4px; margin-top: -2px; border-radius: 2px; }
+.beatRescue { background: #a8f0de; }
+.beatFinish { background: #e7f6d7; border-radius: 2px; }
+.beatPlayhead {
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  width: 2px;
+  margin-left: -1px;
+  background: #e7f6d7;
+  pointer-events: none;
+}
+.beatFloodSpan {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  border-radius: 3px;
+  background: rgba(78, 180, 208, 0.16);
+  border: 1px solid rgba(78, 180, 208, 0.25);
+  pointer-events: none;
 }

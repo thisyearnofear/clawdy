@@ -13,6 +13,10 @@ import { planCinematicShots, shotAt, type CinematicShot } from '../../services/a
 import { MintModel } from './MintModel'
 import { BankBursts } from './BankBursts'
 import { FloodWater } from './FloodWater'
+import { FloodTelegraph } from './FloodTelegraph'
+import { WorldFX, type FxCue } from './WorldFX'
+import { RoverStatus } from './RoverStatus'
+import { RoverFX } from './RoverFX'
 import FrameLimiter from '../utils/FrameLimiter'
 import { getMintAsset, getMintModelArtifact, getMintModelTransform, getMintModelUrl } from '../../services/mintAssets'
 
@@ -26,6 +30,8 @@ type WorldProps = {
   coachSuggestion?: { edgeId: string } | null
   /** Champion accent for ring + rover tint (defaults to canopy green). */
   championAccent?: string
+  /** Presentation-side beat detected by the scene (clash / sighting). */
+  fxCue?: FxCue | null
   onReady: () => void
   onError: (error: Error) => void
 }
@@ -579,6 +585,7 @@ function World({
   cinematic = false,
   coachSuggestion,
   championAccent = '#bce478',
+  fxCue,
   onReady,
   onError,
   lite,
@@ -662,6 +669,8 @@ function World({
               <meshBasicMaterial color={color} side={THREE.DoubleSide} transparent opacity={0.7} />
             </mesh>
             <Rover session={session} id={entrant.id} color={color} />
+            <RoverStatus session={session} id={entrant.id} tint={color} />
+            <RoverFX session={session} id={entrant.id} trailColor={color} />
           </group>
         )
       })}
@@ -673,6 +682,8 @@ function World({
         return <Resource key={resource.id} session={session} id={resource.id} position={position} />
       })}
       <FloodWater course={course} session={session} />
+      <FloodTelegraph course={course} session={session} />
+      <WorldFX session={session} course={course} cue={fxCue ?? null} />
     </>
   )
 }
