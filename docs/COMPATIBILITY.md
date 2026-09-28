@@ -12,10 +12,10 @@ across a year of future work.
 
 | Surface | Constant | Current value | Owner |
 |---|---|---|---|
-| Simulation rules | `ARENA_RULES.version` | `season-0.reference.2` | `services/arenaEpisode.ts` |
+| Simulation rules | `ARENA_RULES.version` | `season-0.reference.3` | `services/arenaEpisode.ts` |
 | Observation schema | observation `schemaVersion` | `arena-observation-v2` (v1 data still valid) | `services/arenaEpisode.ts` |
 | Recording schema | recording `schemaVersion` | `arena-recording-v1` | `services/arenaEpisode.ts` |
-| Motion controller | `ROVER_PHYSICS.version` / route fallback | `rapier-kinematic-terrain-0.19.2.v2` / `route-reference-v2` | `services/arenaPhysics.ts`, `services/arenaEpisode.ts` |
+| Motion controller | `ROVER_PHYSICS.version` / route fallback | `rapier-kinematic-terrain-0.19.2.v3` / `route-reference-v2` | `services/arenaPhysics.ts`, `services/arenaEpisode.ts` |
 | Checkpoint | `POLICY_SCHEMA_VERSION` | `season-0.checkpoint.v3` (v1/v2 metadata-readable) | `services/policyModel.ts` |
 | Encoder | `ENCODER_VERSION` / `OBSERVATION_FEATURE_DIM` | `season-0.encoder.v2` / 36 | `services/policyModel.ts` |
 | World | `ARENA_WORLD.version` + `colliderSha256` | `sandstone-basin-course-2` + `7633067b2624fb476f36adfb14e1a13b1325c71143fbd4d5087cfaf209c993af` | `services/arenaCourse.ts` |
@@ -492,6 +492,48 @@ grounded courses prove it.
   `detectMistakeSignal` in `services/workbenchFlow.ts` (pure, unit-tested
   in `workbenchFlow.test.ts`) — ArenaScene now supplies the cursor and the
   session marker only.
+
+### Proportional speed + real stagger + strict committed return (rules reference.3 / controller v3)
+
+- **What (physics, controller v3):** `step` now moves the body at
+  `min(maxSpeed, distanceToTarget/dt)` — it lands on the episode's
+  advancing target instead of overshooting. v2's binary `{0, maxSpeed}`
+  quanta could not cruise at the authored target speed (0.09 m/tick vs
+  0.12 max), so every leg ran a lurch-stop oscillation: measured 55–61%
+  of transit ticks were dead ticks (worse on flood-crawl legs, ~80%).
+  Positions differ from v1/v2, so older-controller recordings are a hard
+  `controller-mismatch` — no rotation-equivalence entry was added.
+- **What (rules, `season-0.reference.3`):**
+  - `ArenaAgentState.staggeredUntilTick` is new. `applyEncounterClash`
+    previously wrote the stagger into `cooldownUntilTick`, which only
+    gates `drain` — the 24-tick stagger prize never delayed the loser.
+    It now sets the dedicated field, and `checkActionRejection` rejects
+    every non-`wait` action with `'staggered'` while it ticks down.
+    Drain cooldown semantics are untouched.
+  - Regen no longer counts an accepted `wait` as "acted" — the recharge
+    verb was paying a ~20% regen tax on itself. Rate extracted as
+    `ARENA_RULES.idleRegenPerTick` (still 0.1).
+  - Committed return is strict: when a carrier is committed and the
+    canonical homeward hop is unavailable, the rule returns `wait`
+    instead of keeping any distance-reducing side-hop. Side-hops burned
+    regen on shuffle moves — the learned champion ping-ponged
+    `ridge-center`↔`cross-c` for ~175 ticks on heldout-01.
+- **Rejected economy changes (measured, deliberately not shipped):**
+  `moveCostPerTick` 0.03→0.02 and `idleRegenPerTick` 0.1→0.15 each
+  broke the gate — loosening energy lets `safe` wait-out obstacles even
+  better while the trained student's approximate edge-ranking could
+  afford churn hops sooner (heldout-01 went 6/6 → 8/5). The v3 fee
+  ladder and regen rate are pinned unchanged; the starvation cost that
+  remains is a design-boundary constraint, not a defect.
+- **Migration:** `ARENA_RULES.version` → `season-0.reference.3`;
+  `ROVER_PHYSICS.version` → `...v3`. Old recordings refuse on both axes
+  (`rules-mismatch`, `controller-mismatch`) rather than silently
+  diverging — `staggeredUntilTick` would otherwise appear in recomputed
+  snapshots that pinned checkpoints lack.
+- **Artifacts:** gate pin re-pinned via `eval:gate -- --update`
+  (claims: abstract 8/8 within 1, wins 3=3, physics 12/12, frames
+  24/24). Starter regenerated: `weightsHash=525eba353d75` (same
+  distillation the gate runs).
 
 ## 6. Non-goals
 - No cross-version *execution*: a v1 checkpoint is never run under v2 rules "to see

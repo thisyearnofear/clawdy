@@ -33,6 +33,7 @@ function mockObservation(overrides: Partial<ArenaObservation> = {}): ArenaObserv
       cargo: 1,
       banked: 0,
       cooldownUntilTick: 0,
+      staggeredUntilTick: 0,
       lastOutcome: null,
       visitedNodes: ['station-west'],
       knownResources: [],

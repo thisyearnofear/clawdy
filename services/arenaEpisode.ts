@@ -1,13 +1,19 @@
 import type { ArenaMotion } from './arenaPhysics'
 
 export const ARENA_RULES = Object.freeze({
-  version: 'season-0.reference.2',
+  version: 'season-0.reference.3',
   stepMs: 50,
   decisionEveryTicks: 5,
   maxDurationTicks: 7200,
   capacity: 3,
   initialEnergy: 12,
+  // v3 keeps the v2 fee ladder and regen rate — cheaper energy (0.02 fee or
+  // 0.15 regen) broke teacher parity / flipped a pinned decision frame even
+  // after the v3 committed-return tightening. The shipped v3 economy fix is
+  // the un-taxed wait: recharging no longer pays a regen penalty for the
+  // accepted wait itself.
   moveCostPerTick: 0.03,
+  idleRegenPerTick: 0.1,
   drainCost: 2,
   drainTicks: 50,
   drainCooldownTicks: 150,
@@ -47,7 +53,7 @@ export type ArenaRejection =
   | 'unknown-entrant' | 'stale-tick' | 'not-decision-tick' | 'duplicate-request'
   | 'invalid-action' | 'in-transit' | 'unreachable-edge' | 'unreachable-resource'
   | 'resource-unavailable' | 'cargo-full' | 'not-at-base' | 'nothing-to-bank'
-  | 'no-flood' | 'cooldown' | 'insufficient-energy' | 'movement-blocked' | 'not-grounded'
+  | 'no-flood' | 'cooldown' | 'staggered' | 'insufficient-energy' | 'movement-blocked' | 'not-grounded'
 
 export interface ArenaOutcome {
   agentId: string
@@ -65,6 +71,7 @@ export interface ArenaAgentState extends ArenaEntrant {
   cargo: number
   banked: number
   cooldownUntilTick: number
+  staggeredUntilTick: number
   lastOutcome: ArenaOutcome | null
   visitedNodes: string[]
   knownResources: { id: string; nodeId: string; value: number; available: boolean }[]
@@ -278,6 +285,7 @@ export class ArenaEpisode {
         cargo: 0,
         banked: 0,
         cooldownUntilTick: 0,
+        staggeredUntilTick: 0,
         lastOutcome: null,
         visitedNodes: [entrant.baseNode],
         knownResources: [],
@@ -391,12 +399,15 @@ export class ArenaEpisode {
     if (normalized.length > 0) this.#batches.push({ tick: state.tick, requests: normalized })
     state.weather.flooded = this.#isFlooded()
     this.#moveAgents()
-    // Energy regen: agents not in transit and not taking an accepted action recover energy (capped)
+    // Energy regen: agents not in transit and not taking an accepted action
+    // recover energy (capped). An accepted `wait` is the recharge verb — it
+    // must not tax the very recovery it exists to perform.
     for (const agent of state.agents) {
       if (!agent.transit && agent.energy < ARENA_RULES.initialEnergy) {
-        const actedThisTick = agent.lastOutcome?.tick === state.tick && agent.lastOutcome?.accepted
+        const actedThisTick = agent.lastOutcome?.tick === state.tick && agent.lastOutcome?.accepted &&
+          agent.lastOutcome?.action?.type !== 'wait'
         if (!actedThisTick) {
-          agent.energy = Math.min(ARENA_RULES.initialEnergy, agent.energy + 0.1)
+          agent.energy = Math.min(ARENA_RULES.initialEnergy, agent.energy + ARENA_RULES.idleRegenPerTick)
         }
       }
     }
@@ -451,8 +462,8 @@ export class ArenaEpisode {
       loser.cargo -= transferred
       winner.cargo += transferred
     }
-    loser.cooldownUntilTick = Math.max(
-      loser.cooldownUntilTick,
+    loser.staggeredUntilTick = Math.max(
+      loser.staggeredUntilTick,
       this.#state.tick + Math.max(0, args.staggerTicks),
     )
     return { transferred }
@@ -634,6 +645,10 @@ export function checkActionRejection(
   action: ArenaAction
 ): ArenaRejection | null {
   if (action.type === 'wait') return null
+  // Clash stagger: a timed-out entrant may only wait. Distinct from the drain
+  // cooldown (which gates re-draining only) — kept on its own field so a
+  // 150-tick drain cooldown never stalls ordinary actions.
+  if (agent.staggeredUntilTick > state.tick) return 'staggered'
   if (action.type === 'drain') {
     if (!isScenarioFlooded(scenario, state)) return 'no-flood'
     if (agent.cooldownUntilTick > state.tick) return 'cooldown'

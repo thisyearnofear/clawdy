@@ -3,7 +3,7 @@ import type { ArenaPosition } from './arenaEpisode'
 import type { SurfaceSample } from './worldSurface'
 
 export const ROVER_PHYSICS = Object.freeze({
-  version: 'rapier-kinematic-terrain-0.19.2.v2',
+  version: 'rapier-kinematic-terrain-0.19.2.v3',
   // Chassis
   chassisHalfExtents: { x: 0.28, y: 0.12, z: 0.42 },
   // Motion
@@ -167,8 +167,13 @@ export class ArenaPhysics implements ArenaMotion {
         agent.yaw = Math.atan2(Math.sin(nextYaw), Math.cos(nextYaw))
       }
 
-      // Set speed: full when far from target, stop when close
-      agent.speed = horizontalDistance > ROVER_PHYSICS.arrivalDistance ? ROVER_PHYSICS.maxSpeed : 0
+      // Proportional speed: cover at most the remaining distance this step.
+      // v2's binary {0, maxSpeed} quanta could not cruise at the episode's
+      // target speed (0.09 m/tick < 0.12 max), so every leg was a lurch-stop
+      // oscillation with ~half its ticks dead. Landing on the carrot lets
+      // the body ride it smoothly — and makes blockedTicks a real
+      // obstruction signal instead of an oscillation counter.
+      agent.speed = Math.min(ROVER_PHYSICS.maxSpeed, horizontalDistance / dtSeconds)
 
       // Move toward the target along the steering direction
       const forwardX = Math.sin(steerYaw)

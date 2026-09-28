@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ArenaEpisode, ARENA_RULES, type ArenaScenario, type ArenaRequest } from '../arenaEpisode'
+import { ArenaEpisode, ARENA_RULES, checkActionRejection, type ArenaObservation, type ArenaScenario, type ArenaRequest } from '../arenaEpisode'
 import { ArenaRunner, collectorPolicy, runArenaEpisode } from '../arenaPolicy'
+import { applyControllerRules } from '../arenaControllerRules'
 import { replayArenaEpisode } from '../arenaReplay'
 
 function scenario(): ArenaScenario {
@@ -317,5 +318,75 @@ describe('baseline execution and replay', () => {
     const replay = new ArenaEpisode(scenario()).recording()
     expect(() => replayArenaEpisode({ ...replay, rulesVersion: 'different' })).toThrow('rules-mismatch')
     expect(() => replayArenaEpisode({ ...replay, checkpoints: [] })).toThrow('checkpoints')
+  })
+})
+
+describe('rules v3 movement contract', () => {
+  it('recharges on an accepted wait tick — the wait verb is the recharge action', () => {
+    const episode = new ArenaEpisode(scenario())
+    // Spend energy via drain (floods run 0-100), then idle to a decision tick.
+    episode.step([command(episode, { type: 'drain' })])
+    advanceTo(episode, ARENA_RULES.decisionEveryTicks)
+    const before = episode.snapshot().agents[0].energy
+    episode.step([command(episode, { type: 'wait' })])
+    const after = episode.snapshot().agents[0].energy
+    // v2 suppressed regen on any accepted action, taxing the recharge verb
+    // itself; v3 exempts wait.
+    expect(after - before).toBeCloseTo(ARENA_RULES.idleRegenPerTick, 6)
+  })
+
+  it('gates every non-wait action while staggered, then releases', () => {
+    const episode = new ArenaEpisode(scenario())
+    const state = episode.snapshot()
+    const staggered = { ...state.agents[0], staggeredUntilTick: 10 }
+    for (const action of [
+      { type: 'move', edgeId: 'west-low' },
+      { type: 'collect', resourceId: 'core-0' },
+      { type: 'bank' },
+      { type: 'drain' },
+    ] as const) {
+      expect(checkActionRejection(scenario(), state, staggered, action)).toBe('staggered')
+    }
+    expect(checkActionRejection(scenario(), state, staggered, { type: 'wait' })).toBeNull()
+    const released = { ...staggered, staggeredUntilTick: 0 }
+    expect(checkActionRejection(scenario(), state, released, { type: 'move', edgeId: 'west-low' })).toBeNull()
+  })
+
+  it('applies the clash stagger through the episode — loser may only wait', () => {
+    const episode = new ArenaEpisode(scenario())
+    episode.applyEncounterClash({ winnerId: 'rival', loserId: 'champion', transferCargo: false, staggerTicks: 24 })
+    advanceTo(episode, ARENA_RULES.decisionEveryTicks)
+    const obs = episode.observe('champion')
+    expect(obs.self.staggeredUntilTick).toBe(24)
+    expect(obs.availableActions.some(action => action.type === 'move')).toBe(false)
+    expect(obs.availableActions.some(action => action.type === 'collect')).toBe(false)
+    // The drain cooldown is untouched — a staggered entrant is not "on drain
+    // cooldown", and a drained entrant is not staggered.
+    expect(obs.self.cooldownUntilTick).toBe(0)
+  })
+
+  it('strict committed return: distance-reducing side-hops no longer override the canonical hop', () => {
+    const base = new ArenaEpisode(scenario()).observe('champion', { forceDecision: true })
+    // Committed carrier at 'field' (full bay). Flooded west-low costs 20, so
+    // the canonical homeward hop is the dry ridge-field (7+7=14). A west-low
+    // proposal is distance-reducing — v2 kept it; v3 returns the canonical
+    // hop, killing the shuffle-hop churn that starved carriers mid-course.
+    const obs: ArenaObservation = {
+      ...base,
+      self: { ...base.self, nodeId: 'field', cargo: ARENA_RULES.capacity, energy: ARENA_RULES.initialEnergy },
+      availableActions: [
+        { type: 'wait' },
+        { type: 'move', edgeId: 'west-low' },
+        { type: 'move', edgeId: 'ridge-field' },
+      ],
+    }
+    expect(applyControllerRules(obs, { type: 'move', edgeId: 'west-low' })).toEqual({ type: 'move', edgeId: 'ridge-field' })
+    // And when the canonical hop itself is energy-gated, the carrier saves
+    // for it — no burning regen on the side-hop either way.
+    const gated: ArenaObservation = {
+      ...obs,
+      availableActions: [{ type: 'wait' }, { type: 'move', edgeId: 'west-low' }],
+    }
+    expect(applyControllerRules(gated, { type: 'move', edgeId: 'west-low' })).toEqual({ type: 'wait' })
   })
 })

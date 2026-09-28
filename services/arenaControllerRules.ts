@@ -118,15 +118,13 @@ export function applyControllerRules(observation: ArenaObservation, proposed: Ar
     if (collect) return collect
   }
 
-  // 3. committed return
+  // 3. committed return — strictly. A committed carrier takes the homeward
+  // hop or waits for the fee. Letting distance-reducing side-hops through
+  // burned regen on shuffle moves: the learned policy ping-ponged between
+  // nodes for ~175 ticks on heldout-01 instead of saving for the real hop.
   if (committed) {
     const hop = legalMove(homeRoute?.firstEdge ?? null)
     if (!hop) return { type: 'wait' }
-    if (action.type === 'move') {
-      const target = edgeTarget(observation, action.edgeId)
-      const fromTarget = target === null ? null : routeFrom(observation, target, self.baseNode)
-      if (fromTarget !== null && fromTarget.cost < homeRoute!.cost - 1e-6) return action
-    }
     return hop
   }
 

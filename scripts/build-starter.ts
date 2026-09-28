@@ -65,9 +65,16 @@ async function main() {
 
   const groundedBetter = cand.gNormal.banked + cand.gSwapped.banked >= inc.gNormal.banked + inc.gSwapped.banked
   const abstractBetter = cand.absPractice.totalBanked >= inc.absPractice.totalBanked
-  if (!groundedBetter || !abstractBetter) {
+  const force = process.argv.includes('--force')
+  if ((!groundedBetter || !abstractBetter) && !force) {
     console.log('\nCandidate did not clear the incumbent on both surfaces — artifact unchanged.')
     process.exit(1)
+  }
+  if (!groundedBetter || !abstractBetter) {
+    // --force exists for artifact recovery: starter:train writes the same
+    // path with its abstract-only artifact, which then "wins" this guard on
+    // abstract score while limit-cycling on grounded play.
+    console.log('\n--force: writing candidate despite guard (artifact recovery)')
   }
 
   const withRecords = attachEvaluationRecords(candidate, [...PRACTICE_SCENARIOS, ...HELD_OUT_SCENARIOS])

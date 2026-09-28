@@ -87,7 +87,7 @@ describe('shared Rapier rover controller', () => {
     }
   })
 
-  it('replays v1 recordings under v2 with rotation normalized, but still reports positional divergence', () => {
+  it('replays same-version recordings, reports positional divergence, and rejects pre-v3 controllers', () => {
     const { data, scenario } = fixture()
     const physics = new ArenaPhysics(data)
     const replayPhysics = new ArenaPhysics(data)
@@ -97,19 +97,22 @@ describe('shared Rapier rover controller', () => {
       const recording = structuredClone(runner.recording())
       expect(recording.controllerVersion).toBe(ROVER_PHYSICS.version)
 
-      // A recording written by the v1 controller (positions identical by
-      // construction; rotations committed the old instant-snap values).
-      const v1 = structuredClone(recording)
-      v1.controllerVersion = 'rapier-kinematic-terrain-0.19.2.v1'
-      for (const checkpoint of v1.checkpoints) {
-        for (const agent of checkpoint.state.agents) agent.rotation = [0, 0, 0, 1]
-      }
-      expect(replayArenaEpisode(v1, replayPhysics).divergedAt).toBeNull()
+      // Same-version replay is bit-exact.
+      expect(replayArenaEpisode(recording, replayPhysics).divergedAt).toBeNull()
 
-      // Rotation equivalence never hides positional divergence.
-      const corrupted = structuredClone(v1)
+      // Positional divergence is still reported.
+      const corrupted = structuredClone(recording)
       corrupted.checkpoints[2].state.agents[0].position[0] += 0.5
       expect(replayArenaEpisode(corrupted, replayPhysics).divergedAt).toBe(corrupted.checkpoints[2].state.tick)
+
+      // v1/v2 trajectories are not bit-identical under v3's proportional
+      // speed — older-controller recordings are a hard mismatch, never a
+      // silent divergence.
+      for (const legacy of ['rapier-kinematic-terrain-0.19.2.v1', 'rapier-kinematic-terrain-0.19.2.v2']) {
+        const stale = structuredClone(recording)
+        stale.controllerVersion = legacy
+        expect(() => replayArenaEpisode(stale, replayPhysics)).toThrow('controller-mismatch')
+      }
 
       // Unknown controllers are still a hard mismatch.
       const bogus = structuredClone(recording)
@@ -118,6 +121,32 @@ describe('shared Rapier rover controller', () => {
     } finally {
       physics.dispose()
       replayPhysics.dispose()
+    }
+  })
+
+  it('rides a creeping target smoothly — no lurch-stop dead ticks (v3 proportional speed)', () => {
+    const { data } = fixture()
+    const physics = new ArenaPhysics(data)
+    try {
+      physics.reset([{ id: 'rover', position: [-2, 0, 0] }])
+      const dt = ARENA_RULES.stepMs / 1000
+      // The episode advances targets at the authored course speed
+      // (1.8 m/s = 0.09 m/tick) — slower than maxSpeed. v2's binary
+      // {0, maxSpeed} produced a lurch-stop pattern with ~1/3 dead ticks;
+      // v3 lands on the target and rides it.
+      const carrotStep = 1.8 * dt
+      let prevX = -2
+      for (let i = 1; i <= 20; i++) {
+        const [pose] = physics.step([{ id: 'rover', position: [-2 + i * carrotStep, 0, 0] }], dt)
+        const moved = pose.position[0] - prevX
+        prevX = pose.position[0]
+        expect(moved).toBeGreaterThan(0.05)
+        expect(moved).toBeLessThanOrEqual(ROVER_PHYSICS.maxSpeed * dt + 1e-9)
+      }
+      // Converged onto the target, not orbiting inside the arrival bubble.
+      expect(prevX).toBeCloseTo(-2 + 20 * carrotStep, 2)
+    } finally {
+      physics.dispose()
     }
   })
 

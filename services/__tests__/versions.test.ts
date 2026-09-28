@@ -33,16 +33,17 @@ import { DISTILL_TRAINING_CONFIG } from '../../scripts/eval-lib'
  */
 describe('v1 compatibility inventory', () => {
   it('pins the rules, checkpoint, world, and policy constants', () => {
-    expect(ARENA_RULES.version).toBe('season-0.reference.2')
+    expect(ARENA_RULES.version).toBe('season-0.reference.3')
     expect(POLICY_SCHEMA_VERSION).toBe('season-0.checkpoint.v3')
     expect(CHECKPOINT_SCHEMA_V1).toBe('season-0.checkpoint.v1')
     expect(CHECKPOINT_SCHEMA_V2).toBe('season-0.checkpoint.v2')
     expect(ENCODER_VERSION).toBe('season-0.encoder.v2')
     expect(OBSERVATION_SCHEMA_VERSION).toBe('arena-observation-v2')
-    // v2: committed chassis yaw is rate-limited (v1 snapped instantly);
-    // movement/positions are bit-identical, v1 recordings replay with
-    // rotation normalized — see COMPATIBILITY.md migration log.
-    expect(ROVER_PHYSICS.version).toBe('rapier-kinematic-terrain-0.19.2.v2')
+    // v3: proportional speed replaces the binary {0, maxSpeed} quanta — the
+    // body lands on the episode's advancing target instead of lurch-stop
+    // oscillating. Positions differ from v1/v2, so older-controller
+    // recordings are a hard controller-mismatch (no rotation equivalence).
+    expect(ROVER_PHYSICS.version).toBe('rapier-kinematic-terrain-0.19.2.v3')
     expect(ARENA_WORLD.version).toBe('sandstone-basin-course-2')
     expect(ARENA_WORLD.id).toBe('sandstone-basin')
     expect(ARENA_WORLD.colliderSha256).toBe('7633067b2624fb476f36adfb14e1a13b1325c71143fbd4d5087cfaf209c993af')
@@ -88,6 +89,7 @@ describe('v1 compatibility inventory', () => {
     expect(ARENA_RULES.capacity).toBe(3)
     expect(ARENA_RULES.initialEnergy).toBe(12)
     expect(ARENA_RULES.moveCostPerTick).toBe(0.03)
+    expect(ARENA_RULES.idleRegenPerTick).toBe(0.1)
     expect(ARENA_RULES.drainCost).toBe(2)
     expect(ARENA_RULES.drainTicks).toBe(50)
     expect(ARENA_RULES.drainCooldownTicks).toBe(150)
