@@ -11,7 +11,6 @@ import { fileURLToPath } from 'node:url'
 import { ArenaRunner } from '../services/arenaPolicy'
 import { ArenaPhysics } from '../services/arenaPhysics'
 import { applyCourseMode } from '../services/arenaCourse'
-import { ARENA_RULES } from '../services/arenaEpisode'
 import { SEASON_0_STARTER_CHECKPOINT } from '../services/starterCheckpoint'
 import { loadGroundedWorld } from './eval-lib'
 

@@ -12,6 +12,7 @@ import { createRouteRibbonGeometry, advancePoseHistory, samplePoseHistory, type 
 import { planCinematicShots, shotAt, type CinematicShot } from '../../services/arenaCinematic'
 import { MintModel } from './MintModel'
 import { BankBursts } from './BankBursts'
+import { FloodWater } from './FloodWater'
 import FrameLimiter from '../utils/FrameLimiter'
 import { getMintAsset, getMintModelArtifact, getMintModelTransform, getMintModelUrl } from '../../services/mintAssets'
 
@@ -501,31 +502,7 @@ function CoachTrailLayer({ course, coachSuggestion }: { course: ArenaCourse; coa
   )
 }
 
-function Flood({ session, course }: Pick<WorldProps, 'session' | 'course'>) {
-  const group = useRef<THREE.Group>(null)
-  useFrame(() => {
-    if (group.current) group.current.visible = session.liveEpisode().weather.flooded
-  })
-  return (
-    <group ref={group} visible={false}>
-      {course.floodZones.map((zone, index) => (
-        <mesh key={index} position={[zone.position[0], zone.position[1] - 0.05, zone.position[2]]}>
-          <boxGeometry args={[zone.size[0], 0.22, zone.size[1]]} />
-          <meshStandardMaterial
-            color="#4eb4d0"
-            emissive="#146988"
-            emissiveIntensity={0.45}
-            transparent
-            opacity={0.72}
-            roughness={0.15}
-            metalness={0.25}
-            depthWrite={false}
-          />
-        </mesh>
-      ))}
-    </group>
-  )
-}
+
 
 function CourseLandmarks({ course }: { course: ArenaCourse }) {
   const championBase = course.scenario.nodes.find(node => node.id === 'champion-base')?.position
@@ -695,7 +672,7 @@ function World({
         const position: ArenaPosition = [node.position[0] + Math.cos(angle) * 0.42, node.position[1] + 0.45 + Math.floor(localIndex / 4) * 0.22, node.position[2] + Math.sin(angle) * 0.42]
         return <Resource key={resource.id} session={session} id={resource.id} position={position} />
       })}
-      <Flood course={course} session={session} />
+      <FloodWater course={course} session={session} />
     </>
   )
 }
