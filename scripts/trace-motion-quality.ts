@@ -23,9 +23,9 @@ type Leg = {
   startTick: number
   endTick: number
   nominalTicks: number
-  flooded: boolean
+  floodTicks: number      // mid-leg flood exposure — floods flip per tick, not per leg
+  blockedMax: number
   stallTicks: number      // ticks where transit active but |Δpos| < 0.01m
-  overshootTicks: number  // ticks where distance-to-target shrank < gained? (skipped)
 }
 
 async function main() {
@@ -62,17 +62,19 @@ async function main() {
         }
         if (!state.leg) {
           const edge = scenario.edges.find(e => e.id === agent.transit!.edgeId)!
-          const flooded = snap.weather.flooded && edge.floodable
           state.leg = {
             agent: agent.id, edgeId: edge.id, startTick: snap.tick, endTick: -1,
-            nominalTicks: flooded ? edge.travelTicks * ARENA_RULES.floodTravelMultiplier : edge.travelTicks,
-            flooded, stallTicks: 0, overshootTicks: 0,
+            nominalTicks: edge.travelTicks,
+            floodTicks: 0, blockedMax: 0, stallTicks: 0,
           }
           if (state.lastNode !== null) {
             dwells.push({ agent: agent.id, node: state.lastNode, ticks: snap.tick - state.arrivedTick })
             if (state.lastEdge === edge.id) reversals.push({ agent: agent.id, edge: edge.id, tick: snap.tick })
           }
         }
+        const edge = scenario.edges.find(e => e.id === agent.transit!.edgeId)!
+        if (snap.weather.flooded && edge.floodable) state.leg.floodTicks++
+        state.leg.blockedMax = Math.max(state.leg.blockedMax, agent.blockedTicks)
         if (moved < 0.01) state.leg.stallTicks++
       } else {
         if (state.leg) {
@@ -107,7 +109,7 @@ async function main() {
     console.log(`\n${agent}: ${list.length} legs, ${durSum} transit ticks, ${stallSum} stall-ticks (${(100 * stallSum / durSum).toFixed(1)}% of transit)`)
     console.log(`  actual/nominal: mean ${(ratios.reduce((a, b) => a + b, 0) / ratios.length).toFixed(2)}  p50 ${ratios.sort((a, b) => a - b)[Math.floor(ratios.length / 2)].toFixed(2)}  max ${Math.max(...ratios).toFixed(2)}`)
     const worst = [...list].sort((a, b) => (b.endTick - b.startTick) - b.nominalTicks - ((a.endTick - a.startTick) - a.nominalTicks)).slice(0, 6)
-    for (const w of worst) console.log(`    ${w.edgeId} t${w.startTick}→${w.endTick} (${w.endTick - w.startTick}t, nominal ${w.nominalTicks}, flooded=${w.flooded}, stalls=${w.stallTicks})`)
+    for (const w of worst) console.log(`    ${w.edgeId} t${w.startTick}→${w.endTick} (${w.endTick - w.startTick}t, nominal ${w.nominalTicks}, flood ${w.floodTicks}/${w.endTick - w.startTick}t, blocked ${w.blockedMax}, stalls ${w.stallTicks})`)
   }
   const dwellList = dwells.filter(d => d.ticks > 0)
   console.log(`\nnode dwells: ${dwellList.length}, mean ${(dwellList.reduce((s, d) => s + d.ticks, 0) / Math.max(1, dwellList.length)).toFixed(1)} ticks, max ${Math.max(...dwellList.map(d => d.ticks), 0)}`)
