@@ -33,9 +33,9 @@ import {
 } from '../../services/championIdentity'
 import {
   downloadCheckpointFile,
-  importCheckpointJson,
   loadStoredCheckpoints,
   loadStoredExamples,
+  readCheckpointFile,
 } from '../../services/checkpointStorage'
 import { useConvexClient } from '../ConvexClientProvider'
 import {
@@ -159,6 +159,8 @@ function Workbench({
   const exampleCounter = useRef(0)
   const trainAbortRef = useRef<AbortController | null>(null)
   const trainTimerRef = useRef<number | null>(null)
+  const trainingBusyRef = useRef(false)
+  const importAbortRef = useRef<AbortController | null>(null)
   const comparisonRef = useRef<HTMLDivElement | null>(null)
   const soundRef = useRef<ArenaSound | null>(null)
   const [soundState, setSoundState] = useState<'off' | 'on' | 'unavailable'>(() =>
@@ -428,7 +430,7 @@ function Workbench({
   }, [view.phase, view.episode, view.scored, session, activeCourse.scenario.id, activeCheckpoint.id, examples, playMode])
 
   useEffect(() => {
-    const sound = new ArenaSound()
+    const sound = new ArenaSound(() => setSoundState('unavailable'))
     sound.attach(session)
     soundRef.current = sound
     return () => { sound.dispose(); soundRef.current = null }
@@ -662,6 +664,9 @@ function Workbench({
     recordStreamRef.current?.getTracks().forEach(track => track.stop())
     if (clipUrlRef.current) URL.revokeObjectURL(clipUrlRef.current)
     trainAbortRef.current?.abort()
+    importAbortRef.current?.abort()
+    importAbortRef.current = null
+    trainingBusyRef.current = false
     if (trainTimerRef.current !== null) window.clearTimeout(trainTimerRef.current)
   }, [])
 
@@ -811,25 +816,32 @@ function Workbench({
   }
 
   const handleImportClick = () => {
-    if (isTraining || view.phase !== 'ready' || coachingLocked) return
+    if (isTraining || trainingBusyRef.current || view.phase !== 'ready' || coachingLocked) return
     fileInputRef.current?.click()
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      // The read may complete after the user started a run or training —
-      // re-check the live snapshot instead of the render-time phase.
+    importAbortRef.current?.abort()
+    const controller = new AbortController()
+    importAbortRef.current = controller
+    // The read may complete after the user started a run or training —
+    // re-check the live snapshot and busy flag instead of render-time state.
+    const canImport = () => {
+      if (trainingBusyRef.current) return false
       const snap = session.getSnapshot()
-      if (snap.phase !== 'ready' || snap.scored || isTraining) {
-        setTrainMessage('Import refused: reset to a fresh Practice setup first.')
+      return snap.phase === 'ready' && !snap.scored
+    }
+    readCheckpointFile(file, canImport, controller.signal)
+      .then(imported => {
+        if (importAbortRef.current !== controller || controller.signal.aborted) return
+        importAbortRef.current = null
         if (fileInputRef.current) fileInputRef.current.value = ''
-        return
-      }
-      try {
-        const imported = importCheckpointJson(reader.result as string)
+        if (!canImport()) {
+          setTrainMessage('Import refused: reset to a fresh Practice setup first.')
+          return
+        }
         setCheckpoints(prev => {
           const filtered = prev.filter(c => c.id !== imported.id)
           return [imported, ...filtered]
@@ -842,17 +854,24 @@ function Workbench({
           session.setCheckpoint(imported)
           session.selectPolicy('champion', 'learned', imported)
           setActiveCheckpoint(imported)
+          setComparison(null)
+          setComparisonReviewing(null)
           setCoachSelection(null)
           setTrainMessage(`Successfully imported checkpoint: ${imported.name} (${imported.weightsHash.slice(0, 14)})`)
         } catch (err) {
           setTrainMessage(`Imported ${imported.name} but could not make it active: ${err instanceof Error ? err.message : 'incompatible checkpoint'}`)
         }
-      } catch (err) {
+      })
+      .catch(err => {
+        if (importAbortRef.current !== controller || controller.signal.aborted) return
+        importAbortRef.current = null
+        if (fileInputRef.current) fileInputRef.current.value = ''
+        if (err instanceof Error && err.name === 'AbortError') {
+          if (!canImport()) setTrainMessage('Import refused: reset to a fresh Practice setup first.')
+          return
+        }
         setTrainMessage(`Import failed: ${err instanceof Error ? err.message : 'Invalid checkpoint file'}`)
-      }
-      if (fileInputRef.current) fileInputRef.current.value = ''
-    }
-    reader.readAsText(file)
+      })
   }
 
   const toggleApprove = (id: string) => {
@@ -880,7 +899,7 @@ function Workbench({
       setTrainMessage('This is a scored match. Switch to Practice to coach and train.')
       return
     }
-    if (isTraining || view.phase === 'running') return
+    if (isTraining || trainingBusyRef.current || view.phase === 'running') return
     if (examples.filter(e => e.approved).length === 0) return
     rejectEvaluationExamples(examples.filter(e => e.approved))
 
@@ -898,6 +917,10 @@ function Workbench({
     const abort = new AbortController()
     trainAbortRef.current?.abort()
     trainAbortRef.current = abort
+    importAbortRef.current?.abort()
+    importAbortRef.current = null
+    if (fileInputRef.current) fileInputRef.current.value = ''
+    trainingBusyRef.current = true
 
     setIsTraining(true)
     setTrainMessage('Teaching from the approved notes…')
@@ -908,7 +931,7 @@ function Workbench({
     if (trainTimerRef.current !== null) window.clearTimeout(trainTimerRef.current)
     trainTimerRef.current = window.setTimeout(() => {
       trainTimerRef.current = null
-      if (abort.signal.aborted) return
+      if (abort.signal.aborted) { trainingBusyRef.current = false; return }
       const jobId = `train-${Date.now().toString(36)}`
       let trained: PolicyCheckpoint
       try {
@@ -933,6 +956,7 @@ function Workbench({
         setCheckpoints(prev => [trained, ...prev])
         queueCheckpointSync(trained, approved.map(example => example.id))
       } catch (err) {
+        trainingBusyRef.current = false
         setIsTraining(false)
         setTrainMessage(`Training failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
         queueTrainingJobSync({
@@ -947,6 +971,7 @@ function Workbench({
       }
 
       const finishTraining = (message: string) => {
+        trainingBusyRef.current = false
         setIsTraining(false)
         setTrainMessage(message)
         queueTrainingJobSync({
@@ -982,22 +1007,22 @@ function Workbench({
         controllerVersion,
         signal: abort.signal,
       }).then(result => {
-        if (abort.signal.aborted) return
+        if (abort.signal.aborted) { trainingBusyRef.current = false; return }
         setComparison(result)
         requestAnimationFrame(() => comparisonRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }))
         const adopted = adoptChild()
         recordFunnelEvent('train.done', `n=${approved.length} loss=${trained.trainingSummary.loss.toFixed(4)} banked ${result.baseline.banked}→${result.trained.banked}`)
-        if (!adopted) { setIsTraining(false); return }
+        if (!adopted) { trainingBusyRef.current = false; setIsTraining(false); return }
         finishTraining(
           focusLine
             ? `Training complete. ${focusLine} ${lossLine} Compare the recorded runs below.`
             : `Training complete. ${lossLine} Compare the recorded runs below.`,
         )
       }).catch(err => {
-        if (abort.signal.aborted) return
+        if (abort.signal.aborted) { trainingBusyRef.current = false; return }
         const adopted = adoptChild()
         recordFunnelEvent('train.done', `n=${approved.length} comparison-unavailable`)
-        if (!adopted) { setIsTraining(false); return }
+        if (!adopted) { trainingBusyRef.current = false; setIsTraining(false); return }
         finishTraining(`Training complete; physical comparison unavailable (${err instanceof Error ? err.message : 'unknown error'}). The new brain is saved — ${lossLine}`)
       })
     }, 0)
@@ -1095,7 +1120,7 @@ function Workbench({
   }, [view.phase, view.replayIndex, coachingLocked])
 
   const handleSelectCheckpoint = (ckptId: string) => {
-    if (isTraining || view.phase === 'running') return
+    if (isTraining || trainingBusyRef.current || view.phase === 'running') return
     if (view.phase !== 'ready') {
       setTrainMessage('Reset to a fresh setup before changing the active brain.')
       return

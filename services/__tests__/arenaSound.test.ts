@@ -24,13 +24,23 @@ class FakeGain {
 }
 
 class FakeAudioContext {
-  state: AudioContextState = 'running'
+  static initialState: AudioContextState = 'running'
+  static resumeImpl: ((ctx: FakeAudioContext) => Promise<void>) | null = null
+  static failCreateGain = false
+  state: AudioContextState = FakeAudioContext.initialState
   currentTime = 0
   destination = {}
   oscillators: FakeOscillator[] = []
   createOscillator() { const osc = new FakeOscillator(); this.oscillators.push(osc); return osc }
-  createGain() { return new FakeGain() }
-  resume = vi.fn(async () => { this.state = 'running' })
+  createGain() {
+    if (FakeAudioContext.failCreateGain) throw new Error('no gain')
+    return new FakeGain()
+  }
+  resume = vi.fn(() => (
+    FakeAudioContext.resumeImpl
+      ? FakeAudioContext.resumeImpl(this)
+      : Promise.resolve().then(() => { this.state = 'running' })
+  ))
   suspend = vi.fn(async () => { this.state = 'suspended' })
   close = vi.fn(async () => { this.state = 'closed' })
 }
@@ -74,6 +84,9 @@ const tickEvent = (tick: number, flooded: boolean, matchId = 'm1') => ({
 describe('ArenaSound', () => {
   beforeEach(() => {
     contexts = []
+    FakeAudioContext.initialState = 'running'
+    FakeAudioContext.resumeImpl = null
+    FakeAudioContext.failCreateGain = false
     class Tracked extends FakeAudioContext {
       constructor() { super(); contexts.push(this) }
     }
@@ -197,6 +210,128 @@ describe('ArenaSound', () => {
     session.emit('match_end', { matchId: 'm1', outcome: 'error' })
     session.emit('match_end', { matchId: 'm1', outcome: 'finished' })
     expect(context.oscillators.map(osc => osc.frequency.value)).toEqual([180, 300, 520])
+    sound.dispose()
+  })
+
+  it('marks sound unavailable when an enabled resume rejects asynchronously', async () => {
+    FakeAudioContext.initialState = 'suspended'
+    FakeAudioContext.resumeImpl = () => new Promise((_, reject) => setTimeout(() => reject(new Error('denied')), 0))
+    const onUnavailable = vi.fn()
+    const sound = new ArenaSound(onUnavailable)
+    const session = stubSession('running')
+    sound.attach(session)
+    expect(sound.setEnabled(true)).toBe(true)
+    await vi.waitFor(() => expect(onUnavailable).toHaveBeenCalledTimes(1))
+    expect(sound.enabled).toBe(false)
+    session.emit('action_result', actionEvent())
+    expect(contexts[0].oscillators).toHaveLength(0)
+    expect(sound.setEnabled(true)).toBe(false)
+    expect(onUnavailable).toHaveBeenCalledTimes(1)
+    sound.dispose()
+  })
+
+  it('a stale resume rejection after mute does not mark unavailable', async () => {
+    FakeAudioContext.initialState = 'suspended'
+    let rejectResume!: (error: Error) => void
+    FakeAudioContext.resumeImpl = () => new Promise((_, rj) => { rejectResume = rj })
+    const onUnavailable = vi.fn()
+    const sound = new ArenaSound(onUnavailable)
+    expect(sound.setEnabled(true)).toBe(true)
+    sound.setEnabled(false)
+    rejectResume(new Error('late rejection'))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(onUnavailable).not.toHaveBeenCalled()
+    FakeAudioContext.resumeImpl = null
+    expect(sound.setEnabled(true)).toBe(true)
+    expect(sound.enabled).toBe(true)
+    sound.dispose()
+  })
+
+  it('a stale resume rejection after dispose does not mark unavailable', async () => {
+    FakeAudioContext.initialState = 'suspended'
+    let rejectResume!: (error: Error) => void
+    FakeAudioContext.resumeImpl = () => new Promise((_, rj) => { rejectResume = rj })
+    const onUnavailable = vi.fn()
+    const sound = new ArenaSound(onUnavailable)
+    sound.setEnabled(true)
+    sound.dispose()
+    rejectResume(new Error('late rejection'))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(onUnavailable).not.toHaveBeenCalled()
+  })
+
+  it('reports unavailable once and returns false when construction fails, closing the partial context', () => {
+    FakeAudioContext.failCreateGain = true
+    const onUnavailable = vi.fn()
+    const sound = new ArenaSound(onUnavailable)
+    expect(sound.setEnabled(true)).toBe(false)
+    expect(onUnavailable).toHaveBeenCalledTimes(1)
+    expect(contexts[0].close).toHaveBeenCalled()
+    expect(sound.setEnabled(true)).toBe(false)
+    expect(onUnavailable).toHaveBeenCalledTimes(1)
+    sound.dispose()
+  })
+
+  it('returns false and reports unavailable when resume throws synchronously', () => {
+    FakeAudioContext.initialState = 'suspended'
+    FakeAudioContext.resumeImpl = () => { throw new Error('blocked without gesture') }
+    const onUnavailable = vi.fn()
+    const sound = new ArenaSound(onUnavailable)
+    expect(sound.setEnabled(true)).toBe(false)
+    expect(onUnavailable).toHaveBeenCalledTimes(1)
+    sound.dispose()
+  })
+
+  it('repeated setEnabled(true) shares one attempt: a delayed reject still reports unavailable once', async () => {
+    FakeAudioContext.initialState = 'suspended'
+    let rejectResume!: (error: Error) => void
+    FakeAudioContext.resumeImpl = () => new Promise((_, rj) => { rejectResume = rj })
+    const onUnavailable = vi.fn()
+    const sound = new ArenaSound(onUnavailable)
+    expect(sound.setEnabled(true)).toBe(true)
+    expect(sound.setEnabled(true)).toBe(true)
+    expect(contexts[0].resume).toHaveBeenCalledTimes(1)
+    rejectResume(new Error('denied'))
+    await vi.waitFor(() => expect(onUnavailable).toHaveBeenCalledTimes(1))
+    expect(sound.enabled).toBe(false)
+    sound.dispose()
+  })
+
+  it('a rejection from a superseded enable attempt cannot invalidate the new in-flight resume', async () => {
+    FakeAudioContext.initialState = 'suspended'
+    const rejecters: ((error: Error) => void)[] = []
+    const resolvers: (() => void)[] = []
+    FakeAudioContext.resumeImpl = () => new Promise<void>((res, rj) => { resolvers.push(res); rejecters.push(rj) })
+    const onUnavailable = vi.fn()
+    const sound = new ArenaSound(onUnavailable)
+    const session = stubSession('running')
+    sound.attach(session)
+    expect(sound.setEnabled(true)).toBe(true)
+    sound.setEnabled(false)
+    expect(sound.setEnabled(true)).toBe(true)
+    expect(contexts[0].resume).toHaveBeenCalledTimes(2)
+    rejecters[0](new Error('stale first attempt'))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(onUnavailable).not.toHaveBeenCalled()
+    expect(sound.enabled).toBe(true)
+    resolvers[1]()
+    await new Promise(resolve => setTimeout(resolve, 0))
+    contexts[0].state = 'running'
+    session.emit('action_result', actionEvent())
+    expect(contexts[0].oscillators).toHaveLength(1)
+    sound.dispose()
+  })
+
+  it('dedupes an in-flight resume instead of issuing a second call', async () => {
+    FakeAudioContext.initialState = 'suspended'
+    FakeAudioContext.resumeImpl = () => new Promise(resolve => setTimeout(() => resolve(), 0))
+    const sound = new ArenaSound()
+    expect(sound.setEnabled(true)).toBe(true)
+    const context = contexts[0]
+    sound.resume()
+    sound.resume()
+    expect(context.resume).toHaveBeenCalledTimes(1)
+    await new Promise(resolve => setTimeout(resolve, 0))
     sound.dispose()
   })
 

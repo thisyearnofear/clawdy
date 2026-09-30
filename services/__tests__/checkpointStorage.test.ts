@@ -1,10 +1,12 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   CHECKPOINT_STORAGE_KEY,
   exportCheckpointJson,
   importCheckpointJson,
   loadStoredCheckpoints,
   loadStoredExamples,
+  readCheckpointFile,
   saveStoredCheckpoints,
   saveStoredExamples,
 } from '../checkpointStorage'
@@ -124,5 +126,162 @@ describe('checkpointStorage', () => {
     // Throws on corrupt JSON or missing fields
     expect(() => importCheckpointJson('{"bad": 123}')).toThrow('valid Clawdy Season 0 PolicyCheckpoint')
     expect(() => importCheckpointJson('invalid-json')).toThrow('Invalid JSON')
+  })
+})
+
+class MockFileReader {
+  static instances: MockFileReader[] = []
+  static throwOnRead = false
+  result: string | null = null
+  error: unknown = null
+  onload: (() => void) | null = null
+  onerror: (() => void) | null = null
+  onabort: (() => void) | null = null
+  readAsText = vi.fn(() => { if (MockFileReader.throwOnRead) throw new Error('read denied') })
+  abort = vi.fn(() => { this.onabort?.() })
+  constructor() { MockFileReader.instances.push(this) }
+}
+
+const abortError = expect.objectContaining({ name: 'AbortError' })
+const blob = new Blob(['x'], { type: 'application/json' })
+const validJson = () => exportCheckpointJson({ ...SEASON_0_BASE_CHECKPOINT, id: 'imported-ckpt-1', name: 'Imported Brain' })
+
+describe('readCheckpointFile', () => {
+  beforeEach(() => {
+    MockFileReader.instances = []
+    MockFileReader.throwOnRead = false
+    vi.stubGlobal('FileReader', MockFileReader)
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('resolves with the validated checkpoint while the predicate stays true', async () => {
+    const promise = readCheckpointFile(blob, () => true, new AbortController().signal)
+    const reader = MockFileReader.instances[0]
+    expect(reader.readAsText).toHaveBeenCalledWith(blob)
+    reader.result = validJson()
+    reader.onload!()
+    await expect(promise).resolves.toMatchObject({ id: 'imported-ckpt-1' })
+  })
+
+  it('rejects when the live predicate flips before the read completes (training started)', async () => {
+    let ok = true
+    const promise = readCheckpointFile(blob, () => ok, new AbortController().signal)
+    const reader = MockFileReader.instances[0]
+    ok = false
+    reader.result = validJson()
+    reader.onload!()
+    await expect(promise).rejects.toEqual(abortError)
+  })
+
+  it('rejects invalid JSON without masking it as an abort', async () => {
+    const promise = readCheckpointFile(blob, () => true, new AbortController().signal)
+    const reader = MockFileReader.instances[0]
+    reader.result = 'not-json'
+    reader.onload!()
+    await expect(promise).rejects.toThrow('Invalid JSON')
+  })
+
+  it('aborts the in-flight reader when the signal fires and detaches handlers', async () => {
+    const controller = new AbortController()
+    const promise = readCheckpointFile(blob, () => true, controller.signal)
+    const reader = MockFileReader.instances[0]
+    controller.abort()
+    expect(reader.abort).toHaveBeenCalled()
+    await expect(promise).rejects.toEqual(abortError)
+    expect(reader.onload).toBeNull()
+    expect(reader.onerror).toBeNull()
+    expect(reader.onabort).toBeNull()
+  })
+
+  it('a stale captured onload cannot resolve after cancellation', async () => {
+    const controller = new AbortController()
+    const promise = readCheckpointFile(blob, () => true, controller.signal)
+    const reader = MockFileReader.instances[0]
+    const staleOnload = reader.onload!
+    controller.abort()
+    reader.result = validJson()
+    staleOnload()
+    await expect(promise).rejects.toEqual(abortError)
+  })
+
+  it('rejects and cleans up when the live predicate throws at completion', async () => {
+    let ok = true
+    const promise = readCheckpointFile(blob, () => {
+      if (!ok) throw new Error('predicate blew up')
+      return true
+    }, new AbortController().signal)
+    const reader = MockFileReader.instances[0]
+    ok = false
+    reader.result = validJson()
+    reader.onload!()
+    await expect(promise).rejects.toThrow('predicate blew up')
+    expect(reader.onload).toBeNull()
+    expect(reader.onerror).toBeNull()
+    expect(reader.onabort).toBeNull()
+  })
+
+  it('a canceled read cannot supersede a newer read', async () => {
+    const first = new AbortController()
+    const stale = readCheckpointFile(blob, () => true, first.signal)
+    const staleReader = MockFileReader.instances[0]
+    const fresh = readCheckpointFile(blob, () => true, new AbortController().signal)
+    const freshReader = MockFileReader.instances[1]
+    first.abort()
+    staleReader.result = validJson()
+    staleReader.onload?.()
+    await expect(stale).rejects.toEqual(abortError)
+    freshReader.result = validJson()
+    freshReader.onload!()
+    await expect(fresh).resolves.toMatchObject({ id: 'imported-ckpt-1' })
+  })
+
+  it('a valid import still succeeds after a training-canceled read', async () => {
+    let ok = true
+    const duringTraining = readCheckpointFile(blob, () => ok, new AbortController().signal)
+    const firstReader = MockFileReader.instances[0]
+    ok = false
+    firstReader.result = validJson()
+    firstReader.onload!()
+    await expect(duringTraining).rejects.toEqual(abortError)
+    ok = true
+    const afterTraining = readCheckpointFile(blob, () => ok, new AbortController().signal)
+    const secondReader = MockFileReader.instances[1]
+    secondReader.result = validJson()
+    secondReader.onload!()
+    await expect(afterTraining).resolves.toMatchObject({ id: 'imported-ckpt-1' })
+  })
+
+  it('creates no reader when already aborted or the predicate is false', async () => {
+    const controller = new AbortController()
+    controller.abort()
+    await expect(readCheckpointFile(blob, () => true, controller.signal)).rejects.toEqual(abortError)
+    await expect(readCheckpointFile(blob, () => false, new AbortController().signal)).rejects.toEqual(abortError)
+    expect(MockFileReader.instances).toHaveLength(0)
+  })
+
+  it('rejects on reader error and on a synchronous readAsText throw', async () => {
+    const errorPromise = readCheckpointFile(blob, () => true, new AbortController().signal)
+    const first = MockFileReader.instances[0]
+    first.error = new Error('disk gone')
+    first.onerror!()
+    await expect(errorPromise).rejects.toThrow('disk gone')
+
+    MockFileReader.throwOnRead = true
+    try {
+      await expect(readCheckpointFile(blob, () => true, new AbortController().signal)).rejects.toThrow('read denied')
+    } finally {
+      MockFileReader.throwOnRead = false
+    }
+  })
+
+  it('ArenaScene wires the import through a live predicate and aborts it on train/unmount', () => {
+    const source = readFileSync(new URL('../../components/environment/ArenaScene.tsx', import.meta.url), 'utf8')
+    expect(source).toContain('readCheckpointFile(')
+    expect(source).toContain('trainingBusyRef')
+    expect(source).toContain('importAbortRef.current?.abort()')
+    expect(source).toContain('importAbortRef.current !== controller || controller.signal.aborted')
+    expect(source).toContain('session.getSnapshot()')
   })
 })

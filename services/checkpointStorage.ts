@@ -131,6 +131,58 @@ export function importCheckpointJson(jsonText: string): PolicyCheckpoint {
   return parsed as PolicyCheckpoint
 }
 
+export function readCheckpointFile(
+  file: Blob,
+  canImport: () => boolean,
+  signal: AbortSignal,
+): Promise<PolicyCheckpoint> {
+  const abortedError = () => Object.assign(new Error('Checkpoint import was aborted.'), { name: 'AbortError' })
+  return new Promise<PolicyCheckpoint>((resolve, reject) => {
+    if (signal.aborted || !canImport()) {
+      reject(abortedError())
+      return
+    }
+    let settled = false
+    const reader = new FileReader()
+    const cleanup = () => {
+      signal.removeEventListener('abort', onAbort)
+      reader.onload = null
+      reader.onerror = null
+      reader.onabort = null
+    }
+    const fail = (error: unknown) => {
+      if (settled) return
+      settled = true
+      cleanup()
+      reject(error)
+    }
+    const onAbort = () => {
+      try { reader.abort() } catch { }
+      fail(abortedError())
+    }
+    reader.onload = () => {
+      if (settled) return
+      try {
+        if (signal.aborted || !canImport()) throw abortedError()
+        const imported = importCheckpointJson(reader.result as string)
+        settled = true
+        cleanup()
+        resolve(imported)
+      } catch (err) {
+        fail(err)
+      }
+    }
+    reader.onerror = () => fail(reader.error ?? new Error('Could not read the checkpoint file.'))
+    reader.onabort = () => fail(abortedError())
+    signal.addEventListener('abort', onAbort)
+    try {
+      reader.readAsText(file)
+    } catch (err) {
+      fail(err)
+    }
+  })
+}
+
 export function downloadCheckpointFile(checkpoint: PolicyCheckpoint): void {
   if (typeof window === 'undefined' || typeof document === 'undefined') return
 

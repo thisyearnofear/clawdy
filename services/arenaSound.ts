@@ -37,7 +37,13 @@ export class ArenaSound {
   #lastFlooded: boolean | null = null
   #recoveries = new Map<string, number>()
   #enabled = false
+  #disposed = false
+  #unavailable = false
+  #enableToken = 0
+  #resumePromise: Promise<void> | null = null
   #voices = new Set<LiveVoice>()
+
+  constructor(private readonly onUnavailable?: () => void) {}
 
   /** True when this runtime can create a Web Audio context. */
   static supported(): boolean {
@@ -52,10 +58,14 @@ export class ArenaSound {
     return this.#enabled
   }
 
-  /** Create/resume the context. Call only from an explicit user gesture. */
+  /** Create the context/master. Call only from an explicit user gesture. */
   unlock(): boolean {
+    if (this.#disposed || this.#unavailable) return false
     const Ctor = audioContextCtor()
-    if (!Ctor) return false
+    if (!Ctor) {
+      this.#markUnavailable()
+      return false
+    }
     try {
       if (!this.#context) {
         this.#context = new Ctor()
@@ -63,12 +73,15 @@ export class ArenaSound {
         this.#master.gain.value = MASTER_GAIN
         this.#master.connect(this.#context.destination)
       }
-      if (this.#context.state === 'suspended') {
-        void this.#context.resume().catch(() => { /* resume can reject without a gesture */ })
-      }
     } catch {
+      try { this.#master?.disconnect() } catch { }
+      const partial = this.#context
       this.#context = null
       this.#master = null
+      if (partial && partial.state !== 'closed') {
+        try { void partial.close().catch(() => { }) } catch { }
+      }
+      this.#markUnavailable()
       return false
     }
     return true
@@ -77,14 +90,19 @@ export class ArenaSound {
   setEnabled(on: boolean): boolean {
     if (!on) {
       this.#enabled = false
+      this.#enableToken += 1
+      this.#resumePromise = null
       this.#stopVoices()
       this.suspend()
       return true
     }
-    if (!this.#context && !this.unlock()) return false
-    this.#enabled = true
-    this.resume()
-    return true
+    if (this.#disposed || this.#unavailable) return false
+    if (!this.#enabled) {
+      if (!this.#context && !this.unlock()) return false
+      this.#enabled = true
+      this.#enableToken += 1
+    }
+    return this.#resumeContext(this.#enableToken)
   }
 
   /** Suspend output without tearing down (pause / hidden tab). */
@@ -96,10 +114,46 @@ export class ArenaSound {
   }
 
   resume() {
-    if (!this.#enabled) return
-    if (this.#context?.state === 'suspended') {
-      void this.#context.resume().catch(() => { /* stay silent rather than throw */ })
+    if (!this.#enabled || this.#disposed || this.#unavailable) return
+    this.#resumeContext(this.#enableToken)
+  }
+
+  #resumeContext(attempt: number): boolean {
+    const context = this.#context
+    if (!context || this.#disposed || this.#unavailable || !this.#enabled) return false
+    if (context.state !== 'suspended') return true
+    if (this.#resumePromise) return true
+    let promise: Promise<void>
+    try {
+      promise = context.resume()
+    } catch {
+      this.#markUnavailable()
+      return false
     }
+    this.#resumePromise = promise
+    promise.then(
+      () => {
+        if (this.#resumePromise === promise) this.#resumePromise = null
+      },
+      () => {
+        if (this.#resumePromise === promise) this.#resumePromise = null
+        if (
+          this.#disposed || this.#unavailable || !this.#enabled
+          || this.#context !== context || this.#enableToken !== attempt
+        ) return
+        this.#markUnavailable()
+      },
+    )
+    return true
+  }
+
+  #markUnavailable() {
+    if (this.#unavailable || this.#disposed) return
+    this.#unavailable = true
+    this.#enabled = false
+    this.#resumePromise = null
+    this.#stopVoices()
+    try { this.onUnavailable?.() } catch { }
   }
 
   #stopVoices() {
@@ -200,6 +254,9 @@ export class ArenaSound {
   }
 
   dispose() {
+    this.#disposed = true
+    this.#enableToken += 1
+    this.#resumePromise = null
     for (const unsubscribe of this.#unsubscribes.splice(0)) unsubscribe()
     this.#stopVoices()
     this.#played.clear()
