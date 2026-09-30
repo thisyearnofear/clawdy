@@ -20,6 +20,7 @@ interface ViewportHudProps {
   isMatch: boolean
   sideHint: string
   score: { you: number; foe: number; cargo: number } | null
+  intent?: string | null
   clock: string
   flooded: boolean
   drained: boolean
@@ -31,7 +32,7 @@ interface ViewportHudProps {
   onRetry: () => void
 }
 
-export function ViewportHud({ phase, isMatch, sideHint, score, clock, flooded, drained, floodEndsIn, nextFloodIn, runTip, feed, error, onRetry }: ViewportHudProps) {
+export function ViewportHud({ phase, isMatch, sideHint, score, intent, clock, flooded, drained, floodEndsIn, nextFloodIn, runTip, feed, error, onRetry }: ViewportHudProps) {
   return (
     <>
       <div className={styles.worldTopline}>
@@ -51,7 +52,7 @@ export function ViewportHud({ phase, isMatch, sideHint, score, clock, flooded, d
             </span>
           )}
         </div>
-        <span>{sideHint}</span>
+        <span>{intent ?? sideHint}</span>
       </div>
       {runTip && phase === 'running' && (
         <div className={`${styles.runTip} ${styles.hintEnter}`} role="status">

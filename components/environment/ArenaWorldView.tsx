@@ -17,6 +17,7 @@ import { FloodTelegraph } from './FloodTelegraph'
 import { WorldFX, type FxCue } from './WorldFX'
 import { RoverStatus } from './RoverStatus'
 import { RoverFX } from './RoverFX'
+import { PracticeGhost } from './PracticeGhost'
 import FrameLimiter from '../utils/FrameLimiter'
 import { getMintAsset, getMintModelArtifact, getMintModelTransform, getMintModelUrl } from '../../services/mintAssets'
 
@@ -27,7 +28,12 @@ type WorldProps = {
   session: ArenaSession
   follow: ArenaCamera
   cinematic?: boolean
-  coachSuggestion?: { edgeId: string } | null
+  coachOriginalEdgeId?: string | null
+  coachChoices?: { edgeId: string }[]
+  selectedCoachEdgeId?: string | null
+  onCoachEdge?: (edgeId: string) => void
+  ghostPose?: { position: ArenaPosition; label: string } | null
+  championName?: string
   /** Champion accent for ring + rover tint (defaults to canopy green). */
   championAccent?: string
   /** Presentation-side beat detected by the scene (clash / sighting). */
@@ -88,14 +94,27 @@ function FollowCamera({ session, course, follow }: Pick<WorldProps, 'session' | 
   }, [camera, course, follow])
   const agentPos = useRef(new THREE.Vector3())
   const agentRot = useRef(new THREE.Quaternion())
+  const destPos = useRef(new THREE.Vector3())
   useFrame((state, delta) => {
     if (follow === 'overview') return
     // Track the interpolated pose so camera and rover share one motion
     // curve — chasing the raw tick commit while the rover smooths it makes
     // the subject swim inside the frame.
     if (!sampleInterpolatedPose(session, follow, state.clock.elapsedTime, agentPos.current, agentRot.current)) return
-    desired.current.set(agentPos.current.x + 3.2, agentPos.current.y + 3.8, agentPos.current.z + 4.6)
+    const agent = session.liveEpisode().agents.find(candidate => candidate.id === follow)
+    const destNode = agent?.transit
+      ? course.scenario.nodes.find(node => node.id === agent.transit!.to)
+      : null
     lookAt.current.set(agentPos.current.x, agentPos.current.y + 0.35, agentPos.current.z)
+    if (destNode) {
+      destPos.current.set(destNode.position[0], destNode.position[1], destNode.position[2]).sub(agentPos.current)
+      const distance = destPos.current.length()
+      if (distance > 0.01) {
+        destPos.current.multiplyScalar(Math.min(distance, 2.2) / distance * 0.4)
+        lookAt.current.add(destPos.current)
+      }
+    }
+    desired.current.set(agentPos.current.x + 3.2, agentPos.current.y + 3.8, agentPos.current.z + 4.6)
     camera.position.lerp(desired.current, 1 - Math.exp(-delta * 5))
     camera.lookAt(lookAt.current)
   })
@@ -456,36 +475,36 @@ function Resource({ session, id, position }: { session: ArenaSession; id: string
   )
 }
 
-function PathRibbon({ session, edgeId, points, color }: { session: ArenaSession; edgeId: string; points: ArenaPosition[]; color: string }) {
+function PathRibbon({ session, edgeId, points, color, coachEdgeIds, selectedCoachEdgeId }: {
+  session: ArenaSession
+  edgeId: string
+  points: ArenaPosition[]
+  color: string
+  coachEdgeIds?: ReadonlySet<string>
+  selectedCoachEdgeId?: string | null
+}) {
   const group = useRef<THREE.Group>(null)
   const material = useRef<THREE.MeshBasicMaterial>(null)
   const geometry = useMemo(() => createRouteRibbonGeometry(points, 0.09, 0.025), [points])
 
   useEffect(() => () => { geometry?.dispose() }, [geometry])
-  // Board legibility: the network is the game board, so it stays visible.
-  // Idle edges render faint (amber = floodable valley, teal = safe ridge);
-  // active transit renders full. Opacity is the only per-frame change — no
-  // mount/unmount churn.
   useFrame(() => {
     if (!group.current || !material.current) return
     const active = session.liveEpisode().agents.some(agent => agent.transit?.edgeId === edgeId)
-    const target = active ? 0.95 : 0.3
+    const coaching = coachEdgeIds?.has(edgeId) ?? false
+    const target = active ? 0.95 : selectedCoachEdgeId === edgeId ? 0.9 : coaching ? 0.55 : 0.14
     if (Math.abs(material.current.opacity - target) > 0.01) material.current.opacity = target
   })
   if (!geometry) return null
   return (
     <group ref={group} visible>
       <mesh geometry={geometry} renderOrder={2}>
-        <meshBasicMaterial ref={material} color={color} transparent opacity={0.3} depthWrite={false} side={THREE.DoubleSide} />
+        <meshBasicMaterial ref={material} color={selectedCoachEdgeId === edgeId ? '#7fb069' : color} transparent opacity={0.14} depthWrite={false} side={THREE.DoubleSide} />
       </mesh>
     </group>
   )
 }
 
-/**
- * Coach-time ghost ribbon. A translucent stripe along the edge the
- * safe-baseline policy would have taken at the coach-selected frame.
- */
 function CoachGhostRibbon({ points, color }: { points: ArenaPosition[]; color: string }) {
   const geometry = useMemo(() => createRouteRibbonGeometry(points, 0.18, 0.035), [points])
 
@@ -498,17 +517,139 @@ function CoachGhostRibbon({ points, color }: { points: ArenaPosition[]; color: s
   )
 }
 
-function CoachTrailLayer({ course, coachSuggestion }: { course: ArenaCourse; coachSuggestion?: { edgeId: string } | null }) {
-  const edge = coachSuggestion ? course.scenario.edges.find(candidate => candidate.id === coachSuggestion.edgeId) : undefined
-  const points = edge?.path
+function CoachChoiceRibbon({ points, edgeId, selected, onPick }: {
+  points: ArenaPosition[]
+  edgeId: string
+  selected: boolean
+  onPick: (edgeId: string) => void
+}) {
+  const geometry = useMemo(() => createRouteRibbonGeometry(points, 0.2, 0.045), [points])
+  const hitGeometry = useMemo(() => createRouteRibbonGeometry(points, 0.55, 0.05), [points])
+  const gl = useThree(state => state.gl)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const hoverCursor = useRef<string | null>(null)
+  useEffect(() => () => { geometry?.dispose(); hitGeometry?.dispose() }, [geometry, hitGeometry])
+  useEffect(() => {
+    canvasRef.current = gl.domElement
+    return () => {
+      if (hoverCursor.current !== null && canvasRef.current) {
+        canvasRef.current.style.cursor = hoverCursor.current
+        hoverCursor.current = null
+      }
+    }
+  }, [gl])
+  if (!geometry || !hitGeometry) return null
   return (
-    <group visible={!!points}>
-      {points && <CoachGhostRibbon points={points} color="#ffd57a" />}
+    <group>
+      {selected && (
+        <mesh geometry={geometry} renderOrder={4}>
+          <meshBasicMaterial color="#7fb069" transparent opacity={0.85} depthWrite={false} side={THREE.DoubleSide} />
+        </mesh>
+      )}
+      <mesh
+        geometry={hitGeometry}
+        renderOrder={4}
+        onClick={event => { event.stopPropagation(); onPick(edgeId) }}
+        onPointerOver={event => {
+          event.stopPropagation()
+          const canvas = canvasRef.current
+          if (!canvas) return
+          if (hoverCursor.current === null) hoverCursor.current = canvas.style.cursor
+          canvas.style.cursor = 'pointer'
+        }}
+        onPointerOut={() => {
+          const canvas = canvasRef.current
+          if (canvas && hoverCursor.current !== null) {
+            canvas.style.cursor = hoverCursor.current
+            hoverCursor.current = null
+          }
+        }}
+      >
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} side={THREE.DoubleSide} />
+      </mesh>
+    </group>
+  )
+}
+
+function CoachTrailLayer({ course, coachOriginalEdgeId, coachChoices, selectedCoachEdgeId, onCoachEdge }: {
+  course: ArenaCourse
+  coachOriginalEdgeId?: string | null
+  coachChoices?: { edgeId: string }[]
+  selectedCoachEdgeId?: string | null
+  onCoachEdge?: (edgeId: string) => void
+}) {
+  const original = coachOriginalEdgeId ? course.scenario.edges.find(candidate => candidate.id === coachOriginalEdgeId) : undefined
+  return (
+    <group>
+      {original?.path && <CoachGhostRibbon points={original.path} color="#ffd57a" />}
+      {onCoachEdge && coachChoices?.map(choice => {
+        const edge = course.scenario.edges.find(candidate => candidate.id === choice.edgeId)
+        if (!edge?.path) return null
+        return (
+          <CoachChoiceRibbon
+            key={edge.id}
+            edgeId={edge.id}
+            points={edge.path}
+            selected={selectedCoachEdgeId === edge.id}
+            onPick={onCoachEdge}
+          />
+        )
+      })}
     </group>
   )
 }
 
 
+function ChampionFloodMarker({ session, name }: { session: ArenaSession; name: string }) {
+  const group = useRef<THREE.Group>(null)
+  const pos = useRef(new THREE.Vector3())
+  const rot = useRef(new THREE.Quaternion())
+  const texture = useMemo(() => {
+    if (typeof document === 'undefined') return null
+    const canvas = document.createElement('canvas')
+    canvas.width = 256
+    canvas.height = 64
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return null
+    ctx.font = '600 30px system-ui, sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillStyle = '#0d3a4a'
+    ctx.fillText(name, 128, 34)
+    const made = new THREE.CanvasTexture(canvas)
+    made.anisotropy = 2
+    return made
+  }, [name])
+  useEffect(() => () => { texture?.dispose() }, [texture])
+  const diamond = useRef<THREE.Mesh>(null)
+  useFrame((state) => {
+    if (!group.current) return
+    const episode = session.liveEpisode()
+    const agent = episode.agents.find(candidate => candidate.id === 'champion')
+    if (!agent || !episode.weather.flooded) {
+      group.current.visible = false
+      return
+    }
+    group.current.visible = true
+    if (sampleInterpolatedPose(session, 'champion', state.clock.elapsedTime, pos.current, rot.current)) {
+      group.current.position.set(pos.current.x, pos.current.y + 1.15, pos.current.z)
+    }
+    if (diamond.current) diamond.current.rotation.y = state.clock.elapsedTime * 1.2
+  })
+  return (
+    <group ref={group} visible={false} renderOrder={30}>
+      <mesh ref={diamond} renderOrder={30}>
+        <octahedronGeometry args={[0.16]} />
+        <meshBasicMaterial color="#4eb4d0" transparent opacity={0.95} depthTest={false} depthWrite={false} />
+      </mesh>
+      {texture && (
+        <sprite position={[0, 0.42, 0]} scale={[1.4, 0.35, 1]} renderOrder={31}>
+          <spriteMaterial map={texture} transparent depthTest={false} depthWrite={false} />
+        </sprite>
+      )}
+    </group>
+  )
+}
 
 function CourseLandmarks({ course }: { course: ArenaCourse }) {
   const championBase = course.scenario.nodes.find(node => node.id === 'champion-base')?.position
@@ -553,16 +694,44 @@ function CourseLandmarks({ course }: { course: ArenaCourse }) {
       )}
 
       {championBase && (
-        <mesh position={[championBase[0], championBase[1] + 0.03, championBase[2]]} rotation={[-Math.PI / 2, 0, 0]}>
-          <circleGeometry args={[0.95, 40]} />
-          <meshStandardMaterial color="#9ccc63" emissive="#4d7a28" emissiveIntensity={0.35} transparent opacity={0.35} depthWrite={false} />
-        </mesh>
+        <group position={championBase}>
+          <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <circleGeometry args={[0.95, 40]} />
+            <meshStandardMaterial color="#9ccc63" emissive="#4d7a28" emissiveIntensity={0.35} transparent opacity={0.35} depthWrite={false} />
+          </mesh>
+          <mesh position={[0, 0.045, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[0.55, 0.62, 32]} />
+            <meshBasicMaterial color="#d2efad" transparent opacity={0.7} depthWrite={false} />
+          </mesh>
+          <mesh position={[0, 0.5, -0.7]} castShadow>
+            <cylinderGeometry args={[0.03, 0.05, 1, 6]} />
+            <meshStandardMaterial color="#4d5c48" roughness={0.6} metalness={0.3} />
+          </mesh>
+          <mesh position={[0, 1.04, -0.7]}>
+            <sphereGeometry args={[0.07, 10, 10]} />
+            <meshBasicMaterial color="#d2efad" />
+          </mesh>
+        </group>
       )}
       {rivalBase && (
-        <mesh position={[rivalBase[0], rivalBase[1] + 0.03, rivalBase[2]]} rotation={[-Math.PI / 2, 0, 0]}>
-          <circleGeometry args={[0.95, 40]} />
-          <meshStandardMaterial color="#efad68" emissive="#8a5520" emissiveIntensity={0.35} transparent opacity={0.35} depthWrite={false} />
-        </mesh>
+        <group position={rivalBase}>
+          <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <circleGeometry args={[0.95, 40]} />
+            <meshStandardMaterial color="#efad68" emissive="#8a5520" emissiveIntensity={0.35} transparent opacity={0.35} depthWrite={false} />
+          </mesh>
+          <mesh position={[0, 0.045, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[0.55, 0.62, 32]} />
+            <meshBasicMaterial color="#f4c98a" transparent opacity={0.7} depthWrite={false} />
+          </mesh>
+          <mesh position={[0, 0.5, -0.7]} castShadow>
+            <cylinderGeometry args={[0.03, 0.05, 1, 6]} />
+            <meshStandardMaterial color="#5c4a38" roughness={0.6} metalness={0.3} />
+          </mesh>
+          <mesh position={[0, 1.04, -0.7]}>
+            <sphereGeometry args={[0.07, 10, 10]} />
+            <meshBasicMaterial color="#f4c98a" />
+          </mesh>
+        </group>
       )}
     </group>
   )
@@ -583,7 +752,12 @@ function World({
   session,
   follow,
   cinematic = false,
-  coachSuggestion,
+  coachOriginalEdgeId,
+  coachChoices,
+  selectedCoachEdgeId,
+  onCoachEdge,
+  ghostPose,
+  championName = 'You',
   championAccent = '#bce478',
   fxCue,
   onReady,
@@ -593,6 +767,10 @@ function World({
   // Mesh terrain is the same authored GLB the collider extracts from, so the
   // scene needs no splat layer or fallback mesh.
   const [terrainReady, setTerrainReady] = useState(false)
+  const coachEdgeIds = useMemo(
+    () => (onCoachEdge && coachChoices?.length ? new Set(coachChoices.map(choice => choice.edgeId)) : undefined),
+    [onCoachEdge, coachChoices],
+  )
 
   return (
     <>
@@ -652,11 +830,21 @@ function World({
           edgeId={edge.id}
           points={edge.path!}
           color={edge.floodable ? '#e29a45' : '#4f9d86'}
+          coachEdgeIds={coachEdgeIds}
+          selectedCoachEdgeId={selectedCoachEdgeId}
         />
       ))}
 
       <CourseLandmarks course={course} />
-      <CoachTrailLayer course={course} coachSuggestion={coachSuggestion} />
+      <CoachTrailLayer
+        course={course}
+        coachOriginalEdgeId={coachOriginalEdgeId}
+        coachChoices={coachChoices}
+        selectedCoachEdgeId={selectedCoachEdgeId}
+        onCoachEdge={onCoachEdge}
+      />
+      <ChampionFloodMarker session={session} name={championName} />
+      {ghostPose && <PracticeGhost position={ghostPose.position} label={ghostPose.label} />}
       <BankBursts session={session} course={course} lite={lite} />
 
       {course.scenario.entrants.map(entrant => {

@@ -2,34 +2,28 @@
 
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { ArrowRight, Clapperboard, Download, Eye, FastForward, HelpCircle, Pause, Play, Printer, RotateCcw, SkipForward, Sparkles } from 'lucide-react'
-import { ARENA_RULES, observeSnapshot, type ArenaAction, type ArenaObservation } from '../../services/arenaEpisode'
+import { ArrowRight, Clapperboard, Download, Eye, FastForward, HelpCircle, Pause, Play, Printer, RotateCcw, SkipForward, Sparkles, Volume2, VolumeX } from 'lucide-react'
+import { ARENA_RULES, observeSnapshot, type ArenaAction, type ArenaObservation, type ArenaRecording } from '../../services/arenaEpisode'
 import { loadArenaCourse, applyCourseMode, type ArenaCourse, type CoursePlayMode } from '../../services/arenaCourse'
 import { isEvaluationScenario, rejectEvaluationExamples } from '../../services/arenaScenarios'
 import { ArenaSession, SESSION_SPEEDS, type SessionSpeed } from '../../services/arenaSession'
 import type { ArenaMotion } from '../../services/arenaPhysics'
-import { collectorPolicy, type EntrantPolicyOption } from '../../services/arenaPolicy'
+import { type EntrantPolicyOption } from '../../services/arenaPolicy'
 import { buildMatchTimeline, MOMENT_LABELS, MOMENT_LEAD_TICKS, nextMomentAfter, type MatchMoment } from '../../services/matchTimeline'
 import { createTournament, runTournament, type ArenaTournament, type TournamentEntrant, type TournamentMatch } from '../../services/arenaTournament'
 import { type PolicyCheckpoint, SEASON_0_BASE_CHECKPOINT } from '../../services/policyModel'
 import { isBundledStarter, SEASON_0_STARTER_CHECKPOINT } from '../../services/starterCheckpoint'
-import {
-  type ArenaTrainingExample,
-  type EvaluationResult,
-  evaluatePolicyCheckpoint,
-  trainPolicyCheckpoint,
-} from '../../services/policyTrainer'
+import { trainPolicyCheckpoint } from '../../services/policyTrainer'
 import { proposeCorrection, summarizeCoachFocus } from '../../services/coachingEngine'
 import { rankCoachingCandidates, type CoachingCandidate } from '../../services/coachingCandidates'
+import { draftRecordedCorrection, recordedCoachContext } from '../../services/coachingReview'
+import { comparePracticeCheckpoints, comparisonFrameAt, type PracticeComparison } from '../../services/practiceComparison'
+import { ArenaSound } from '../../services/arenaSound'
 import {
-  ENCOUNTER_STAGGER_TICKS,
   encounterDistance,
   focusVectorForChampion,
-  focusVectorForRival,
-  resolveEncounter,
   shouldOfferEncounter,
   shouldOfferSighting,
-  type EncounterResolution,
 } from '../../services/arenaEncounter'
 import {
   getChampionLook,
@@ -62,11 +56,12 @@ import { BeatTimeline } from '../workbench/BeatTimeline'
 import { BootScreen } from '../workbench/BootScreen'
 import { BrandHeader } from '../workbench/BrandHeader'
 import { CoachPanel } from '../workbench/CoachPanel'
+import { LessonComparison } from '../workbench/LessonComparison'
 import { HelpDrawer } from '../workbench/HelpDrawer'
 import { ReplayPanel } from '../workbench/ReplayPanel'
 import { TournamentBracket } from '../workbench/TournamentBracket'
 import { ViewportHud, type HudFeedEvent } from '../workbench/ViewportHud'
-import { actionLabel, actionsEqual, COACH_ANYTIME_KEY, COACH_MISTAKE_KEY, COACH_NUDGE_KEY, isExecutableCheckpoint, PLAY_HINT_KEY, readHintDismissed } from '../workbench/readouts'
+import { actionsEqual, COACH_ANYTIME_KEY, COACH_MISTAKE_KEY, COACH_NUDGE_KEY, isExecutableCheckpoint, PLAY_HINT_KEY, readHintDismissed, routeLabel } from '../workbench/readouts'
 import styles from './ArenaScene.module.css'
 
 const WorldView = dynamic(() => import('./ArenaWorldView'), { ssr: false })
@@ -112,14 +107,8 @@ function Workbench({
   const [trainFocusLine, setTrainFocusLine] = useState<string | null>(null)
   const [modeBanner, setModeBanner] = useState<CoursePlayMode | null>(null)
   const [runTip, setRunTip] = useState<string | null>(null)
-  const [encounter, setEncounter] = useState<{
-    resolution: EncounterResolution
-    transferred: number
-  } | null>(null)
   const floodWarnedRef = useRef<number | null>(null)
   const lastEncounterTickRef = useRef<number | null>(null)
-  const encounterBusyRef = useRef(false)
-  const encounterResumeTimer = useRef<number | null>(null)
   const modeBannerTimer = useRef<number | null>(null)
   const runTipTimer = useRef<number | null>(null)
   const mistakeTimer = useRef<number | null>(null)
@@ -160,12 +149,21 @@ function Workbench({
   const [promptText, setPromptText] = useState('')
   const [isTraining, setIsTraining] = useState(false)
   const [trainMessage, setTrainMessage] = useState<string | null>(null)
-  const [trainResult, setTrainResult] = useState<{ baseline: EvaluationResult; trained: EvaluationResult } | null>(null)
+  const [comparison, setComparison] = useState<PracticeComparison | null>(null)
+  const [comparisonReviewing, setComparisonReviewing] = useState<'baseline' | 'trained' | null>(null)
+  const [coachSelection, setCoachSelection] = useState<{ recording: ArenaRecording; replayIndex: number; tick: number; action: ArenaAction } | null>(null)
   const [feed, setFeed] = useState<HudFeedEvent[]>([])
   const [clipUrl, setClipUrl] = useState<string | null>(null)
   const [clipArmed, setClipArmed] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const exampleCounter = useRef(0)
+  const trainAbortRef = useRef<AbortController | null>(null)
+  const trainTimerRef = useRef<number | null>(null)
+  const comparisonRef = useRef<HTMLDivElement | null>(null)
+  const soundRef = useRef<ArenaSound | null>(null)
+  const [soundState, setSoundState] = useState<'off' | 'on' | 'unavailable'>(() =>
+    ArenaSound.supported() ? 'off' : 'unavailable',
+  )
   const feedId = useRef(0)
   const lastFeedTick = useRef(-1)
   const lastFeedPhase = useRef(view.phase)
@@ -368,7 +366,6 @@ function Workbench({
   useEffect(() => () => {
     if (modeBannerTimer.current) window.clearTimeout(modeBannerTimer.current)
     if (runTipTimer.current) window.clearTimeout(runTipTimer.current)
-    if (encounterResumeTimer.current) window.clearTimeout(encounterResumeTimer.current)
     if (mistakeTimer.current) window.clearTimeout(mistakeTimer.current)
   }, [])
 
@@ -403,16 +400,6 @@ function Workbench({
     setMistakeMoment(null)
   }, [])
 
-  const dismissEncounter = useCallback(() => {
-    if (encounterResumeTimer.current) {
-      window.clearTimeout(encounterResumeTimer.current)
-      encounterResumeTimer.current = null
-    }
-    setEncounter(null)
-    encounterBusyRef.current = false
-    if (view.phase === 'paused') session.start()
-  }, [session, view.phase])
-
   // Persist a match summary when a round finishes (links active checkpoint).
   // Idempotency by (matchId, payload) lives in the sync engine's meta, so a
   // re-render or remount never double-records the same match.
@@ -440,6 +427,44 @@ function Workbench({
     })
   }, [view.phase, view.episode, view.scored, session, activeCourse.scenario.id, activeCheckpoint.id, examples, playMode])
 
+  useEffect(() => {
+    const sound = new ArenaSound()
+    sound.attach(session)
+    soundRef.current = sound
+    return () => { sound.dispose(); soundRef.current = null }
+  }, [session])
+
+  useEffect(() => {
+    const onVisibility = () => {
+      const sound = soundRef.current
+      if (!sound) return
+      if (document.visibilityState === 'hidden') sound.suspend()
+      else if (view.phase === 'running') sound.resume()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
+  }, [view.phase])
+
+  useEffect(() => {
+    const sound = soundRef.current
+    if (!sound) return
+    if (view.phase === 'running') sound.resume()
+    else sound.suspend()
+  }, [view.phase])
+
+  const toggleSound = useCallback(() => {
+    const sound = soundRef.current
+    if (!sound || soundState === 'unavailable') return
+    if (soundState === 'on') {
+      sound.setEnabled(false)
+      setSoundState('off')
+    } else if (sound.setEnabled(true)) {
+      setSoundState('on')
+    } else {
+      setSoundState('unavailable')
+    }
+  }, [soundState])
+
   const pushFeed = useCallback((items: { text: string; tone: 'bank' | 'flood' | 'info' }[]) => {
     if (items.length === 0) return
     const stamped = items.map(item => ({ ...item, id: ++feedId.current }))
@@ -448,9 +473,7 @@ function Workbench({
     setTimeout(() => setFeed(prev => prev.filter(event => !ids.has(event.id))), 4500)
   }, [])
 
-  // Proximity clash: specialization vectors decide the winner; episode applies cargo/stagger.
   useEffect(() => {
-    if (encounterBusyRef.current || encounter) return
     if (view.phase !== 'running') return
     const episode = session.liveEpisode()
     if (!shouldOfferEncounter({
@@ -458,71 +481,27 @@ function Workbench({
       episode,
       lastEncounterTick: lastEncounterTickRef.current,
     })) return
-
-    encounterBusyRef.current = true
-    session.pause()
-    const championAgent = episode.agents.find(agent => agent.id === 'champion')
-    const rivalAgent = episode.agents.find(agent => agent.id === 'rival')
-    if (!championAgent || !rivalAgent) {
-      encounterBusyRef.current = false
-      session.start()
-      return
-    }
-    const championFocus = focusVectorForChampion(examples.filter(example => example.approved))
-    const rivalFocus = focusVectorForRival(view.policies.rival)
-    const resolution = resolveEncounter(championFocus, rivalFocus, {
-      flooded: episode.weather.flooded,
-      championCargo: championAgent.cargo,
-      rivalCargo: rivalAgent.cargo,
-    })
-    let transferred = 0
-    try {
-      transferred = session.applyEncounterClash({
-        winnerId: resolution.winnerId,
-        loserId: resolution.loserId,
-        transferCargo: resolution.transferCargo,
-        staggerTicks: ENCOUNTER_STAGGER_TICKS,
-      }).transferred
-    } catch (err) {
-      console.warn('[encounter] prize apply failed:', err)
-    }
     lastEncounterTickRef.current = episode.tick
-    recordFunnelEvent('encounter.clash', `winner=${resolution.winnerId} cargo=${transferred}`)
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- the world-space clash FX must fire on the same paused tick as the card
+    recordFunnelEvent('encounter.contested')
     setFxCue({
       id: episode.tick * 2,
-      kind: 'clash',
+      kind: 'sighting',
       tick: episode.tick,
-      positions: {
-        champion: [...championAgent.position],
-        rival: [...rivalAgent.position],
-      },
-      winnerId: resolution.winnerId,
-      loserId: resolution.loserId,
-      transferred,
+      positions: Object.fromEntries(episode.agents.map(agent => [agent.id, [...agent.position]])),
     })
-    setEncounter({ resolution, transferred })
-    pushFeed([{
-      text: transferred > 0
-        ? `${resolution.reason} Cargo +${transferred}.`
-        : resolution.reason,
-      tone: 'info',
-    }])
-    encounterResumeTimer.current = window.setTimeout(() => {
-      setEncounter(null)
-      encounterBusyRef.current = false
-      if (session.getSnapshot().phase === 'paused') session.start()
-    }, 2400)
-  }, [view.phase, view.episode.tick, view.policies.rival, examples, encounter, session, pushFeed])
+    pushFeed([{ text: 'Contested ground — both rovers are nearby. Routes and pickups decide the score.', tone: 'info' }])
+    // A beat worth watching pulls fast-forward back to real time.
+    if (speedRef.current > 1) applySpeed(1)
+  }, [view.phase, view.episode.tick, session, pushFeed, applySpeed])
 
   // Passive "rival sighted" beat: near-range proximity that never pauses the
   // sim — a feed note plus a short HUD tip. On the Sandstone course the lanes
   // run ~6m apart, so this is what turns "two parallel time trials" into a
-  // match the player can feel; the clash card owns the close-range band.
+  // match the player can feel; the contested-ground cue owns the close band.
   const lastSightingTickRef = useRef<number | null>(null)
   const sightingCountRef = useRef(0)
   useEffect(() => {
-    if (view.phase !== 'running' || encounter || runTip) return
+    if (view.phase !== 'running' || runTip) return
     const episode = session.liveEpisode()
     if (!shouldOfferSighting({
       phaseRunning: true,
@@ -544,17 +523,16 @@ function Workbench({
     pushFeed([{ text: 'Rival sighted on the same stretch — close enough to contest.', tone: 'info' }])
     // A beat worth watching pulls fast-forward back to real time.
     if (speedRef.current > 1) applySpeed(1)
-    setRunTip('Rival sighted nearby — a clash resolves by coaching focus.')
+    setRunTip('Rival sighted nearby — contested ground is presentation only; routes and pickups decide the score.')
     if (runTipTimer.current) window.clearTimeout(runTipTimer.current)
     runTipTimer.current = window.setTimeout(() => setRunTip(null), 4200)
-  }, [view.phase, view.episode.tick, encounter, runTip, session, pushFeed, applySpeed])
+  }, [view.phase, view.episode.tick, runTip, session, pushFeed, applySpeed])
 
   // Director's track: once per match, run a headless clone of this episode
   // (same scenario, same locked policies/checkpoint, same physics adapter)
-  // and record where the beats land — clashes included, with their cargo
-  // transfer and stagger applied so the forecast stays on the watched
-  // trajectory. Powers "Skip to next moment" and drops the user a few ticks
-  // ahead of each beat.
+  // and record where the beats land — contested proximity is forecast as a
+  // presentation beat only; it never mutates the predicted score. Powers
+  // "Skip to next moment" and drops the user a few ticks ahead of each beat.
   useEffect(() => {
     // First publish after start can already be tick ~5 (HUD throttle) — the
     // build window is wide enough to catch it, narrow enough that a resume
@@ -571,11 +549,9 @@ function Workbench({
     for (const [id, strategy] of Object.entries(view.policies)) {
       options[id] = strategy === 'learned' ? { strategy: 'learned', checkpoint: view.checkpoint! } : strategy
     }
-    const championFocus = focusVectorForChampion(examples.filter(example => example.approved))
-    const rivalFocus = focusVectorForRival(view.policies.rival)
     const timer = window.setTimeout(() => {
       try {
-        const moments = buildMatchTimeline(scenario, options, createMotion, { championFocus, rivalFocus })
+        const moments = buildMatchTimeline(scenario, options, createMotion)
         setDirector({ matchId, moments })
       } catch {
         // No forecast, no problem — Skip still falls through to the finish.
@@ -583,7 +559,7 @@ function Workbench({
       }
     }, 0)
     return () => window.clearTimeout(timer)
-  }, [view.phase, view.episode.tick, session, activeCourse.scenario, view.policies, view.checkpoint, examples, createMotion, director])
+  }, [view.phase, view.episode.tick, session, activeCourse.scenario, view.policies, view.checkpoint, createMotion, director])
 
   // Live race feed: banks, flood flips, drains, and the full-time score.
   // Throttled to one decision cadence (5 ticks) so snapshot pumps never churn renders.
@@ -685,6 +661,8 @@ function Workbench({
     }
     recordStreamRef.current?.getTracks().forEach(track => track.stop())
     if (clipUrlRef.current) URL.revokeObjectURL(clipUrlRef.current)
+    trainAbortRef.current?.abort()
+    if (trainTimerRef.current !== null) window.clearTimeout(trainTimerRef.current)
   }, [])
 
   /** Single-elimination bracket: your trained champion vs the house field, run headlessly on the live layout. */
@@ -711,12 +689,13 @@ function Workbench({
 
   /** Load a finished bracket match into review and play its cinematic reel. */
   const watchMatch = (match: TournamentMatch) => {
-    if (!match.recording || view.phase === 'running') return
+    if (!match.recording || view.phase === 'running' || isTraining) return
     setCinematic(true)
     session.reviewFrom(match.recording)
   }
 
   const primaryAction = () => {
+    if (isTraining) return
     if (view.phase === 'error') { onRetry(); return }
     if (view.phase === 'review') { setCinematic(false); session.returnToRun(); return }
     if (view.phase === 'running') { session.pause(); return }
@@ -747,7 +726,8 @@ function Workbench({
     const upcoming = liveDirector ? nextMomentAfter(liveDirector.moments, live.tick) : null
     recordFunnelEvent('run.skip', upcoming ? `${upcoming.kind}@t${upcoming.tick}` : 'finish')
     // Land at real time just ahead of the beat so the approach is watchable;
-    // skipping past a predicted clash forgoes its cargo swing — the user's call.
+    // the beats are presentation only, so skipping can never cost the user a
+    // scoring swing — it only skips live observation.
     applySpeed(1)
     if (upcoming) {
       session.skipToTick(Math.max(live.tick + 1, upcoming.tick - MOMENT_LEAD_TICKS[upcoming.kind]))
@@ -756,11 +736,11 @@ function Workbench({
     }
   }
 
-  // Space / P toggles play-pause, except while typing, while a button has
-  // focus (space already activates it), or while an encounter card is up.
+  // Space / P toggles play-pause, except while typing or while a button has
+  // focus (space already activates it).
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.repeat || event.metaKey || event.ctrlKey || event.altKey || encounter) return
+      if (event.repeat || event.metaKey || event.ctrlKey || event.altKey) return
       if (event.key !== ' ' && event.key.toLowerCase() !== 'p') return
       const tag = (event.target as HTMLElement | null)?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'BUTTON') return
@@ -772,7 +752,8 @@ function Workbench({
   })
 
   const switchPlayMode = (mode: CoursePlayMode) => {
-    if (view.phase !== 'ready' || mode === playMode) return
+    if (view.phase !== 'ready' || mode === playMode || isTraining) return
+    setCoachSelection(null)
     const next = applyCourseMode(course, mode)
     setPlayMode(mode)
     setActiveCourse(next)
@@ -786,8 +767,8 @@ function Workbench({
     lastSightingTickRef.current = null
     sightingCountRef.current = 0
     setDirector(null)
-    setEncounter(null)
-    encounterBusyRef.current = false
+    setComparison(null)
+    setComparisonReviewing(null)
     setModeBanner(mode)
     if (modeBannerTimer.current) window.clearTimeout(modeBannerTimer.current)
     modeBannerTimer.current = window.setTimeout(() => setModeBanner(null), 1100)
@@ -801,16 +782,18 @@ function Workbench({
     setTimeout(() => URL.revokeObjectURL(url), 0)
   }
 
-  const handlePropose = (text: string, customObs?: ArenaObservation) => {
+  const handlePropose = (text: string) => {
+    if (isTraining || view.phase === 'running') return
     if (coachingLocked) {
       setTrainMessage('This is a scored match. Switch to Practice to coach and train.')
       return
     }
     if (!text.trim()) return
-    const champObs = customObs ?? session.observe('champion')
-    const recorded = view.episode.agents.find(agent => agent.id === 'champion')?.lastOutcome?.action
-    const currentAction = recorded ?? champObs.availableActions[0] ?? { type: 'wait' }
-      const example = proposeCorrection(text, champObs, currentAction, activeCourse.scenario.id)
+    if (!coachContext || !reviewRecording) {
+      setTrainMessage('Replay a recorded decision first — open Replay and scrub to a decision frame.')
+      return
+    }
+    const example = proposeCorrection(text, coachContext.observation, coachContext.originalAction, reviewRecording.scenario.id)
     if (example) {
       setExamples(prev => [example, ...prev])
       recordFunnelEvent('example.draft', 'prompt')
@@ -818,7 +801,7 @@ function Workbench({
       setStudioOpen(true)
       setTrainMessage(`Proposed a fix at ${example.tick}: ${example.rationale} Approve it, then train.`)
     } else {
-      setTrainMessage(`Could not find a valid legal action matching that guidance for tick ${champObs.tick}.`)
+      setTrainMessage(`Could not find a valid legal action matching that guidance for tick ${coachContext.tick}.`)
     }
   }
 
@@ -828,6 +811,7 @@ function Workbench({
   }
 
   const handleImportClick = () => {
+    if (isTraining || view.phase !== 'ready' || coachingLocked) return
     fileInputRef.current?.click()
   }
 
@@ -836,6 +820,14 @@ function Workbench({
     if (!file) return
     const reader = new FileReader()
     reader.onload = () => {
+      // The read may complete after the user started a run or training —
+      // re-check the live snapshot instead of the render-time phase.
+      const snap = session.getSnapshot()
+      if (snap.phase !== 'ready' || snap.scored || isTraining) {
+        setTrainMessage('Import refused: reset to a fresh Practice setup first.')
+        if (fileInputRef.current) fileInputRef.current.value = ''
+        return
+      }
       try {
         const imported = importCheckpointJson(reader.result as string)
         setCheckpoints(prev => {
@@ -846,10 +838,15 @@ function Workbench({
           setTrainMessage(`Imported ${imported.name} as view-only. ${viewOnlyCheckpointMessage(imported)}`)
           return
         }
-        setActiveCheckpoint(imported)
-        session.setCheckpoint(imported)
-        session.selectPolicy('champion', 'learned', imported)
-        setTrainMessage(`Successfully imported checkpoint: ${imported.name} (${imported.weightsHash.slice(0, 14)})`)
+        try {
+          session.setCheckpoint(imported)
+          session.selectPolicy('champion', 'learned', imported)
+          setActiveCheckpoint(imported)
+          setCoachSelection(null)
+          setTrainMessage(`Successfully imported checkpoint: ${imported.name} (${imported.weightsHash.slice(0, 14)})`)
+        } catch (err) {
+          setTrainMessage(`Imported ${imported.name} but could not make it active: ${err instanceof Error ? err.message : 'incompatible checkpoint'}`)
+        }
       } catch (err) {
         setTrainMessage(`Import failed: ${err instanceof Error ? err.message : 'Invalid checkpoint file'}`)
       }
@@ -859,6 +856,7 @@ function Workbench({
   }
 
   const toggleApprove = (id: string) => {
+    if (isTraining || view.phase === 'running' || coachingLocked) return
     const target = examples.find(ex => ex.id === id)
     if (!target) return
     if (isEvaluationScenario(target.sourceEpisodeId)) {
@@ -871,6 +869,7 @@ function Workbench({
   }
 
   const removeExample = (id: string) => {
+    if (isTraining || view.phase === 'running' || coachingLocked) return
     // Tombstone-propagating delete: the old local-only filter silently
     // diverged every other device.
     deleteExampleRecord(id)
@@ -881,26 +880,47 @@ function Workbench({
       setTrainMessage('This is a scored match. Switch to Practice to coach and train.')
       return
     }
-    const approved = examples.filter(e => e.approved)
-    if (approved.length === 0) return
-    rejectEvaluationExamples(approved)
+    if (isTraining || view.phase === 'running') return
+    if (examples.filter(e => e.approved).length === 0) return
+    rejectEvaluationExamples(examples.filter(e => e.approved))
+
+    if (activeCourse.scenario.split !== 'practice' || isEvaluationScenario(activeCourse.scenario.id)) {
+      setTrainMessage('Training needs a practice scenario — a held-out recording is never used as a coaching prompt source.')
+      return
+    }
+    const parent = structuredClone(activeCheckpoint)
+    const approved = structuredClone(examples.filter(e => e.approved))
+    const practiceScenario = structuredClone(activeCourse.scenario)
+    const rivalOption: EntrantPolicyOption = view.policies.rival === 'learned'
+      ? { strategy: 'learned', checkpoint: parent }
+      : view.policies.rival
+    const controllerVersion = view.episode.controllerVersion
+    const abort = new AbortController()
+    trainAbortRef.current?.abort()
+    trainAbortRef.current = abort
 
     setIsTraining(true)
     setTrainMessage('Teaching from the approved notes…')
-    setTrainResult(null)
+    setComparison(null)
+    setComparisonReviewing(null)
+    setCoachSelection(null)
 
-    setTimeout(() => {
+    if (trainTimerRef.current !== null) window.clearTimeout(trainTimerRef.current)
+    trainTimerRef.current = window.setTimeout(() => {
+      trainTimerRef.current = null
+      if (abort.signal.aborted) return
+      const jobId = `train-${Date.now().toString(36)}`
+      let trained: PolicyCheckpoint
       try {
-        const jobId = `train-${Date.now().toString(36)}`
         queueTrainingJobSync({
           jobId,
           status: 'running',
-          parentCheckpointId: activeCheckpoint.id,
+          parentCheckpointId: parent.id,
           resultCheckpointId: null,
           exampleCount: approved.length,
           message: null,
         })
-        const trained = trainPolicyCheckpoint(activeCheckpoint, approved, {
+        trained = trainPolicyCheckpoint(parent, approved, {
           // Browser coach-train config, pinned in versions.test.ts and
           // docs/COMPATIBILITY.md: 60 epochs, lr 0.008 with a deterministic
           // 0.5x step at epoch 30 (few-shot stable; the old 100/0.02 ran
@@ -910,90 +930,140 @@ function Workbench({
           learningRateDecay: { atEpoch: 30, factor: 0.5 },
           name: `${championIdentity.name} v${checkpoints.length} (+${approved.length})`,
         })
-
-        // Baseline = the checkpoint actually trained (the parent), so the
-        // before/after delta reflects coaching — not the gap between the
-        // bundled starter and the untrained base MLP.
-        const baselineEval = evaluatePolicyCheckpoint(activeCheckpoint, [applyCourseMode(course, 'practice').scenario])
-        const trainedEval = evaluatePolicyCheckpoint(trained, [applyCourseMode(course, 'practice').scenario])
-
-        const focusLine = summarizeCoachFocus(approved)
-        setTrainFocusLine(focusLine)
         setCheckpoints(prev => [trained, ...prev])
-        setActiveCheckpoint(trained)
-        session.setCheckpoint(trained)
-        session.selectPolicy('champion', 'learned', trained)
-        setIsTraining(false)
-        setTrainMessage(
-          focusLine
-            ? `Training complete. ${focusLine} Loss ${trained.trainingSummary.loss.toFixed(4)} · ${(trained.trainingSummary.accuracy * 100).toFixed(0)}% of the notes landed.`
-            : `Training complete. Loss ${trained.trainingSummary.loss.toFixed(4)} · ${(trained.trainingSummary.accuracy * 100).toFixed(0)}% of the notes landed.`,
-        )
-        setTrainResult({ baseline: baselineEval, trained: trainedEval })
-        recordFunnelEvent('train.done', `n=${approved.length} loss=${trained.trainingSummary.loss.toFixed(4)} banked ${baselineEval.totalBanked}→${trainedEval.totalBanked}`)
         queueCheckpointSync(trained, approved.map(example => example.id))
-        queueTrainingJobSync({
-          jobId,
-          status: 'succeeded',
-          parentCheckpointId: activeCheckpoint.id,
-          resultCheckpointId: trained.id,
-          exampleCount: approved.length,
-          message: `loss ${trained.trainingSummary.loss.toFixed(4)}`,
-        })
       } catch (err) {
         setIsTraining(false)
         setTrainMessage(`Training failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
         queueTrainingJobSync({
-          jobId: `train-fail-${Date.now().toString(36)}`,
+          jobId,
           status: 'failed',
-          parentCheckpointId: activeCheckpoint.id,
+          parentCheckpointId: parent.id,
           resultCheckpointId: null,
           exampleCount: approved.length,
           message: err instanceof Error ? err.message : 'Unknown error',
         })
+        return
       }
-    }, 400)
+
+      const finishTraining = (message: string) => {
+        setIsTraining(false)
+        setTrainMessage(message)
+        queueTrainingJobSync({
+          jobId,
+          status: 'succeeded',
+          parentCheckpointId: parent.id,
+          resultCheckpointId: trained.id,
+          exampleCount: approved.length,
+          message: `loss ${trained.trainingSummary.loss.toFixed(4)}`,
+        })
+      }
+      const adoptChild = (): boolean => {
+        try { session.reset() } catch (err) {
+          setTrainMessage(`Trained brain saved but the session could not reset: ${err instanceof Error ? err.message : 'unknown error'}`)
+          return false
+        }
+        try {
+          session.setCheckpoint(trained)
+          session.selectPolicy('champion', 'learned', trained)
+          setActiveCheckpoint(trained)
+          return true
+        } catch (err) {
+          setTrainMessage(`Trained brain saved but could not be loaded: ${err instanceof Error ? err.message : 'incompatible checkpoint'}`)
+          return false
+        }
+      }
+      const focusLine = summarizeCoachFocus(approved)
+      setTrainFocusLine(focusLine)
+      const lossLine = `Loss ${trained.trainingSummary.loss.toFixed(4)} · ${(trained.trainingSummary.accuracy * 100).toFixed(0)}% of the notes landed.`
+      setTrainMessage('Training complete — comparing recorded practice runs…')
+      comparePracticeCheckpoints(parent, trained, practiceScenario, createMotion, {
+        rival: rivalOption,
+        controllerVersion,
+        signal: abort.signal,
+      }).then(result => {
+        if (abort.signal.aborted) return
+        setComparison(result)
+        requestAnimationFrame(() => comparisonRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }))
+        const adopted = adoptChild()
+        recordFunnelEvent('train.done', `n=${approved.length} loss=${trained.trainingSummary.loss.toFixed(4)} banked ${result.baseline.banked}→${result.trained.banked}`)
+        if (!adopted) { setIsTraining(false); return }
+        finishTraining(
+          focusLine
+            ? `Training complete. ${focusLine} ${lossLine} Compare the recorded runs below.`
+            : `Training complete. ${lossLine} Compare the recorded runs below.`,
+        )
+      }).catch(err => {
+        if (abort.signal.aborted) return
+        const adopted = adoptChild()
+        recordFunnelEvent('train.done', `n=${approved.length} comparison-unavailable`)
+        if (!adopted) { setIsTraining(false); return }
+        finishTraining(`Training complete; physical comparison unavailable (${err instanceof Error ? err.message : 'unknown error'}). The new brain is saved — ${lossLine}`)
+      })
+    }, 0)
   }
 
-  const currentMistake = (() => {
-    if (view.phase !== 'review') return null
-    const champObs = session.observe('champion')
-    if (!champObs.decisionDue) return null
-    const champ = view.episode.agents.find(a => a.id === 'champion')
-    const recorded = champ?.lastOutcome?.action
-    if (!recorded) return null
-    const suggested = collectorPolicy(champObs, 'safe')
-    if (actionsEqual(recorded, suggested)) return null
-    return { champObs, recorded, suggested }
+  const reviewRecording = view.phase === 'review' ? session.activeRecording() : null
+  const coachContext = (() => {
+    if (!reviewRecording || coachingLocked) return null
+    try {
+      return recordedCoachContext(reviewRecording, view.replayIndex)
+    } catch {
+      return null
+    }
   })()
 
-  const coachSuggestion = currentMistake && 'edgeId' in currentMistake.suggested
-    ? { edgeId: currentMistake.suggested.edgeId }
+  const selectedCoachAction = coachSelection && coachContext && reviewRecording
+    && coachSelection.recording === reviewRecording
+    && coachSelection.replayIndex === view.replayIndex
+    && coachSelection.tick === coachContext.tick
+    && coachContext.alternatives.some(candidate => actionsEqual(candidate, coachSelection.action))
+    ? coachSelection.action
     : null
 
-  const handleAddMistake = () => {
-    if (coachingLocked) {
-      setTrainMessage('This is a scored match. Switch to Practice to coach and train.')
-      return
-    }
-    if (!currentMistake) return
-    const { champObs, recorded, suggested } = currentMistake
+  const coachMoveChoices = coachContext
+    ? coachContext.alternatives
+        .filter((action): action is ArenaAction & { edgeId: string } => action.type === 'move' && 'edgeId' in action)
+        .map(action => ({ edgeId: action.edgeId }))
+    : undefined
+  const coachOriginalEdgeId = coachContext && coachContext.originalAction.type === 'move' && 'edgeId' in coachContext.originalAction
+    ? (coachContext.originalAction as { edgeId: string }).edgeId
+    : null
+  const selectedCoachEdgeId = selectedCoachAction && selectedCoachAction.type === 'move' && 'edgeId' in selectedCoachAction
+    ? (selectedCoachAction as { edgeId: string }).edgeId
+    : null
+
+  const handleCoachSelect = (action: ArenaAction) => {
+    if (coachingLocked || isTraining || view.phase === 'running' || !coachContext || !reviewRecording) return
+    setCoachSelection({ recording: reviewRecording, replayIndex: view.replayIndex, tick: coachContext.tick, action })
+  }
+
+  const handleCoachEdge = (edgeId: string) => {
+    if (coachingLocked || isTraining || view.phase === 'running' || !coachContext || !reviewRecording) return
+    const action = coachContext.alternatives.find(
+      candidate => candidate.type === 'move' && 'edgeId' in candidate && (candidate as { edgeId: string }).edgeId === edgeId,
+    )
+    if (action) setCoachSelection({ recording: reviewRecording, replayIndex: view.replayIndex, tick: coachContext.tick, action })
+  }
+
+  const handleQueueCorrection = () => {
+    if (coachingLocked || isTraining || view.phase === 'running' || !coachContext || !selectedCoachAction || !reviewRecording) return
     exampleCounter.current += 1
-    const example: ArenaTrainingExample = {
-      id: `mistake-${champObs.tick}-${exampleCounter.current.toString(36)}`,
-      sourceEpisodeId: activeCourse.scenario.id,
-      tick: champObs.tick,
-      observation: champObs,
-      originalAction: recorded,
-      preferredAction: suggested,
-      rationale: `Safe baseline would ${actionLabel(suggested)} here instead of ${actionLabel(recorded)}.`,
-      approved: false,
-      source: 'draft',
+    try {
+      const example = draftRecordedCorrection(
+        coachContext,
+        selectedCoachAction,
+        reviewRecording.scenario.id,
+        `coach-${coachContext.tick}-${exampleCounter.current.toString(36)}`,
+      )
+      setExamples(prev => [example, ...prev])
+      recordFunnelEvent('example.draft', 'recorded')
+      setStudioOpen(true)
+      setCoachSelection(null)
+      setTrainMessage(`Draft correction queued at tick ${example.tick}. Approve it, then train.`)
+    } catch (err) {
+      setTrainMessage(`Could not draft that correction: ${err instanceof Error ? err.message : 'unsupported alternative'}`)
     }
-    setExamples(prev => [example, ...prev])
-    recordFunnelEvent('example.draft', 'mistake')
-    setStudioOpen(true)
-    setTrainMessage(`Queued a fix at ${example.tick}. Approve it, then train.`)
   }
 
   // WS1.4: at a settled review frame, measure the top alternatives against the
@@ -1024,43 +1094,29 @@ function Workbench({
     return () => window.clearTimeout(timer)
   }, [view.phase, view.replayIndex, coachingLocked])
 
-  const handleAddCandidate = (candidate: CoachingCandidate) => {
-    if (coachingLocked || !frameAdvice) return
-    exampleCounter.current += 1
-    const example: ArenaTrainingExample = {
-      id: `outcome-${frameAdvice.atTick}-${exampleCounter.current.toString(36)}`,
-      sourceEpisodeId: activeCourse.scenario.id,
-      tick: frameAdvice.atTick,
-      observation: frameAdvice.observation,
-      originalAction: frameAdvice.taken,
-      preferredAction: candidate.action,
-      rationale: candidate.rationale,
-      approved: false,
-      source: 'draft',
-      provenance: { kind: 'oracle-consequence', teacher: 'safe', reason: candidate.rationale, outcomeDelta: candidate.delta120 },
-      outcomeDelta: candidate.delta120,
-    }
-    setExamples(prev => [example, ...prev])
-    recordFunnelEvent('example.draft', 'candidate')
-    setStudioOpen(true)
-    setFrameAdvice(prev => prev ? { ...prev, candidates: prev.candidates.filter(c => c !== candidate) } : null)
-    setTrainMessage(`Queued a measured fix at ${example.tick}: ${candidate.rationale} Approve it, then train.`)
-  }
-
   const handleSelectCheckpoint = (ckptId: string) => {
+    if (isTraining || view.phase === 'running') return
+    if (view.phase !== 'ready') {
+      setTrainMessage('Reset to a fresh setup before changing the active brain.')
+      return
+    }
     const selected = checkpoints.find(c => c.id === ckptId)
     if (!selected) return
     if (!isExecutableCheckpoint(selected)) {
       setTrainMessage(viewOnlyCheckpointMessage(selected))
       return
     }
-    setActiveCheckpoint(selected)
     try {
       session.setCheckpoint(selected)
       session.selectPolicy('champion', 'learned', selected)
     } catch (err) {
       setTrainMessage(`Brain refused: ${err instanceof Error ? err.message : 'incompatible checkpoint'}`)
+      return
     }
+    setActiveCheckpoint(selected)
+    setComparison(null)
+    setComparisonReviewing(null)
+    setCoachSelection(null)
   }
 
   const handleShareCard = () => {
@@ -1089,15 +1145,63 @@ function Workbench({
   }
 
   const approvedCount = examples.filter(e => e.approved && !isEvaluationScenario(e.sourceEpisodeId)).length
-  const championFocus = focusVectorForChampion(examples.filter(example => example.approved))
-  const rivalFocus = focusVectorForRival(view.policies.rival)
+  const championFocus = approvedCount > 0
+    ? focusVectorForChampion(examples.filter(example => example.approved))
+    : null
+
+  const ghostPose = comparison && comparisonReviewing && view.phase === 'review'
+    ? (() => {
+        const other = comparisonReviewing === 'trained' ? comparison.baseline : comparison.trained
+        const label = comparisonReviewing === 'trained' ? 'Parent' : 'New'
+        const frame = comparisonFrameAt(other.recording, view.episode.tick)
+        const agentState = frame?.agents.find(agent => agent.id === 'champion')
+        return agentState ? { position: agentState.position, label } : null
+      })()
+    : null
+
+  const reviewComparisonRun = (which: 'baseline' | 'trained') => {
+    if (!comparison || isTraining || view.phase === 'running') return
+    try {
+      session.reviewFrom(comparison[which].recording)
+    } catch (err) {
+      setTrainMessage(`Could not open that recorded run: ${err instanceof Error ? err.message : 'unknown error'}`)
+      return
+    }
+    setComparisonReviewing(which)
+    setCinematic(false)
+  }
+
+  const jumpToDivergence = () => {
+    if (!comparison?.firstDivergence || isTraining || view.phase === 'running') return
+    if (view.phase !== 'review' || comparisonReviewing !== 'trained') reviewComparisonRun('trained')
+    const divergence = comparison.firstDivergence
+    const frames = comparison.trained.recording.checkpoints
+    let best = 0
+    let bestDistance = Infinity
+    frames.forEach((frame, index) => {
+      const distance = Math.abs(frame.state.tick - divergence.tick)
+      if (distance < bestDistance) { bestDistance = distance; best = index }
+    })
+    try { session.seek(best) } catch { /* frame may have raced a trim */ }
+  }
 
   const resetForTeaching = useCallback(() => {
     floodWarnedRef.current = null
     setDirector(null)
+    setComparison(null)
+    setComparisonReviewing(null)
+    setCoachSelection(null)
     setRunTip(null)
     session.reset()
   }, [session])
+
+  const championIntent = !champion
+    ? null
+    : champion.transit
+      ? `Heading to ${champion.transit.to} · ${routeLabel(champion.transit.edgeId)}`
+      : champion.lastOutcome?.action?.type === 'wait'
+        ? 'Waiting / recharging'
+        : null
 
   // nextStep stays pure render data (label + action key); the ref-touching
   // work happens in the click handler below, where it belongs. The machine
@@ -1112,6 +1216,7 @@ function Workbench({
   })
 
   const runNextStep = (action: string | null) => {
+    if (isTraining) return
     switch (action) {
       case 'retry': onRetry(); break
       case 'play': primaryAction(); break
@@ -1142,11 +1247,107 @@ function Workbench({
           </button>
         </div>
       </div>
-      <div className={styles.workbench} data-mode={playMode} data-world-ready={visualReady}>
+      <div className={styles.controlBar}>
+        {(view.phase === 'running' || view.phase === 'paused') && (
+          <BeatTimeline
+            moments={liveDirector?.moments ?? null}
+            floods={activeCourse.scenario.floods}
+            tick={view.episode.tick}
+            durationTicks={activeCourse.scenario.durationTicks}
+            onJump={target => { applySpeed(1); session.skipToTick(Math.max(view.episode.tick + 1, target)) }}
+          />
+        )}
+        <div className={styles.mainControls}>
+          <button
+            className={`${styles.primaryButton}${visualReady && hintOpen && view.phase === 'ready' ? ` ${styles.playPulse}` : ''}`}
+            onClick={primaryAction}
+            disabled={(!visualReady && view.phase !== 'error') || isTraining}
+          >
+            {view.phase === 'running' ? <Pause size={16} /> : <Play size={16} />}
+            {primaryLabel}
+          </button>
+          {(view.phase === 'running' || view.phase === 'paused') && (
+            <>
+              <button
+                className={styles.secondaryButton}
+                onClick={cycleSpeed}
+                title="Playback speed — presentation only; the sim stays deterministic"
+              >
+                <FastForward size={15} />{speed}×
+              </button>
+              <button
+                className={styles.secondaryButton}
+                onClick={skipAhead}
+                disabled={!visualReady}
+                title={upcomingMoment && upcomingMoment.kind !== 'finish'
+                  ? `Skip ahead to the next ${MOMENT_LABELS[upcomingMoment.kind]}`
+                  : 'Skip to the final whistle'}
+              >
+                <SkipForward size={15} />Skip{upcomingMoment && upcomingMoment.kind !== 'finish' ? ` · ${MOMENT_LABELS[upcomingMoment.kind]}` : ''}
+              </button>
+            </>
+          )}
+          <button className={styles.secondaryButton} onClick={() => { setCinematic(false); floodWarnedRef.current = null; lastEncounterTickRef.current = null; lastSightingTickRef.current = null; sightingCountRef.current = 0; setDirector(null); setComparison(null); setComparisonReviewing(null); setCoachSelection(null); setRunTip(null); session.reset() }} disabled={!visualReady || view.phase === 'error' || isTraining}><RotateCcw size={15} />Reset</button>
+          <button className={styles.secondaryButton} onClick={() => session.review()} disabled={(view.phase !== 'paused' && view.phase !== 'finished') || isTraining}><Eye size={16} />Replay</button>
+          {(hasCompletedRun || view.phase !== 'ready' || view.episode.tick > 0) && (
+            <button
+              className={styles.secondaryButton}
+              type="button"
+              aria-pressed={clipArmed}
+              disabled={view.phase === 'finished' || view.phase === 'error' || view.phase === 'review' || isTraining}
+              onClick={() => setClipArmed(armed => !armed)}
+              title={clipArmed ? 'Clip recording armed — encodes while you play' : 'Arm a low-cost souvenir clip for this run'}
+            >
+              <Clapperboard size={16} />{clipArmed ? 'Record on' : 'Record'}
+            </button>
+          )}
+          <button
+            className={styles.secondaryButton}
+            aria-pressed={studioOpen}
+            onClick={() => setStudioOpen(open => !open)}
+            disabled={coachingLocked && examples.length === 0}
+          >
+            <Sparkles size={15} />{studioOpen ? 'Hide coach' : 'Coach'}
+          </button>
+          <button
+            className={styles.secondaryButton}
+            type="button"
+            aria-pressed={soundState === 'on'}
+            disabled={soundState === 'unavailable'}
+            onClick={toggleSound}
+            title="Short synthesized cues for banks, floods and the finish"
+          >
+            {soundState === 'on' ? <Volume2 size={15} /> : <VolumeX size={15} />}
+            {soundState === 'unavailable' ? 'Sound unavailable' : soundState === 'on' ? 'Sound on' : 'Sound off'}
+          </button>
+        </div>
+        <div className={styles.runMeta}>
+          <span>{view.episode.tick} / {activeCourse.scenario.durationTicks}</span>
+          {view.episode.tick > 0 && (
+            <button onClick={download} aria-label="Download recorded run"><Download size={16} />Save run</button>
+          )}
+        </div>
+      </div>
+      <div className={styles.workbench} data-mode={playMode} data-world-ready={visualReady} data-coach={studioOpen}>
         <section className={styles.viewport} aria-label="Generated world and autonomous rovers">
           <div className={styles.canvas} data-ready={visualReady}>
             <ErrorBoundary onError={onError} fallback={<div className={styles.canvasError}><h2>The world view could not start.</h2><button onClick={onRetry}>Reload world</button></div>}>
-              <WorldView course={activeCourse} session={session} follow={follow} cinematic={cinematic && view.phase === 'review'} coachSuggestion={coachSuggestion} championAccent={championAccent} fxCue={fxCue} onReady={onReady} onError={onError} />
+              <WorldView
+                course={activeCourse}
+                session={session}
+                follow={follow}
+                cinematic={cinematic && view.phase === 'review'}
+                coachOriginalEdgeId={coachOriginalEdgeId}
+                coachChoices={coachMoveChoices}
+                selectedCoachEdgeId={selectedCoachEdgeId}
+                onCoachEdge={coachContext && !coachingLocked ? handleCoachEdge : undefined}
+                ghostPose={ghostPose}
+                championName={championIdentity.name}
+                championAccent={championAccent}
+                fxCue={fxCue}
+                onReady={onReady}
+                onError={onError}
+              />
             </ErrorBoundary>
           </div>
           <div
@@ -1158,15 +1359,6 @@ function Workbench({
               <p>Settling the world…</p>
             )}
           </div>
-          {encounter && (
-            <div className={`${styles.encounterCard} ${styles.hintEnter}`} role="status">
-              <span>CLASH</span>
-              <h2>{encounter.resolution.winnerId === 'champion' ? `${championIdentity.name} holds the line.` : 'The house rival forces through.'}</h2>
-              <p>{encounter.resolution.reason}</p>
-              {encounter.transferred > 0 && <p className={styles.encounterPrize}>Cargo contested · +{encounter.transferred} to the winner</p>}
-              <button type="button" className={styles.primaryButton} onClick={dismissEncounter}>Continue now</button>
-            </div>
-          )}
           {modeBanner && (
             <div className={styles.modeFlash} key={modeBanner} role="status">
               <span>{modeBanner === 'compete' ? 'MATCH' : 'PRACTICE'}</span>
@@ -1178,6 +1370,7 @@ function Workbench({
             isMatch={playMode === 'compete'}
             sideHint={follow === 'overview' ? 'Drag to look around' : activeCourse.config.name}
             score={champion && rival ? { you: champion.banked, foe: rival.banked, cargo: champion.cargo } : null}
+            intent={championIntent}
             clock={clock}
             flooded={flooded}
             drained={drained}
@@ -1291,98 +1484,92 @@ function Workbench({
         <aside className={styles.sidebar} aria-label="Competitor status">
           <div className={styles.sidebarHeader}><span>THE FIELD</span><span className={styles.timer}>{clock}</span></div>
           <div className={styles.modeToggle} role="group" aria-label="Match type" data-flash={modeBanner ?? undefined}>
-            <button type="button" aria-pressed={playMode === 'practice'} disabled={view.phase !== 'ready'} onClick={() => switchPlayMode('practice')}>Practice</button>
-            <button type="button" aria-pressed={playMode === 'compete'} disabled={view.phase !== 'ready'} onClick={() => switchPlayMode('compete')}>Match</button>
+            <button type="button" aria-pressed={playMode === 'practice'} disabled={view.phase !== 'ready' || isTraining} onClick={() => switchPlayMode('practice')}>Practice</button>
+            <button type="button" aria-pressed={playMode === 'compete'} disabled={view.phase !== 'ready' || isTraining} onClick={() => switchPlayMode('compete')}>Match</button>
           </div>
-          {view.episode.agents.map(agent => (
-            <AgentCard
-              key={agent.id}
-              agent={agent}
-              policy={view.policies[agent.id]}
-              unlocked={view.phase === 'ready' && playMode === 'practice'}
-              onPolicy={policy => session.selectPolicy(agent.id, policy, activeCheckpoint)}
-              championIdentity={agent.id === 'champion' ? championIdentity : undefined}
-              onChampionIdentity={agent.id === 'champion' ? onChampionIdentity : undefined}
-              focusVector={agent.id === 'champion' ? championFocus : rivalFocus}
+          {view.phase === 'review' && (
+            <ReplayPanel
+              tick={view.episode.tick}
+              replayIndex={view.replayIndex}
+              replayLength={view.replayLength}
+              championNodeId={view.episode.agents.find(a => a.id === 'champion')?.nodeId ?? 'base'}
+              championCargo={view.episode.agents.find(a => a.id === 'champion')?.cargo ?? 0}
+              flooded={view.episode.weather.flooded}
+              cinematic={cinematic}
+              coachingLocked={coachingLocked}
+              coachContext={coachContext}
+              selectedAction={selectedCoachAction}
+              frameAdvice={frameAdvice}
+              onSeek={frame => { setCinematic(false); session.seek(frame) }}
+              onToggleCinematic={() => setCinematic(on => !on)}
+              onSelectAction={handleCoachSelect}
+              onQueueCorrection={handleQueueCorrection}
             />
-          ))}
+          )}
+          {view.phase === 'review' ? (
+            <details className={styles.fieldDetails}>
+              <summary>The field</summary>
+              {view.episode.agents.map(agent => (
+                <AgentCard
+                  key={agent.id}
+                  agent={agent}
+                  policy={view.policies[agent.id]}
+                  unlocked={view.phase === 'ready' && playMode === 'practice' && !isTraining}
+                  onPolicy={policy => { if (isTraining || view.phase !== 'ready' || coachingLocked) return; session.selectPolicy(agent.id, policy, activeCheckpoint) }}
+                  championIdentity={agent.id === 'champion' ? championIdentity : undefined}
+                  onChampionIdentity={agent.id === 'champion' ? onChampionIdentity : undefined}
+                  focusVector={agent.id === 'champion' ? championFocus : null}
+                  focusNote={agent.id === 'champion' ? 'Training focus (approved notes)' : undefined}
+                />
+              ))}
+            </details>
+          ) : (
+            view.episode.agents.map(agent => (
+              <AgentCard
+                key={agent.id}
+                agent={agent}
+                policy={view.policies[agent.id]}
+                unlocked={view.phase === 'ready' && playMode === 'practice' && !isTraining}
+                onPolicy={policy => { if (isTraining || view.phase !== 'ready' || coachingLocked) return; session.selectPolicy(agent.id, policy, activeCheckpoint) }}
+                championIdentity={agent.id === 'champion' ? championIdentity : undefined}
+                onChampionIdentity={agent.id === 'champion' ? onChampionIdentity : undefined}
+                focusVector={agent.id === 'champion' ? championFocus : null}
+                focusNote={agent.id === 'champion' ? 'Training focus (approved notes)' : undefined}
+              />
+            ))
+          )}
           <div className={styles.ruleCard}>
             <strong>{playMode === 'compete' ? 'Scored match. No coaching.' : 'Collect. Bank. Survive the flood.'}</strong>
             <p>{playMode === 'compete' ? 'Same world, different flood and core layout. Weights stay frozen until you reset to Practice.' : `Grab cores and bank them at base. Floods slow the valley; a drain costs ${ARENA_RULES.drainCost} energy and helps both rovers.`}</p>
             <div className={styles.legend}><span><i />High route</span><span><i />Floodable route</span></div>
           </div>
         </aside>
-      </div>
-
-      <div className={styles.controlBar}>
-        {(view.phase === 'running' || view.phase === 'paused') && !encounter && (
-          <BeatTimeline
-            moments={liveDirector?.moments ?? null}
-            floods={activeCourse.scenario.floods}
-            tick={view.episode.tick}
-            durationTicks={activeCourse.scenario.durationTicks}
-            onJump={target => { applySpeed(1); session.skipToTick(Math.max(view.episode.tick + 1, target)) }}
-          />
+        {studioOpen && (
+          <div className={styles.coachColumn}>
+            <CoachPanel
+              activeCheckpoint={activeCheckpoint}
+              checkpoints={checkpoints}
+              phase={view.phase}
+              coachingLocked={coachingLocked}
+              trainFocusLine={trainFocusLine}
+              onSelectCheckpoint={handleSelectCheckpoint}
+              onExportCheckpoint={handleExportCheckpoint}
+              onImportClick={handleImportClick}
+              onFileChange={handleFileChange}
+              fileInputRef={fileInputRef}
+              onPropose={text => handlePropose(text)}
+              promptText={promptText}
+              onPromptTextChange={setPromptText}
+              approvedCount={approvedCount}
+              isTraining={isTraining}
+              onTrain={handleTrain}
+              examples={examples}
+              onToggleApprove={toggleApprove}
+              onRemoveExample={removeExample}
+              trainMessage={trainMessage}
+            />
+          </div>
         )}
-        <div className={styles.mainControls}>
-          <button
-            className={`${styles.primaryButton}${visualReady && hintOpen && view.phase === 'ready' ? ` ${styles.playPulse}` : ''}`}
-            onClick={primaryAction}
-            disabled={!visualReady && view.phase !== 'error'}
-          >
-            {view.phase === 'running' ? <Pause size={16} /> : <Play size={16} />}
-            {primaryLabel}
-          </button>
-          {(view.phase === 'running' || view.phase === 'paused') && !encounter && (
-            <>
-              <button
-                className={styles.secondaryButton}
-                onClick={cycleSpeed}
-                title="Playback speed — presentation only; the sim stays deterministic"
-              >
-                <FastForward size={15} />{speed}×
-              </button>
-              <button
-                className={styles.secondaryButton}
-                onClick={skipAhead}
-                disabled={!visualReady}
-                title={upcomingMoment && upcomingMoment.kind !== 'finish'
-                  ? `Skip ahead to the next ${MOMENT_LABELS[upcomingMoment.kind]}`
-                  : 'Skip to the final whistle'}
-              >
-                <SkipForward size={15} />Skip{upcomingMoment && upcomingMoment.kind !== 'finish' ? ` · ${MOMENT_LABELS[upcomingMoment.kind]}` : ''}
-              </button>
-            </>
-          )}
-          <button className={styles.secondaryButton} onClick={() => { setCinematic(false); floodWarnedRef.current = null; lastEncounterTickRef.current = null; lastSightingTickRef.current = null; sightingCountRef.current = 0; setDirector(null); setEncounter(null); encounterBusyRef.current = false; setRunTip(null); session.reset() }} disabled={!visualReady || view.phase === 'error'}><RotateCcw size={15} />Reset</button>
-          <button className={styles.secondaryButton} onClick={() => session.review()} disabled={view.phase !== 'paused' && view.phase !== 'finished'}><Eye size={16} />Replay</button>
-          {(hasCompletedRun || view.phase !== 'ready' || view.episode.tick > 0) && (
-            <button
-              className={styles.secondaryButton}
-              type="button"
-              aria-pressed={clipArmed}
-              disabled={view.phase === 'finished' || view.phase === 'error' || view.phase === 'review'}
-              onClick={() => setClipArmed(armed => !armed)}
-              title={clipArmed ? 'Clip recording armed — encodes while you play' : 'Arm a low-cost souvenir clip for this run'}
-            >
-              <Clapperboard size={16} />{clipArmed ? 'Record on' : 'Record'}
-            </button>
-          )}
-          <button
-            className={styles.secondaryButton}
-            aria-pressed={studioOpen}
-            onClick={() => setStudioOpen(open => !open)}
-            disabled={coachingLocked && examples.length === 0}
-          >
-            <Sparkles size={15} />{studioOpen ? 'Hide coach' : 'Coach'}
-          </button>
-        </div>
-        <div className={styles.runMeta}>
-          <span>{view.episode.tick} / {activeCourse.scenario.durationTicks}</span>
-          {view.episode.tick > 0 && (
-            <button onClick={download} aria-label="Download recorded run"><Download size={16} />Save run</button>
-          )}
-        </div>
       </div>
 
       <div className={styles.nextStep} role="status">
@@ -1394,70 +1581,37 @@ function Workbench({
         )}
       </div>
 
-      {hasOwnBrain ? (
-        <TournamentBracket
-          tournament={tournament}
-          running={tournamentRunning}
-          visualReady={visualReady}
-          phase={view.phase}
-          onRun={runBracket}
-          onWatch={watchMatch}
-        />
-      ) : (
-        <section className={styles.replay} aria-label="Tournament bracket">
-          <div>
-            <strong>Tournament · single elimination</strong>
-            <span>Unlocks once you train or import your first brain</span>
-          </div>
-        </section>
+      {comparison && (
+        <div ref={comparisonRef}>
+          <LessonComparison
+            comparison={comparison}
+            reviewing={comparisonReviewing}
+            onWatch={reviewComparisonRun}
+            onJumpToDivergence={jumpToDivergence}
+          />
+        </div>
       )}
 
-      {view.phase === 'review' && (
-        <ReplayPanel
-          tick={view.episode.tick}
-          replayIndex={view.replayIndex}
-          replayLength={view.replayLength}
-          championNodeId={view.episode.agents.find(a => a.id === 'champion')?.nodeId ?? 'base'}
-          championCargo={view.episode.agents.find(a => a.id === 'champion')?.cargo ?? 0}
-          flooded={view.episode.weather.flooded}
-          cinematic={cinematic}
-          coachingLocked={coachingLocked}
-          currentMistake={currentMistake}
-          frameAdvice={frameAdvice}
-          onSeek={frame => { setCinematic(false); session.seek(frame) }}
-          onToggleCinematic={() => setCinematic(on => !on)}
-          onCoachThisMoment={() => handlePropose(view.episode.weather.flooded ? 'take ridge route during flood' : 'prioritize energy core')}
-          onQueueMistake={handleAddMistake}
-          onQueueCandidate={handleAddCandidate}
-        />
-      )}
-
-      {studioOpen && (
-      <CoachPanel
-        activeCheckpoint={activeCheckpoint}
-        checkpoints={checkpoints}
-        phase={view.phase}
-        coachingLocked={coachingLocked}
-        trainFocusLine={trainFocusLine}
-        onSelectCheckpoint={handleSelectCheckpoint}
-        onExportCheckpoint={handleExportCheckpoint}
-        onImportClick={handleImportClick}
-        onFileChange={handleFileChange}
-        fileInputRef={fileInputRef}
-        onPropose={text => handlePropose(text)}
-        promptText={promptText}
-        onPromptTextChange={setPromptText}
-        approvedCount={approvedCount}
-        isTraining={isTraining}
-        onTrain={handleTrain}
-        examples={examples}
-        onToggleApprove={toggleApprove}
-        onRemoveExample={removeExample}
-        trainMessage={trainMessage}
-        trainResult={trainResult}
-        courseName={course.config.name}
-      />
-      )}
+      <details className={styles.tournamentDetails}>
+        <summary>Tournament · single elimination</summary>
+        {hasOwnBrain ? (
+          <TournamentBracket
+            tournament={tournament}
+            running={tournamentRunning}
+            visualReady={visualReady}
+            phase={view.phase}
+            onRun={runBracket}
+            onWatch={watchMatch}
+          />
+        ) : (
+          <section className={styles.replay} aria-label="Tournament bracket">
+            <div>
+              <strong>Tournament · single elimination</strong>
+              <span>Unlocks once you train or import your first brain</span>
+            </div>
+          </section>
+        )}
+      </details>
 
       <footer className={styles.footer}>
         <p><strong>Play → Replay → Coach → Train → Match.</strong> The new brain is a real weight update, not a saved prompt.</p>
@@ -1512,7 +1666,6 @@ export default function ArenaScene() {
   return (
     <div className={styles.shell}>
       <BrandHeader
-        activeCheckpoint={loaded?.session.getSnapshot().checkpoint ?? SEASON_0_STARTER_CHECKPOINT}
         championName={championIdentity.name}
         onOpenHelp={() => setHelpOpen(true)}
       />

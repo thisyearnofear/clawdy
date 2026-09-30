@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ArenaScenario } from '../arenaEpisode'
-import { emptyEncounterFocus } from '../arenaEncounter'
+import { ArenaRunner } from '../arenaPolicy'
 import { buildMatchTimeline, MOMENT_LABELS, nextMomentAfter } from '../matchTimeline'
-
-const focus = () => emptyEncounterFocus()
 
 /** Nodes ~1m apart: the rovers are permanently inside clash range. */
 function closeScenario(overrides: Partial<ArenaScenario> = {}): ArenaScenario {
@@ -73,7 +71,6 @@ describe('buildMatchTimeline — the director track for skip-to-moment', () => {
       closeScenario({ floods: [{ startTick: 50, endTick: 90 }] }),
       { champion: 'greedy', rival: 'greedy' },
       undefined,
-      { championFocus: focus(), rivalFocus: focus() },
     )
     expect(moments.at(-1)).toMatchObject({ kind: 'finish', tick: 300 })
     expect(moments.some(m => m.kind === 'clash')).toBe(true)
@@ -90,7 +87,6 @@ describe('buildMatchTimeline — the director track for skip-to-moment', () => {
       closeScenario(),
       { champion: 'greedy', rival: 'greedy' },
       undefined,
-      { championFocus: focus(), rivalFocus: focus() },
     )
     const clashes = moments.filter(m => m.kind === 'clash')
     expect(clashes.length).toBeGreaterThanOrEqual(1)
@@ -98,17 +94,24 @@ describe('buildMatchTimeline — the director track for skip-to-moment', () => {
     expect(clashes[0].tick).toBeGreaterThanOrEqual(80)
   })
 
-  it('a predicted clash applies the prize — the forecast keeps the staggered trajectory', () => {
-    // If the clash mutation were skipped, the forecast would diverge from the
-    // watched run after the first clash. Can't observe internals directly —
-    // assert the run still produces banks/finish after clashes (i.e. the
-    // clone survived and kept simulating the real rules).
-    const moments = buildMatchTimeline(
-      closeScenario({ durationTicks: 500 }),
-      { champion: 'greedy', rival: 'greedy' },
-      undefined,
-      { championFocus: focus(), rivalFocus: focus() },
-    )
+  it('proximity forecasts preserve the authoritative banking trajectory', () => {
+    // Proximity may describe a moment, but it cannot award cargo or stagger.
+    // Compare every predicted bank with the unchanged live runner, including
+    // events after the first contested-ground beat rather than just checking
+    // that the clone survived until the finish.
+    const scenario = closeScenario({ durationTicks: 500 })
+    const moments = buildMatchTimeline(scenario, { champion: 'greedy', rival: 'greedy' }, undefined)
+    const runner = new ArenaRunner(scenario, { champion: 'greedy', rival: 'greedy' })
+    const banks: { tick: number; kind: 'bank'; agentId: string }[] = []
+    const previous: Record<string, number> = {}
+    while (!runner.finished) {
+      runner.advanceTicks(1)
+      for (const agent of runner.peek().agents) {
+        if (agent.banked > (previous[agent.id] ?? 0)) banks.push({ tick: runner.peek().tick, kind: 'bank', agentId: agent.id })
+        previous[agent.id] = agent.banked
+      }
+    }
+    expect(moments.filter(moment => moment.kind === 'bank')).toEqual(banks)
     expect(moments.at(-1)).toMatchObject({ kind: 'finish', tick: 500 })
     expect(moments.filter(m => m.kind === 'clash').length).toBeGreaterThanOrEqual(2)
   })
@@ -118,7 +121,6 @@ describe('buildMatchTimeline — the director track for skip-to-moment', () => {
       farScenario(),
       { champion: 'greedy', rival: 'greedy' },
       undefined,
-      { championFocus: focus(), rivalFocus: focus() },
     )
     expect(moments.some(m => m.kind === 'sighting')).toBe(true)
     expect(moments.filter(m => m.kind === 'sighting').length).toBeLessThanOrEqual(3)

@@ -33,14 +33,16 @@ Live exhibition: [https://clawdy-nine.vercel.app/](https://clawdy-nine.vercel.ap
 
 | Now | Next |
 | --- | --- |
-| Coach specialize chips + post-train focus line | Specialization **vector** on the champion card |
-| Race + flood tips | Proximity **mini-clashes**: rules resolve from vectors; Spark/camera for juice |
+| Recorded corrections + approved-notes focus | Checkpoint-bound measured behavior profiles |
+| Race + non-scoring proximity cues | Contested objectives resolved by policy actions under versioned rules |
 | Bank race vs house rival | Encounter *types* (contest cores, weather edge, cargo clash) |
 | — | Time-boxed seasons (“48h to specialize before the bracket”) |
 
 **Architecture rule (from pokemonlive):** the rules engine owns the outcome; presentation owns the delight.
 
-**Shipped first slice (Sep 26):** focus fingerprint + live proximity encounter that can steal 1 cargo / stagger the loser.
+**Implemented locally (Sep 30; deployment verification pending):** focus fingerprint + live proximity cue. Contested-ground proximity is non-scoring — it never transfers cargo or staggers an entrant; score comes only from actual route/pickup/bank behavior. Coached-vs-parent **matched practice comparisons** (same scenario, rival, controller) are evidence of learning, not a held-out ranking.
+
+**Coaching-first rework (Sep 30):** controls precede the arena; Practice replay corrections draft from the recorded pre-decision observation with explicit Approve → Train; `practiceComparison` captures parent/child runs and `LessonComparison`/`PracticeGhost` present them read-only. Keyword guidance is secondary and limited; pickup and full-cargo return stay shared-controller rules. Arena graph, flood behavior, model architecture, versions, trainer settings, and the eval pin are unchanged.
 
 ---
 
@@ -61,7 +63,7 @@ Live exhibition: [https://clawdy-nine.vercel.app/](https://clawdy-nine.vercel.ap
 | Now | Next |
 | --- | --- |
 | Sandstone basin + practice/held-out layouts | Course family as seasons (flood calendars, scarcity, rival archetypes) |
-| Spark bursts / coach trail | World Labs Marble when credits allow — new worlds as new exams |
+| Spark bursts / coach trail | Authored course family with explicit learning challenges |
 | — | Explicit syllabus: “this layout punishes X” |
 
 ---
@@ -90,9 +92,9 @@ Keep **player path** (web coach) and **builder path** (`npm run starter:train`) 
 | Concern | Code / docs |
 | --- | --- |
 | Specialization chips / focus summary / vectors | `services/coachingEngine.ts` |
-| Focus fingerprint + encounter resolve | `services/arenaEncounter.ts` |
+| Approved-notes fingerprint + proximity presentation gates | `services/arenaEncounter.ts` |
 | Champion name / look | `services/championIdentity.ts` |
-| Episode prize / stagger | `ArenaEpisode.applyEncounterClash` → session |
+| Matched practice evidence / replay ghost | `services/practiceComparison.ts` + LessonComparison / PracticeGhost |
 | Product authority | `docs/HACKATHON.md` |
 | Tripothon window | `docs/TRIPOTHON.md` |
 | Deploy / Convex | `docs/DEPLOY.md` |

@@ -16,6 +16,7 @@ export function AgentCard({
   championIdentity,
   onChampionIdentity,
   focusVector,
+  focusNote,
 }: {
   agent: ArenaAgentState
   policy: CollectorStrategy
@@ -23,7 +24,8 @@ export function AgentCard({
   onPolicy: (policy: CollectorStrategy) => void
   championIdentity?: ChampionIdentity
   onChampionIdentity?: (next: ChampionIdentity) => void
-  focusVector?: FocusVector
+  focusVector?: FocusVector | null
+  focusNote?: string
 }) {
   const champion = agent.id === 'champion'
   const look = championIdentity ? getChampionLook(championIdentity.lookId) : null
@@ -44,54 +46,66 @@ export function AgentCard({
         </div>
         <span className={styles.score}>{agent.banked}<small>banked</small></span>
       </div>
-      {focus && (
-        <div className={styles.fingerprint} title={fingerprintLine(focus)}>
-          <span>{fingerprintLine(focus)}</span>
-          <div className={styles.fingerprintBars} aria-hidden>
-            {SPECIALIZATION_FOCI.map(key => (
-              <i key={key} style={{ transform: `scaleY(${Math.max(0.08, focus[key])})` }} data-focus={key} />
-            ))}
+      {champion ? (
+        focus ? (
+          <div className={styles.fingerprint} title={fingerprintLine(focus)}>
+            <span>{fingerprintLine(focus)}</span>
+            <div className={styles.fingerprintBars} aria-hidden>
+              {SPECIALIZATION_FOCI.map(key => (
+                <i key={key} style={{ transform: `scaleY(${Math.max(0.08, focus[key])})` }} data-focus={key} />
+              ))}
+            </div>
+            {focusNote && <span className={styles.focusNote}>{focusNote}</span>}
           </div>
-        </div>
+        ) : (
+          <p className={styles.focusNote}>No personal lessons yet.</p>
+        )
+      ) : (
+        <p className={styles.focusNote}>House strategy.</p>
       )}
-      {champion && championIdentity && onChampionIdentity && (
-        <div className={styles.identityBlock}>
-          <label className={styles.identityName}>
-            <span>Name</span>
-            <input
-              type="text"
-              maxLength={24}
-              value={championIdentity.name}
-              disabled={!unlocked}
-              onChange={event => onChampionIdentity({ ...championIdentity, name: event.target.value })}
-              onBlur={event => onChampionIdentity({ ...championIdentity, name: event.target.value.trim() || 'Champion' })}
-              aria-label="Champion name"
-            />
+      {unlocked && (
+        <details className={styles.setupDetails}>
+          <summary>{champion ? 'Champion setup' : 'Rival setup'}</summary>
+          {champion && championIdentity && onChampionIdentity && (
+            <div className={styles.identityBlock}>
+              <label className={styles.identityName}>
+                <span>Name</span>
+                <input
+                  type="text"
+                  maxLength={24}
+                  value={championIdentity.name}
+                  disabled={!unlocked}
+                  onChange={event => onChampionIdentity({ ...championIdentity, name: event.target.value })}
+                  onBlur={event => onChampionIdentity({ ...championIdentity, name: event.target.value.trim() || 'Champion' })}
+                  aria-label="Champion name"
+                />
+              </label>
+              <div className={styles.lookRow} role="group" aria-label="Champion look">
+                {CHAMPION_LOOKS.map(option => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    className={styles.lookSwatch}
+                    aria-pressed={championIdentity.lookId === option.id}
+                    disabled={!unlocked}
+                    title={option.label}
+                    style={{ background: option.accent }}
+                    onClick={() => onChampionIdentity({ ...championIdentity, lookId: option.id })}
+                  >
+                    <span className={styles.srOnly}>{option.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <label className={styles.policyLabel}>
+            <span>Style</span>
+            <select value={policy} disabled={!unlocked} onChange={event => onPolicy(event.target.value as CollectorStrategy)}>
+              {Object.entries(POLICY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
           </label>
-          <div className={styles.lookRow} role="group" aria-label="Champion look">
-            {CHAMPION_LOOKS.map(option => (
-              <button
-                key={option.id}
-                type="button"
-                className={styles.lookSwatch}
-                aria-pressed={championIdentity.lookId === option.id}
-                disabled={!unlocked}
-                title={option.label}
-                style={{ background: option.accent }}
-                onClick={() => onChampionIdentity({ ...championIdentity, lookId: option.id })}
-              >
-                <span className={styles.srOnly}>{option.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+        </details>
       )}
-      <label className={styles.policyLabel}>
-        <span>Style</span>
-        <select value={policy} disabled={!unlocked} onChange={event => onPolicy(event.target.value as CollectorStrategy)}>
-          {Object.entries(POLICY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-        </select>
-      </label>
       <dl className={styles.agentStats}>
         <div><dt>Cargo</dt><dd>{formatStat(agent.cargo)}<small> / {ARENA_RULES.capacity}</small></dd></div>
         <div><dt>Energy</dt><dd>{formatStat(agent.energy)}<small> / {ARENA_RULES.initialEnergy}</small></dd></div>

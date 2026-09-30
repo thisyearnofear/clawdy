@@ -50,18 +50,29 @@ export function actionLabel(action: ArenaAction): string {
   return action.type
 }
 
+export function routeLabel(edgeId: string): string {
+  if (edgeId.includes('ridge')) return 'the ridge'
+  if (edgeId.includes('valley')) return 'the valley'
+  if (edgeId.includes('shortcut') || edgeId.includes('diag')) return 'the shortcut'
+  if (edgeId.includes('cross')) return 'the cross trail'
+  return edgeId
+}
+
+export function friendlyActionLabel(action: ArenaAction): string {
+  if (action.type === 'move') return `take ${routeLabel(action.edgeId)}`
+  if (action.type === 'collect') return 'collect the core'
+  if (action.type === 'bank') return 'bank cargo at base'
+  if (action.type === 'drain') return 'drain the valley'
+  return 'wait'
+}
+
 export function describeArenaDecision(agent: ArenaAgentState): string {
   if (agent.recoveries > 0 && agent.lastOutcome?.reason === 'movement-blocked') return 'Blocked route. Recovered to the last safe station.'
   const outcome = agent.lastOutcome
   if (!outcome) return 'Waiting for the first observation.'
   if (!outcome.accepted) return `Action rejected: ${outcome.reason?.replaceAll('-', ' ')}.`
   if (agent.transit) {
-    const route = agent.transit.edgeId.includes('ridge') ? 'the high route'
-      : agent.transit.edgeId.includes('valley') ? 'the valley'
-      : agent.transit.edgeId.includes('shortcut') || agent.transit.edgeId.includes('diag') ? 'a shortcut'
-      : agent.transit.edgeId.includes('cross') ? 'a cross trail'
-      : 'the next station'
-    return `Following ${route}.`
+    return `Heading to ${agent.transit.to} via ${routeLabel(agent.transit.edgeId)}.`
   }
   if (outcome.action?.type === 'bank') return 'Delivered cargo to base.'
   if (outcome.action?.type === 'collect') return 'Collected an energy core.'

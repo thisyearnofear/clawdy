@@ -1,11 +1,5 @@
-import {
-  ENCOUNTER_STAGGER_TICKS,
-  resolveEncounter,
-  shouldOfferEncounter,
-  shouldOfferSighting,
-} from './arenaEncounter'
-import type { FocusVector } from './coachingEngine'
-import type { ArenaScenario, ArenaSnapshot } from './arenaEpisode'
+import { shouldOfferEncounter, shouldOfferSighting } from './arenaEncounter'
+import type { ArenaScenario } from './arenaEpisode'
 import type { ArenaMotion } from './arenaPhysics'
 import { ArenaRunner, type EntrantPolicyOption } from './arenaPolicy'
 
@@ -13,15 +7,14 @@ import { ArenaRunner, type EntrantPolicyOption } from './arenaPolicy'
  * A predicted beat in the match ahead. The match is deterministic given its
  * scenario, entrant policies, and motion adapter, so the future is
  * computable: run a headless clone of the episode and record where the
- * presentation layer's own gating (clash / sighted / banks / floods /
- * rescues / finish) would fire.
+ * presentation layer's own gating (contested ground / sightings / banks /
+ * floods / rescues / finish) would fire.
  *
- * The clone applies clash resolutions exactly like the live UI does — cargo
- * transfer plus stagger — so moments *after* a clash stay aligned with the
- * real run instead of diverging on an unstaggered trajectory. The one
- * divergence left: if the player approves coaching examples mid-run, the
- * champion's focus vector (and so clash winners) can change after the
- * timeline was built. Moments remain advisory beats, never scoring input.
+ * Proximity is presentation only. This clone never transfers cargo or
+ * staggers an entrant: every outcome belongs to the same runner used by
+ * live play and physical practice comparison. Approved notes cannot alter
+ * the forecast or the frozen match. Moments remain advisory beats, never
+ * scoring input.
  */
 export type MatchMomentKind = 'clash' | 'sighting' | 'bank' | 'flood-on' | 'flood-off' | 'rescue' | 'finish'
 
@@ -43,7 +36,7 @@ export const MOMENT_LEAD_TICKS: Record<MatchMomentKind, number> = {
 }
 
 export const MOMENT_LABELS: Record<MatchMomentKind, string> = {
-  clash: 'clash',
+  clash: 'contested ground',
   sighting: 'sighting',
   bank: 'bank',
   'flood-on': 'flood',
@@ -56,10 +49,8 @@ export function buildMatchTimeline(
   scenario: ArenaScenario,
   options: Record<string, EntrantPolicyOption>,
   createMotion: (() => ArenaMotion) | undefined,
-  context: { championFocus: FocusVector; rivalFocus: FocusVector },
 ): MatchMoment[] {
   const motion = createMotion?.()
-  const runner = new ArenaRunner(scenario, options, motion)
   const moments: MatchMoment[] = []
   let lastEncounterTick: number | null = null
   let lastSightingTick: number | null = null
@@ -68,6 +59,8 @@ export function buildMatchTimeline(
   const lastBanked: Record<string, number> = {}
   const lastRecoveries: Record<string, number> = {}
   try {
+    const runner = new ArenaRunner(scenario, options, motion)
+    lastFlooded = runner.peek().weather.flooded
     while (runner.peek().status !== 'finished') {
       runner.advanceTicks(1)
       const live = runner.peek()
@@ -87,12 +80,11 @@ export function buildMatchTimeline(
         moments.push({ tick: live.tick, kind: live.weather.flooded ? 'flood-on' : 'flood-off' })
         lastFlooded = live.weather.flooded
       }
-      // Same gating the live overlay uses — a predicted clash also mutates the
-      // clone (cargo transfer + stagger), keeping the forecast on the same
-      // trajectory as the watched run.
+      // Same proximity gating the live overlay uses, without a score mutation:
+      // contested-ground beats describe shared space, not combat or skill.
+      // The runner alone determines the recorded trajectory.
       if (shouldOfferEncounter({ phaseRunning: true, episode: live, lastEncounterTick })) {
         lastEncounterTick = live.tick
-        applyPredictedClash(runner, live, context)
         moments.push({ tick: live.tick, kind: 'clash' })
         continue
       }
@@ -117,30 +109,7 @@ export function buildMatchTimeline(
   return moments
 }
 
-function applyPredictedClash(
-  runner: ArenaRunner,
-  live: ArenaSnapshot,
-  context: { championFocus: FocusVector; rivalFocus: FocusVector },
-) {
-  const champion = live.agents.find(agent => agent.id === 'champion')
-  const rival = live.agents.find(agent => agent.id === 'rival')
-  if (!champion || !rival) return
-  const resolution = resolveEncounter(context.championFocus, context.rivalFocus, {
-    flooded: live.weather.flooded,
-    championCargo: champion.cargo,
-    rivalCargo: rival.cargo,
-  })
-  try {
-    runner.applyEncounterClash({
-      winnerId: resolution.winnerId,
-      loserId: resolution.loserId,
-      transferCargo: resolution.transferCargo,
-      staggerTicks: ENCOUNTER_STAGGER_TICKS,
-    })
-  } catch {
-    // Advisory only — a rejected prize must not break timeline construction.
-  }
-}
+// Advisory proximity never applies a prize or changes the match authority.
 
 /**
  * The next beat strictly after `tick`. `sinceLastClash` moments that fired

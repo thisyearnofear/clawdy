@@ -191,6 +191,21 @@ export function proposeCorrection(
   const available = observation.availableActions
 
   // 1. Weather / Flood avoidance coaching
+  if (lower.includes('drain')) {
+    const drain = available.find(action => action.type === 'drain')
+    if (!drain || !observation.weather.flooded || !observation.self.transit) return null
+    return {
+      id: `ex-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      sourceEpisodeId: episodeId,
+      tick: observation.tick,
+      observation,
+      originalAction: currentAction,
+      preferredAction: drain,
+      rationale: 'Coach prefers draining during flooded transit. It spends energy and clears the valley for both rovers; improvement is not guaranteed.',
+      approved: false,
+      source: 'draft' as TrainingExampleSource,
+    }
+  }
   if (lower.includes('flood') || lower.includes('high') || lower.includes('ridge') || lower.includes('water')) {
     if (observation.weather.flooded) {
       // Find a legal non-floodable ridge move
@@ -288,23 +303,6 @@ export function proposeCorrection(
     }
   }
 
-  // 4. Manual move override to legal action
-  if (available.length > 0) {
-    const alternateMove = available.find(a => JSON.stringify(a) !== JSON.stringify(currentAction))
-    if (alternateMove) {
-      return {
-        id: `ex-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
-        sourceEpisodeId: episodeId,
-        tick: observation.tick,
-        observation,
-        originalAction: currentAction,
-        preferredAction: alternateMove,
-        rationale: `Manual coach intervention: preferred ${alternateMove.type} over current choice.`,
-        approved: false,
-        source: 'draft' as TrainingExampleSource,
-      }
-    }
-  }
-
+  // 4. Unsupported guidance needs an explicit choice, never an arbitrary move.
   return null
 }

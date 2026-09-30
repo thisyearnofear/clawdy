@@ -1,15 +1,16 @@
 'use client'
 
-import { AlertTriangle, CheckCircle2, Play, Sparkles } from 'lucide-react'
-import { ARENA_RULES, type ArenaAction, type ArenaObservation } from '../../services/arenaEpisode'
+import { Play } from 'lucide-react'
+import { ARENA_RULES, type ArenaAction } from '../../services/arenaEpisode'
 import type { CoachingCandidate } from '../../services/coachingCandidates'
+import type { RecordedCoachContext } from '../../services/coachingReview'
 import styles from '../environment/ArenaScene.module.css'
-import { actionLabel } from './readouts'
+import { actionLabel, friendlyActionLabel, routeLabel } from './readouts'
 
 export interface ReplayFrameAdvice {
   taken: ArenaAction
   atTick: number
-  observation: ArenaObservation
+  observation: unknown
   candidates: CoachingCandidate[]
 }
 
@@ -22,13 +23,13 @@ export function ReplayPanel({
   flooded,
   cinematic,
   coachingLocked,
-  currentMistake,
+  coachContext,
+  selectedAction,
   frameAdvice,
   onSeek,
   onToggleCinematic,
-  onCoachThisMoment,
-  onQueueMistake,
-  onQueueCandidate,
+  onSelectAction,
+  onQueueCorrection,
 }: {
   tick: number
   replayIndex: number
@@ -38,18 +39,19 @@ export function ReplayPanel({
   flooded: boolean
   cinematic: boolean
   coachingLocked: boolean
-  currentMistake: { recorded: ArenaAction; suggested: ArenaAction } | null
+  coachContext: RecordedCoachContext | null
+  selectedAction: ArenaAction | null
   frameAdvice: ReplayFrameAdvice | null
   onSeek: (frame: number) => void
   onToggleCinematic: () => void
-  onCoachThisMoment: () => void
-  onQueueMistake: () => void
-  onQueueCandidate: (candidate: CoachingCandidate) => void
+  onSelectAction: (action: ArenaAction) => void
+  onQueueCorrection: () => void
 }) {
   const seconds = (tick * ARENA_RULES.stepMs / 1000).toFixed(1)
+  const drainSelected = selectedAction?.type === 'drain'
   return (
-    <section className={styles.replay} aria-label="Recorded run review">
-      <div>
+    <section className={styles.replayPanel} aria-label="Recorded run review">
+      <div className={styles.replayHead}>
         <strong>Replay · {seconds}s</strong>
         <span>Frame {replayIndex + 1} / {replayLength}</span>
         <button
@@ -71,67 +73,75 @@ export function ReplayPanel({
         value={replayIndex}
         onChange={event => { onSeek(Number(event.target.value)) }}
       />
-      <div className={styles.replayCoachBar}>
-        <span>
-          Frame status: Station <strong>{championNodeId}</strong> · Cargo: <strong>{championCargo}</strong> · Weather: <strong>{flooded ? 'Submerged (Flooded)' : 'Clear'}</strong>
-        </span>
-        <div className={styles.replayButtons}>
-          <button
-            className={styles.frameCoachButton}
-            onClick={onCoachThisMoment}
-            disabled={coachingLocked}
-            title={coachingLocked ? 'Coaching is off during a scored match' : 'Propose a fix for this moment'}
-          >
-            <Sparkles size={13} />
-            Coach this moment
-          </button>
+      <p className={styles.replayStatus}>
+        Station <strong>{championNodeId}</strong> · Cargo: <strong>{championCargo}</strong> · Weather: <strong>{flooded ? 'Flooded' : 'Clear'}</strong>
+      </p>
+      {coachContext ? (
+        <div className={styles.correctionBox}>
+          <p className={styles.correctionSituation}>
+            Decision at tick {coachContext.tick} — it chose <em>{friendlyActionLabel(coachContext.originalAction)}</em>
+            <small>{actionLabel(coachContext.originalAction)}</small>
+          </p>
+          {coachContext.alternatives.length === 0 ? (
+            <p className={styles.correctionNote}>No teachable alternative here — the shared controller would make the same call.</p>
+          ) : (
+            <>
+              <div className={styles.alternativeRow} role="group" aria-label="Supported alternative actions">
+                {coachContext.alternatives.map(action => (
+                  <button
+                    key={JSON.stringify(action)}
+                    type="button"
+                    className={styles.alternativeButton}
+                    aria-pressed={selectedAction ? JSON.stringify(selectedAction) === JSON.stringify(action) : false}
+                    disabled={coachingLocked}
+                    title={`${actionLabel(action)}${action.type === 'drain' ? ` — costs ${ARENA_RULES.drainCost} energy` : ''}`}
+                    onClick={() => onSelectAction(action)}
+                  >
+                    Prefer {action.type === 'move' ? routeLabel(action.edgeId) : friendlyActionLabel(action)}
+                  </button>
+                ))}
+              </div>
+              {drainSelected && (
+                <p className={styles.correctionNote}>
+                  Drain costs {ARENA_RULES.drainCost} energy and clears the valley for both rovers. Waiting or taking another road may be better.
+                </p>
+              )}
+              {selectedAction && (
+                <div className={styles.correctionPreview} role="status">
+                  <span>Tick {coachContext.tick} · It chose <em>{friendlyActionLabel(coachContext.originalAction)}</em> · You prefer <em>{friendlyActionLabel(selectedAction)}</em></span>
+                  <button
+                    type="button"
+                    className={styles.mistakeCoachButton}
+                    disabled={coachingLocked}
+                    onClick={onQueueCorrection}
+                  >
+                    Draft correction
+                  </button>
+                </div>
+              )}
+              <p className={styles.correctionNote}>Drafts train only after you approve them in Coach.</p>
+            </>
+          )}
         </div>
-      </div>
-      {currentMistake && (
-        <div className={styles.mistakeBanner} role="status">
-          <div>
-            <AlertTriangle size={14} />
-            <strong>Looks off at {seconds}s</strong>
-            <span>It chose <em>{actionLabel(currentMistake.recorded)}</em>; the careful collector would <em>{actionLabel(currentMistake.suggested)}</em>.</span>
-          </div>
-          <button
-            className={styles.mistakeCoachButton}
-            onClick={onQueueMistake}
-            disabled={coachingLocked}
-            title={coachingLocked ? 'Coaching is off during a scored match' : 'Add this fix to the coaching queue'}
-          >
-            Queue this fix
-          </button>
-        </div>
-      )}
-      {!currentMistake && (
-        <div className={styles.frameOk} role="status">
-          <CheckCircle2 size={14} />
-          <span>This choice matches the careful collector.</span>
-        </div>
+      ) : (
+        <p className={styles.correctionNote}>
+          {coachingLocked
+            ? 'Coaching is off during a scored match.'
+            : 'Choose a different supported action to teach this moment — scrub to a decision frame first.'}
+        </p>
       )}
       {frameAdvice && (
-        <div className={styles.candidateBanner} role="status">
-          <div>
-            <Sparkles size={14} />
-            <strong>Measured alternatives</strong>
-            <span>Rolling this frame forward found actions that out-score {actionLabel(frameAdvice.taken)} on the route model.</span>
-          </div>
+        <details className={styles.referenceDetails}>
+          <summary>Reference &amp; route-model estimates</summary>
           <ul className={styles.candidateList}>
             {frameAdvice.candidates.map(candidate => (
               <li key={JSON.stringify(candidate.action)}>
                 <span>{actionLabel(candidate.action)} — {candidate.rationale}</span>
-                <button
-                  className={styles.mistakeCoachButton}
-                  onClick={() => onQueueCandidate(candidate)}
-                  title='Queue this measured fix — it trains only after you approve it'
-                >
-                  Queue this fix
-                </button>
               </li>
             ))}
           </ul>
-        </div>
+          <p className={styles.correctionNote}>Route-model estimates on this physical course; not a promise of outcome.</p>
+        </details>
       )}
     </section>
   )

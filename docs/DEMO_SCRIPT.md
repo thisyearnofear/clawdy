@@ -4,7 +4,7 @@
 
 ## One-Sentence Pitch
 
-Clawdy lets you coach and train an autonomous competitor in a physical world, then watch it use what it learned when you can no longer intervene — including when two specialized rovers clash.
+Clawdy lets you coach and train an autonomous competitor in a physical world, then watch it use what it learned when you can no longer intervene — including when two specialized rovers contest the same ground.
 
 Track: present as a **playable training league** first. Event framing: [TRIPOTHON.md](TRIPOTHON.md).
 
@@ -12,27 +12,27 @@ Track: present as a **playable training league** first. Event framing: [TRIPOTHO
 
 | Time | Show | Say |
 | --- | --- | --- |
-| 0:00–0:12 | Boot → world ready. Point at **Next** chip / **Help** if needed. Name + look on Your champion. Press **Play**; follow green champion. Amber valley / teal ridge. | "This is my agent, not my avatar. I name it, tint it, then develop its policy." |
-| 0:12–0:30 | Live race. If a **CLASH** fires, let it resolve (cargo / stagger). Flood tip or scorebug flood window. | "Limited training time means specialization — when they meet, coaching focus decides the clash." |
-| 0:30–0:48 | Finish → **Replay**. Scrub a bad valley turn. Open **Coach**; tap a **Specialize** chip (Weather / Ridge). Approve → **Train**. Show fingerprint + focus line. | "That correction becomes weights — not a saved prompt. The card shows what I trained for." |
-| 0:48–1:10 | Reset → **Match**. Coaching locked. Play held-out layout. | "Weights are frozen. Different floods and cores. I cannot help it." |
-| 1:10–1:35 | Outcome + any before/after banked / clash note. Convex lineage strip if online. | Describe the measured result honestly. |
+| 0:00–0:12 | Boot → world ready. Play control is visible before the arena. **Champion setup** stays collapsed. Press **Play**; follow green champion. Amber valley / teal ridge. | "This is my agent, not my avatar. I name it, tint it, then develop its policy." |
+| 0:12–0:30 | Live race. If a **contested-ground** cue fires, note it's presentation only — routes and pickups decide the score. Flood tip or scorebug flood window. | "The rival contests resources. Floods expose whether my route choices work." |
+| 0:30–0:48 | Finish → **Replay**. Scrub to a recorded decision. Pick a supported alternative road (button or the route itself) → **Draft correction** → **Approve** in Coach → **Train**. | "That correction becomes weights — not a saved prompt. Pickup and banking home are shared controller rules; what I taught is route preference." |
+| 0:48–1:10 | Show the **Lesson comparison** card: parent vs trained banked, signed **Score change**, first different accepted decision. **Watch the lesson** replays the trained run with the Parent ghost. Do this BEFORE Reset — switching mode clears the comparison. Read the actual delta honestly — it may be positive, zero, or negative; it is not a guaranteed improvement. | "Same practice course, same rival, same controller — this is matched practice evidence, not a held-out ranking." |
+| 1:10–1:35 | Reset → **Match**. Coaching locked. Play held-out layout. Outcome. Convex lineage strip if online. | "Weights are frozen. Different floods and cores. I cannot help it." |
 | 1:35–2:00 | Credits that are true (World Labs Spark bursts / Marble provenance, Mint rover, Convex sync); print/share if time. Reset. | "The world is the test. Developing the competitor is the game." |
 
-If a clash does not fire live, do not fake one — point at the **Focus** fingerprint and say encounters resolve from those vectors when rovers meet (`services/arenaEncounter.ts`).
+If no contested-ground cue fires live, do not fake one — point at the **Focus** fingerprint and say proximity cues are presentation only; score comes from routes, pickups and banking (`services/arenaEncounter.ts`).
 
 The schedule is presentation pacing, not training latency. Benchmark the real workflow before deciding which parts run live.
 
 ## Evidence That Must Be Visible
 
 - Which baseline or parent checkpoint is acting (Style / Active brain).
-- Champion **name / look** and **focus fingerprint** when coaching data exists.
+- Champion **name / look** and **focus fingerprint** when coaching data exists — it summarizes approved notes, it is not a measured competitive-strength readout.
 - The recorded observation and decision being corrected.
-- Specialize chip or rule → approved example → Train → new checkpoint name.
+- Recorded alternative → draft correction → approved example → Train → new checkpoint name.
 - Post-train focus line when present.
 - Whether the match is live or replayed and whether its scenario is held out.
 - Frozen weights and disabled coaching during Match.
-- Actual actions and consequences (scorebug, race feed, optional clash prize) — not only language.
+- Actual actions and consequences (scorebug, race feed) — not only language.
 - Flood / layout variables and how the bot responded.
 - Evaluation sample count / comparison when you show Train results.
 

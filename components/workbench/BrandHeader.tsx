@@ -1,25 +1,24 @@
 'use client'
 
 import { HelpCircle, Layers } from 'lucide-react'
-import type { PolicyCheckpoint } from '../../services/policyModel'
+import { useArenaStore } from '../../services/arenaStore'
 import styles from '../environment/ArenaScene.module.css'
 
 export function BrandHeader({
-  activeCheckpoint,
   championName,
   onOpenHelp,
 }: {
-  activeCheckpoint: PolicyCheckpoint
   championName: string
   onOpenHelp: () => void
 }) {
+  const activeCheckpoint = useArenaStore(state => state.activeCheckpoint)
   return (
     <header className={styles.header}>
       <div className={styles.brand}><span className={styles.brandMark} aria-hidden="true">C</span> CLAWDY</div>
       <div className={styles.headerActions}>
-        <div className={styles.checkpointBadge}>
+        <div className={styles.checkpointBadge} title={`${championName} · ${activeCheckpoint.name}`}>
           <Layers size={13} />
-          <span>{championName} · {activeCheckpoint.name}</span>
+          <span className={styles.checkpointBadgeText}>{championName} · {activeCheckpoint.name}</span>
         </div>
         <button type="button" className={styles.helpButton} onClick={onOpenHelp} aria-label="Open help">
           <HelpCircle size={15} /> Help
