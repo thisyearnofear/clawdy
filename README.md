@@ -28,6 +28,10 @@ Both paths produce the same checkpoint artifact and run under the same match rul
 
 **Play:** [https://clawdy-nine.vercel.app/](https://clawdy-nine.vercel.app/) — Practice → Replay → Coach → Train → Match. No wallet. Checkpoints sync to Convex under a browser guest key when configured; `localStorage` + JSON export always work offline.
 
+### Saving your progress
+
+Your progress is saved in this browser as you play. When cloud sync is available, it keeps a guest-keyed copy in Convex; if you go offline or sync hits a snag, you can keep playing and your local progress remains safe. The Coach panel shows whether changes are waiting to sync or need attention. Export a checkpoint as JSON from **Coach → Brains, storage & sync** to back it up or move it to another browser.
+
 ## Quick Start
 
 ```bash
