@@ -17,7 +17,7 @@ import * as THREE from 'three'
 
 import type { ArenaCourse } from '../../services/arenaCourse'
 import type { ArenaSession } from '../../services/arenaSession'
-import { createFloodCorridorMask, floodFillLevel, floodFootprint, floodWaterY } from '../../services/arenaFlood'
+import { createFloodCorridorMask, floodFillLevel, floodFootprint, floodWakes, floodWaterY } from '../../services/arenaFlood'
 import { ARENA_RULES } from '../../services/arenaEpisode'
 
 const HEIGHT_TEX_RES = 160 // samples along the longer axis; cells stay ~square
@@ -46,6 +46,8 @@ uniform float uWaterY;
 uniform float uTime;
 uniform float uHeightMin;
 uniform float uHeightRange;
+uniform vec4 uWakes[2];
+uniform float uWakeCount;
 varying vec3 vWorld;
 
 void main() {
@@ -71,8 +73,10 @@ void main() {
   float spec = pow(max(dot(n, halfDir), 0.0), 42.0) * 0.6;
   float fresnel = pow(1.0 - max(dot(n, viewDir), 0.0), 2.0) * 0.25;
 
-  float depthMix = clamp(depth / 1.15, 0.0, 1.0);
-  vec3 color = mix(shallow, deep, depthMix) + spec * vec3(1.0, 0.95, 0.8) + fresnel * vec3(0.7, 0.9, 0.95);
+  // Approximate absorption from the known terrain clearance: clear shallows,
+  // increasingly saturated deep water, while the valley stays visible.
+  float absorption = 1.0 - exp(-max(depth, 0.0) * 1.15);
+  vec3 color = mix(shallow, deep, absorption) + spec * vec3(1.0, 0.95, 0.8) + fresnel * vec3(0.7, 0.9, 0.95);
 
   // A bright, continuous shoreline makes the advancing waterline legible
   // against sandstone; animated foam gives it movement without breaking up the edge.
@@ -80,9 +84,22 @@ void main() {
   float ripple = 0.75 + 0.25 * sin(uTime * 3.2 + vWorld.x * 8.0 + vWorld.z * 6.0);
   color = mix(color, foam, shore * ripple * 0.9);
 
+  // Twin, fading V-shaped highlights trail only moving rovers on wet routes.
+  float wake = 0.0;
+  for (int i = 0; i < 2; i++) {
+    if (float(i) >= uWakeCount) break;
+    vec2 direction = uWakes[i].zw;
+    vec2 offset = vWorld.xz - uWakes[i].xy;
+    float behind = -dot(offset, direction);
+    float side = abs(dot(offset, vec2(-direction.y, direction.x)));
+    float arms = exp(-pow((side - 0.16 - behind * 0.22) / 0.13, 2.0));
+    wake = max(wake, arms * smoothstep(0.0, 0.3, behind) * (1.0 - smoothstep(1.1, 2.6, behind)));
+  }
+  color = mix(color, foam, wake * 0.4);
+
   // Keep the terrain and route choices visible beneath the water, while
   // the advancing shoreline remains bright enough to read at a glance.
-  float alpha = smoothstep(0.0, 0.06, depth) * (0.40 + 0.22 * depthMix + fresnel * 0.6);
+  float alpha = smoothstep(0.0, 0.06, depth) * (0.34 + 0.28 * absorption + fresnel * 0.6);
   alpha = max(alpha, shore * ripple * 0.84);
   alpha *= corridor;
   if (alpha < 0.01) discard;
@@ -95,6 +112,7 @@ type Props = { session: ArenaSession; course: ArenaCourse }
 export function FloodWater({ session, course }: Props) {
   const meshRef = useRef<THREE.Mesh>(null)
   const footprint = useMemo(() => floodFootprint(course), [course])
+  const corridorMask = useMemo(() => createFloodCorridorMask(course), [course])
   const materialRef = useRef<THREE.ShaderMaterial>(null)
   const heightTex = useRef<THREE.DataTexture | null>(null)
 
@@ -111,7 +129,6 @@ export function FloodWater({ session, course }: Props) {
     const data = new Uint8Array(nx * nz * 4)
     const heightMin = footprint.dryY - 1
     const heightRange = footprint.waterY - heightMin + 1
-    const corridorMask = createFloodCorridorMask(course)
     for (let j = 0; j < nz; j++) {
       for (let i = 0; i < nx; i++) {
         const x = minX + ((i + 0.5) / nx) * sizeX
@@ -137,7 +154,7 @@ export function FloodWater({ session, course }: Props) {
     heightTex.current = tex
     if (materialRef.current) materialRef.current.uniforms.uHeights.value = tex
     return () => tex.dispose()
-  }, [footprint, course, session])
+  }, [footprint, corridorMask, session])
 
   const uniforms = useMemo(() => footprint && ({
     // Dry placeholder until the ground and corridor bake completes.
@@ -147,6 +164,8 @@ export function FloodWater({ session, course }: Props) {
     uWaterY: { value: footprint.dryY },
     uHeightMin: { value: footprint.dryY - 1 },
     uHeightRange: { value: footprint.waterY - footprint.dryY + 2 },
+    uWakes: { value: [new THREE.Vector4(), new THREE.Vector4()] },
+    uWakeCount: { value: 0 },
     uTime: { value: 0 },
   }), [footprint])
 
@@ -165,6 +184,11 @@ export function FloodWater({ session, course }: Props) {
     const u = materialRef.current.uniforms
     u.uTime.value = state.clock.elapsedTime
     u.uWaterY.value = floodWaterY(footprint, level)
+    const wakes = level > 0.002 ? floodWakes(ep, course, u.uWaterY.value, corridorMask) : []
+    u.uWakeCount.value = wakes.length
+    for (let i = 0; i < wakes.length; i++) {
+      u.uWakes.value[i].set(...wakes[i])
+    }
     // The surface rides the waterline — the visible rise IS the flood event.
     meshRef.current.position.y = u.uWaterY.value
     meshRef.current.visible = level > 0.002

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { ARENA_RULES } from '../arenaEpisode'
-import { FLOOD_RISE_TICKS, FLOOD_RECEDE_TICKS, createFloodCorridorMask, floodFillLevel, floodFootprint, floodWaterY } from '../arenaFlood'
+import { FLOOD_RISE_TICKS, FLOOD_RECEDE_TICKS, createFloodCorridorMask, floodFillLevel, floodFootprint, floodWakes, floodWaterY } from '../arenaFlood'
 import type { ArenaCourse } from '../arenaCourse'
+import type { ArenaSnapshot } from '../arenaEpisode'
 
 const DRAIN = ARENA_RULES.drainTicks
 const FLOODS = [
@@ -100,6 +101,28 @@ describe('floodFootprint', () => {
     expect(mask(6.5, 4)).toBe(0)
     expect(mask(12, 4)).toBe(0)
     expect(mask(12, 8)).toBe(0)
+  })
+
+  it('makes a wake only for a moving rover on a submerged floodable route', () => {
+    const moving = {
+      id: 'champion',
+      position: [4, 0.5, 4],
+      transit: { edgeId: 'e1', from: 'a', to: 'b' },
+    }
+    const nodes = [
+      { id: 'a', position: [4, 0.4, 2] },
+      { id: 'b', position: [4, 0.6, 8] },
+    ]
+    const withNodes = { ...course, scenario: { ...course.scenario, nodes } } as ArenaCourse
+    const snapshot = (agent: typeof moving | (Omit<typeof moving, 'transit'> & { transit: null }), flooded = true) =>
+      ({ weather: { flooded }, agents: [agent] }) as unknown as ArenaSnapshot
+    expect(floodWakes(snapshot(moving), withNodes, 0.8)).toEqual([[4, 4, 0, 1]])
+    expect(floodWakes({ ...snapshot(moving), agents: [moving, moving, moving] } as unknown as ArenaSnapshot, withNodes, 0.8)).toHaveLength(2)
+    expect(floodWakes(snapshot(moving, false), withNodes, 0.8)).toEqual([])
+    expect(floodWakes(snapshot({ ...moving, transit: null }), withNodes, 0.8)).toEqual([])
+    expect(floodWakes(snapshot({ ...moving, position: [4, 1.1, 4] }), withNodes, 0.8)).toEqual([])
+    expect(floodWakes(snapshot({ ...moving, position: [12, 0.5, 4] }), withNodes, 0.8)).toEqual([])
+    expect(floodWakes(snapshot({ ...moving, transit: { ...moving.transit, edgeId: 'e3' } }), withNodes, 0.8)).toEqual([])
   })
 
   it('returns null when nothing is floodable', () => {

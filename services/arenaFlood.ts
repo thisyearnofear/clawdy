@@ -5,6 +5,7 @@
  * waterline: it cannot drift or depend on wall-clock rendering.
  */
 import type { ArenaCourse } from './arenaCourse'
+import type { ArenaSnapshot } from './arenaEpisode'
 
 /** Ticks for the waterline to climb from dry to full once flooding starts (1s). */
 export const FLOOD_RISE_TICKS = 20
@@ -145,6 +146,31 @@ export function createFloodCorridorMask(course: ArenaCourse): (x: number, z: num
     // A narrow, translucent channel with a soft edge instead of a lake.
     return Math.max(0, Math.min(1, (1.65 - distance) / 0.85))
   }
+}
+
+/** Moving rovers on flooded, submerged routes create subtle directional wakes. */
+export function floodWakes(
+  snapshot: ArenaSnapshot, course: ArenaCourse, waterY: number,
+  corridorMask = createFloodCorridorMask(course),
+): [number, number, number, number][] {
+  if (!snapshot.weather.flooded) return []
+  const wakes: [number, number, number, number][] = []
+  for (const agent of snapshot.agents) {
+    if (!agent.transit || agent.position[1] > waterY + 0.2 ||
+        corridorMask(agent.position[0], agent.position[2]) < 0.5) continue
+    const edge = course.scenario.edges.find(candidate => candidate.id === agent.transit!.edgeId)
+    if (!edge?.floodable) continue
+    const from = course.scenario.nodes.find(node => node.id === agent.transit!.from)
+    const to = course.scenario.nodes.find(node => node.id === agent.transit!.to)
+    if (!from || !to) continue
+    const dx = to.position[0] - from.position[0]
+    const dz = to.position[2] - from.position[2]
+    const length = Math.hypot(dx, dz)
+    if (length < 0.01) continue
+    wakes.push([agent.position[0], agent.position[2], dx / length, dz / length])
+    if (wakes.length === 2) break
+  }
+  return wakes
 }
 
 /** Linear waterline for a fill level — drives both mesh y and shore depth. */
