@@ -1040,3 +1040,6 @@ a.secondaryButton { text-decoration: none; }
 .broadcastScorebug button { background: none; border: 0; color: inherit; cursor: pointer; display: inline-flex; }
 .broadcastStage[data-expanded="true"] .broadcastLowerThird { left: 20px; right: 20px; bottom: 20px; padding: 8px 14px; font-size: 13px; }
 .broadcastStage[data-expanded="true"] .broadcastLowerThird strong { font-size: 11px; }
+.broadcastCta { display: inline-flex; align-items: center; gap: 7px; padding: 0 16px; min-height: 40px; border: 1px solid #a8834a; border-radius: 6px; background: #6b4f1d; color: #fff; font-weight: 650; font-size: 13px; cursor: pointer; transition: background 120ms ease; }
+.broadcastCta:hover:not(:disabled) { background: #563e14; }
+.broadcastCta:disabled { opacity: 0.5; cursor: not-allowed; }

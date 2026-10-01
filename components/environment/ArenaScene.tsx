@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { ArrowRight, Clapperboard, Download, Eye, FastForward, HelpCircle, Pause, Play, Printer, RotateCcw, SkipForward, Sparkles, Volume2, VolumeX } from 'lucide-react'
+import { ArrowRight, Clapperboard, Download, Eye, FastForward, HelpCircle, Pause, Play, Printer, Radio, RotateCcw, SkipForward, Sparkles, Volume2, VolumeX } from 'lucide-react'
 import { ARENA_RULES, observeSnapshot, type ArenaAction, type ArenaObservation, type ArenaRecording } from '../../services/arenaEpisode'
 import { loadArenaCourse, applyCourseMode, type ArenaCourse, type CoursePlayMode } from '../../services/arenaCourse'
 import { isEvaluationScenario, rejectEvaluationExamples } from '../../services/arenaScenarios'
@@ -102,6 +102,7 @@ function Workbench({
   const [playMode, setPlayMode] = useState<CoursePlayMode>('practice')
   const [activeCourse, setActiveCourse] = useState(course)
   const [studioOpen, setStudioOpen] = useState(false)
+  const [broadcastRequest, setBroadcastRequest] = useState(0)
   const [hintOpen, setHintOpen] = useState(() => !readHintDismissed())
   const [coachNudgeOpen, setCoachNudgeOpen] = useState(false)
   const [hasCompletedRun, setHasCompletedRun] = useState(false)
@@ -712,6 +713,9 @@ function Workbench({
     recordFunnelEvent('run.start', `mode=${playMode} from=${view.phase}`)
     session.start()
   }
+  const startMatchRef = useRef(primaryAction)
+  useEffect(() => { startMatchRef.current = primaryAction })
+  const canBroadcast = visualReady && !isTraining && (view.phase === 'ready' || view.phase === 'finished')
   const primaryLabel = view.phase === 'running' ? 'Pause' : view.phase === 'paused' ? 'Resume' : view.phase === 'finished' ? 'Play again' : view.phase === 'review' ? 'Back to match' : view.phase === 'error' ? 'Reload world' : 'Play'
 
   // Fast-forward is pure presentation: the episode is deterministic and the
@@ -1265,7 +1269,7 @@ function Workbench({
         <div>
           <p className={styles.eyebrow}>TRAIN YOUR CHAMPION</p>
           <h1>Watch it play. Then teach it.</h1>
-          <p className={styles.lede}>Two rovers race for cores. After the round, replay a mistake, approve a fix, and train a new brain.</p>
+          <p className={styles.lede}>A trained rover races for cores on its own — and Orbis broadcasts the match live as generated video. Hit <strong>Watch it broadcast live</strong>, or Play to replay a mistake, approve a fix and train a new brain.</p>
         </div>
         <div className={styles.introAside}>
           <ol className={styles.progress}>
@@ -1297,6 +1301,16 @@ function Workbench({
             {view.phase === 'running' ? <Pause size={16} /> : <Play size={16} />}
             {primaryLabel}
           </button>
+          {canBroadcast && (
+            <button
+              className={styles.broadcastCta}
+              onClick={() => setBroadcastRequest(n => n + 1)}
+              title="Connect the Orbis live-video feed, then start the match"
+            >
+              <Radio size={16} />
+              Watch it broadcast live
+            </button>
+          )}
           {(view.phase === 'running' || view.phase === 'paused') && (
             <>
               <button
@@ -1319,7 +1333,7 @@ function Workbench({
             </>
           )}
           <button className={styles.secondaryButton} onClick={() => { setCinematic(false); floodWarnedRef.current = null; lastEncounterTickRef.current = null; lastSightingTickRef.current = null; sightingCountRef.current = 0; setDirector(null); setComparison(null); setComparisonReviewing(null); setCoachSelection(null); setRunTip(null); session.reset() }} disabled={!visualReady || view.phase === 'error' || isTraining}><RotateCcw size={15} />Reset</button>
-          <button className={styles.secondaryButton} onClick={() => session.review()} disabled={(view.phase !== 'paused' && view.phase !== 'finished') || isTraining}><Eye size={16} />Replay</button>
+          <button className={styles.secondaryButton} onClick={() => session.review()} title={view.phase === 'paused' || view.phase === 'finished' ? 'Scrub the recorded round' : 'Available once a round is paused or finished'} disabled={(view.phase !== 'paused' && view.phase !== 'finished') || isTraining}><Eye size={16} />Replay</button>
           {(hasCompletedRun || view.phase !== 'ready' || view.episode.tick > 0) && (
             <button
               className={styles.secondaryButton}
@@ -1569,7 +1583,7 @@ function Workbench({
               />
             ))
           )}
-          <BroadcastPanel session={session} />
+          <BroadcastPanel session={session} request={broadcastRequest} onFeedReady={() => startMatchRef.current()} />
           <div className={styles.ruleCard}>
             <strong>{playMode === 'compete' ? 'Scored match. No coaching.' : 'Collect. Bank. Survive the flood.'}</strong>
             <p>{playMode === 'compete' ? 'Same world, different flood and core layout. Weights stay frozen until you reset to Practice.' : `Grab cores and bank them at base. Floods slow the valley; a drain costs ${ARENA_RULES.drainCost} energy and helps both rovers.`}</p>

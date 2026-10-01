@@ -62,16 +62,24 @@ function upsertTimeline(entries: TimelineEntry[], intent: BroadcastIntent, statu
   return [{ id, status, intent }, ...next].slice(0, 6)
 }
 
-export default function BroadcastPanel({ session }: { session: ArenaSession }) {
+interface BroadcastPanelProps {
+  session: ArenaSession
+  /** Increments each time the main action bar asks to broadcast the next match. */
+  request?: number
+  /** Fired once the live feed is ready, so the host can start the match in step with the video. */
+  onFeedReady?: () => void
+}
+
+export default function BroadcastPanel({ session, request = 0, onFeedReady }: BroadcastPanelProps) {
   const tokenResolver = useMemo(() => createReactorTokenResolver(), [])
   return (
     <ViskoOrbisDynamicProvider jwtToken={tokenResolver}>
-      <BroadcastExperience session={session} />
+      <BroadcastExperience session={session} request={request} onFeedReady={onFeedReady} />
     </ViskoOrbisDynamicProvider>
   )
 }
 
-function BroadcastExperience({ session }: { session: ArenaSession }) {
+function BroadcastExperience({ session, request = 0, onFeedReady }: BroadcastPanelProps) {
   const reactor = useViskoOrbisDynamic()
   const view = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot)
   const director = useMemo(() => new OrbisDirector({ minDispatchIntervalMs: 1400 }), [])
@@ -284,6 +292,24 @@ function BroadcastExperience({ session }: { session: ArenaSession }) {
     }
     prevLiveRef.current = null
   }, [mode, view, session, director, enqueueTrigger])
+
+  // One-click path from the main action bar: connect, fill the screen, and
+  // start the match only once the feed is ready so video and action begin together.
+  const lastRequestRef = useRef(request)
+  const pendingStartRef = useRef(false)
+  useEffect(() => {
+    if (request === lastRequestRef.current) return
+    lastRequestRef.current = request
+    pendingStartRef.current = true
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- responding to an external request signal
+    setExpanded(true)
+    if (modeRef.current === 'off') void connectLive()
+  }, [request, connectLive])
+  useEffect(() => {
+    if (!pendingStartRef.current || mode !== 'live' || reactor.status !== 'ready') return
+    pendingStartRef.current = false
+    onFeedReady?.()
+  }, [mode, reactor.status, onFeedReady])
 
   const liveModelState = reactor.status === 'ready' ? modelState : null
   const showPriming = priming && reactor.status === 'ready'
