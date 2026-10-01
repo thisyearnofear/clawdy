@@ -46,6 +46,11 @@ export function LessonComparison({
       <p className={styles.correctionNote}>
         Matched physical practice, not held-out or ranked. Rival banked {comparison.baseline.rivalBanked} vs {comparison.trained.rivalBanked}; winner: {comparison.trained.winner ?? 'draw'}.
       </p>
+      {delta < 0 && (
+        <p className={styles.correctionNote}>
+          <strong>A dip here is normal</strong> — one correction can regress before it clicks. Approve a few more examples, or try a different fix, before judging this brain.
+        </p>
+      )}
       {divergence ? (
         <p className={styles.correctionNote}>
           First different accepted decision at tick {divergence.tick}: parent chose <em>{friendlyActionLabel(divergence.parentAction)}</em>, trained chose <em>{friendlyActionLabel(divergence.childAction)}</em>.

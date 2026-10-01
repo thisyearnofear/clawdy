@@ -503,9 +503,46 @@ a.secondaryButton { text-decoration: none; }
   padding: 12px 14px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 14px;
+  gap: 10px;
   font-size: 11px;
+  color: #2f6b3a;
+  animation: statusCardIn 180ms ease;
+}
+
+.trainingStatusCard span { color: var(--ink); flex: 1; }
+.trainingStatusCard svg { flex-shrink: 0; }
+
+.trainingStatusCard[data-tone='caution'] {
+  background: #fdf6e8;
+  border-color: #e8d5a8;
+  color: #8a6a1f;
+}
+
+.trainingStatusCard[data-tone='error'] {
+  background: #fbeeea;
+  border-color: #e3b3a4;
+  color: #9a3b2e;
+}
+
+.trainingStatusCard[data-tone='busy'] {
+  background: #eef1f4;
+  border-color: #c7d0d8;
+  color: #4a5b68;
+}
+
+.statusIconSpin { animation: statusIconSpin 1s linear infinite; }
+
+@keyframes statusCardIn {
+  from { opacity: 0; transform: translateY(-4px); }
+}
+
+@keyframes statusIconSpin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trainingStatusCard { animation: none; }
+  .statusIconSpin { animation: none; }
 }
 
 .trainingResultCard {

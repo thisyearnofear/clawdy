@@ -1,7 +1,7 @@
 'use client'
 
 import type React from 'react'
-import { AlertTriangle, CheckCircle2, Download, Sparkles, Upload, XCircle } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Download, Loader2, Sparkles, Upload, XCircle } from 'lucide-react'
 import { COACHING_RULES, SPECIALIZATION_CHIPS } from '../../services/coachingEngine'
 import { isEvaluationScenario } from '../../services/arenaScenarios'
 import type { ArenaTrainingExample } from '../../services/policyTrainer'
@@ -9,7 +9,14 @@ import type { PolicyCheckpoint } from '../../services/policyModel'
 import { ConvexLineageBadge } from '../ConvexClientProvider'
 import styles from '../environment/ArenaScene.module.css'
 import { SyncStatusChip } from './SyncStatusChip'
-import { isExecutableCheckpoint } from './readouts'
+import { classifyStatusTone, isExecutableCheckpoint } from './readouts'
+
+const STATUS_TONE_ICON = {
+  success: CheckCircle2,
+  caution: AlertTriangle,
+  error: XCircle,
+  busy: Loader2,
+} as const
 
 export function CoachPanel({
   activeCheckpoint,
@@ -64,6 +71,7 @@ export function CoachPanel({
           <h2>Coach</h2>
           <p>Choose an alternative road or wait/drain action in Replay. Approve the draft here, then train.</p>
           {trainFocusLine && <p className={styles.focusLine}>{trainFocusLine}</p>}
+          <SyncStatusChip />
         </div>
       </div>
 
@@ -71,7 +79,7 @@ export function CoachPanel({
         <div className={styles.evaluationNotice} role="alert">
           <AlertTriangle size={14} />
           <strong>Scored match</strong>
-          <span>Coaching and training stay off. Switch to Practice to teach it.</span>
+          <span>Coaching and training stay off here. Switch to Practice to keep teaching it.</span>
         </div>
       )}
 
@@ -129,11 +137,16 @@ export function CoachPanel({
         </div>
       </div>
 
-      {trainMessage && (
-        <div className={styles.trainingStatusCard} role="status">
-          <span>{trainMessage}</span>
-        </div>
-      )}
+      {trainMessage && (() => {
+        const tone = classifyStatusTone(trainMessage)
+        const ToneIcon = STATUS_TONE_ICON[tone]
+        return (
+          <div className={styles.trainingStatusCard} data-tone={tone} role="status">
+            <ToneIcon size={14} className={tone === 'busy' ? styles.statusIconSpin : undefined} aria-hidden />
+            <span>{trainMessage}</span>
+          </div>
+        )
+      })()}
 
       <details className={styles.guidanceDetails}>
         <summary>Keyword guidance (limited parser)</summary>
@@ -230,7 +243,6 @@ export function CoachPanel({
         </div>
         <div className={styles.checkpointActions}>
           <ConvexLineageBadge />
-          <SyncStatusChip />
         </div>
       </details>
     </section>

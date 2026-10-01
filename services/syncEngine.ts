@@ -450,7 +450,7 @@ async function flush(): Promise<void> {
           // Retrying can never succeed; drop the write and tell the user.
           outbox.shift()
           persist()
-          setPhase('error', 'Cloud limit reached — export stays available offline.')
+          setPhase('error', "This guest's cloud storage is full — export still works, and nothing on this device is at risk.")
           continue
         }
         if (message.includes('offline') || message.includes('Failed to fetch') || message.includes('network')) {
@@ -460,7 +460,7 @@ async function flush(): Promise<void> {
         }
         outbox.shift() // rejected-stale / unknown: a later pull converges
         persist()
-        setPhase('error', 'Some changes were refused by the server; the next sync reconciles.')
+        setPhase('error', "The cloud pushed back on a couple of changes — no action needed, the next sync sorts it out.")
         continue
       }
     }
@@ -610,7 +610,7 @@ export function startArenaSync(client: ConvexReactClient | null): () => void {
     const pulled = await runPull(client)
     if (!pulled) {
       setPhase(typeof navigator !== 'undefined' && navigator.onLine === false ? 'offline-queued' : 'error',
-        'Could not reach Convex — working offline.')
+        "Couldn't reach the cloud — playing offline for now. Nothing's lost; it's all still saved on this device.")
     } else {
       const state = useArenaStore.getState()
       const plan = planMerge(

@@ -44,6 +44,22 @@ export function formatStat(value: number): string {
   return Math.abs(value - rounded) < 1e-6 ? String(rounded) : value.toFixed(1)
 }
 
+export type StatusTone = 'success' | 'caution' | 'error' | 'busy'
+
+/**
+ * Status-card copy is plain English, not structured data, so there is no
+ * explicit severity field to key off. These keyword buckets are a light
+ * heuristic over a known, short set of player-facing strings — good enough
+ * to drive an icon and a color, not a general-purpose classifier.
+ */
+export function classifyStatusTone(message: string): StatusTone {
+  const text = message.toLowerCase()
+  if (/(couldn't|could not|can't|cannot|didn't|wouldn't|failed|refused|blocked|unexpectedly|hiccup|snag)/.test(text)) return 'error'
+  if (/(hit reset|can't switch|first —|scored match|only works on practice|held-out|older format|view-only)/.test(text)) return 'caution'
+  if (text.endsWith('…')) return 'busy'
+  return 'success'
+}
+
 export function actionLabel(action: ArenaAction): string {
   if (action.type === 'move') return `move ${action.edgeId}`
   if (action.type === 'collect') return `collect ${action.resourceId}`

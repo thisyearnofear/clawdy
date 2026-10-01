@@ -66,7 +66,7 @@ import styles from './ArenaScene.module.css'
 
 const WorldView = dynamic(() => import('./ArenaWorldView'), { ssr: false })
 const viewOnlyCheckpointMessage = (checkpoint: PolicyCheckpoint) =>
-  `"${checkpoint.name}" is a view-only v1 brain — re-train its examples to upgrade, then run the new checkpoint.`
+  `"${checkpoint.name}" is from an older format, so it's view-only for now — re-train its examples to bring it up to date and make it playable again.`
 const CAMERA_LABELS: Record<ArenaCamera, string> = {
   overview: 'Arena',
   champion: 'Follow you',
@@ -220,7 +220,7 @@ function Workbench({
       if (legacy.length > 0) {
         // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot boot read of localStorage; the quarantine notice must land before first paint
         setTrainMessage(
-          `${legacy.length} stored brain${legacy.length === 1 ? ' is' : 's are'} view-only (v1 schema) — re-train ${legacy.length === 1 ? 'its' : 'their'} examples to upgrade.`,
+          `${legacy.length} saved brain${legacy.length === 1 ? '' : 's'} ${legacy.length === 1 ? 'is' : 'are'} from an older format and can only be viewed for now — re-train ${legacy.length === 1 ? 'its' : 'their'} examples to bring ${legacy.length === 1 ? 'it' : 'them'} up to date.`,
         )
       }
     }
@@ -236,7 +236,7 @@ function Workbench({
       session.setCheckpoint(first)
       session.selectPolicy('champion', 'learned', first)
     } catch (err) {
-      setTrainMessage(`Stored brain refused: ${err instanceof Error ? err.message : 'incompatible checkpoint'}`)
+      setTrainMessage(`Couldn't load your saved brain (${err instanceof Error ? err.message : 'incompatible checkpoint'}) — starting fresh with the house brain instead.`)
     }
     if (storedExamples.length > 0) {
       store.setExamples(storedExamples)
@@ -688,7 +688,7 @@ function Workbench({
     setTournamentRunning(true)
     void runTournament(bracket, activeCourse.scenario, createMotion, () => setTournament({ ...bracket }))
       .then(() => setTournament({ ...bracket }))
-      .catch(() => setTrainMessage('The tournament stopped unexpectedly.'))
+      .catch(() => setTrainMessage('The tournament hit a snag and had to stop — give it another go.'))
       .finally(() => setTournamentRunning(false))
   }
 
@@ -790,12 +790,12 @@ function Workbench({
   const handlePropose = (text: string) => {
     if (isTraining || view.phase === 'running') return
     if (coachingLocked) {
-      setTrainMessage('This is a scored match. Switch to Practice to coach and train.')
+      setTrainMessage('Coaching is off during a scored Match — hop back to Practice to keep teaching.')
       return
     }
     if (!text.trim()) return
     if (!coachContext || !reviewRecording) {
-      setTrainMessage('Replay a recorded decision first — open Replay and scrub to a decision frame.')
+      setTrainMessage('Pick a moment to coach first — open Replay and scrub to a decision.')
       return
     }
     const example = proposeCorrection(text, coachContext.observation, coachContext.originalAction, reviewRecording.scenario.id)
@@ -804,15 +804,15 @@ function Workbench({
       recordFunnelEvent('example.draft', 'prompt')
       setPromptText('')
       setStudioOpen(true)
-      setTrainMessage(`Proposed a fix at ${example.tick}: ${example.rationale} Approve it, then train.`)
+      setTrainMessage(`Got it — drafted "${example.rationale}" for tick ${example.tick}. Approve it below, then train when you're ready.`)
     } else {
-      setTrainMessage(`Could not find a valid legal action matching that guidance for tick ${coachContext.tick}.`)
+      setTrainMessage(`That note doesn't match a legal move at tick ${coachContext.tick} — try different wording, or pick an alternative in Replay.`)
     }
   }
 
   const handleExportCheckpoint = () => {
     downloadCheckpointFile(activeCheckpoint)
-    setTrainMessage(`Exported checkpoint file: ${activeCheckpoint.name}`)
+    setTrainMessage(`Downloaded "${activeCheckpoint.name}" as a checkpoint file — share it or keep it as a backup.`)
   }
 
   const handleImportClick = () => {
@@ -839,7 +839,7 @@ function Workbench({
         importAbortRef.current = null
         if (fileInputRef.current) fileInputRef.current.value = ''
         if (!canImport()) {
-          setTrainMessage('Import refused: reset to a fresh Practice setup first.')
+          setTrainMessage("Can't import mid-round — hit Reset to start a fresh Practice setup first.")
           return
         }
         setCheckpoints(prev => {
@@ -847,7 +847,7 @@ function Workbench({
           return [imported, ...filtered]
         })
         if (!isExecutableCheckpoint(imported)) {
-          setTrainMessage(`Imported ${imported.name} as view-only. ${viewOnlyCheckpointMessage(imported)}`)
+          setTrainMessage(`Imported "${imported.name}" — ${viewOnlyCheckpointMessage(imported)}`)
           return
         }
         try {
@@ -857,9 +857,9 @@ function Workbench({
           setComparison(null)
           setComparisonReviewing(null)
           setCoachSelection(null)
-          setTrainMessage(`Successfully imported checkpoint: ${imported.name} (${imported.weightsHash.slice(0, 14)})`)
+          setTrainMessage(`Imported "${imported.name}" and made it active — ready to play (checkpoint ${imported.weightsHash.slice(0, 8)}).`)
         } catch (err) {
-          setTrainMessage(`Imported ${imported.name} but could not make it active: ${err instanceof Error ? err.message : 'incompatible checkpoint'}`)
+          setTrainMessage(`Saved "${imported.name}", but couldn't make it active: ${err instanceof Error ? err.message : 'incompatible checkpoint'}. Try selecting it from the brain list.`)
         }
       })
       .catch(err => {
@@ -867,10 +867,10 @@ function Workbench({
         importAbortRef.current = null
         if (fileInputRef.current) fileInputRef.current.value = ''
         if (err instanceof Error && err.name === 'AbortError') {
-          if (!canImport()) setTrainMessage('Import refused: reset to a fresh Practice setup first.')
+          if (!canImport()) setTrainMessage("Can't import mid-round — hit Reset to start a fresh Practice setup first.")
           return
         }
-        setTrainMessage(`Import failed: ${err instanceof Error ? err.message : 'Invalid checkpoint file'}`)
+        setTrainMessage(`That file didn't import: ${err instanceof Error ? err.message : 'Invalid checkpoint file'}. Double-check it's a Clawdy checkpoint export.`)
       })
   }
 
@@ -879,7 +879,7 @@ function Workbench({
     const target = examples.find(ex => ex.id === id)
     if (!target) return
     if (isEvaluationScenario(target.sourceEpisodeId)) {
-      setTrainMessage(`Cannot approve an example from held-out scenario "${target.sourceEpisodeId}". It is reserved for evaluation.`)
+      setTrainMessage(`That example is from a held-out Match scenario ("${target.sourceEpisodeId}") — it's reserved for scoring, so it can't be approved for training.`)
       return
     }
     const approved = !target.approved
@@ -896,7 +896,7 @@ function Workbench({
 
   const handleTrain = () => {
     if (coachingLocked) {
-      setTrainMessage('This is a scored match. Switch to Practice to coach and train.')
+      setTrainMessage('Coaching is off during a scored Match — hop back to Practice to keep teaching.')
       return
     }
     if (isTraining || trainingBusyRef.current || view.phase === 'running') return
@@ -904,7 +904,7 @@ function Workbench({
     rejectEvaluationExamples(examples.filter(e => e.approved))
 
     if (activeCourse.scenario.split !== 'practice' || isEvaluationScenario(activeCourse.scenario.id)) {
-      setTrainMessage('Training needs a practice scenario — a held-out recording is never used as a coaching prompt source.')
+      setTrainMessage("Training only works on Practice runs — a held-out Match recording can't be used to teach, to keep scoring fair.")
       return
     }
     const parent = structuredClone(activeCheckpoint)
@@ -923,7 +923,11 @@ function Workbench({
     trainingBusyRef.current = true
 
     setIsTraining(true)
-    setTrainMessage('Teaching from the approved notes…')
+    setTrainMessage(
+      approved.length < 3
+        ? `Teaching from ${approved.length} approved note${approved.length === 1 ? '' : 's'} — small lessons can swing the score either way before they settle in. Here goes…`
+        : 'Teaching from the approved notes…',
+    )
     setComparison(null)
     setComparisonReviewing(null)
     setCoachSelection(null)
@@ -958,7 +962,7 @@ function Workbench({
       } catch (err) {
         trainingBusyRef.current = false
         setIsTraining(false)
-        setTrainMessage(`Training failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
+        setTrainMessage(`Training didn't take: ${err instanceof Error ? err.message : 'Unknown error'}. Your approved notes are still here — try again.`)
         queueTrainingJobSync({
           jobId,
           status: 'failed',
@@ -985,7 +989,7 @@ function Workbench({
       }
       const adoptChild = (): boolean => {
         try { session.reset() } catch (err) {
-          setTrainMessage(`Trained brain saved but the session could not reset: ${err instanceof Error ? err.message : 'unknown error'}`)
+          setTrainMessage(`Saved the new brain, but the practice session wouldn't reset: ${err instanceof Error ? err.message : 'unknown error'}. Try Reset.`)
           return false
         }
         try {
@@ -994,14 +998,14 @@ function Workbench({
           setActiveCheckpoint(trained)
           return true
         } catch (err) {
-          setTrainMessage(`Trained brain saved but could not be loaded: ${err instanceof Error ? err.message : 'incompatible checkpoint'}`)
+          setTrainMessage(`Saved the new brain, but it wouldn't load into the arena: ${err instanceof Error ? err.message : 'incompatible checkpoint'}.`)
           return false
         }
       }
       const focusLine = summarizeCoachFocus(approved)
       setTrainFocusLine(focusLine)
       const lossLine = `Loss ${trained.trainingSummary.loss.toFixed(4)} · ${(trained.trainingSummary.accuracy * 100).toFixed(0)}% of the notes landed.`
-      setTrainMessage('Training complete — comparing recorded practice runs…')
+      setTrainMessage("Training's done — let's see how the new brain stacks up against the old one…")
       comparePracticeCheckpoints(parent, trained, practiceScenario, createMotion, {
         rival: rivalOption,
         controllerVersion,
@@ -1015,15 +1019,15 @@ function Workbench({
         if (!adopted) { trainingBusyRef.current = false; setIsTraining(false); return }
         finishTraining(
           focusLine
-            ? `Training complete. ${focusLine} ${lossLine} Compare the recorded runs below.`
-            : `Training complete. ${lossLine} Compare the recorded runs below.`,
+            ? `New brain trained. ${focusLine} ${lossLine} See how it did below.`
+            : `New brain trained. ${lossLine} See how it did below.`,
         )
       }).catch(err => {
         if (abort.signal.aborted) { trainingBusyRef.current = false; return }
         const adopted = adoptChild()
         recordFunnelEvent('train.done', `n=${approved.length} comparison-unavailable`)
         if (!adopted) { trainingBusyRef.current = false; setIsTraining(false); return }
-        finishTraining(`Training complete; physical comparison unavailable (${err instanceof Error ? err.message : 'unknown error'}). The new brain is saved — ${lossLine}`)
+        finishTraining(`New brain trained and saved, though the side-by-side comparison didn't run (${err instanceof Error ? err.message : 'unknown error'}). ${lossLine}`)
       })
     }, 0)
   }
@@ -1085,9 +1089,9 @@ function Workbench({
       recordFunnelEvent('example.draft', 'recorded')
       setStudioOpen(true)
       setCoachSelection(null)
-      setTrainMessage(`Draft correction queued at tick ${example.tick}. Approve it, then train.`)
+      setTrainMessage(`Correction drafted for tick ${example.tick} — approve it below, then hit Train when you're ready.`)
     } catch (err) {
-      setTrainMessage(`Could not draft that correction: ${err instanceof Error ? err.message : 'unsupported alternative'}`)
+      setTrainMessage(`Couldn't draft that correction: ${err instanceof Error ? err.message : 'unsupported alternative'}. Try a different alternative in Replay.`)
     }
   }
 
@@ -1122,7 +1126,7 @@ function Workbench({
   const handleSelectCheckpoint = (ckptId: string) => {
     if (isTraining || trainingBusyRef.current || view.phase === 'running') return
     if (view.phase !== 'ready') {
-      setTrainMessage('Reset to a fresh setup before changing the active brain.')
+      setTrainMessage("Hit Reset first — you can't switch brains mid-round.")
       return
     }
     const selected = checkpoints.find(c => c.id === ckptId)
@@ -1135,7 +1139,7 @@ function Workbench({
       session.setCheckpoint(selected)
       session.selectPolicy('champion', 'learned', selected)
     } catch (err) {
-      setTrainMessage(`Brain refused: ${err instanceof Error ? err.message : 'incompatible checkpoint'}`)
+      setTrainMessage(`That brain wouldn't load: ${err instanceof Error ? err.message : 'incompatible checkpoint'}.`)
       return
     }
     setActiveCheckpoint(selected)
@@ -1148,14 +1152,14 @@ function Workbench({
     if (typeof document === 'undefined') return
     const canvas = document.querySelector('canvas')
     if (!canvas) {
-      setTrainMessage('Could not find the world canvas to capture. Replay a few frames and try again.')
+      setTrainMessage("Couldn't capture a snapshot of the arena — scrub a few replay frames and try again.")
       return
     }
     let dataUrl: string
     try {
       dataUrl = (canvas as HTMLCanvasElement).toDataURL('image/png')
     } catch {
-      setTrainMessage('Browser blocked canvas read-back. Try again from a desktop session.')
+      setTrainMessage('Your browser blocked the screenshot — this works best on desktop Chrome or Firefox.')
       return
     }
     const safeId = activeCourse.scenario.id.replace(/[^a-z0-9-]/gi, '-')
@@ -1166,7 +1170,7 @@ function Workbench({
     document.body.appendChild(anchor)
     anchor.click()
     document.body.removeChild(anchor)
-    setTrainMessage(`Saved share card: ${filename}`)
+    setTrainMessage(`Saved your share card as "${filename}" — show it off!`)
   }
 
   const approvedCount = examples.filter(e => e.approved && !isEvaluationScenario(e.sourceEpisodeId)).length
@@ -1189,7 +1193,7 @@ function Workbench({
     try {
       session.reviewFrom(comparison[which].recording)
     } catch (err) {
-      setTrainMessage(`Could not open that recorded run: ${err instanceof Error ? err.message : 'unknown error'}`)
+      setTrainMessage(`Couldn't open that recorded run: ${err instanceof Error ? err.message : 'unknown error'}.`)
       return
     }
     setComparisonReviewing(which)
@@ -1480,7 +1484,7 @@ function Workbench({
                     className={styles.secondaryButton}
                     href="/prints/champion-rover.stl"
                     download="clawdy-champion-rover.stl"
-                    onClick={() => setTrainMessage('Saved print kit: clawdy-champion-rover.stl — profile in docs/PRINT_KIT.md')}
+                    onClick={() => setTrainMessage("Saved your champion's print kit (clawdy-champion-rover.stl) — print profile in docs/PRINT_KIT.md.")}
                   >
                     <Printer size={16} /> Print your champion
                   </a>

@@ -87,19 +87,34 @@ export function ReplayPanel({
           ) : (
             <>
               <div className={styles.alternativeRow} role="group" aria-label="Supported alternative actions">
-                {coachContext.alternatives.map(action => (
-                  <button
-                    key={JSON.stringify(action)}
-                    type="button"
-                    className={styles.alternativeButton}
-                    aria-pressed={selectedAction ? JSON.stringify(selectedAction) === JSON.stringify(action) : false}
-                    disabled={coachingLocked}
-                    title={`${actionLabel(action)}${action.type === 'drain' ? ` — costs ${ARENA_RULES.drainCost} energy` : ''}`}
-                    onClick={() => onSelectAction(action)}
-                  >
-                    Prefer {action.type === 'move' ? routeLabel(action.edgeId) : friendlyActionLabel(action)}
-                  </button>
-                ))}
+                {(() => {
+                  // Two edges in the same terrain family (e.g. two valley routes) share
+                  // routeLabel's generic name — count collisions so we can disambiguate
+                  // the visible button text, not just its hover title.
+                  const labelCounts = new Map<string, number>()
+                  for (const alt of coachContext.alternatives) {
+                    const label = alt.type === 'move' ? routeLabel(alt.edgeId) : friendlyActionLabel(alt)
+                    labelCounts.set(label, (labelCounts.get(label) ?? 0) + 1)
+                  }
+                  return coachContext.alternatives.map(action => {
+                    const label = action.type === 'move' ? routeLabel(action.edgeId) : friendlyActionLabel(action)
+                    const ambiguous = action.type === 'move' && (labelCounts.get(label) ?? 0) > 1
+                    const suffix = ambiguous ? ` (${action.edgeId.split('-').pop()})` : ''
+                    return (
+                      <button
+                        key={JSON.stringify(action)}
+                        type="button"
+                        className={styles.alternativeButton}
+                        aria-pressed={selectedAction ? JSON.stringify(selectedAction) === JSON.stringify(action) : false}
+                        disabled={coachingLocked}
+                        title={`${actionLabel(action)}${action.type === 'drain' ? ` — costs ${ARENA_RULES.drainCost} energy` : ''}`}
+                        onClick={() => onSelectAction(action)}
+                      >
+                        Prefer {label}{suffix}
+                      </button>
+                    )
+                  })
+                })()}
               </div>
               {drainSelected && (
                 <p className={styles.correctionNote}>

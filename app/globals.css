@@ -13,10 +13,24 @@
 }
 
 .convexLineage {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   margin: 8px 0 0;
   font: 10px/1.35 var(--font-geist-mono), ui-monospace, monospace;
   letter-spacing: 0.02em;
   color: #5a6a58;
+  animation: convexLineageIn 160ms ease;
+}
+
+.convexLineage svg { flex-shrink: 0; }
+
+@keyframes convexLineageIn {
+  from { opacity: 0; transform: translateY(-3px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .convexLineage { animation: none; }
 }
 
 .convexLineage[data-state='linked'] {
