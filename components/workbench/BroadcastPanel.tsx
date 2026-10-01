@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
-import { Radio, Square } from 'lucide-react'
+import { Maximize2, Minimize2, Radio, Square } from 'lucide-react'
 import {
   useViskoOrbisDynamic,
   useViskoOrbisDynamicChunkComplete,
@@ -84,6 +84,7 @@ function BroadcastExperience({ session }: { session: ArenaSession }) {
   const [connecting, setConnecting] = useState(false)
   const [airing, setAiring] = useState<{ kind: string; reason: string } | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [expanded, setExpanded] = useState(false)
 
   const reactorRef = useRef(reactor)
   const modeRef = useRef<BroadcastMode>('off')
@@ -186,6 +187,7 @@ function BroadcastExperience({ session }: { session: ArenaSession }) {
 
   const disarm = useCallback(() => {
     setMode('off')
+    setExpanded(false)
     setAiring(null)
     modeRef.current = 'off'
     // Flushes the pending slot and drops the transport so nothing dispatches
@@ -202,6 +204,8 @@ function BroadcastExperience({ session }: { session: ArenaSession }) {
 
   const connectLive = useCallback(async () => {
     arm('live')
+    // Orbis emits a chunk every ~1.8s; real-time pacing keeps the video in step.
+    session.setSpeed(1)
     setConnecting(true)
     try {
       await reactorRef.current.connect()
@@ -210,7 +214,7 @@ function BroadcastExperience({ session }: { session: ArenaSession }) {
     } finally {
       setConnecting(false)
     }
-  }, [arm])
+  }, [arm, session])
 
   // Once the session is ready, warm settings before the first frame: a fixed
   // seed keeps demo reels comparable, and model audio is on when the
@@ -299,6 +303,16 @@ function BroadcastExperience({ session }: { session: ArenaSession }) {
             </button>
           </>
         ) : (
+          <>
+          <button
+            type="button"
+            className={styles.frameCoachButton}
+            onClick={() => setExpanded(on => !on)}
+            title="Fill the screen with the broadcast"
+          >
+            {expanded ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+            {expanded ? 'Shrink' : 'Expand'}
+          </button>
           <button
             type="button"
             className={styles.frameCoachButton}
@@ -309,11 +323,29 @@ function BroadcastExperience({ session }: { session: ArenaSession }) {
             <Square size={13} />
             Cut feed
           </button>
+          </>
         )}
       </div>
 
+      {mode === 'off' && (
+        <p className={styles.correctionNote}>
+          A live AI broadcast of the match: Orbis renders the arena as floods hit, cores are collected and banked, and rovers recover — driven by the recorded match events.
+        </p>
+      )}
+
       {mode !== 'off' && (
-        <div className={styles.broadcastStage}>
+        <div className={styles.broadcastStage} data-expanded={expanded}>
+          {expanded && (
+            <div className={styles.broadcastScorebug} aria-label="Match score">
+              {view.episode.agents.map(agent => (
+                <span key={agent.id}>{agent.id} <strong>{agent.banked}</strong></span>
+              ))}
+              <span>tick {view.episode.tick}</span>
+              <button type="button" onClick={() => setExpanded(false)} aria-label="Exit full screen broadcast">
+                <Minimize2 size={12} />
+              </button>
+            </div>
+          )}
           {mode === 'live' ? (
             <>
               <ViskoOrbisDynamicMainVideoView
