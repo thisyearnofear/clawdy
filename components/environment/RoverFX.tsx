@@ -70,24 +70,32 @@ function DustKicks({ session, id }: { session: ArenaSession; id: string }) {
   )
 }
 
-/** Fading track ribbon: a flat strip stamped along recent positions. */
-function SandTrail({ session, id, color }: { session: ArenaSession; id: string; color: string }) {
+/** Do not connect tyre marks across a reset, replay seek, or recovery jump. */
+export function shouldResetTrail(previousTick: number, tick: number, distance: number, ready: boolean): boolean {
+  return ready || tick < previousTick || distance > 2
+}
+
+/** Two fading tyre marks stamped along recent positions. */
+function SandTrail({ session, id }: { session: ArenaSession; id: string }) {
   const mesh = useRef<THREE.Mesh>(null)
   // Geometry is built lazily inside the frame loop and assigned to the mesh
   // directly — the immutability lint forbids mutating hook-returned values.
   const points = useRef<THREE.Vector3[]>([])
   const lastStamp = useRef<THREE.Vector3 | null>(null)
+  const lastTick = useRef(-1)
 
   useFrame(() => {
     if (!mesh.current) return
     const geometry = mesh.current.geometry
     if (!geometry.getAttribute('position')) {
-      geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(TRAIL_MAX * 2 * 3), 3))
-      geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(TRAIL_MAX * 2 * 4), 4))
+      geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(TRAIL_MAX * 4 * 3), 3))
+      geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(TRAIL_MAX * 4 * 4), 4))
       const index: number[] = []
       for (let i = 0; i < TRAIL_MAX - 1; i++) {
-        const a = i * 2
-        index.push(a, a + 1, a + 2, a + 1, a + 3, a + 2)
+        for (const side of [0, 2]) {
+          const a = i * 4 + side
+          index.push(a, a + 1, a + 4, a + 1, a + 5, a + 4)
+        }
       }
       geometry.setIndex(index)
     }
@@ -95,6 +103,18 @@ function SandTrail({ session, id, color }: { session: ArenaSession; id: string; 
     const agent = ep.agents.find(a => a.id === id)
     if (!agent) { mesh.current.visible = false; return }
     const pos = new THREE.Vector3(agent.position[0], agent.position[1] + 0.025, agent.position[2])
+    // A new run, replay seek, or recovery teleport must not connect two
+    // unrelated positions with a streak of tyre marks.
+    const ready = session.getSnapshot().phase === 'ready'
+    if (shouldResetTrail(lastTick.current, ep.tick, lastStamp.current?.distanceTo(pos) ?? 0, ready)) {
+      points.current = []
+      lastStamp.current = null
+    }
+    lastTick.current = ep.tick
+    if (ready) {
+      mesh.current.visible = false
+      return
+    }
     // Stamp a point every ~0.28m of travel — dense enough for smooth turns.
     if (!lastStamp.current || pos.distanceTo(lastStamp.current) > 0.28) {
       lastStamp.current = pos.clone()
@@ -107,25 +127,30 @@ function SandTrail({ session, id, color }: { session: ArenaSession; id: string; 
 
     const positions = geometry.attributes.position as THREE.BufferAttribute
     const colors = geometry.attributes.color as THREE.BufferAttribute
-    const c = new THREE.Color(color)
-    const half = 0.1
+    const c = new THREE.Color('#594736')
     for (let i = 0; i < TRAIL_MAX; i++) {
       const p = pts[Math.min(i, pts.length - 1)]
-      const nxt = pts[Math.min(i + 1, pts.length - 1)]
-      const dirX = nxt.x - p.x
-      const dirZ = nxt.z - p.z
+      const before = pts[Math.min(Math.max(0, i - 1), pts.length - 1)]
+      const after = pts[Math.min(i + 1, pts.length - 1)]
+      const dirX = after.x - before.x
+      const dirZ = after.z - before.z
       const len = Math.hypot(dirX, dirZ) || 1
-      const px = (-dirZ / len) * half
-      const pz = (dirX / len) * half
-      const fade = i < pts.length - 1 ? Math.pow(i / (pts.length - 1), 1.4) * 0.42 : 0
-      positions.setXYZ(i * 2, p.x + px, p.y, p.z + pz)
-      positions.setXYZ(i * 2 + 1, p.x - px, p.y, p.z - pz)
-      colors.setXYZW(i * 2, c.r, c.g, c.b, fade)
-      colors.setXYZW(i * 2 + 1, c.r, c.g, c.b, fade)
+      const nx = -dirZ / len
+      const nz = dirX / len
+      const fade = i < pts.length - 1 ? Math.pow(i / (pts.length - 1), 1.4) * 0.28 : 0
+      for (let side = 0; side < 2; side++) {
+        const offset = side === 0 ? -0.23 : 0.23
+        for (let edge = 0; edge < 2; edge++) {
+          const spread = offset + (edge === 0 ? -0.035 : 0.035)
+          const vertex = i * 4 + side * 2 + edge
+          positions.setXYZ(vertex, p.x + nx * spread, p.y, p.z + nz * spread)
+          colors.setXYZW(vertex, c.r, c.g, c.b, fade)
+        }
+      }
     }
     positions.needsUpdate = true
     colors.needsUpdate = true
-    geometry.setDrawRange(0, (pts.length - 1) * 6)
+    geometry.setDrawRange(0, (pts.length - 1) * 12)
   })
 
   return (
@@ -136,11 +161,11 @@ function SandTrail({ session, id, color }: { session: ArenaSession; id: string; 
   )
 }
 
-export function RoverFX({ session, id, trailColor }: { session: ArenaSession; id: string; trailColor: string }) {
+export function RoverFX({ session, id }: { session: ArenaSession; id: string }) {
   return (
     <group>
       <DustKicks session={session} id={id} />
-      <SandTrail session={session} id={id} color={trailColor} />
+      <SandTrail session={session} id={id} />
     </group>
   )
 }
