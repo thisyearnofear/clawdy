@@ -96,7 +96,8 @@ export interface ArenaAgentState extends ArenaEntrant {
   staggeredUntilTick: number
   lastOutcome: ArenaOutcome | null
   visitedNodes: string[]
-  knownResources: { id: string; nodeId: string; value: number; available: boolean }[]
+  /** `announced`: learned via a public spawn flare, not by sight (Rush). */
+  knownResources: { id: string; nodeId: string; value: number; available: boolean; announced?: boolean }[]
   grounded: boolean
   rotation: [number, number, number, number]
   blockedTicks: number
@@ -132,7 +133,8 @@ export interface ArenaObservation {
   rivals: { id: string; position: ArenaPosition | null; cargo: number | null; banked: number | null; visible: boolean }[]
   nodes: ArenaNode[]
   edges: (ArenaEdge & { currentTravelTicks: number; blocked: boolean })[]
-  resources: (ArenaResource & { available: boolean; visible: boolean; stale: boolean })[]
+  /** `flare`: stale sighting that came from a public spawn announcement (a trustworthy target, unlike a remembered ghost). */
+  resources: (ArenaResource & { available: boolean; visible: boolean; stale: boolean; flare?: boolean })[]
   weather: ArenaSnapshot['weather']
   availableActions: ArenaAction[]
   fog: { visible: string[]; remembered: string[]; hidden: string[] }
@@ -295,10 +297,13 @@ export class ArenaEpisode {
   #edges: Map<string, ArenaEdge>
   #paths = new Map<string, { points: ArenaPosition[]; lengths: number[]; total: number }>()
   #motion?: ArenaMotion
+  #record: boolean
 
-  constructor(scenario: ArenaScenario, motion?: ArenaMotion) {
+  /** `record: false` skips the per-decision checkpoint clones (training/ladder scoring never replays). */
+  constructor(scenario: ArenaScenario, motion?: ArenaMotion, options: { record?: boolean } = {}) {
     validateScenario(scenario)
     this.#motion = motion
+    this.#record = options.record ?? true
     this.#scenario = structuredClone(scenario)
     this.#scenario.entrants.sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
     this.#nodes = new Map(this.#scenario.nodes.map(node => [node.id, node]))
@@ -351,7 +356,7 @@ export class ArenaEpisode {
     this.#state.weather.flooded = this.#isFlooded()
     this.#updateKnownResources()
     this.#batches = []
-    this.#checkpoints = [{ state: this.snapshot() }]
+    this.#checkpoints = this.#record ? [{ state: this.snapshot() }] : []
   }
 
   get tick() {
@@ -445,7 +450,7 @@ export class ArenaEpisode {
         agent.lastOutcome = structuredClone(outcome)
       }
     }
-    if (normalized.length > 0) this.#batches.push({ tick: state.tick, requests: normalized })
+    if (this.#record && normalized.length > 0) this.#batches.push({ tick: state.tick, requests: normalized })
     state.weather.flooded = this.#isFlooded()
     this.#moveAgents()
     // Energy regen: agents not in transit and not taking an accepted action
@@ -469,7 +474,7 @@ export class ArenaEpisode {
           // through fog. Who gets there first is the race.
           for (const agent of state.agents) {
             if (!agent.knownResources.some(known => known.id === resource.id)) {
-              agent.knownResources.push({ id: resource.id, nodeId: resource.nodeId, value: resource.value, available: true })
+              agent.knownResources.push({ id: resource.id, nodeId: resource.nodeId, value: resource.value, available: true, announced: true })
             }
           }
         }
@@ -482,13 +487,14 @@ export class ArenaEpisode {
       const [first, second] = state.agents
       state.winner = first.banked === second.banked ? null : first.banked > second.banked ? first.id : second.id
     }
-    if (state.tick % ARENA_RULES.decisionEveryTicks === 0 || state.status === 'finished') {
+    if (this.#record && (state.tick % ARENA_RULES.decisionEveryTicks === 0 || state.status === 'finished')) {
       this.#checkpoints.push({ state: this.snapshot() })
     }
     return clonePlain(outcomes)
   }
 
   recording(): ArenaRecording {
+    if (!this.#record) throw new Error('Episode was created with record: false')
     const checkpoints = structuredClone(this.#checkpoints)
     if (checkpoints[checkpoints.length - 1].state.tick !== this.#state.tick) checkpoints.push({ state: this.snapshot() })
     return structuredClone({
@@ -647,8 +653,11 @@ export class ArenaEpisode {
     if (Math.hypot(pa[0] - pb[0], pa[2] - pb[2]) > rules.contactRadiusM) return
     // Cooldown is derived from the event log, so restored snapshots and
     // replays behave exactly like the live run.
+    // Event ticks are the tick at which the resulting state is published
+    // (step() increments after moving), matching core_spawn.
+    const eventTick = state.tick + 1
     const lastBump = state.events.findLast(event => event.type === 'bump')
-    if (lastBump && state.tick - lastBump.tick < rules.bumpCooldownTicks) return
+    if (lastBump && eventTick - lastBump.tick < rules.bumpCooldownTicks) return
     if (a.staggeredUntilTick > state.tick || b.staggeredUntilTick > state.tick) return
     const bias = (this.#scenario.seed + Math.floor(state.tick / ARENA_RULES.decisionEveryTicks)) % 2
     const loser = a.cargo !== b.cargo ? (a.cargo > b.cargo ? a : b)
@@ -661,7 +670,7 @@ export class ArenaEpisode {
     loser.staggeredUntilTick = Math.max(loser.staggeredUntilTick, state.tick + rules.bumpStaggerTicks)
     state.events.push({
       type: 'bump',
-      tick: state.tick,
+      tick: eventTick,
       winnerId: winner.id,
       loserId: loser.id,
       position: [(pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2, (pa[2] + pb[2]) / 2],
@@ -840,7 +849,7 @@ export function observeSnapshot(
     })),
     resources: clonePlain((() => {
       const visibleNodes = fogSets.visible
-      const result: (ArenaResource & { available: boolean; visible: boolean; stale: boolean })[] = []
+      const result: (ArenaResource & { available: boolean; visible: boolean; stale: boolean; flare?: boolean })[] = []
       // Currently visible resources: show real-time state
       for (const resource of state.resources) {
         if (resource.collectedBy !== null || !isResourceSpawned(resource, state.tick)) continue
@@ -855,7 +864,7 @@ export function observeSnapshot(
         // Check if it was collected since we last saw it — we can't know, so show as stale
         const stillExists = state.resources.find(r => r.id === known.id && r.collectedBy === null)
         if (stillExists) {
-          result.push({ id: known.id, nodeId: known.nodeId, value: known.value, available: true, visible: false, stale: true })
+          result.push({ id: known.id, nodeId: known.nodeId, value: known.value, available: true, visible: false, stale: true, ...(known.announced ? { flare: true } : {}) })
         }
       }
       return result

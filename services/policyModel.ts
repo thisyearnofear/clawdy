@@ -366,7 +366,13 @@ export function scoreMoveEdge(observation: ArenaObservation, edgeId: string, cls
     // a farther cross-far pile must not beat a nearer valley-s3 pickup
     // (rival-base opening). Non-qualifying edges score -Infinity.
     const visibleHere = observation.resources.filter(r => r.available && r.visible && r.nodeId === target)
-    if (visibleHere.length === 0) return -Infinity
+    if (visibleHere.length === 0) {
+      // Rush flare race: rank by total route cost to the announced core, with
+      // its value as a bonus. Scored below any adjacent visible pickup of
+      // similar cost (-nowCost*10 dominates), so a sure thing still wins.
+      const flare = flareFirstEdges(observation).get(edgeId)
+      return flare ? -flare.cost * 10 + flare.value * 20 : -Infinity
+    }
     const freeSlots = Math.max(0, ARENA_RULES.capacity - self.cargo)
     if (freeSlots <= 0) return -Infinity
     const extras = Math.max(0, Math.min(freeSlots, visibleHere.length) - 1)
@@ -429,6 +435,30 @@ function findShortestRoute(observation: ArenaObservation, target: string): { cos
 }
 
 /**
+ * Rush flares: announced-but-unseen cores the rover can still race to. Returns
+ * the first edge of the shortest route to each reachable flare (per edge, the
+ * best candidate's total cost and value). Empty in Haul, where nothing is ever
+ * announced, so legacy behaviour is untouched.
+ */
+const flareCache = new WeakMap<ArenaObservation, Map<string, { cost: number; value: number }>>()
+function flareFirstEdges(observation: ArenaObservation): Map<string, { cost: number; value: number }> {
+  const cached = flareCache.get(observation)
+  if (cached) return cached
+  const edges = new Map<string, { cost: number; value: number }>()
+  const room = ARENA_RULES.capacity - observation.self.cargo
+  for (const resource of observation.resources) {
+    if (!resource.flare || !resource.available || resource.visible || resource.value > room) continue
+    if (resource.nodeId === observation.self.nodeId) continue
+    const route = findShortestRoute(observation, resource.nodeId)
+    if (!route?.firstEdge) continue
+    const known = edges.get(route.firstEdge)
+    if (!known || route.cost < known.cost) edges.set(route.firstEdge, { cost: route.cost, value: resource.value })
+  }
+  flareCache.set(observation, edges)
+  return edges
+}
+
+/**
  * Classifies an action in context of observation into one of 8 action classes.
  */
 export function classifyAction(action: ArenaAction, observation: ArenaObservation): number {
@@ -459,6 +489,8 @@ export function classifyAction(action: ArenaAction, observation: ArenaObservatio
     ) {
       return 6 // move-resource
     }
+    // Rush flare: the first hop of a race to an announced core is a pickup run.
+    if (freeSlots > 0 && flareFirstEdges(observation).has(edge.id)) return 6
     if (edge.floodable) return 4 // move-low
     return 5 // move-high
   }

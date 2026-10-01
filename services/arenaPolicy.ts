@@ -267,7 +267,7 @@ export class ArenaRunner {
   #sequence = 0
   #onDecision: ((event: DecisionLifecycleEvent) => void) | null = null
 
-  constructor(scenario: ArenaScenario, strategies: Record<string, EntrantPolicyOption>, motion?: ArenaMotion) {
+  constructor(scenario: ArenaScenario, strategies: Record<string, EntrantPolicyOption>, motion?: ArenaMotion, options?: { record?: boolean }) {
     this.#policies = new Map()
     const entrants = scenario.entrants.map(entrant => {
       const option = strategies[entrant.id]
@@ -300,7 +300,7 @@ export class ArenaRunner {
       ))
       return { ...entrant, policyVersion: `baseline.${strategy}.v2` }
     })
-    this.#episode = new ArenaEpisode({ ...scenario, entrants }, motion)
+    this.#episode = new ArenaEpisode({ ...scenario, entrants }, motion, options)
     this.#durationTicks = scenario.durationTicks
   }
 

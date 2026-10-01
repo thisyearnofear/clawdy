@@ -90,6 +90,17 @@ describe('Rush: authoritative bump', () => {
     expect(champion.staggeredUntilTick).toBeGreaterThan(bumps[0].tick)
   })
 
+  it('stamps a bump with the tick of the snapshot that first contains it', () => {
+    const episode = new ArenaEpisode(rushScenario())
+    let seen: number | null = null
+    while (episode.tick < 40 && seen === null) {
+      play(episode, headOn, episode.tick + 1)
+      if (episode.peek().events!.some(event => event.type === 'bump')) seen = episode.tick
+    }
+    const bump = episode.peek().events!.find(event => event.type === 'bump')!
+    expect(bump.tick).toBe(seen)
+  })
+
   it('bumps only once per cooldown window', () => {
     const episode = new ArenaEpisode(rushScenario())
     play(episode, headOn, 60)
