@@ -17,7 +17,7 @@ export function SyncStatusChip() {
   if (sync.phase === 'offline-queued') {
     return (
       <p className="convexLineage" data-state="queued" role="status">
-        <WifiOff size={11} aria-hidden /> Offline — {sync.queued} change{sync.queued === 1 ? '' : 's'} saved here, will sync once you're back online.
+        <WifiOff size={11} aria-hidden /> Offline — {sync.queued} change{sync.queued === 1 ? '' : 's'} saved here, will sync once you&apos;re back online.
       </p>
     )
   }
