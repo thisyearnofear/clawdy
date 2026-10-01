@@ -24,6 +24,10 @@ npm run dev
 ```
 Open [http://localhost:3000](http://localhost:3000) to access the interactive 3D arena.
 
+### Orbis broadcast (optional; live video)
+
+`REACTOR_API_KEY` is server-only and read by `app/api/reactor/token/route.ts`, which mints a one-session, 5-minute token for the browser. Set it for Production and Preview as a sensitive variable (`printf '%s' "$KEY" | vercel env add REACTOR_API_KEY production --sensitive`) and in `.env.local` for local dev. Without it, Go live reports a connection error and Storyboard mode still works. CLI deploys (`vercel --prod`) work because `prepare` tolerates a missing `.git`.
+
 ### Convex sync (optional locally; live in production)
 ```bash
 # First time on a machine (already logged in to Convex):

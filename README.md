@@ -57,7 +57,7 @@ Product, contract, demo, and submission materials live in `/docs`:
 - [Current opportunity plan](docs/TRIPOTHON.md) — the active external opportunity, timeline, and risk register.
 - [Product roadmap](docs/ROADMAP.md) — identity → encounters → league → curriculum horizons.
 - [Submission materials](docs/SUBMISSION_CHECKLIST.md).
-- [Scene layer architecture](docs/SCENES.md) — how recorded matches become replay cinematics and, later, generated scenes.
+- [Scene layer architecture](docs/SCENES.md) — how recorded matches become replay cinematics and a live Orbis-generated broadcast (needs server-side `REACTOR_API_KEY`).
 - [Two-minute demo script](docs/DEMO_SCRIPT.md).
 
 Additional references: [deploy guide](docs/DEPLOY.md), [Mint integration](docs/MINT_INTEGRATION.md), [inspiration](docs/INSPIRATION.md).

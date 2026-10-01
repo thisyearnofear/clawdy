@@ -106,4 +106,11 @@ Implemented as a presentation-only panel beside the replay-cam; nothing it rende
 - `app/api/reactor/token/route.ts` — server-side token broker (`REACTOR_API_KEY`, one 5-minute session). The key never reaches the browser.
 - `components/workbench/BroadcastPanel.tsx` — **Go live** (Reactor WebRTC) or **Storyboard** (shows the prompt feed with no key). Degradation ladder: live Orbis video → prompt storyboard → replay-cam.
 
-Set `REACTOR_API_KEY` in the server env (Vercel) to enable live video. Not yet live-verified against a real session.
+Behavior worth knowing:
+
+- **On-air caption** — a lower-third shows the event kind and reason at the moment its prompt ships, so viewers can see which match fact the video is reacting to.
+- **Expand** — fills the screen with the video plus a score bug; the session stays mounted, so expanding never reconnects.
+- **Pacing** — Go live sets match speed to 1x (Orbis emits a chunk about every 1.8 s).
+- **Session end** — if the live session ends on its own (5-minute grant cap, network drop), the panel continues as a prompt storyboard rather than leaving a dead video.
+
+Setup: set `REACTOR_API_KEY` in the server env (server-only, never `NEXT_PUBLIC_`). Verified: the token broker mints a real token locally and in production. Not yet verified: a full live video run against a real session.
