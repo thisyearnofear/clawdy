@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ARENA_RULES } from '../arenaEpisode'
-import { FLOOD_RISE_TICKS, FLOOD_RECEDE_TICKS, floodFillLevel, floodFootprint, floodWaterY } from '../arenaFlood'
+import { FLOOD_RISE_TICKS, FLOOD_RECEDE_TICKS, createFloodCorridorMask, floodFillLevel, floodFootprint, floodWaterY } from '../arenaFlood'
 import type { ArenaCourse } from '../arenaCourse'
 
 const DRAIN = ARENA_RULES.drainTicks
@@ -89,6 +89,17 @@ describe('floodFootprint', () => {
     expect(floodWaterY(fp, 0)).toBe(fp.dryY)
     expect(floodWaterY(fp, 1)).toBe(fp.waterY)
     expect(floodWaterY(fp, 0.5)).toBeCloseTo((fp.dryY + fp.waterY) / 2)
+  })
+
+  it('keeps water on floodable paths and zones, not across the entire bounding box', () => {
+    const mask = createFloodCorridorMask(course)
+    expect(mask(4, 4)).toBe(1)
+    expect(mask(4, 6)).toBe(1)
+    expect(mask(4, 14)).toBe(1)
+    expect(mask(5.2, 4)).toBeGreaterThan(0)
+    expect(mask(6.5, 4)).toBe(0)
+    expect(mask(12, 4)).toBe(0)
+    expect(mask(12, 8)).toBe(0)
   })
 
   it('returns null when nothing is floodable', () => {

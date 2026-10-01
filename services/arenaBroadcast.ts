@@ -79,7 +79,7 @@ function transitionLine(trigger: BroadcastTrigger, snapshot: ArenaSnapshot): str
     case 'establish':
       return 'Both rovers wait at their bases as the basin opens up — cores glint on the field, the valley lies dry and quiet for now.'
     case 'flood':
-      return 'Floodwater surges into the low valley and the floodable routes darken under the wash. Any rover caught there slows in the mud.'
+      return 'Water begins rising through the low valley. A bright shoreline advances over the amber routes while the higher sandstone ridge stays dry. A rover on the flooded route slows; keep the same arena and rovers.'
     case 'collect':
       return `${name} reaches a glowing amber core and lifts it aboard, its cargo light brightening.`
     case 'bank': {

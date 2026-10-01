@@ -69,6 +69,9 @@ describe('buildBroadcastIntent', () => {
     )
     const { prompt } = intent.build(false)
     expect(prompt.startsWith('The same unbroken scene continues.')).toBe(true)
+    expect(prompt).toContain('Water begins rising through the low valley')
+    expect(prompt).toContain('higher sandstone ridge stays dry')
+    expect(prompt).not.toContain('surges')
     expect(prompt).not.toContain('sandstone basin arena,')
   })
 

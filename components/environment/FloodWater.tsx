@@ -17,7 +17,7 @@ import * as THREE from 'three'
 
 import type { ArenaCourse } from '../../services/arenaCourse'
 import type { ArenaSession } from '../../services/arenaSession'
-import { floodFillLevel, floodFootprint, floodWaterY } from '../../services/arenaFlood'
+import { createFloodCorridorMask, floodFillLevel, floodFootprint, floodWaterY } from '../../services/arenaFlood'
 import { ARENA_RULES } from '../../services/arenaEpisode'
 
 const HEIGHT_TEX_RES = 160 // samples along the longer axis; cells stay ~square
@@ -44,19 +44,23 @@ uniform vec2 uBoundsMin;
 uniform vec2 uBoundsSize;
 uniform float uWaterY;
 uniform float uTime;
-uniform float uLevel;
+uniform float uHeightMin;
+uniform float uHeightRange;
 varying vec3 vWorld;
 
 void main() {
   vec2 uv = (vWorld.xz - uBoundsMin) / uBoundsSize;
   if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) discard;
-  float terrain = texture2D(uHeights, uv).r;
+  vec4 ground = texture2D(uHeights, uv);
+  float corridor = ground.g;
+  if (corridor < 0.01) discard;
+  float terrain = uHeightMin + ground.r * uHeightRange;
   float depth = uWaterY - terrain;
   if (depth <= 0.0) discard;
 
-  vec3 shallow = vec3(0.44, 0.73, 0.79);
-  vec3 deep = vec3(0.07, 0.33, 0.44);
-  vec3 foam = vec3(0.92, 0.98, 0.96);
+  vec3 shallow = vec3(0.32, 0.77, 0.85);
+  vec3 deep = vec3(0.04, 0.29, 0.42);
+  vec3 foam = vec3(0.94, 0.99, 0.96);
   vec3 sunDir = normalize(vec3(4.0, 16.0, -5.0));
 
   // Faceted normals from screen-space derivatives — chiseled low-poly water.
@@ -70,13 +74,17 @@ void main() {
   float depthMix = clamp(depth / 1.15, 0.0, 1.0);
   vec3 color = mix(shallow, deep, depthMix) + spec * vec3(1.0, 0.95, 0.8) + fresnel * vec3(0.7, 0.9, 0.95);
 
-  // Animated foam band hugging the shoreline.
-  float band = smoothstep(0.16, 0.03, depth) * smoothstep(0.0, 0.02, depth);
-  float ripple = 0.55 + 0.45 * sin(uTime * 3.2 + vWorld.x * 8.0 + vWorld.z * 6.0);
-  color = mix(color, foam, band * ripple * 0.8);
+  // A bright, continuous shoreline makes the advancing waterline legible
+  // against sandstone; animated foam gives it movement without breaking up the edge.
+  float shore = (1.0 - smoothstep(0.04, 0.28, depth)) * smoothstep(0.0, 0.025, depth);
+  float ripple = 0.75 + 0.25 * sin(uTime * 3.2 + vWorld.x * 8.0 + vWorld.z * 6.0);
+  color = mix(color, foam, shore * ripple * 0.9);
 
-  float alpha = smoothstep(0.0, 0.05, depth) * (0.55 + 0.4 * depthMix) * uLevel;
-  alpha = max(alpha, band * ripple * 0.9 * uLevel);
+  // Keep the terrain and route choices visible beneath the water, while
+  // the advancing shoreline remains bright enough to read at a glance.
+  float alpha = smoothstep(0.0, 0.06, depth) * (0.40 + 0.22 * depthMix + fresnel * 0.6);
+  alpha = max(alpha, shore * ripple * 0.84);
+  alpha *= corridor;
   if (alpha < 0.01) discard;
   gl_FragColor = vec4(color, alpha);
 }
@@ -99,39 +107,47 @@ export function FloodWater({ session, course }: Props) {
     const aspect = sizeZ / Math.max(sizeX, 1e-6)
     const nx = Math.max(8, Math.round(HEIGHT_TEX_RES / Math.max(aspect, 1e-6)))
     const nz = HEIGHT_TEX_RES
-    const data = new Float32Array(nx * nz)
+    // Pack sampled heights and the corridor mask into a standard RGBA texture.
+    const data = new Uint8Array(nx * nz * 4)
+    const heightMin = footprint.dryY - 1
+    const heightRange = footprint.waterY - heightMin + 1
+    const corridorMask = createFloodCorridorMask(course)
     for (let j = 0; j < nz; j++) {
       for (let i = 0; i < nx; i++) {
         const x = minX + ((i + 0.5) / nx) * sizeX
         const z = minZ + ((j + 0.5) / nz) * sizeZ
         let hit: { point: [number, number, number] } | null = null
         try {
-          hit = session.sampleGround([x, 60, z])
+          // sampleGround casts at most 20 units; starting at y=60 misses the basin.
+          hit = session.sampleGround([x, footprint.waterY + 8, z])
         } catch {
           hit = null // disposed session — cells stay "no terrain", water stays hidden
         }
-        data[j * nx + i] = hit ? hit.point[1] : -1e4
+        const height = hit ? hit.point[1] : footprint.waterY + 1
+        const offset = (j * nx + i) * 4
+        data[offset] = Math.round(255 * Math.min(1, Math.max(0, (height - heightMin) / heightRange)))
+        data[offset + 1] = Math.round(255 * corridorMask(x, z))
+        data[offset + 3] = 255
       }
     }
-    const tex = new THREE.DataTexture(data, nx, nz, THREE.RedFormat, THREE.FloatType)
+    const tex = new THREE.DataTexture(data, nx, nz, THREE.RGBAFormat, THREE.UnsignedByteType)
     tex.magFilter = THREE.LinearFilter
     tex.minFilter = THREE.LinearFilter
     tex.needsUpdate = true
     heightTex.current = tex
     if (materialRef.current) materialRef.current.uniforms.uHeights.value = tex
     return () => tex.dispose()
-  }, [footprint, session])
+  }, [footprint, course, session])
 
   const uniforms = useMemo(() => footprint && ({
-    // 1×1 "abyss" placeholder until the bake effect installs the real grid —
-    // depth = waterY − (−1e4) would flood everything, so seed it far *above*
-    // the waterline instead: dry everywhere until the bake lands.
-    uHeights: { value: new THREE.DataTexture(new Float32Array([1e4]), 1, 1, THREE.RedFormat, THREE.FloatType) },
+    // Dry placeholder until the ground and corridor bake completes.
+    uHeights: { value: new THREE.DataTexture(new Uint8Array([255, 0, 0, 255]), 1, 1, THREE.RGBAFormat, THREE.UnsignedByteType) },
     uBoundsMin: { value: new THREE.Vector2(footprint.min[0], footprint.min[1]) },
     uBoundsSize: { value: new THREE.Vector2(footprint.size[0], footprint.size[1]) },
     uWaterY: { value: footprint.dryY },
+    uHeightMin: { value: footprint.dryY - 1 },
+    uHeightRange: { value: footprint.waterY - footprint.dryY + 2 },
     uTime: { value: 0 },
-    uLevel: { value: 0 },
   }), [footprint])
 
   const geometry = useMemo(() => {
@@ -148,7 +164,6 @@ export function FloodWater({ session, course }: Props) {
     const level = floodFillLevel(ep.tick, course.scenario.floods, ep.weather.drainedUntilTick, ARENA_RULES.drainTicks)
     const u = materialRef.current.uniforms
     u.uTime.value = state.clock.elapsedTime
-    u.uLevel.value = level
     u.uWaterY.value = floodWaterY(footprint, level)
     // The surface rides the waterline — the visible rise IS the flood event.
     meshRef.current.position.y = u.uWaterY.value

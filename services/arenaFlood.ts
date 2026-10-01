@@ -109,6 +109,44 @@ export function floodFootprint(course: ArenaCourse, pad = 1.2): FloodFootprint |
   }
 }
 
+/** A soft-edged corridor mask prevents the flood plane's bounding box from looking like a lake. */
+export function createFloodCorridorMask(course: ArenaCourse): (x: number, z: number) => number {
+  const segments: [number, number, number, number][] = []
+  for (const edge of course.scenario.edges) {
+    if (!edge.floodable || !edge.path) continue
+    // Grounded paths are densely sampled; a segment every five samples
+    // follows the same route without testing hundreds of points per texel.
+    for (let i = 0; i < edge.path.length - 1; i += 5) {
+      const a = edge.path[i]
+      const b = edge.path[Math.min(i + 5, edge.path.length - 1)]
+      // Diagonal shortcuts remain floodable for gameplay, but their upper
+      // slopes must not turn the visible low-valley flood into a giant sheet.
+      if (course.floodZones.length && !course.floodZones.some(zone =>
+        Math.abs(a[0] - zone.position[0]) <= zone.size[0] &&
+        Math.abs(b[0] - zone.position[0]) <= zone.size[0]
+      )) continue
+      segments.push([a[0], a[2], b[0], b[2]])
+    }
+  }
+  return (x, z) => {
+    let distance = Infinity
+    for (const [ax, az, bx, bz] of segments) {
+      const dx = bx - ax
+      const dz = bz - az
+      const lengthSq = dx * dx + dz * dz
+      const t = lengthSq > 0 ? Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / lengthSq)) : 0
+      distance = Math.min(distance, Math.hypot(x - ax - t * dx, z - az - t * dz))
+    }
+    for (const zone of course.floodZones) {
+      const dx = Math.max(0, Math.abs(x - zone.position[0]) - zone.size[0] / 2)
+      const dz = Math.max(0, Math.abs(z - zone.position[2]) - zone.size[1] / 2)
+      distance = Math.min(distance, Math.hypot(dx, dz))
+    }
+    // A narrow, translucent channel with a soft edge instead of a lake.
+    return Math.max(0, Math.min(1, (1.65 - distance) / 0.85))
+  }
+}
+
 /** Linear waterline for a fill level — drives both mesh y and shore depth. */
 export function floodWaterY(footprint: FloodFootprint, level: number): number {
   return footprint.dryY + (footprint.waterY - footprint.dryY) * level
