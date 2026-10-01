@@ -22,6 +22,8 @@
     "@dimforge/rapier3d-compat": "0.19.2",
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.1",
+    "@reactor-models/visko-orbis-dynamic": "^1.4.0",
+    "@reactor-team/js-sdk": "^3.0.2",
     "@sentry/nextjs": "^10.73.0",
     "@sparkjsdev/spark": "^2.2.0",
     "@types/three": "^0.186.0",

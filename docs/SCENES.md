@@ -1,6 +1,6 @@
 # Scene Layer: Match Authority → Storyboard → Cinematic
 
-Status: **partially implemented**. The deterministic storyboard planner and replay-cam renderer exist (`services/arenaCinematic.ts`, `components/environment/ArenaWorldView.tsx`). The tournament layer (`services/arenaTournament.ts`) runs seeded single-elimination brackets of fully recorded headless matches; `ArenaSession.reviewFrom` loads any match recording into review, where the replay-cam plays it as a cinematic. AI-generated video scenes are a designed extension point, not implemented or budgeted. No browser QA has run on the cinematic or tournament pass.
+Status: **partially implemented**. The deterministic storyboard planner and replay-cam renderer exist (`services/arenaCinematic.ts`, `components/environment/ArenaWorldView.tsx`). The tournament layer (`services/arenaTournament.ts`) runs seeded single-elimination brackets of fully recorded headless matches; `ArenaSession.reviewFrom` loads any match recording into review, where the replay-cam plays it as a cinematic. The AI-video stage now exists as the Orbis broadcast layer (`services/arenaBroadcast.ts` grammar, `services/orbisDirector.ts` dispatch, `components/workbench/BroadcastPanel.tsx`, `app/api/reactor/token` broker) — code-complete and unit-tested, but **not yet live-verified** against a real Reactor session and not browser-QA'd. No browser QA has run on the cinematic, tournament, or broadcast passes.
 
 This document defines how Clawdy turns recorded matches into immersive scenes for live tournament presentation. The reference architecture is the Pocket Battle Lab pattern: **the match authority owns the outcome; the scene layer owns the presentation.**
 
@@ -23,8 +23,9 @@ planCinematicShots()          deterministic storyboard — pure function of the 
         ▼
    ┌───────────────┬────────────────────┐
    ▼               ▼                    ▼
-Replay-cam      AI video clips        (future: narration,
-renderer       (unimplemented)         overlays, share cards)
+Replay-cam      Orbis broadcast       (future: narration,
+renderer       (implemented,          overlays, share cards)
+                not live-verified)
    │
    ▼
 R3F canvas / saved artifact
@@ -50,7 +51,7 @@ When multiple events land on the same checkpoint, one shot wins by drama priorit
 
 **Replay-cam (implemented).** `CinematicCamera` inside the world canvas looks up the active shot for the current `replayIndex`, resolves its focus from the live course (agent position, flood zone, or course center), and cuts or drifts the camera accordingly. `CinematicPlayback` advances `session.seek()` at a fixed frames-per-second, so the reel is the real recorded simulation — deterministic, offline, and free. Hard cuts happen on shot boundaries, mirroring edit grammar rather than camera interpolation.
 
-**AI video (designed, unimplemented).** A future stage consumes the same `CinematicShot[]` and produces short clips, with each shot's `reason` and the recorded facts as the only prompt inputs. Identity anchoring uses a rendered frame of the entrant's actual rover GLB, matching the reference-frame pattern. Approval for any paid generation is required before implementation — see the session/budget rules in `AGENT.md`.
+**Orbis broadcast (implemented, not live-verified).** `BroadcastPanel` mounts a session-scoped Visko Orbis Dynamic video view in the sidebar. In review it replays the same storyboard the replay-cam uses — each shot boundary becomes a prompt via `triggerFromShot` — while live phases diff consecutive published snapshots through `broadcastTriggersBetween` for the same recorded-fact transitions. `buildBroadcastIntent` compiles a trigger + the motivating snapshot into a `{ prompt, audioPrompt }` pair: the first dispatch of a scene restates the full style anchor, later ones open with "The same unbroken scene continues" and describe one visible change (prompts are rebuilt from recorded facts only). `OrbisDirector` rate-limits to the ~1.8 s chunk cadence and coalesces the pending slot by drama priority (recovery > finish > flood > bank > collect > establish > follow). The Reactor API key stays server-side; `/api/reactor/token?profile=broadcast` mints a one-session, five-minute JWT. Offline "Storyboard" mode runs the identical grammar against a local transport so the prompt feed is inspectable with no credentials. Live verification requires a provisioned `REACTOR_API_KEY`; per `AGENT.md` session/budget rules, use only a bounded grant.
 
 ## Variables That Feed Scenes
 
@@ -95,3 +96,14 @@ and measure bundle/perf on low-end devices before committing.
 - Camera choreography is engineered presentation; it must not be attributed to learned-policy behavior.
 - No per-decision scene generation — a 1200-tick match has ~5 watchable acts, not 240 shots.
 - No live match generation that could stall a tournament schedule.
+
+## Orbis broadcast layer (AI-video stage)
+
+Implemented as a presentation-only panel beside the replay-cam; nothing it renders feeds a match, observation, or evaluation.
+
+- `services/arenaBroadcast.ts` — event→prompt grammar. A `CinematicShot` (review) or a snapshot diff (live) becomes a `BroadcastIntent`. The first prompt restates the style anchor; every later one starts "The same unbroken scene continues" and describes one change.
+- `services/orbisDirector.ts` — priority slot + ~1.4–1.8 s cadence; the initial-vs-delta choice is made at dispatch.
+- `app/api/reactor/token/route.ts` — server-side token broker (`REACTOR_API_KEY`, one 5-minute session). The key never reaches the browser.
+- `components/workbench/BroadcastPanel.tsx` — **Go live** (Reactor WebRTC) or **Storyboard** (shows the prompt feed with no key). Degradation ladder: live Orbis video → prompt storyboard → replay-cam.
+
+Set `REACTOR_API_KEY` in the server env (Vercel) to enable live video. Not yet live-verified against a real session.

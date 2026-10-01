@@ -957,6 +957,25 @@ a.secondaryButton { text-decoration: none; }
 .candidateList strong { font-size: 10px; font-weight: 600; display: block; }
 .candidateList span { font-size: 9px; color: var(--muted); display: block; line-height: 1.45; }
 
+/* Orbis broadcast — generated view layered on the same recorded facts */
+.broadcastPanel { margin-top: 10px; padding: 12px; background: #1a241f; border: 1px solid var(--line); border-radius: 5px; color: #dce8d8; }
+.broadcastPanel .replayHead { color: #dce8d8; }
+.broadcastStatus { font: 9px var(--font-geist-mono), monospace; color: #8fa88f; }
+.broadcastStatus[data-live='true'] { color: #ffb14d; }
+.broadcastStage { position: relative; margin-top: 8px; aspect-ratio: 16 / 9; background: #0c130f; border-radius: 4px; overflow: hidden; }
+.broadcastVideo { width: 100%; height: 100%; display: block; }
+.broadcastOverlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(12, 19, 15, 0.72); font: 9px var(--font-geist-mono), monospace; color: #9fb8a0; }
+.broadcastStoryboard { height: 100%; padding: 10px; overflow: auto; }
+.broadcastStoryboard span { display: block; font: 8px var(--font-geist-mono), monospace; letter-spacing: 0.08em; color: #ffb14d; margin-bottom: 6px; }
+.broadcastStoryboard p { margin: 0; font-size: 10px; line-height: 1.55; color: #c9dbc4; }
+.broadcastTimeline { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.broadcastTimeline li { display: flex; gap: 8px; font-size: 9px; line-height: 1.4; align-items: baseline; }
+.broadcastTimeline li span { font: 8px var(--font-geist-mono), monospace; text-transform: uppercase; letter-spacing: 0.08em; color: #ffb14d; flex-shrink: 0; }
+.broadcastTimeline li em { font-style: normal; color: #9fb8a0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.broadcastTimeline li[data-status='dispatched'] span { color: #7fd08a; }
+.broadcastTimeline li[data-status='failed'] span { color: #e85d5d; }
+.broadcastPanel .correctionNote { color: #8fa88f; }
+
 /* Champion card — honest focus readout + collapsed setup */
 .skillBlock { margin: 10px 0 6px; }
 .skillHint { margin: 0 0 6px; font: 8px var(--font-geist-mono), monospace; letter-spacing: 0.08em; color: var(--muted); }
@@ -994,3 +1013,24 @@ a.secondaryButton { text-decoration: none; }
 .tournamentDetails > summary { cursor: pointer; padding: 12px 16px; font-size: 11px; font-weight: 600; }
 .tournamentDetails > :not(summary) { margin: 0 0 12px; }
 .tournamentDetails .replay { margin-top: 0; border: 0; background: transparent; }
+.broadcastPanel { margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 5px; background: #e6ece0; }
+.broadcastStatus { font-size: 10px; color: var(--muted); }
+.broadcastStatus[data-live="true"] { color: #b3261e; font-weight: 650; }
+.broadcastStatus[data-live="true"]::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: #b3261e; animation: broadcastPulse 1.4s ease-in-out infinite; }
+@keyframes broadcastPulse { 50% { opacity: 0.25; } }
+@media (prefers-reduced-motion: reduce) { .broadcastStatus[data-live="true"]::before, .broadcastLowerThird { animation: none; } }
+.broadcastStage { position: relative; aspect-ratio: 16 / 9; margin-top: 8px; border-radius: 4px; overflow: hidden; background: #1b241a; }
+.broadcastVideo { width: 100%; height: 100%; object-fit: cover; display: block; }
+.broadcastOverlay { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(27, 36, 26, 0.72); color: #e6ece0; font: 10px var(--font-geist-mono), monospace; }
+.broadcastStoryboard { position: absolute; inset: 0; padding: 10px; overflow: auto; color: #e6ece0; font-size: 10px; line-height: 1.5; }
+.broadcastStoryboard span { display: block; margin-bottom: 4px; opacity: 0.7; font: 9px var(--font-geist-mono), monospace; }
+.broadcastStoryboard p { margin: 0; }
+.broadcastTimeline { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 3px; font: 10px var(--font-geist-mono), monospace; }
+.broadcastTimeline li { display: flex; gap: 8px; }
+.broadcastTimeline li[data-status="queued"] { opacity: 0.5; }
+.broadcastTimeline li[data-status="failed"] { color: #b3261e; }
+.broadcastTimeline li span { font-weight: 650; min-width: 60px; }
+.broadcastTimeline li em { font-style: normal; color: var(--muted); }
+.broadcastLowerThird { position: absolute; left: 8px; bottom: 8px; right: 8px; display: flex; flex-direction: column; gap: 1px; padding: 5px 9px; border-left: 3px solid #d9a441; background: rgba(27, 36, 26, 0.78); color: #f3efe2; font: 10px var(--font-geist-mono), monospace; animation: lowerThirdIn 260ms ease-out; }
+.broadcastLowerThird strong { text-transform: uppercase; letter-spacing: 0.08em; font-size: 9px; color: #d9a441; }
+@keyframes lowerThirdIn { from { opacity: 0; transform: translateY(6px); } }

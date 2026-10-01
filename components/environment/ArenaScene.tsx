@@ -65,6 +65,8 @@ import { actionsEqual, COACH_ANYTIME_KEY, COACH_MISTAKE_KEY, COACH_NUDGE_KEY, is
 import styles from './ArenaScene.module.css'
 
 const WorldView = dynamic(() => import('./ArenaWorldView'), { ssr: false })
+// WebRTC SDK is browser-only; keep it out of the SSR/initial bundle.
+const BroadcastPanel = dynamic(() => import('../workbench/BroadcastPanel'), { ssr: false })
 const viewOnlyCheckpointMessage = (checkpoint: PolicyCheckpoint) =>
   `"${checkpoint.name}" is from an older format, so it's view-only for now — re-train its examples to bring it up to date and make it playable again.`
 const CAMERA_LABELS: Record<ArenaCamera, string> = {
@@ -1567,6 +1569,7 @@ function Workbench({
               />
             ))
           )}
+          <BroadcastPanel session={session} />
           <div className={styles.ruleCard}>
             <strong>{playMode === 'compete' ? 'Scored match. No coaching.' : 'Collect. Bank. Survive the flood.'}</strong>
             <p>{playMode === 'compete' ? 'Same world, different flood and core layout. Weights stay frozen until you reset to Practice.' : `Grab cores and bank them at base. Floods slow the valley; a drain costs ${ARENA_RULES.drainCost} energy and helps both rovers.`}</p>
