@@ -110,6 +110,7 @@ Behavior worth knowing:
 
 - **On-air caption** — a lower-third shows the event kind and reason at the moment its prompt ships, so viewers can see which match fact the video is reacting to.
 - **Expand** — fills the screen with the video plus a score bug; the session stays mounted, so expanding never reconnects.
+- **Image-to-video** — before the first prompt, `services/arenaFrameCapture.ts` grabs the live arena canvas (16:9, center-cropped), uploads it and calls `set_image`, so Orbis grows out of the player's real arena. Falls back to text-to-video if capture or upload fails.
 - **Pacing** — Go live sets match speed to 1x (Orbis emits a chunk about every 1.8 s).
 - **Session end** — if the live session ends on its own (5-minute grant cap, network drop), the panel continues as a prompt storyboard rather than leaving a dead video.
 

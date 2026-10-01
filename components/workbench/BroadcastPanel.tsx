@@ -25,6 +25,7 @@ import {
 } from '../../services/arenaBroadcast'
 import { OrbisDirector } from '../../services/orbisDirector'
 import { createReactorTokenResolver } from '../../services/reactorToken'
+import { captureArenaFrame } from '../../services/arenaFrameCapture'
 import styles from '../environment/ArenaScene.module.css'
 
 /**
@@ -90,6 +91,7 @@ function BroadcastExperience({ session }: { session: ArenaSession }) {
   const modeRef = useRef<BroadcastMode>('off')
   const modelStateRef = useRef<ViskoOrbisDynamicStateMessage | null>(null)
   const lastShotKeyRef = useRef<string | null>(null)
+  const imageAttemptedRef = useRef(false)
   const prevLiveRef = useRef<ArenaSnapshot | null>(null)
   const storyboardRef = useRef<{ recording: unknown; shots: CinematicShot[] } | null>(null)
 
@@ -141,6 +143,22 @@ function BroadcastExperience({ session }: { session: ArenaSession }) {
     if (mode === 'live' && reactor.status === 'ready') {
       director.setTransport({
         setPrompt: async (prompt: string) => {
+          // Image-to-video: anchor the first chunk on the real arena render.
+          // Must land before `start`, so it rides on the first prompt. Any
+          // failure degrades to text-to-video.
+          if (!imageAttemptedRef.current) {
+            imageAttemptedRef.current = true
+            try {
+              const frame = await captureArenaFrame()
+              if (frame) {
+                const ref = await reactorRef.current.uploadFile(frame, { name: 'arena.jpg' })
+                await reactorRef.current.setImage({ image: ref })
+                setNotice('Grounded on your live arena (image-to-video).')
+              }
+            } catch {
+              // text-to-video fallback
+            }
+          }
           await reactorRef.current.setPrompt({ prompt })
           setActivePrompt(prompt)
         },
@@ -180,6 +198,7 @@ function BroadcastExperience({ session }: { session: ArenaSession }) {
     setAiring(null)
     setNotice(null)
     wasReadyRef.current = false
+    imageAttemptedRef.current = false
     director.resetScene()
     lastShotKeyRef.current = null
     prevLiveRef.current = null
