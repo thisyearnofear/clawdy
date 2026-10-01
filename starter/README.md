@@ -22,7 +22,7 @@ This will:
 1. Initialize a synthetic practice scenario for the builder pipeline.
 2. Evaluate the baseline policy checkpoint (`champion-baseline-s0`).
 3. Run an episode rollout and collect training examples for high-ridge routing during active flood conditions and core harvesting.
-4. Backpropagate cross-entropy loss with momentum SGD to update the 2-layer MLP weights ($24 \to 32 \to 16 \to 8$).
+4. Backpropagate cross-entropy loss with momentum SGD to update the MLP weights ($36 \to 32 \to 16 \to 8$, plus a small edge-ranking head).
 5. Compute a deterministic weight digest and validate the checkpoint against the Season 0 schema.
 6. Run an evaluation match against the house rival.
 7. Export the trained checkpoint to `starter/champion-checkpoint.json`.
@@ -45,20 +45,18 @@ Once you have generated `starter/champion-checkpoint.json`:
 
 ## Architecture Specifications
 
-- **Observation Feature Vector:** 24-dimensional normalized float array encoding:
-  - Normalized cargo and energy ratios
-  - Flooding state and active drain status
-  - Remaining episode time, transit state, and transit progress
-  - Whether the rover is at its base, grounded, recovering, or on a blocked edge
-  - Availability of `collect`, `bank`, and `drain` actions
-  - Presence of floodable/non-floodable outgoing edges and whether the floodable edge is currently slowed
-  - Resource availability at neighboring nodes
-  - Rival cargo, rival banked, and relative advantage
-  - A bias constant
+- **Observation Feature Vector:** 36-dimensional normalized float array (authoritative list: `services/policyModel.ts`, `encodeObservation`), covering:
+  - Cargo and energy ratios, flood and drain state, remaining time
+  - Transit state and progress, whether the rover is at base, grounded, recovering, or on a blocked edge
+  - Which of `collect`, `bank`, `drain` and the move classes are legal right now
+  - Neighbouring and nearest routes and pickups (floodable or not, cost, value)
+  - Rival visibility and the public banked score
+  - Energy budget for the trip home, plus fog and memory of stale resources
 - **Policy Network:**
-  - Layer 1: $24 \to 32$ with Tanh
+  - Layer 1: $36 \to 32$ with Tanh
   - Layer 2: $32 \to 16$ with Tanh
   - Action Head: $16 \to 8$ logits with Softmax, masked to legal actions at inference
+  - Edge head: $8 \to 1$ linear score over graph-relative edge features, used to pick which edge a `move-*` class takes
 - **Action Classes (8 discrete outputs):**
   - 0: `wait`
   - 1: `bank`

@@ -136,6 +136,24 @@ function assert(condition: boolean, message: string): asserts condition {
   if (!condition) throw new Error(`Invalid arena scenario: ${message}`)
 }
 
+/**
+ * Deep copy for the plain JSON-shaped data this module owns (numbers, strings,
+ * booleans, null, arrays, plain objects). Several times faster than
+ * structuredClone on small objects, which matters because every decision tick
+ * clones an observation per entrant.
+ */
+function clonePlain<T>(value: T): T {
+  if (value === null || typeof value !== 'object') return value
+  if (Array.isArray(value)) {
+    const copy = new Array(value.length)
+    for (let index = 0; index < value.length; index++) copy[index] = clonePlain(value[index])
+    return copy as T
+  }
+  const copy: Record<string, unknown> = {}
+  for (const key of Object.keys(value)) copy[key] = clonePlain((value as Record<string, unknown>)[key])
+  return copy as T
+}
+
 function validateScenario(scenario: ArenaScenario) {
   assert(identifier(scenario.id) && identifier(scenario.worldVersion), 'identity')
   assert(scenario.split === 'practice' || scenario.split === 'evaluation', 'split')
@@ -314,7 +332,7 @@ export class ArenaEpisode {
   }
 
   snapshot(): ArenaSnapshot {
-    return structuredClone(this.#state)
+    return clonePlain(this.#state)
   }
 
   /**
@@ -422,7 +440,7 @@ export class ArenaEpisode {
     if (state.tick % ARENA_RULES.decisionEveryTicks === 0 || state.status === 'finished') {
       this.#checkpoints.push({ state: this.snapshot() })
     }
-    return structuredClone(outcomes)
+    return clonePlain(outcomes)
   }
 
   recording(): ArenaRecording {
@@ -702,14 +720,14 @@ export function observeSnapshot(
     remembered: [...fogSets.remembered].sort(),
     hidden: fogSets.hidden.sort(),
   }
-  return structuredClone({
+  return {
     schemaVersion: OBSERVATION_SCHEMA_VERSION,
     rulesVersion: ARENA_RULES.version,
     tick: state.tick,
     remainingTicks: scenario.durationTicks - state.tick,
     decisionDue,
-    self: agent,
-    rivals: state.agents.filter(candidate => candidate.id !== agentId).map(candidate => {
+    self: clonePlain(agent),
+    rivals: clonePlain(state.agents.filter(candidate => candidate.id !== agentId).map(candidate => {
       const isVisible = fogSets.visible.has(candidate.nodeId)
       const isRemembered = fogSets.remembered.has(candidate.nodeId)
       // Banked totals are a public scoreboard (generals-style): disclosed at
@@ -721,14 +739,16 @@ export function observeSnapshot(
         return { id: candidate.id, position: candidate.position, cargo: null, banked: candidate.banked, visible: false }
       }
       return { id: candidate.id, position: null, cargo: null, banked: candidate.banked, visible: false }
-    }),
-    nodes: scenario.nodes,
+    })),
+    nodes: scenario.nodes.map(node => ({ id: node.id, position: [...node.position] as ArenaPosition })),
+    // Dense ground paths are rendering/sim geometry, not policy input. Leaving
+    // them out keeps observations cheap to copy (they dominated match cost).
     edges: scenario.edges.map(edge => ({
-      ...edge,
+      id: edge.id, from: edge.from, to: edge.to, travelTicks: edge.travelTicks, floodable: edge.floodable,
       blocked: agent.blockedEdges.includes(edge.id),
       currentTravelTicks: edge.travelTicks * (edge.floodable && state.weather.flooded ? ARENA_RULES.floodTravelMultiplier : 1),
     })),
-    resources: (() => {
+    resources: clonePlain((() => {
       const visibleNodes = fogSets.visible
       const result: (ArenaResource & { available: boolean; visible: boolean; stale: boolean })[] = []
       // Currently visible resources: show real-time state
@@ -749,9 +769,9 @@ export function observeSnapshot(
         }
       }
       return result
-    })(),
-    weather: state.weather,
-    availableActions: decisionDue ? choices.filter(action => checkActionRejection(scenario, state, agent, action) === null) : [],
+    })()),
+    weather: clonePlain(state.weather),
+    availableActions: clonePlain(decisionDue ? choices.filter(action => checkActionRejection(scenario, state, agent, action) === null) : []),
     fog,
-  } satisfies ArenaObservation)
+  } satisfies ArenaObservation
 }
