@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "prepare": "git config core.hooksPath .husky",
+    "prepare": "git config core.hooksPath .husky || true",
     "test": "vitest run",
     "starter:train": "tsx starter/train.ts",
     "print:stl": "python3 scripts/export-print-stl.py public/assets/mint/champion-rover.glb public/prints/champion-rover.stl",
