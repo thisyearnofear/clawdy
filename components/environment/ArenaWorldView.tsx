@@ -15,6 +15,7 @@ import { BankBursts } from './BankBursts'
 import { FloodWater } from './FloodWater'
 import { FloodTelegraph } from './FloodTelegraph'
 import { WorldFX, type FxCue } from './WorldFX'
+import { RushEventFX } from './RushEventFX'
 import { RoverStatus } from './RoverStatus'
 import { RoverFX } from './RoverFX'
 import { PracticeGhost } from './PracticeGhost'
@@ -401,6 +402,8 @@ function Rover({ session, id, color }: { session: ArenaSession; id: string; colo
   const target = useRef(new THREE.Vector3())
   const targetRot = useRef(new THREE.Quaternion())
   const wheelRefs = useRef<THREE.Mesh[]>([])
+  const body = useRef<THREE.Group>(null)
+  const lastHeading = useRef(0)
 
   useFrame((state, delta) => {
     if (!group.current) return
@@ -420,6 +423,18 @@ function Rover({ session, id, color }: { session: ArenaSession; id: string; colo
       if (wheel) wheel.rotation.y += wheelRotation
     }
 
+    // The visual chassis reacts to motion; the authoritative pose stays untouched.
+    if (body.current) {
+      const moving = horizontalSpeed > 0.15
+      const heading = moving ? Math.atan2(dx, dz) : lastHeading.current
+      const turn = Math.atan2(Math.sin(heading - lastHeading.current), Math.cos(heading - lastHeading.current))
+      const lean = moving ? THREE.MathUtils.clamp(-turn * 0.22, -0.1, 0.1) : 0
+      const easing = 1 - Math.exp(-delta * 7)
+      body.current.rotation.z = THREE.MathUtils.lerp(body.current.rotation.z, lean, easing)
+      body.current.rotation.x = THREE.MathUtils.lerp(body.current.rotation.x, moving ? -0.035 : 0, easing)
+      if (moving) lastHeading.current = heading
+    }
+
     previous.current.copy(target.current)
   })
 
@@ -434,13 +449,15 @@ function Rover({ session, id, color }: { session: ArenaSession; id: string; colo
     <>
       <RoverShadow session={session} id={id} />
       <group ref={group}>
-        {modelUrl ? (
-          <Suspense fallback={<ProceduralGeometry color={color} wheelRefs={wheelRefs} />}>
-            <MintModel url={modelUrl} transform={transform} tint={color} />
-          </Suspense>
-        ) : (
-          <ProceduralGeometry color={color} wheelRefs={wheelRefs} />
-        )}
+        <group ref={body} scale={1.35}>
+          {modelUrl ? (
+            <Suspense fallback={<ProceduralGeometry color={color} wheelRefs={wheelRefs} />}>
+              <MintModel url={modelUrl} transform={transform} tint={color} />
+            </Suspense>
+          ) : (
+            <ProceduralGeometry color={color} wheelRefs={wheelRefs} />
+          )}
+        </group>
       </group>
     </>
   )
@@ -492,14 +509,14 @@ function PathRibbon({ session, edgeId, points, color, coachEdgeIds, selectedCoac
     if (!group.current || !material.current) return
     const active = session.liveEpisode().agents.some(agent => agent.transit?.edgeId === edgeId)
     const coaching = coachEdgeIds?.has(edgeId) ?? false
-    const target = active ? 0.95 : selectedCoachEdgeId === edgeId ? 0.9 : coaching ? 0.55 : 0.14
+    const target = active ? 0.95 : selectedCoachEdgeId === edgeId ? 0.9 : coaching ? 0.55 : 0.035
     if (Math.abs(material.current.opacity - target) > 0.01) material.current.opacity = target
   })
   if (!geometry) return null
   return (
     <group ref={group} visible>
       <mesh geometry={geometry} renderOrder={2}>
-        <meshBasicMaterial ref={material} color={selectedCoachEdgeId === edgeId ? '#7fb069' : color} transparent opacity={0.14} depthWrite={false} side={THREE.DoubleSide} />
+        <meshBasicMaterial ref={material} color={selectedCoachEdgeId === edgeId ? '#7fb069' : color} transparent opacity={0.035} depthWrite={false} side={THREE.DoubleSide} />
       </mesh>
     </group>
   )
@@ -747,6 +764,62 @@ function ReadyOnce({ ready, onReady }: { ready: boolean; onReady: () => void }) 
   return null
 }
 
+function BasinSky() {
+  return (
+    <mesh scale={95} renderOrder={-100}>
+      <sphereGeometry args={[1, 32, 16]} />
+      <shaderMaterial
+        side={THREE.BackSide}
+        depthWrite={false}
+        depthTest={false}
+        vertexShader={`varying vec3 vDirection;
+          void main() {
+            vDirection = normalize(position);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }`}
+        fragmentShader={`varying vec3 vDirection;
+          void main() {
+            float elevation = clamp(vDirection.y * 0.7 + 0.26, 0.0, 1.0);
+            vec3 horizon = vec3(0.83, 0.73, 0.59);
+            vec3 zenith = vec3(0.43, 0.62, 0.74);
+            vec3 sky = mix(horizon, zenith, smoothstep(0.0, 1.0, elevation));
+            gl_FragColor = vec4(sky, 1.0);
+            #include <tonemapping_fragment>
+            #include <colorspace_fragment>
+          }`}
+      />
+    </mesh>
+  )
+}
+
+function BasinSun({ course, lite }: { course: ArenaCourse; lite: boolean }) {
+  const { scene } = useThree()
+  const target = useMemo(() => new THREE.Object3D(), [])
+  useEffect(() => {
+    target.position.set(...course.center)
+    scene.add(target)
+    return () => { scene.remove(target) }
+  }, [course, scene, target])
+  return (
+    <directionalLight
+      target={target}
+      position={[course.center[0] - 11, course.center[1] + 13, course.center[2] - 8]}
+      intensity={2.8}
+      color="#ffe1ad"
+      castShadow={!lite}
+      shadow-mapSize-width={lite ? 512 : 2048}
+      shadow-mapSize-height={lite ? 512 : 2048}
+      shadow-camera-left={-15}
+      shadow-camera-right={15}
+      shadow-camera-top={15}
+      shadow-camera-bottom={-15}
+      shadow-camera-near={1}
+      shadow-camera-far={50}
+      shadow-bias={-0.0002}
+    />
+  )
+}
+
 function World({
   course,
   session,
@@ -776,26 +849,13 @@ function World({
     <>
       <EpisodeClock session={session} />
       <ReadyOnce ready={terrainReady} onReady={onReady} />
-      <color attach="background" args={['#d9d4c6']} />
-      <fog attach="fog" args={['#d9d4c6', 32, 65]} />
-      <hemisphereLight args={['#edf2ef', '#8c7259', 1.1]} />
-      <ambientLight intensity={0.35} />
-      <directionalLight
-        position={[4, 16, -5]}
-        intensity={2}
-        color="#fff1d6"
-        castShadow={!lite}
-        shadow-mapSize-width={512}
-        shadow-mapSize-height={512}
-        shadow-camera-left={-13}
-        shadow-camera-right={13}
-        shadow-camera-top={13}
-        shadow-camera-bottom={-13}
-        shadow-camera-near={1}
-        shadow-camera-far={40}
-        shadow-bias={-0.0002}
-      />
-      <directionalLight position={[-8, 8, -4]} intensity={0.35} />
+      <color attach="background" args={['#d4baa0']} />
+      <BasinSky />
+      <fog attach="fog" args={['#c7b19b', 43, 105]} />
+      <hemisphereLight args={['#b5d5e0', '#9c7960', 0.85]} />
+      <ambientLight intensity={0.18} />
+      <BasinSun course={course} lite={lite} />
+      <directionalLight position={[9, 7, 13]} color="#b0ccdc" intensity={0.35} />
 
       <TerrainMesh
         key={`${course.config.terrain.url}:${course.config.terrain.sha256}`}
@@ -858,7 +918,7 @@ function World({
             </mesh>
             <Rover session={session} id={entrant.id} color={color} />
             <RoverStatus session={session} id={entrant.id} tint={color} />
-            <RoverFX session={session} id={entrant.id} trailColor={color} />
+            <RoverFX session={session} id={entrant.id} />
           </group>
         )
       })}
@@ -872,6 +932,7 @@ function World({
       <FloodWater course={course} session={session} />
       <FloodTelegraph course={course} session={session} />
       <WorldFX session={session} course={course} cue={fxCue ?? null} />
+      <RushEventFX session={session} course={course} />
     </>
   )
 }
@@ -902,6 +963,10 @@ export default memo(function ArenaWorldView(props: WorldProps) {
       // (canvas.toDataURL in ArenaScene.handleShareCard). Cost is one buffer
       // copy per frame — negligible next to the 600k-tri terrain.
       gl={{ antialias: !lite, alpha: false, powerPreference: lite ? 'low-power' : 'high-performance', preserveDrawingBuffer: true }}
+      onCreated={({ gl }) => {
+        gl.toneMapping = THREE.ACESFilmicToneMapping
+        gl.toneMappingExposure = 1.25
+      }}
       fallback={<p role="alert">This device could not create a WebGL view.</p>}
     >
       {lite ? <FrameLimiter fps={30} /> : null}
