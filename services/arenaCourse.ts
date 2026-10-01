@@ -1,4 +1,4 @@
-import { ARENA_RULES, type ArenaPosition, type ArenaScenario } from './arenaEpisode'
+import { ARENA_RULES, DEFAULT_RUSH_RULES, type ArenaPosition, type ArenaScenario } from './arenaEpisode'
 import { ArenaPhysics, initializeArenaPhysics } from './arenaPhysics'
 import { disposeArenaTerrain, loadArenaTerrain } from './arenaTerrain'
 import { createWorldSurface } from './worldSurface'
@@ -192,6 +192,62 @@ export function buildArenaCourse(physics: ArenaPhysics): ArenaCourse {
   }
 }
 
+/** Centre station of the Rush arena: equidistant (within ~2%) from both bases. */
+export const RUSH_CORE_STATION = { id: 'arena-core', x: 7, z: 8 } as const
+
+/** Spawn ticks of the value-3 "mother cores" that appear at the centre. */
+export const RUSH_WAVE_TICKS = [160, 460, 760, 1040] as const
+
+/**
+ * Rush: the same grounded basin, plus a contested centre. Four full-cargo
+ * (value 3) cores appear at the centre on a timer, so the first rover to get
+ * there wins the prize and the rovers physically meet. Contact is resolved in
+ * the sim (see `ArenaEpisode`), so headless and live matches agree. Haul is
+ * untouched; this is a separate scenario on the same collider.
+ */
+export function buildRushCourse(physics: ArenaPhysics): ArenaCourse {
+  const base = buildArenaCourse(physics)
+  const nodes = [...base.scenario.nodes, { id: RUSH_CORE_STATION.id, position: groundPoint(physics, RUSH_CORE_STATION.x, RUSH_CORE_STATION.z) }]
+  const core = nodes[nodes.length - 1]
+  if (!physics.canStand(core.position)) throw new Error('Rush core lacks rover clearance')
+  const link = (id: string, fromId: string) => {
+    const from = TEMPLATE_STATIONS.find(station => station.id === fromId)!
+    const path = groundPath(physics, from.x, from.z, RUSH_CORE_STATION.x, RUSH_CORE_STATION.z)
+    return { id, from: fromId, to: RUSH_CORE_STATION.id, floodable: false, path, travelTicks: travelTicksForLength(pathLength(path)) }
+  }
+  const edges = [...base.scenario.edges, link('rush-cs-core', 'cross-s'), link('rush-s2-core', 'cross-s2')]
+  const waves = RUSH_WAVE_TICKS.map((spawnTick, index) => ({
+    id: `mother-${index + 1}`, nodeId: RUSH_CORE_STATION.id, value: 3, spawnTick,
+  }))
+  // Mirrored pairs: each pair sits the same travel distance from its own base
+  // (champion ticks vs rival ticks: 68/68, 76/79, 41/44, 87/83), so neither
+  // side owns the scatter. Only the centre is contested.
+  const scatter = [
+    ['ridge-north', 1], ['ridge-south', 1],
+    ['ridge-n1', 1], ['ridge-s3', 1],
+    ['cross-n', 1], ['cross-far', 1],
+    ['cross-s', 1], ['cross-s2', 1],
+  ] as const
+  return {
+    ...base,
+    center: [RUSH_CORE_STATION.x, core.position[1] + 0.55, RUSH_CORE_STATION.z],
+    scenario: {
+      ...base.scenario,
+      id: 'sandstone-rush-01',
+      split: 'practice',
+      seed: 20261002,
+      nodes,
+      edges,
+      resources: [
+        ...waves,
+        ...scatter.map(([nodeId, value], index) => ({ id: `core-${index + 1}`, nodeId, value })),
+      ],
+      floods: [{ startTick: 120, endTick: 420 }, { startTick: 780, endTick: 1080 }],
+      rush: { ...DEFAULT_RUSH_RULES },
+    },
+  }
+}
+
 export type CoursePlayMode = 'practice' | 'practice-deep' | 'compete'
 
 /**
@@ -307,11 +363,12 @@ export async function loadArenaCourse(signal?: AbortSignal) {
       const collider = surface.colliderData()
       physics = new ArenaPhysics(collider)
       const course = buildArenaCourse(physics)
+      const rushCourse = buildRushCourse(physics)
       const loadedPhysics = physics
       // Tournament matches each get an isolated physics world built from the
       // same pinned collider; callers dispose the returned motion themselves.
       const createMotion = () => new ArenaPhysics(collider)
-      return { course, physics: loadedPhysics, createMotion, dispose: () => loadedPhysics.dispose() }
+      return { course, rushCourse, physics: loadedPhysics, createMotion, dispose: () => loadedPhysics.dispose() }
     } finally {
       surface.dispose()
     }

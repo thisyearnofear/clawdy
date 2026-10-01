@@ -26,7 +26,8 @@ export const ARENA_RULES = Object.freeze({
 export type ArenaPosition = [number, number, number]
 export type ArenaNode = { id: string; position: ArenaPosition }
 export type ArenaEdge = { id: string; from: string; to: string; travelTicks: number; floodable: boolean; path?: ArenaPosition[] }
-export type ArenaResource = { id: string; nodeId: string; value: number }
+/** `spawnTick`: the core is hidden and uncollectable until that tick (Rush waves). */
+export type ArenaResource = { id: string; nodeId: string; value: number; spawnTick?: number }
 export type ArenaEntrant = { id: string; baseNode: string; policyVersion: string }
 
 export interface ArenaScenario {
@@ -40,7 +41,28 @@ export interface ArenaScenario {
   entrants: ArenaEntrant[]
   resources: ArenaResource[]
   floods: { startTick: number; endTick: number }[]
+  /** Present only in Rush scenarios: enables authoritative rover-vs-rover contact. */
+  rush?: ArenaRushRules
 }
+
+export type ArenaRushRules = {
+  /** Route-reference distance (m) at which two rovers bump. */
+  contactRadiusM: number
+  /** Ticks the bump loser may only `wait`. */
+  bumpStaggerTicks: number
+  /** Minimum ticks between bumps of the same pair. */
+  bumpCooldownTicks: number
+}
+
+export const DEFAULT_RUSH_RULES: ArenaRushRules = Object.freeze({
+  contactRadiusM: 1.1,
+  bumpStaggerTicks: 24,
+  bumpCooldownTicks: 60,
+})
+
+export type ArenaSimEvent =
+  | { type: 'core_spawn'; tick: number; resourceId: string; nodeId: string; value: number }
+  | { type: 'bump'; tick: number; winnerId: string; loserId: string; position: ArenaPosition; stolen: number }
 
 export type ArenaAction =
   | { type: 'move'; edgeId: string }
@@ -91,6 +113,8 @@ export interface ArenaSnapshot {
   agents: ArenaAgentState[]
   resources: (ArenaResource & { collectedBy: string | null })[]
   weather: { flooded: boolean; drainedUntilTick: number }
+  /** Append-only authoritative events (Rush only); carried by checkpoints so replays reproduce them. */
+  events?: ArenaSimEvent[]
 }
 
 export const OBSERVATION_SCHEMA_VERSION = 'arena-observation-v2' as const
@@ -184,7 +208,13 @@ function validateScenario(scenario: ArenaScenario) {
   }
   assert(scenario.entrants.every(entrant => nodes.has(entrant.baseNode) && identifier(entrant.policyVersion)), 'entrants')
   assert(scenario.resources.every(resource => nodes.has(resource.nodeId) &&
-    integer(resource.value, 1, ARENA_RULES.capacity)), 'resources')
+    integer(resource.value, 1, ARENA_RULES.capacity) &&
+    (resource.spawnTick === undefined || integer(resource.spawnTick, 0, scenario.durationTicks - 1))), 'resources')
+  if (scenario.rush !== undefined) {
+    const { contactRadiusM, bumpStaggerTicks, bumpCooldownTicks } = scenario.rush
+    assert(Number.isFinite(contactRadiusM) && contactRadiusM > 0 && contactRadiusM <= 5 &&
+      integer(bumpStaggerTicks, 0, 200) && integer(bumpCooldownTicks, 1, 600), 'rush rules')
+  }
   assert(Array.isArray(scenario.floods) && scenario.floods.length <= 32, 'flood schedule')
   assert(scenario.floods.every(flood => integer(flood.startTick, 0, scenario.durationTicks - 1) &&
     integer(flood.endTick, flood.startTick + 1, scenario.durationTicks)), 'flood intervals')
@@ -315,6 +345,7 @@ export class ArenaEpisode {
       })),
       resources: this.#scenario.resources.map(resource => ({ ...resource, collectedBy: null })),
       weather: { flooded: false, drainedUntilTick: 0 },
+      ...(this.#scenario.rush ? { events: [] } : {}),
     }
     this.#motion?.reset(this.#state.agents.map(agent => ({ id: agent.id, position: [...agent.position] })))
     this.#state.weather.flooded = this.#isFlooded()
@@ -371,7 +402,7 @@ export class ArenaEpisode {
         if (edge.to === agent.nodeId) visibleNodes.add(edge.from)
       }
       for (const resource of this.#state.resources) {
-        if (visibleNodes.has(resource.nodeId)) {
+        if (visibleNodes.has(resource.nodeId) && isResourceSpawned(resource, this.#state.tick)) {
           const existing = agent.knownResources.find(r => r.id === resource.id)
           if (existing) {
             existing.available = resource.collectedBy === null
@@ -430,6 +461,20 @@ export class ArenaEpisode {
       }
     }
     state.tick += 1
+    if (state.events) {
+      for (const resource of this.#scenario.resources) {
+        if (resource.spawnTick === state.tick) {
+          state.events.push({ type: 'core_spawn', tick: state.tick, resourceId: resource.id, nodeId: resource.nodeId, value: resource.value })
+          // A spawn is a public flare: every entrant learns where it is, even
+          // through fog. Who gets there first is the race.
+          for (const agent of state.agents) {
+            if (!agent.knownResources.some(known => known.id === resource.id)) {
+              agent.knownResources.push({ id: resource.id, nodeId: resource.nodeId, value: resource.value, available: true })
+            }
+          }
+        }
+      }
+    }
     state.weather.flooded = this.#isFlooded()
     this.#updateKnownResources()
     if (state.tick === this.#scenario.durationTicks) {
@@ -582,6 +627,46 @@ export class ArenaEpisode {
         }
       }
     }
+    if (this.#scenario.rush) this.#resolveContacts(desired)
+  }
+
+  /**
+   * Rush contact: two rovers whose route-reference positions are within the
+   * contact radius bump. Route positions (not physics poses) are used so a
+   * physics-backed live match and a route-only server match agree exactly.
+   * The heavier rover (more cargo) loses; ties fall to energy, then to the
+   * seeded priority. The loser is staggered and the winner steals one unit.
+   */
+  #resolveContacts(desired: { id: string; position: ArenaPosition }[]) {
+    const rules = this.#scenario.rush!
+    const state = this.#state
+    if (state.agents.length !== 2 || !state.events) return
+    const [a, b] = state.agents
+    const pa = desired.find(item => item.id === a.id)!.position
+    const pb = desired.find(item => item.id === b.id)!.position
+    if (Math.hypot(pa[0] - pb[0], pa[2] - pb[2]) > rules.contactRadiusM) return
+    // Cooldown is derived from the event log, so restored snapshots and
+    // replays behave exactly like the live run.
+    const lastBump = state.events.findLast(event => event.type === 'bump')
+    if (lastBump && state.tick - lastBump.tick < rules.bumpCooldownTicks) return
+    if (a.staggeredUntilTick > state.tick || b.staggeredUntilTick > state.tick) return
+    const bias = (this.#scenario.seed + Math.floor(state.tick / ARENA_RULES.decisionEveryTicks)) % 2
+    const loser = a.cargo !== b.cargo ? (a.cargo > b.cargo ? a : b)
+      : a.energy !== b.energy ? (a.energy < b.energy ? a : b)
+      : (bias === 0 ? a : b)
+    const winner = loser === a ? b : a
+    const stolen = Math.min(1, loser.cargo, Math.max(0, ARENA_RULES.capacity - winner.cargo))
+    loser.cargo -= stolen
+    winner.cargo += stolen
+    loser.staggeredUntilTick = Math.max(loser.staggeredUntilTick, state.tick + rules.bumpStaggerTicks)
+    state.events.push({
+      type: 'bump',
+      tick: state.tick,
+      winnerId: winner.id,
+      loserId: loser.id,
+      position: [(pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2, (pa[2] + pb[2]) / 2],
+      stolen,
+    })
   }
 }
 
@@ -651,6 +736,11 @@ export function rolloutOutcomeDelta(
   return score(oracle) - score(learner)
 }
 
+/** A core is in play once its spawn wave has arrived (always, when it has no spawnTick). */
+export function isResourceSpawned(resource: { spawnTick?: number }, tick: number): boolean {
+  return resource.spawnTick === undefined || resource.spawnTick <= tick
+}
+
 export function isScenarioFlooded(scenario: ArenaScenario, state: ArenaSnapshot): boolean {
   const { tick, weather } = state
   return weather.drainedUntilTick <= tick && scenario.floods.some(flood => flood.startTick <= tick && tick < flood.endTick)
@@ -683,7 +773,7 @@ export function checkActionRejection(
   }
   if (action.type === 'collect') {
     const resource = state.resources.find(candidate => candidate.id === action.resourceId)
-    if (!resource || resource.collectedBy !== null) return 'resource-unavailable'
+    if (!resource || resource.collectedBy !== null || !isResourceSpawned(resource, state.tick)) return 'resource-unavailable'
     if (resource.nodeId !== agent.nodeId) return 'unreachable-resource'
     return agent.cargo + resource.value > ARENA_RULES.capacity ? 'cargo-full' : null
   }
@@ -753,7 +843,7 @@ export function observeSnapshot(
       const result: (ArenaResource & { available: boolean; visible: boolean; stale: boolean })[] = []
       // Currently visible resources: show real-time state
       for (const resource of state.resources) {
-        if (resource.collectedBy !== null) continue
+        if (resource.collectedBy !== null || !isResourceSpawned(resource, state.tick)) continue
         if (visibleNodes.has(resource.nodeId)) {
           result.push({ id: resource.id, nodeId: resource.nodeId, value: resource.value, available: true, visible: true, stale: false })
         }
