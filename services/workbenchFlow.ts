@@ -9,6 +9,7 @@ export type NextStepAction =
   | 'teach'
   | 'coach'
   | 'train'
+  | 'watch-lesson'
   | null
 
 export interface NextStepInput {
@@ -18,6 +19,12 @@ export interface NextStepInput {
   coachingLocked: boolean
   studioOpen: boolean
   approvedCount: number
+  /**
+   * A trained-vs-parent comparison is loaded and not yet watched. This is the
+   * single most valuable moment in the product — it is where "my teaching
+   * changed its behaviour" becomes visible — so it outranks every other prompt.
+   */
+  hasUnwatchedComparison?: boolean
 }
 
 /**
@@ -30,6 +37,12 @@ export function computeNextStep(state: NextStepInput): { label: string; run: Nex
   const { visualReady, phase, playMode, coachingLocked, studioOpen, approvedCount } = state
   if (!visualReady) return { label: 'Settling the world…', run: null }
   if (phase === 'error') return { label: 'Reload the world', run: 'retry' }
+  // Watching the lesson is the payoff, so it wins over every other prompt
+  // whenever a comparison is waiting — including over "Play again", which is
+  // what the guidance machine would otherwise suggest after a round.
+  if (state.hasUnwatchedComparison) {
+    return { label: 'Watch the lesson — see what your teaching changed', run: 'watch-lesson' }
+  }
   if (phase === 'ready' && playMode === 'compete') {
     return { label: 'Press Play — Match (coaching locked)', run: 'play' }
   }

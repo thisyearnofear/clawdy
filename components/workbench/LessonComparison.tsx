@@ -1,6 +1,6 @@
 'use client'
 
-import { GitCompareArrows, Play } from 'lucide-react'
+import { GitCompareArrows, Play, RotateCcw } from 'lucide-react'
 import { describeBehaviourChange, summarizeBehaviourChange } from '../../services/behaviourDelta'
 import type { PracticeComparison } from '../../services/practiceComparison'
 import styles from '../environment/ArenaScene.module.css'
@@ -11,11 +11,21 @@ export function LessonComparison({
   reviewing,
   onWatch,
   onJumpToDivergence,
+  onRecompare,
+  recompareBusy = false,
 }: {
   comparison: PracticeComparison
   reviewing: 'baseline' | 'trained' | null
   onWatch: (which: 'baseline' | 'trained') => void
   onJumpToDivergence: () => void
+  /**
+   * Optional: re-derive the comparison. The two recordings are held in memory
+   * only (two 241-frame runs are far too large to persist), so a reload or a
+   * reset loses them. Re-deriving is deterministic and the coaching worker is
+   * already warm, so this turns a dead end into a couple of seconds.
+   */
+  onRecompare?: () => void
+  recompareBusy?: boolean
 }) {
   const delta = comparison.bankedDelta
   const divergence = comparison.firstDivergence
@@ -103,6 +113,11 @@ export function LessonComparison({
         <button type="button" className={styles.frameCoachButton} onClick={() => onWatch('baseline')} aria-pressed={reviewing === 'baseline'}>
           <Play size={13} /> Parent replay
         </button>
+        {onRecompare && (
+          <button type="button" className={styles.frameCoachButton} onClick={onRecompare} disabled={recompareBusy} title="Re-run both brains on this practice board">
+            <RotateCcw size={13} /> {recompareBusy ? 'Re-running…' : 'Compare again'}
+          </button>
+        )}
       </div>
       <details className={styles.referenceDetails}>
         <summary>Run metadata</summary>

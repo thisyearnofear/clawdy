@@ -16,7 +16,7 @@ import { isBundledStarter, SEASON_0_STARTER_CHECKPOINT } from '../../services/st
 import { proposeCorrection, summarizeCoachFocus } from '../../services/coachingEngine'
 import { rankCoachingCandidates, type CoachingCandidate } from '../../services/coachingCandidates'
 import { draftRecordedCorrection, recordedCoachContext } from '../../services/coachingReview'
-import { comparisonFrameAt, type PracticeComparison } from '../../services/practiceComparison'
+import { comparisonFrameAt, divergenceFrameIndex, type PracticeComparison } from '../../services/practiceComparison'
 import { useCoachingWorker } from '../utils/useCoachingWorker'
 import { liveCallContext, type LiveCallContext } from '../../services/liveCall'
 import { engagementView, heroLedeMode } from '../../services/engagement'
@@ -77,6 +77,7 @@ const CAMERA_LABELS: Record<ArenaCamera, string> = {
   overview: 'Arena',
   champion: 'Follow you',
   rival: 'Follow rival',
+  compare: 'Both brains',
 }
 
 type LoadedSession = { session: ArenaSession; course: ArenaCourse; rushCourse: ArenaCourse; createMotion: () => ArenaMotion }
@@ -165,6 +166,10 @@ function Workbench({
   const [trainMessage, setTrainMessage] = useState<string | null>(null)
   const [comparison, setComparison] = useState<PracticeComparison | null>(null)
   const [comparisonReviewing, setComparisonReviewing] = useState<'baseline' | 'trained' | null>(null)
+  // Set once the player has actually watched a lesson replay, so the guidance
+  // machine stops pushing it. Resets with the comparison itself.
+  const [comparisonWatched, setComparisonWatched] = useState(false)
+  const [recompareBusy, setRecompareBusy] = useState(false)
   const [coachSelection, setCoachSelection] = useState<{ recording: ArenaRecording; replayIndex: number; tick: number; action: ArenaAction } | null>(null)
   const [feed, setFeed] = useState<HudFeedEvent[]>([])
   const [clipUrl, setClipUrl] = useState<string | null>(null)
@@ -866,6 +871,7 @@ function Workbench({
     sightingCountRef.current = 0
     setDirector(null)
     setComparison(null)
+    setComparisonWatched(false)
     setComparisonReviewing(null)
     setModeBanner(mode)
     if (modeBannerTimer.current) window.clearTimeout(modeBannerTimer.current)
@@ -948,6 +954,7 @@ function Workbench({
           session.selectPolicy('champion', 'learned', imported)
           setActiveCheckpoint(imported)
           setComparison(null)
+          setComparisonWatched(false)
           setComparisonReviewing(null)
           setCoachSelection(null)
           setTrainMessage(`Imported "${imported.name}" and made it active — ready to play (checkpoint ${imported.weightsHash.slice(0, 8)}).`)
@@ -1022,6 +1029,7 @@ function Workbench({
         : 'Teaching from the approved notes…',
     )
     setComparison(null)
+    setComparisonWatched(false)
     setComparisonReviewing(null)
     setCoachSelection(null)
 
@@ -1256,6 +1264,7 @@ function Workbench({
     }
     setActiveCheckpoint(selected)
     setComparison(null)
+    setComparisonWatched(false)
     setComparisonReviewing(null)
     setCoachSelection(null)
   }
@@ -1293,10 +1302,14 @@ function Workbench({
   const ghostPose = comparison && comparisonReviewing && view.phase === 'review'
     ? (() => {
         const other = comparisonReviewing === 'trained' ? comparison.baseline : comparison.trained
-        const label = comparisonReviewing === 'trained' ? 'Parent' : 'New'
+        // Label the brain by what it actually is: watching the trained run
+        // means the ghost is the parent, and vice versa.
+        const label = comparisonReviewing === 'trained' ? 'Parent' : 'New brain'
         const frame = comparisonFrameAt(other.recording, view.episode.tick)
         const agentState = frame?.agents.find(agent => agent.id === 'champion')
-        return agentState ? { position: agentState.position, label } : null
+        // Pass the whole agent state, not just a position — the ghost renders
+        // the real rover silhouette and needs the recorded quaternion to steer.
+        return agentState ? { agent: agentState, label } : null
       })()
     : null
 
@@ -1309,21 +1322,66 @@ function Workbench({
       return
     }
     setComparisonReviewing(which)
-    setCinematic(false)
+    // Land on the divergence rather than frame 0. A 241-frame replay that starts
+    // at the beginning asks the player to scrub for the one moment that
+    // matters; seeking there turns "Watch the lesson" into a single click that
+    // actually shows the difference. Both runs seek the same frame index so the
+    // ghost and the live rover stay tick-aligned.
+    const frame = divergenceFrameIndex(comparison)
+    if (frame !== null) {
+      try { session.seek(frame) } catch { /* frame may have raced a trim */ }
+    }
+    // Cinematic replay only exists in the review phase, so this starts playback
+    // rather than parking on a frame.
+    setCinematic(true)
+    // Frame both brains unless the player has deliberately chosen a camera;
+    // the default overview frequently stacks the two rovers on one tile, which
+    // hides the very divergence they came here to see.
+    if (follow === 'overview') setFollow('compare')
+  }
+
+  // Re-derive the two comparison runs. The recordings live in memory only, so
+  // a reload or reset loses them; this is deterministic and the coaching worker
+  // is already warm, so the wait is short. Reuses the checkpoints already
+  // stored on the existing comparison rather than re-reading the store, so it
+  // always compares the same two brains on the same board.
+  //
+  // Plain function, not useCallback: the only caller is the LessonComparison
+  // render below, which is recreated every render, so the memoization bought no
+  // referential stability (and the React Compiler flagged the dependency list
+  // as unpreservable — same as resetForTeaching).
+  const recompare = () => {
+    if (!comparison || recompareBusy || isTraining) return
+    const scenario = comparison.baseline.recording.scenario
+    const parent = checkpoints.find(checkpoint => checkpoint.weightsHash === comparison.baseline.weightsHash)
+    const child = checkpoints.find(checkpoint => checkpoint.weightsHash === comparison.trained.weightsHash)
+    if (!parent || !child) {
+      setTrainMessage('That comparison needs both brains still loaded — import or re-train one to compare again.')
+      return
+    }
+    setRecompareBusy(true)
+    void coachWorker.compare({
+      parent,
+      child,
+      scenario: structuredClone(scenario),
+      rival: comparison.rival,
+      controllerVersion: comparison.controllerVersion,
+    }).then(result => {
+      setComparison(result)
+      setComparisonReviewing(null)
+      setComparisonWatched(false)
+      setTrainMessage('Re-ran both brains on the same practice board.')
+    }).catch(err => {
+      setTrainMessage(`Couldn't re-run the comparison: ${err instanceof Error ? err.message : 'unknown error'}.`)
+    }).finally(() => setRecompareBusy(false))
   }
 
   const jumpToDivergence = () => {
     if (!comparison?.firstDivergence || isTraining || view.phase === 'running') return
     if (view.phase !== 'review' || comparisonReviewing !== 'trained') reviewComparisonRun('trained')
-    const divergence = comparison.firstDivergence
-    const frames = comparison.trained.recording.checkpoints
-    let best = 0
-    let bestDistance = Infinity
-    frames.forEach((frame, index) => {
-      const distance = Math.abs(frame.state.tick - divergence.tick)
-      if (distance < bestDistance) { bestDistance = distance; best = index }
-    })
-    try { session.seek(best) } catch { /* frame may have raced a trim */ }
+    const frame = divergenceFrameIndex(comparison)
+    if (frame === null) return
+    try { session.seek(frame) } catch { /* frame may have raced a trim */ }
   }
 
   // Plain function, not useCallback: it is called only from runNextStep below,
@@ -1334,6 +1392,7 @@ function Workbench({
     floodWarnedRef.current = null
     setDirector(null)
     setComparison(null)
+    setComparisonWatched(false)
     setComparisonReviewing(null)
     setCoachSelection(null)
     setRunTip(null)
@@ -1358,6 +1417,7 @@ function Workbench({
     coachingLocked,
     studioOpen,
     approvedCount,
+    hasUnwatchedComparison: comparison !== null && !comparisonWatched,
   })
 
   const runNextStep = (action: string | null) => {
@@ -1370,6 +1430,7 @@ function Workbench({
       case 'teach': resetForTeaching(); break
       case 'coach': setStudioOpen(true); break
       case 'train': handleTrain(); break
+      case 'watch-lesson': reviewComparisonRun('trained'); setComparisonWatched(true); break
     }
   }
 
@@ -1399,13 +1460,27 @@ function Workbench({
         </div>
       </div>
       <div className={styles.controlBar}>
-        {(view.phase === 'running' || view.phase === 'paused') && (
+        {/* Available in review too: the comparison replay is exactly where a
+            moment scrub earns its keep. Jump semantics differ by phase —
+            skipToTick is a no-op in review, so seek by frame index there. */}
+        {(view.phase === 'running' || view.phase === 'paused' || view.phase === 'review') && (
           <BeatTimeline
             moments={liveDirector?.moments ?? null}
             floods={activeCourse.scenario.floods}
             tick={view.episode.tick}
             durationTicks={activeCourse.scenario.durationTicks}
-            onJump={target => { applySpeed(1); session.skipToTick(Math.max(view.episode.tick + 1, target)) }}
+            onJump={target => {
+              applySpeed(1)
+              if (view.phase === 'review') {
+                const frames = session.activeRecording().checkpoints
+                const index = frames.findIndex(frame => frame.state.tick >= target)
+                const bounded = index === -1 ? frames.length - 1 : index
+                if (bounded >= 0) { try { session.seek(bounded) } catch { /* frame may have raced a trim */ } }
+                setCinematic(false)
+                return
+              }
+              session.skipToTick(Math.max(view.episode.tick + 1, target))
+            }}
           />
         )}
         <div className={styles.mainControls}>
@@ -1452,7 +1527,7 @@ function Workbench({
               start. The run utilities are inert before a first round. */}
           {engagement.showRunControls && (
             <>
-              <button className={styles.secondaryButton} onClick={() => { setCinematic(false); floodWarnedRef.current = null; lastEncounterTickRef.current = null; lastSightingTickRef.current = null; sightingCountRef.current = 0; setDirector(null); setComparison(null); setComparisonReviewing(null); setCoachSelection(null); setRunTip(null); session.reset() }} disabled={!visualReady || view.phase === 'error' || isTraining}><RotateCcw size={15} />Reset</button>
+              <button className={styles.secondaryButton} onClick={() => { setCinematic(false); floodWarnedRef.current = null; lastEncounterTickRef.current = null; lastSightingTickRef.current = null; sightingCountRef.current = 0; setDirector(null); setComparison(null); setComparisonWatched(false); setComparisonReviewing(null); setCoachSelection(null); setRunTip(null); session.reset() }} disabled={!visualReady || view.phase === 'error' || isTraining}><RotateCcw size={15} />Reset</button>
               <button className={styles.secondaryButton} onClick={() => session.review()} title={view.phase === 'paused' || view.phase === 'finished' ? 'Scrub the recorded round' : 'Available once a round is paused or finished'} disabled={(view.phase !== 'paused' && view.phase !== 'finished') || isTraining}><Eye size={16} />Replay</button>
               <button
                 className={styles.secondaryButton}
@@ -1657,7 +1732,9 @@ function Workbench({
           <div className={styles.worldBottomline}>
             {engagement.showCameraSwitcher && (
               <div className={styles.cameraButtons} role="group" aria-label="Camera view">
-                {(['overview', 'champion', 'rival'] as const).map(camera => (
+                {/* "Both brains" only exists while a comparison ghost is on the
+                    field; offering it otherwise would frame nothing. */}
+                {(['overview', 'champion', 'rival', ...(ghostPose ? ['compare' as const] : [])] as const).map(camera => (
                   <button key={camera} aria-pressed={follow === camera} onClick={() => { setFollow(camera); setCinematic(false) }}>{CAMERA_LABELS[camera]}</button>
                 ))}
               </div>
@@ -1777,8 +1854,10 @@ function Workbench({
           <LessonComparison
             comparison={comparison}
             reviewing={comparisonReviewing}
-            onWatch={reviewComparisonRun}
+            onWatch={(which) => { reviewComparisonRun(which); setComparisonWatched(true) }}
             onJumpToDivergence={jumpToDivergence}
+            onRecompare={recompare}
+            recompareBusy={recompareBusy}
           />
         </div>
       )}

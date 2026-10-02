@@ -121,3 +121,26 @@ export function comparisonFrameAt(recording: ArenaRecording, tick: number) {
   }
   return state
 }
+
+/**
+ * The replay frame index nearest the first decision where the two brains
+ * differed, or null when they never differed.
+ *
+ * Both replays seek through this so "Watch the lesson" and "Parent replay"
+ * land on the *same tick* — that alignment is what lets the ghost be compared
+ * against the live rover frame by frame instead of being two unrelated races.
+ * Returns null for an empty recording rather than throwing.
+ */
+export function divergenceFrameIndex(comparison: PracticeComparison | null): number | null {
+  const divergence = comparison?.firstDivergence
+  if (!divergence) return null
+  const frames = comparison.trained.recording.checkpoints
+  if (frames.length === 0) return null
+  let best = 0
+  let bestDistance = Infinity
+  frames.forEach((frame, index) => {
+    const distance = Math.abs(frame.state.tick - divergence.tick)
+    if (distance < bestDistance) { bestDistance = distance; best = index }
+  })
+  return best
+}

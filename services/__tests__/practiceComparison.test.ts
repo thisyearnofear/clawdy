@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import { type ArenaScenario } from '../arenaEpisode'
+import { type ArenaRecording, type ArenaScenario } from '../arenaEpisode'
 import type { ArenaMotion } from '../arenaPhysics'
 import { ArenaRunner } from '../arenaPolicy'
 import { computeWeightsHash, SEASON_0_BASE_CHECKPOINT } from '../policyModel'
-import { comparePracticeCheckpoints, comparisonFrameAt } from '../practiceComparison'
+import { comparePracticeCheckpoints, comparisonFrameAt, divergenceFrameIndex, type PracticeComparison } from '../practiceComparison'
 
 const scenario: ArenaScenario = {
   id: 'comparison-practice', worldVersion: 'comparison-fixture-v1', split: 'practice', seed: 1, durationTicks: 100,
@@ -120,5 +120,45 @@ describe('matched physical practice evidence', () => {
     expect(result.baseline.checkpointName).toBe('Comparison 0')
     expect(result.trained.checkpointName).toBe('Comparison 6')
     expect(result.trained.recording.scenario.resources).toEqual(scenario.resources)
+  })
+})
+
+describe('divergenceFrameIndex', () => {
+  const frame = (tick: number) => ({ state: { tick } }) as unknown as ArenaRecording['checkpoints'][number]
+
+  function comparisonWith(ticks: number[], divergenceTick: number | null): PracticeComparison {
+    return {
+      firstDivergence: divergenceTick === null
+        ? null
+        : { tick: divergenceTick, parentAction: { type: 'wait' }, childAction: { type: 'wait' } },
+      trained: { recording: { checkpoints: ticks.map(frame) } },
+    } as unknown as PracticeComparison
+  }
+
+  it('returns the frame nearest the first divergence', () => {
+    // Frames every 5 ticks; a divergence at tick 62 should land on 60.
+    expect(divergenceFrameIndex(comparisonWith([0, 30, 60, 90], 62))).toBe(2)
+  })
+
+  it('picks the genuinely nearest frame when the divergence falls between two', () => {
+    // Tick 9 is 4 away from frame 5 and 1 away from frame 10, so index 2 is
+    // the nearest — this snaps forward rather than truncating.
+    expect(divergenceFrameIndex(comparisonWith([0, 5, 10], 9))).toBe(2)
+    // Exactly halfway resolves to the earlier frame (strict < keeps the first).
+    expect(divergenceFrameIndex(comparisonWith([0, 4, 8], 6))).toBe(1)
+  })
+
+  it('handles a divergence before the first frame and after the last', () => {
+    expect(divergenceFrameIndex(comparisonWith([50, 100], 1))).toBe(0)
+    expect(divergenceFrameIndex(comparisonWith([50, 100], 9999))).toBe(1)
+  })
+
+  it('returns null when the brains never differed', () => {
+    expect(divergenceFrameIndex(comparisonWith([0, 5, 10], null))).toBeNull()
+    expect(divergenceFrameIndex(null)).toBeNull()
+  })
+
+  it('returns null for an empty recording rather than throwing', () => {
+    expect(divergenceFrameIndex(comparisonWith([], 12))).toBeNull()
   })
 })

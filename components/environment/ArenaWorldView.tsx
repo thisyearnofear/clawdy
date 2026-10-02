@@ -6,7 +6,7 @@ import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import type { ArenaCourse } from '../../services/arenaCourse'
 import type { ArenaSession } from '../../services/arenaSession'
-import type { ArenaPosition } from '../../services/arenaEpisode'
+import type { ArenaAgentState, ArenaPosition } from '../../services/arenaEpisode'
 import { disposeArenaTerrain, loadArenaTerrain } from '../../services/arenaTerrain'
 import { createRouteRibbonGeometry, advancePoseHistory, samplePoseHistory, type PoseHistory } from '../../services/arenaPresentation'
 import { planCinematicShots, shotAt, type CinematicShot } from '../../services/arenaCinematic'
@@ -17,12 +17,13 @@ import { FloodTelegraph } from './FloodTelegraph'
 import { WorldFX, type FxCue } from './WorldFX'
 import { RushEventFX } from './RushEventFX'
 import { RoverStatus } from './RoverStatus'
+import { RoverGeometry, RivalRoverGeometry } from './RoverGeometry'
 import { RoverFX } from './RoverFX'
 import { PracticeGhost } from './PracticeGhost'
 import FrameLimiter from '../utils/FrameLimiter'
 import { getMintAsset, getMintModelArtifact, getMintModelTransform, getMintModelUrl } from '../../services/mintAssets'
 
-export type ArenaCamera = 'overview' | 'champion' | 'rival'
+export type ArenaCamera = 'overview' | 'champion' | 'rival' | 'compare'
 
 type WorldProps = {
   course: ArenaCourse
@@ -33,7 +34,7 @@ type WorldProps = {
   coachChoices?: { edgeId: string }[]
   selectedCoachEdgeId?: string | null
   onCoachEdge?: (edgeId: string) => void
-  ghostPose?: { position: ArenaPosition; label: string } | null
+  ghostPose?: { agent: Pick<ArenaAgentState, 'position' | 'rotation'>; label: string; accent?: string } | null
   championName?: string
   /** Champion accent for ring + rover tint (defaults to canopy green). */
   championAccent?: string
@@ -84,20 +85,50 @@ function sampleInterpolatedPose(
   return true
 }
 
-function FollowCamera({ session, course, follow }: Pick<WorldProps, 'session' | 'course' | 'follow'>) {
+function FollowCamera({ session, course, follow, ghostPose }: Pick<WorldProps, 'session' | 'course' | 'follow'> & { ghostPose: WorldProps['ghostPose'] }) {
   const { camera } = useThree()
   const desired = useRef(new THREE.Vector3())
   const lookAt = useRef(new THREE.Vector3())
+  const midpoint = useRef(new THREE.Vector3())
+  const separation = useRef(new THREE.Vector3())
   useEffect(() => {
+    if (follow === 'compare') return
     if (follow !== 'overview') return
     camera.position.set(course.center[0] + 9, course.center[1] + 11, course.center[2] + 13)
     camera.lookAt(course.center[0], course.center[1] + 0.4, course.center[2])
   }, [camera, course, follow])
+  // Framing both brains is the whole point of the comparison view: with the
+  // default camera the two rovers can sit on top of each other and the
+  // divergence is invisible, which is the opposite of what this mode is for.
+  useEffect(() => {
+    if (follow !== 'compare' || !ghostPose) return
+    const live = session.liveEpisode().agents.find(candidate => candidate.id === 'champion')
+    if (!live) return
+    midpoint.current.set(
+      (live.position[0] + ghostPose.agent.position[0]) / 2,
+      live.position[1],
+      (live.position[2] + ghostPose.agent.position[2]) / 2,
+    )
+    separation.current.set(
+      live.position[0] - ghostPose.agent.position[0],
+      0,
+      live.position[2] - ghostPose.agent.position[2],
+    )
+    // Frame wide enough to hold both plus margin, with a floor so two rovers on
+    // the same tile do not slam the camera into the ground.
+    const span = Math.max(separation.current.length(), 2.5)
+    const distance = 7 + span * 2.1
+    camera.position.set(midpoint.current.x + distance * 0.62, midpoint.current.y + distance * 0.66, midpoint.current.z + distance * 0.62)
+    camera.lookAt(midpoint.current.x, midpoint.current.y + 0.4, midpoint.current.z)
+  }, [camera, course, follow, ghostPose, session])
   const agentPos = useRef(new THREE.Vector3())
   const agentRot = useRef(new THREE.Quaternion())
   const destPos = useRef(new THREE.Vector3())
   useFrame((state, delta) => {
     if (follow === 'overview') return
+    // 'compare' is framed by the effect above and intentionally never enters
+    // the single-agent chase below — that path resolves `follow` as an agent id.
+    if (follow === 'compare') return
     // Track the interpolated pose so camera and rover share one motion
     // curve — chasing the raw tick commit while the rover smooths it makes
     // the subject swim inside the frame.
@@ -262,121 +293,6 @@ function TerrainMesh({
 
   if (!scene) return null
   return <primitive object={scene} />
-}
-
-function RoverGeometry({ color, wheelRefs }: { color: string; wheelRefs: React.RefObject<THREE.Mesh[]> }) {
-  return (
-    <>
-      <mesh position={[0, 0.2, 0]} castShadow>
-        <boxGeometry args={[0.34, 0.14, 0.45]} />
-        <meshStandardMaterial color={color} roughness={0.35} metalness={0.35} />
-      </mesh>
-      <mesh position={[0, 0.32, -0.04]} castShadow>
-        <boxGeometry args={[0.24, 0.12, 0.24]} />
-        <meshStandardMaterial color="#17292d" roughness={0.2} metalness={0.6} />
-      </mesh>
-      {[-1, 1].flatMap((x, xi) => [-1, 1].map((z, zi) => {
-        const index = xi * 2 + zi
-        return (
-          <mesh
-            key={`${x}-${z}`}
-            ref={(mesh) => { if (mesh && wheelRefs.current) wheelRefs.current[index] = mesh }}
-            position={[x * 0.18, 0.105, z * 0.15]}
-            rotation={[0, 0, Math.PI / 2]}
-            castShadow
-          >
-            <cylinderGeometry args={[0.1, 0.1, 0.075, 12]} />
-            <meshStandardMaterial color="#172124" roughness={0.8} />
-          </mesh>
-        )
-      }))}
-      <mesh position={[0, 0.23, 0.23]}>
-        <boxGeometry args={[0.22, 0.035, 0.015]} />
-        <meshBasicMaterial color="#f8f5d9" />
-      </mesh>
-      <mesh position={[0, 0.48, -0.1]}>
-        <cylinderGeometry args={[0.012, 0.012, 0.24, 6]} />
-        <meshStandardMaterial color="#243a3b" />
-      </mesh>
-      <mesh position={[0, 0.62, -0.1]}>
-        <sphereGeometry args={[0.045, 8, 8]} />
-        <meshBasicMaterial color={color} />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.025, 0]}>
-        <ringGeometry args={[0.34, 0.39, 32]} />
-        <meshBasicMaterial color={color} transparent opacity={0.65} depthWrite={false} />
-      </mesh>
-    </>
-  )
-}
-
-/**
- * Distinct procedural geometry for the rival rover: a low, wide tracked cargo
- * hauler. The silhouette is intentionally different from the champion's cab +
- * 4-wheel layout so a side-by-side comparison reads as "two distinct vehicles"
- * rather than "two tinted copies of the same GLB". Used whenever the rival
- * registry entry is missing.
- */
-function RivalRoverGeometry({ color, wheelRefs }: { color: string; wheelRefs: React.RefObject<THREE.Mesh[]> }) {
-  return (
-    <>
-      {/* Lower hull */}
-      <mesh position={[0, 0.16, 0]} castShadow>
-        <boxGeometry args={[0.4, 0.18, 0.5]} />
-        <meshStandardMaterial color="#38424d" roughness={0.55} metalness={0.45} />
-      </mesh>
-      {/* Side track housings */}
-      {[-1, 1].map(side => (
-        <mesh key={side} position={[side * 0.27, 0.13, 0]} castShadow>
-          <boxGeometry args={[0.13, 0.18, 0.52]} />
-          <meshStandardMaterial color="#1c2128" roughness={0.75} metalness={0.2} />
-        </mesh>
-      ))}
-      {/* Cargo bay on top */}
-      <mesh position={[0, 0.36, 0.02]} castShadow>
-        <boxGeometry args={[0.36, 0.18, 0.38]} />
-        <meshStandardMaterial color={color} roughness={0.45} metalness={0.3} />
-      </mesh>
-      {/* Cab window at the front */}
-      <mesh position={[0, 0.34, 0.24]} castShadow>
-        <boxGeometry args={[0.28, 0.14, 0.05]} />
-        <meshStandardMaterial color="#6bc8ff" emissive="#1f5b8a" emissiveIntensity={0.4} roughness={0.2} metalness={0.6} />
-      </mesh>
-      {/* Drive wheels: 4 thick cylinders along the side tracks, animated as wheels */}
-      {[-1, 1].flatMap((x, xi) => [-1, 1].map((z, zi) => {
-        const index = xi * 2 + zi
-        return (
-          <mesh
-            key={`${x}-${z}`}
-            ref={(mesh) => { if (mesh && wheelRefs.current) wheelRefs.current[index] = mesh }}
-            position={[x * 0.34, 0.13, z * 0.21]}
-            rotation={[0, 0, Math.PI / 2]}
-            castShadow
-          >
-            <cylinderGeometry args={[0.11, 0.11, 0.1, 12]} />
-            <meshStandardMaterial color="#0e1218" roughness={0.85} metalness={0.3} />
-          </mesh>
-        )
-      }))}
-      {/* Roof crate */}
-      <mesh position={[0, 0.5, 0]} castShadow>
-        <boxGeometry args={[0.2, 0.08, 0.2]} />
-        <meshStandardMaterial color="#7b5526" roughness={0.8} />
-      </mesh>
-      {/* Twin amber warning lights */}
-      {[-1, 1].map(side => (
-        <mesh key={`light-${side}`} position={[side * 0.1, 0.6, 0.16]}>
-          <sphereGeometry args={[0.035, 10, 10]} />
-          <meshBasicMaterial color="#ffb14d" />
-        </mesh>
-      ))}
-      {/* Ground ring */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.025, 0]}>
-        <ringGeometry args={[0.36, 0.42, 32]} />
-        <meshBasicMaterial color={color} transparent opacity={0.55} depthWrite={false} />
-      </mesh>
-    </>
-  )
 }
 
 function RoverShadow({ session, id }: { session: ArenaSession; id: string }) {
@@ -888,7 +804,7 @@ function World({
           <CinematicCamera course={course} session={session} />
         </>
       ) : (
-        <FollowCamera course={course} session={session} follow={follow} />
+        <FollowCamera course={course} session={session} follow={follow} ghostPose={ghostPose} />
       )}
 
       {course.scenario.edges.map(edge => (
@@ -912,7 +828,7 @@ function World({
         onCoachEdge={onCoachEdge}
       />
       <ChampionFloodMarker session={session} name={championName} />
-      {ghostPose && <PracticeGhost position={ghostPose.position} label={ghostPose.label} />}
+      {ghostPose && <PracticeGhost agent={ghostPose.agent} label={ghostPose.label} accent={ghostPose.accent} />}
       <BankBursts session={session} course={course} lite={lite} />
 
       {course.scenario.entrants.map(entrant => {

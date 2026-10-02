@@ -113,6 +113,34 @@ const mistakeBase: MistakeInput = {
 
 const mistake = (over: Partial<MistakeInput>) => detectMistakeSignal({ ...mistakeBase, ...over })
 
+describe('computeNextStep — the comparison outranks everything else', () => {
+  it('points at the lesson once a comparison is waiting', () => {
+    expect(step({ hasUnwatchedComparison: true })).toEqual({
+      label: 'Watch the lesson — see what your teaching changed',
+      run: 'watch-lesson',
+    })
+  })
+
+  it('beats the post-round prompt and the ready-to-play prompt', () => {
+    // After a round the machine would normally say "Open Replay, then Coach
+    // the miss"; watching the lesson is the higher-value action there.
+    expect(step({ phase: 'finished', hasUnwatchedComparison: true }).run).toBe('watch-lesson')
+    // And after training the session resets to ready, where it would say
+    // "Press Play to start Practice".
+    expect(step({ phase: 'ready', hasUnwatchedComparison: true }).run).toBe('watch-lesson')
+    expect(step({ phase: 'ready' }).run).toBe('play')
+  })
+
+  it('does not hijack the settling or error states', () => {
+    expect(step({ visualReady: false, hasUnwatchedComparison: true }).run).toBeNull()
+    expect(step({ phase: 'error', hasUnwatchedComparison: true }).run).toBe('retry')
+  })
+
+  it('stops pushing once the lesson has been watched', () => {
+    expect(step({ hasUnwatchedComparison: false }).run).toBe('play')
+  })
+})
+
 describe('detectMistakeSignal — visible-error trigger for the first-mistake card', () => {
   it('fires when a rescue increments recoveries', () => {
     expect(mistake({ recoveries: 1 })?.headline).toContain('rescue')
