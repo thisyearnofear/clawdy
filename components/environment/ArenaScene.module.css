@@ -42,6 +42,14 @@
 .progress li[data-active="true"] { border-bottom: 2px solid #6a8d61; font-weight: 500; color: var(--ink); }
 .workbench { display: grid; grid-template-columns: minmax(0, 1fr) 306px; height: clamp(340px, calc(100dvh - 300px), 580px); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .workbench[data-coach='true'] { grid-template-columns: minmax(0, 1fr) 280px 330px; }
+/* While a race is live the coach panel stacks under the arena instead of
+   taking a third column. Opening Coach mid-race used to squeeze the viewport
+   to roughly half width while the player was tracking a flood countdown —
+   the reflow itself was the overstimulation. Stacking keeps the arena at full
+   width and lets the panel be read at the player's own pace. */
+.workbench[data-coach='true'][data-live='true'] { grid-template-columns: minmax(0, 1fr) 280px; height: auto; overflow: visible; }
+.workbench[data-coach='true'][data-live='true'] .viewport { height: clamp(340px, calc(100dvh - 300px), 580px); }
+.workbench[data-coach='true'][data-live='true'] .coachColumn { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--line); max-height: none; overflow-y: visible; }
 .viewport { min-height: 0; height: 100%; position: relative; background: #c7d3ce; }
 .coachColumn { border-left: 1px solid var(--line); background: #fafbf4; overflow-y: auto; min-height: 0; }
 .coachPanel { padding: 14px; display: flex; flex-direction: column; gap: 14px; }

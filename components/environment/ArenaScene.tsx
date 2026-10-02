@@ -469,8 +469,12 @@ function Workbench({
       }
       setExamples(prev => [example, ...prev])
       recordFunnelEvent('example.draft', 'live-call')
-      setStudioOpen(true)
-      setTrainMessage(`Live call saved — teach it ${routeLabel(edgeId)}. The champion keeps driving this run; hit Train after the race to make it stick.`)
+      // Deliberately does NOT open the Coach column. A call happens mid-race,
+      // and expanding to a third column while the player is watching a flood
+      // countdown is exactly the overstimulation this prompt caused. The
+      // lesson is saved and the status line confirms it; the player opens
+      // Coach when they choose, which is also where Approve and Train live.
+      setTrainMessage(`Live call saved — teach it ${routeLabel(edgeId)}. Finish the race, then open Coach to approve and train.`)
     } catch {
       setTrainMessage("Couldn't save that call — pause and use Coach instead.")
     }
@@ -1489,7 +1493,13 @@ function Workbench({
           )}
         </div>
       </div>
-      <div className={styles.workbench} data-mode={playMode} data-world-ready={visualReady} data-coach={studioOpen}>
+      <div
+        className={styles.workbench}
+        data-mode={playMode}
+        data-world-ready={visualReady}
+        data-coach={studioOpen}
+        data-live={view.phase === 'running' || view.phase === 'paused' || undefined}
+      >
         <section className={styles.viewport} aria-label="Generated world and autonomous rovers">
           <div className={styles.canvas} data-ready={visualReady}>
             <ErrorBoundary onError={onError} fallback={<div className={styles.canvasError}><h2>The world view could not start.</h2><button onClick={onRetry}>Reload world</button></div>}>
