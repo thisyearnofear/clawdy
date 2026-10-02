@@ -80,7 +80,6 @@ export function ReplayPanel({
         <div className={styles.correctionBox}>
           <p className={styles.correctionSituation}>
             Decision at tick {coachContext.tick} — it chose <em>{friendlyActionLabel(coachContext.originalAction)}</em>
-            <small>{actionLabel(coachContext.originalAction)}</small>
           </p>
           {coachContext.alternatives.length === 0 ? (
             <p className={styles.correctionNote}>No teachable alternative here — the shared controller would make the same call.</p>
@@ -151,7 +150,7 @@ export function ReplayPanel({
           <ul className={styles.candidateList}>
             {frameAdvice.candidates.map(candidate => (
               <li key={JSON.stringify(candidate.action)}>
-                <span>{actionLabel(candidate.action)} — {candidate.rationale}</span>
+                <span>{friendlyActionLabel(candidate.action)} — {candidate.rationale}</span>
               </li>
             ))}
           </ul>

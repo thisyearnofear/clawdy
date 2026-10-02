@@ -63,7 +63,7 @@ export function HelpDrawer({ open, onClose }: { open: boolean; onClose: () => vo
           <li><strong>Watch</strong> a Practice round — your rover races the house rival.</li>
           <li><strong>Call the next route</strong> once per Practice run: at a junction, pick the route it should take. Your call is saved as an approved lesson — it does not steer the current race.</li>
           <li><strong>Teach</strong> in Replay: scrub to a decision, prefer a different legal route or action, draft the correction.</li>
-          <li><strong>Approve</strong> fixes and <strong>Train</strong> a new brain, then compare the two recorded runs.</li>
+          <li><strong>Open Lessons</strong> to approve what you taught, then <strong>Train</strong> a new brain and compare the two recorded runs.</li>
           <li>Switch to <strong>Match</strong> to test it with coaching locked.</li>
         </ol>
         <dl className={styles.helpFaq}>
@@ -77,11 +77,11 @@ export function HelpDrawer({ open, onClose }: { open: boolean; onClose: () => vo
           </div>
           <div>
             <dt>How do I train?</dt>
-            <dd>Replay a decision → Prefer an alternative → Draft correction → Approve → Train. Style “Trained brain” runs the new weights.</dd>
+            <dd>Call a route mid-race, or Replay a decision → Prefer an alternative. Then open Lessons, Approve, and Train. Style “Trained brain” runs the new weights.</dd>
           </div>
           <div>
             <dt>Train did nothing?</dt>
-            <dd>You need at least one approved example, and Style must be set to Trained brain after training.</dd>
+            <dd>You need at least one approved lesson, and Style must be set to Trained brain after training.</dd>
           </div>
           <div>
             <dt>Name & look?</dt>
@@ -89,7 +89,7 @@ export function HelpDrawer({ open, onClose }: { open: boolean; onClose: () => vo
           </div>
           <div>
             <dt>How do I save?</dt>
-            <dd>Export JSON under Coach → “Brains, storage &amp; sync”, or Save run for the recording. Cloud sync uses a guest key when Convex is on.</dd>
+            <dd>Export JSON under Lessons → “Brains, storage &amp; sync”, or Save run for the recording. Cloud sync uses a guest key when Convex is on.</dd>
           </div>
         </dl>
         <div className={styles.helpFooter}>

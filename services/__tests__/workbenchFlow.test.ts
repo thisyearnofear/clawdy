@@ -62,7 +62,7 @@ describe('computeNextStep — golden branch order (mirrors the pre-extraction Ar
   })
 
   it('review opens the coach only when closed and unlocked', () => {
-    expect(step({ phase: 'review' })).toEqual({ label: 'Open Coach and pick a focus', run: 'coach' })
+    expect(step({ phase: 'review' })).toEqual({ label: 'Open Lessons and pick a focus', run: 'coach' })
     expect(step({ phase: 'review', studioOpen: true })).toEqual({
       label: 'Pick a focus chip and Approve a fix',
       run: null,

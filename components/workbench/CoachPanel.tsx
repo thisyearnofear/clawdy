@@ -9,7 +9,8 @@ import type { PolicyCheckpoint } from '../../services/policyModel'
 import { ConvexLineageBadge } from '../ConvexClientProvider'
 import styles from '../environment/ArenaScene.module.css'
 import { SyncStatusChip } from './SyncStatusChip'
-import { classifyStatusTone, isExecutableCheckpoint } from './readouts'
+import { classifyStatusTone, friendlyActionLabel, isExecutableCheckpoint } from './readouts'
+import { COACH_GUIDANCE_HINT, coachPanelView } from '../../services/coachPanelView'
 
 const STATUS_TONE_ICON = {
   success: CheckCircle2,
@@ -64,14 +65,20 @@ export function CoachPanel({
   const busy = isTraining || phase === 'running'
   const teachableChips = SPECIALIZATION_CHIPS.filter(chip => chip.id !== 'bank-cargo' && chip.id !== 'grab-cores')
   const teachableRules = COACHING_RULES.filter(rule => rule.id !== 'bank-at-capacity' && rule.id !== 'quick-collect')
+  const view = coachPanelView({
+    exampleCount: examples.length,
+    approvedCount,
+    coachingLocked,
+    syncHasProblem: true,
+  })
   return (
     <section className={styles.coachPanel} aria-label="Coach your champion">
       <div className={styles.coachingHeader}>
         <div>
           <h2>Coach</h2>
-          <p>Choose an alternative road or wait/drain action in Replay. Approve the draft here, then train.</p>
+          <p>Approve the lessons your champion learns from, then train a new brain.</p>
           {trainFocusLine && <p className={styles.focusLine}>{trainFocusLine}</p>}
-          <SyncStatusChip />
+          <SyncStatusChip quiet={view.syncIsQuiet} />
         </div>
       </div>
 
@@ -83,6 +90,11 @@ export function CoachPanel({
         </div>
       )}
 
+      {view.showGuidanceHint && !coachingLocked && (
+        <p className={styles.coachingHint}>{COACH_GUIDANCE_HINT}</p>
+      )}
+
+      {view.showQueue && (
       <div className={styles.coachingCol}>
         <div className={styles.queueHeader}>
           <h3>Approve ({approvedCount})</h3>
@@ -99,7 +111,8 @@ export function CoachPanel({
         <div className={styles.examplesList}>
           {examples.length === 0 ? (
             <div className={styles.exampleEmpty}>
-              No coaching examples yet. Draft a correction in Replay, or use the guidance below.
+              No lessons yet. <strong>Call a route</strong> while the race runs, or open <strong>Replay</strong> and prefer a
+              different one — both queue a lesson here for you to approve.
             </div>
           ) : (
             examples.map(ex => {
@@ -107,7 +120,12 @@ export function CoachPanel({
               return (
                 <div key={ex.id} className={styles.exampleCard} data-approved={ex.approved} data-evaluation={isEval}>
                   <div className={styles.exampleDetails}>
-                    <strong>{ex.preferredAction.type}{('edgeId' in ex.preferredAction) ? ` · ${(ex.preferredAction as { edgeId: string }).edgeId}` : ''}{isEval && <span className={styles.evaluationTag}>Match</span>}</strong>
+                    {/* Friendly action copy, not "move · cross-vn-cn" — the edge
+                        ids are an internal detail the player never chose. */}
+                    <strong>
+                      {friendlyActionLabel(ex.preferredAction)}
+                      {isEval && <span className={styles.evaluationTag}>Match</span>}
+                    </strong>
                     <p>{ex.rationale}</p>
                   </div>
                   <div className={styles.exampleActions}>
@@ -136,6 +154,7 @@ export function CoachPanel({
           )}
         </div>
       </div>
+      )}
 
       {trainMessage && (() => {
         const tone = classifyStatusTone(trainMessage)
@@ -148,8 +167,8 @@ export function CoachPanel({
         )
       })()}
 
-      <details className={styles.guidanceDetails}>
-        <summary>Keyword guidance (limited parser)</summary>
+      <details className={styles.guidanceDetails} open={view.guidanceOpen}>
+        <summary>{view.guidanceOpen ? 'How to teach it' : 'Teach another lesson'}</summary>
         <div className={styles.coachingCol}>
           <p className={styles.specializeHint}>Pickup and full-cargo return are shared controller rules — they are not taught here. Coaching changes route preferences, target choices and supported interventions.</p>
           <h3>Specialize</h3>

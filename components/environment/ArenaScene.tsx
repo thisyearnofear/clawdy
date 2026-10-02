@@ -312,7 +312,7 @@ function Workbench({
     } catch { /* ignore */ }
     recordFunnelEvent('tip.midrun')
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot ambient tip, same lifecycle contract as the flood warning above
-    setRunTip('Practice lets you coach mid-run — Pause anytime and open Coach to teach a moment.')
+    setRunTip('Practice lets you coach mid-run — call a route while it races, or Pause and open Replay.')
     if (runTipTimer.current) window.clearTimeout(runTipTimer.current)
     runTipTimer.current = window.setTimeout(() => setRunTip(null), 5200)
   }, [view.phase, view.episode.tick, playMode, runTip])
@@ -479,7 +479,7 @@ function Workbench({
       // countdown is exactly the overstimulation this prompt caused. The
       // lesson is saved and the status line confirms it; the player opens
       // Coach when they choose, which is also where Approve and Train live.
-      setTrainMessage(`Live call saved — teach it ${routeLabel(edgeId)}. Finish the race, then open Coach to approve and train.`)
+      setTrainMessage(`Live call saved — teach it ${routeLabel(edgeId)}. Finish the race, then open Lessons to approve and train.`)
     } catch {
       setTrainMessage("Couldn't save that call — pause and use Coach instead.")
     }
@@ -1557,8 +1557,12 @@ function Workbench({
             aria-pressed={studioOpen}
             onClick={() => setStudioOpen(open => !open)}
             disabled={coachingLocked && examples.length === 0}
+            title="Open the Coach panel to approve lessons and train"
           >
-            <Sparkles size={15} />{studioOpen ? 'Hide coach' : 'Coach'}
+            {/* "Lessons" not "Coach": the 3D route picker in Replay is also a
+                coaching surface, and two controls called Coach made it unclear
+                which one the player was about to open. */}
+            <Sparkles size={15} />{studioOpen ? 'Hide lessons' : 'Lessons'}
           </button>
         </div>
         <div className={styles.runMeta}>
@@ -1678,7 +1682,7 @@ function Workbench({
                   try { window.sessionStorage.setItem(COACH_NUDGE_KEY, '1') } catch { /* ignore */ }
                 }}
               >
-                Open Coach
+                Open Lessons
               </button>
             </div>
           )}

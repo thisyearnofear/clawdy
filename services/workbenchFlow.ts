@@ -57,7 +57,7 @@ export function computeNextStep(state: NextStepInput): { label: string; run: Nex
     return { label: 'Reset, then switch to Practice to teach', run: 'teach' }
   }
   if (phase === 'review' && !studioOpen && !coachingLocked) {
-    return { label: 'Open Coach and pick a focus', run: 'coach' }
+    return { label: 'Open Lessons and pick a focus', run: 'coach' }
   }
   if (studioOpen && !coachingLocked && approvedCount === 0) {
     return { label: 'Pick a focus chip and Approve a fix', run: null }

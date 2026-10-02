@@ -44,13 +44,19 @@ describe('CoachPanel hierarchy', () => {
     const html = coachPanel()
     const approve = html.indexOf('Approve (0)')
     const train = html.indexOf('Train (0)')
-    const guidance = html.indexOf('Keyword guidance (limited parser)')
+    // The summary is titled by the disclosure ladder: with an empty queue the
+    // guidance block is the only way forward, so it opens and leads.
+    const guidance = html.indexOf('How to teach it')
     expect(approve).toBeGreaterThan(-1)
     expect(train).toBeGreaterThan(-1)
     expect(guidance).toBeGreaterThan(-1)
     expect(approve).toBeLessThan(guidance)
     expect(train).toBeLessThan(guidance)
-    expect(html).toContain('Choose an alternative road or wait/drain action in Replay. Approve the draft here, then train.')
+    expect(html).toContain('Approve the lessons your champion learns from, then train a new brain.')
+    // The empty state must name both ways to create a lesson, since neither is
+    // discoverable on its own.
+    expect(html).toContain('Call a route')
+    expect(html).toContain('Replay')
   })
 
   it('keeps bank/collect out of the teachable chips and rules', () => {

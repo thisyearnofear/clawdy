@@ -49,6 +49,19 @@
   color: #9a3b2e;
 }
 
+/* Quiet variant: sync trouble is real but is not the player's mistake, so it
+   must not compete with the Approve/Train buttons above it. Smaller, dimmer,
+   and no entry animation — present, not urgent. */
+.convexLineage[data-quiet] {
+  margin: 6px 0 0;
+  font-size: 9px;
+  color: #7c8579;
+  animation: none;
+}
+
+.convexLineage[data-quiet][data-state='error'] { color: #8a6a5f; }
+.convexLineage[data-quiet][data-state='queued'] { color: #7c8579; }
+
 @layer base {
   body {
     background: var(--background);

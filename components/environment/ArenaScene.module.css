@@ -951,6 +951,8 @@ a.secondaryButton { text-decoration: none; }
 .correctionSituation { margin: 0 0 8px; font-size: 10px; color: var(--muted); line-height: 1.5; }
 .correctionSituation strong { color: var(--ink); font-weight: 600; }
 .correctionNote { margin: 8px 0 0; font-size: 10px; color: #385038; line-height: 1.5; }
+/* One-line pointer at the escape hatch when the queue already has work. */
+.coachingHint { margin: 0 0 2px; font-size: 10px; line-height: 1.5; color: var(--muted); }
 .correctionNote strong { font-weight: 650; }
 /* "What your brain changed" — the lesson in plain language, above the score. */
 .behaviourLine {
