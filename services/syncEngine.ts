@@ -344,6 +344,7 @@ let flushTimer: ReturnType<typeof setTimeout> | null = null
 let diffTimer: ReturnType<typeof setTimeout> | null = null
 let retryTimer: ReturnType<typeof setTimeout> | null = null
 let flushing = false
+let initialPullComplete = false
 
 function loadState() {
   if (typeof window === 'undefined') return
@@ -428,7 +429,7 @@ async function runPull(client: ConvexReactClient): Promise<PulledState | null> {
 }
 
 async function flush(): Promise<void> {
-  if (flushing || !startedClient || outbox.length === 0) return
+  if (flushing || !startedClient || !initialPullComplete || outbox.length === 0) return
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     if (useArenaStore.getState().sync.phase !== 'error') setPhase('offline-queued')
     return
@@ -594,6 +595,7 @@ export function startArenaSync(client: ConvexReactClient | null): () => void {
   if (started) return () => {}
   started = true
   startedClient = client
+  initialPullComplete = false
   loadState()
   const detachCache = attachLocalCache()
   persist()
@@ -606,12 +608,27 @@ export function startArenaSync(client: ConvexReactClient | null): () => void {
   setPhase('booting')
   useArenaStore.getState().setSync({ queued: outbox.length })
 
-  void (async () => {
-    const pulled = await runPull(client)
-    if (!pulled) {
-      setPhase(typeof navigator !== 'undefined' && navigator.onLine === false ? 'offline-queued' : 'error',
-        "Couldn't reach the cloud — playing offline for now. Nothing's lost; it's all still saved on this device.")
-    } else {
+  let stopped = false
+  let pulling = false
+  let pullRetryTimer: ReturnType<typeof setTimeout> | null = null
+  let pullRetryDelay = 15_000
+
+  const pullAndMerge = async () => {
+    if (stopped || pulling) return
+    pulling = true
+    if (pullRetryTimer) clearTimeout(pullRetryTimer)
+    pullRetryTimer = null
+    try {
+      const pulled = await runPull(client)
+      if (stopped) return
+      if (!pulled) {
+        setPhase('offline-queued',
+          'Cloud sync unavailable. Your progress is saved on this device; retrying in the background.')
+        pullRetryTimer = setTimeout(() => { void pullAndMerge() }, pullRetryDelay)
+        pullRetryDelay = Math.min(pullRetryDelay * 2, 60_000)
+        return
+      }
+      pullRetryDelay = 15_000
       const state = useArenaStore.getState()
       const plan = planMerge(
         { checkpoints: state.checkpoints, examples: state.examples },
@@ -643,11 +660,15 @@ export function startArenaSync(client: ConvexReactClient | null): () => void {
         enqueue({ kind: 'example', key, payload: { ...exampleUpsertArgs(getOrCreateGuestKey(), example), updatedAtMs }, updatedAtMs })
       }
       persist()
+      initialPullComplete = true
       setPhase('synced')
+      if (outbox.length > 0) await flush()
+      else if (navigator.onLine === false) setPhase('offline-queued')
+    } finally {
+      pulling = false
     }
-    if (outbox.length > 0) await flush()
-    else if (typeof navigator !== 'undefined' && navigator.onLine === false) setPhase('offline-queued')
-  })()
+  }
+  void pullAndMerge()
 
   const unsubscribe = useArenaStore.subscribe((state, prev) => {
     if (state.checkpoints === prev.checkpoints && state.examples === prev.examples) return
@@ -659,21 +680,9 @@ export function startArenaSync(client: ConvexReactClient | null): () => void {
   })
 
   const onOnline = () => {
-    setPhase('booting')
-    void (async () => {
-      const pulled = await runPull(startedClient!)
-      if (pulled) {
-        const state = useArenaStore.getState()
-        const plan = planMerge({ checkpoints: state.checkpoints, examples: state.examples }, pulled, meta)
-        meta = plan.meta
-        state.setCheckpoints(plan.checkpoints)
-        state.setExamples(plan.examples)
-        setPhase('synced')
-      } else {
-        setPhase('offline-queued')
-      }
-      await flush()
-    })()
+    if (pullRetryTimer) clearTimeout(pullRetryTimer)
+    pullRetryTimer = null
+    void pullAndMerge()
   }
   const onOffline = () => {
     if (outbox.length > 0) setPhase('offline-queued')
@@ -682,6 +691,9 @@ export function startArenaSync(client: ConvexReactClient | null): () => void {
   window.addEventListener('offline', onOffline)
 
   return () => {
+    stopped = true
+    initialPullComplete = false
+    if (pullRetryTimer) clearTimeout(pullRetryTimer)
     unsubscribe()
     detachCache()
     if (diffTimer) clearTimeout(diffTimer)
@@ -698,6 +710,7 @@ export function startArenaSync(client: ConvexReactClient | null): () => void {
 export function __resetSyncEngineForTests(): void {
   started = false
   startedClient = null
+  initialPullComplete = false
   meta = EMPTY_META
   outbox = []
 }
