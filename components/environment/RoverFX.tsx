@@ -19,7 +19,9 @@ function DustKicks({ session, id }: { session: ArenaSession; id: string }) {
   const sprites = useRef<(THREE.Sprite | null)[]>([])
   const born = useRef<Float32Array>(new Float32Array(DUST_POOL).fill(-1))
   const next = useRef(0)
-  const prev = useRef<THREE.Vector3 | null>(null)
+  const prev = useRef(new THREE.Vector3())
+  const hasPrev = useRef(false)
+  const scratch = useRef(new THREE.Vector3())
   const lastSpawn = useRef(0)
 
   useFrame((state, delta) => {
@@ -28,9 +30,12 @@ function DustKicks({ session, id }: { session: ArenaSession; id: string }) {
     const agent = ep.agents.find(a => a.id === id)
     if (!agent) { group.current.visible = false; return }
     group.current.visible = true
-    const pos = new THREE.Vector3(agent.position[0], agent.position[1], agent.position[2])
-    const speed = prev.current ? pos.distanceTo(prev.current) / Math.max(delta, 1e-4) : 0
-    prev.current = pos
+    // Both vectors are reused: this loop runs for the whole session, so it
+    // must not allocate. `prev` holds the previous frame's pose.
+    const pos = scratch.current.set(agent.position[0], agent.position[1], agent.position[2])
+    const speed = hasPrev.current ? pos.distanceTo(prev.current) / Math.max(delta, 1e-4) : 0
+    prev.current.copy(pos)
+    hasPrev.current = true
 
     // Spawn behind the wheels while actually moving.
     if (speed > 0.5 && state.clock.elapsedTime - lastSpawn.current > 0.12) {
@@ -83,6 +88,8 @@ function SandTrail({ session, id }: { session: ArenaSession; id: string }) {
   const points = useRef<THREE.Vector3[]>([])
   const lastStamp = useRef<THREE.Vector3 | null>(null)
   const lastTick = useRef(-1)
+  const scratch = useRef(new THREE.Vector3())
+  const trailColor = useRef(new THREE.Color('#594736'))
 
   useFrame(() => {
     if (!mesh.current) return
@@ -102,7 +109,7 @@ function SandTrail({ session, id }: { session: ArenaSession; id: string }) {
     const ep = session.liveEpisode()
     const agent = ep.agents.find(a => a.id === id)
     if (!agent) { mesh.current.visible = false; return }
-    const pos = new THREE.Vector3(agent.position[0], agent.position[1] + 0.025, agent.position[2])
+    const pos = scratch.current.set(agent.position[0], agent.position[1] + 0.025, agent.position[2])
     // A new run, replay seek, or recovery teleport must not connect two
     // unrelated positions with a streak of tyre marks.
     const ready = session.getSnapshot().phase === 'ready'
@@ -116,6 +123,8 @@ function SandTrail({ session, id }: { session: ArenaSession; id: string }) {
       return
     }
     // Stamp a point every ~0.28m of travel — dense enough for smooth turns.
+    // These clones are the trail's history and must stay independent, but they
+    // are rate-limited to a few per second, not per frame.
     if (!lastStamp.current || pos.distanceTo(lastStamp.current) > 0.28) {
       lastStamp.current = pos.clone()
       points.current.push(pos.clone())
@@ -127,7 +136,7 @@ function SandTrail({ session, id }: { session: ArenaSession; id: string }) {
 
     const positions = geometry.attributes.position as THREE.BufferAttribute
     const colors = geometry.attributes.color as THREE.BufferAttribute
-    const c = new THREE.Color('#594736')
+    const c = trailColor.current
     for (let i = 0; i < TRAIL_MAX; i++) {
       const p = pts[Math.min(i, pts.length - 1)]
       const before = pts[Math.min(Math.max(0, i - 1), pts.length - 1)]

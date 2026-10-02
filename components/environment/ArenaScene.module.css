@@ -832,7 +832,10 @@ a.secondaryButton { text-decoration: none; }
 
 @media (max-width: 1050px) {
   .shell { padding-inline: 24px; }
-  .progress { display: none; }
+  /* Keep the Play/Replay/Coach rail — it is the first-run guide. Tighten and
+     wrap it instead of dropping it; it disappears only on real phones. */
+  .progress { display: flex; gap: 12px; flex-wrap: wrap; row-gap: 6px; white-space: normal; font-size: 9px; }
+  .progress li { padding-bottom: 7px; }
   .workbench, .workbench[data-coach='true'] { grid-template-columns: minmax(0, 1fr) 280px; }
   .workbench[data-coach='true'] { height: auto; overflow: visible; }
   .workbench[data-coach='true'] .viewport, .workbench[data-coach='true'] .sidebar { height: clamp(340px, calc(100dvh - 300px), 580px); }
@@ -847,6 +850,11 @@ a.secondaryButton { text-decoration: none; }
   .edition { display: none; }
   .buildBadge { font-size: 8px; padding: 7px; }
   .intro { padding: 14px 0 12px; }
+  /* Stack the step rail under the hero copy rather than dropping it — on a
+     phone it is the only first-run guidance left. */
+  .intro { flex-direction: column; align-items: stretch; gap: 10px; }
+  .introAside { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; }
+  .progress { flex: 1; }
   .workbench, .workbench[data-coach='true'] { grid-template-columns: 1fr; height: auto; }
   .viewport { height: min(58dvh, 420px); }
   .sidebar { border-left: 0; border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
@@ -932,6 +940,39 @@ a.secondaryButton { text-decoration: none; }
 .correctionSituation strong { color: var(--ink); font-weight: 600; }
 .correctionNote { margin: 8px 0 0; font-size: 10px; color: #385038; line-height: 1.5; }
 .correctionNote strong { font-weight: 650; }
+/* "What your brain changed" — the lesson in plain language, above the score. */
+.behaviourLine {
+  margin: 8px 0 0; padding: 9px 10px; border: 1px solid #b9cdb2; border-radius: 4px;
+  background: #f2f7ee; font-size: 10px; line-height: 1.5; color: var(--ink);
+}
+.behaviourLine strong { display: block; font: 8px var(--font-geist-mono), monospace; letter-spacing: 0.08em; color: #4a6b46; margin-bottom: 4px; text-transform: uppercase; }
+.routeSwapList { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.routeSwapList li { display: grid; grid-template-columns: 34px 1fr 10px 1fr; align-items: center; gap: 6px; font-size: 10px; color: var(--ink); }
+.routeSwapTick { font: 8px var(--font-geist-mono), monospace; color: var(--muted); }
+.routeSwapFrom { color: #7d5a4a; text-decoration: line-through; text-decoration-color: #c0a08e; }
+.routeSwapTo { color: #3f6b39; font-weight: 600; }
+/* Mid-race "call the next route" — the one live verb a player gets. */
+.liveCall {
+  position: absolute; left: 50%; transform: translateX(-50%); bottom: 78px; z-index: 6;
+  width: min(320px, calc(100% - 32px)); padding: 10px 11px;
+  border: 1px solid #537c52; border-radius: 6px;
+  background: rgba(250, 252, 244, 0.96); backdrop-filter: blur(6px);
+  box-shadow: 0 8px 24px rgba(28, 44, 24, 0.18);
+}
+.liveCallHead { display: flex; align-items: center; gap: 6px; color: #3f6b39; }
+.liveCallHead strong { font: 9px var(--font-geist-mono), monospace; letter-spacing: 0.08em; text-transform: uppercase; }
+.liveCallDismiss { margin-left: auto; display: grid; place-items: center; border: 0; background: none; cursor: pointer; color: var(--muted); padding: 2px; }
+.liveCallDismiss:hover { color: var(--ink); }
+.liveCallHint { margin: 7px 0 8px; font-size: 10px; line-height: 1.5; color: #385038; }
+.liveCallHint em { font-style: normal; font-weight: 650; color: var(--ink); }
+.liveCallOptions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+.liveCallOption {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  border: 1px solid #cbd3c5; border-radius: 4px; background: #fff; cursor: pointer; padding: 7px 4px;
+  font-size: 10px; color: var(--ink);
+}
+.liveCallOption:hover { border-color: #6a8d61; background: #f4f8ef; }
+.liveCallOption small { font: 8px var(--font-geist-mono), monospace; color: var(--muted); }
 .alternativeRow { display: flex; flex-direction: column; gap: 5px; }
 .alternativeRow > span { font: 8px var(--font-geist-mono), monospace; letter-spacing: 0.08em; color: var(--muted); }
 .alternativeButton {

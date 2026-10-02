@@ -10,12 +10,15 @@ Clawdy is an agent-training league inside a physical world. You coach a rover th
 
 ## The Loop
 
-**Play → Replay → Coach → Train → Match.**
+**Play → Call → Replay → Coach → Train → Match.**
 
 1. Press **Play** and watch two autonomous rovers race for cores (highlighted amber routes are flood-sensitive).
-2. Open **Replay** — watch it back as an event-driven cinematic, or scrub a mistake and queue a fix; the review frame ranks the top-3 outcome-measured alternatives beside the coach's keyword match.
-3. Open **Coach**, approve examples, and train a real checkpoint.
-4. Switch to **Match** for a scored held-out layout with coaching locked.
+2. **Call the next route** — once per Practice run, at a junction, pick the route your champion should take. It records an approved lesson without steering the current race, so nothing you call can touch a scored result.
+3. Open **Replay** — watch it back as an event-driven cinematic, or scrub a mistake and queue a fix; the review frame ranks the top-3 outcome-measured alternatives beside the coach's keyword match.
+4. Open **Coach**, approve examples, and train a real checkpoint.
+5. Switch to **Match** for a scored held-out layout with coaching locked.
+
+After training, the lesson card leads with **what your brain actually changed** — how many decisions moved, which route swaps account for it, and whether it got stuck less — alongside the score delta. The weights are a small MLP and cannot be read directly, so this is where the learning becomes visible.
 
 ## Two Entry Paths, One Entrant Format
 
@@ -26,7 +29,7 @@ Both paths produce the same checkpoint artifact and run under the same match rul
 
 ## Live
 
-**Play:** [https://clawdy-nine.vercel.app/](https://clawdy-nine.vercel.app/) — Practice → Replay → Coach → Train → Match. No wallet. Checkpoints sync to Convex under a browser guest key when configured; `localStorage` + JSON export always work offline.
+**Play:** [https://clawdy-nine.vercel.app/](https://clawdy-nine.vercel.app/) — Practice → Call → Replay → Coach → Train → Match. No wallet. Checkpoints sync to Convex under a browser guest key when configured; `localStorage` + JSON export always work offline.
 
 ### Saving your progress
 

@@ -98,6 +98,14 @@ These configs are pinned by `versions.test.ts`. Changing any value changes measu
 results (`docs/eval-holdout.json`, `starter/champion-checkpoint.json`) and therefore
 requires re-running the affected path and re-recording its outputs in the same change.
 
+**Execution location is not part of the checkpoint contract.** As of Oct 2, the browser
+coach panel runs `trainPolicyCheckpoint` and `comparePracticeCheckpoints` inside
+`services/trainingWorker.ts` rather than on the main thread. The config, the trainer, and
+the episode authority are unchanged, and `npm run eval:gate` reproduces the pin
+byte-for-byte across the same path — a worker must never produce a different checkpoint for
+the same parent, examples, and config. Moving CPU work between threads is therefore not a
+compatibility break; changing any pinned number above still is.
+
 Promotion discipline: no checkpoint is promoted on the strength of one replay.
 `npm run eval:gate` (CI-enforced) reproduces the pinned `docs/eval-gate.json` —
 16 abstract matched legs (4 held-out scenarios × {safe, distilled} × {normal,

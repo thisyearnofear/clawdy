@@ -61,6 +61,7 @@ export function HelpDrawer({ open, onClose }: { open: boolean; onClose: () => vo
         </div>
         <ol className={styles.helpSteps}>
           <li><strong>Watch</strong> a Practice round — your rover races the house rival.</li>
+          <li><strong>Call the next route</strong> once per Practice run: at a junction, pick the route it should take. Your call is saved as an approved lesson — it does not steer the current race.</li>
           <li><strong>Teach</strong> in Replay: scrub to a decision, prefer a different legal route or action, draft the correction.</li>
           <li><strong>Approve</strong> fixes and <strong>Train</strong> a new brain, then compare the two recorded runs.</li>
           <li>Switch to <strong>Match</strong> to test it with coaching locked.</li>

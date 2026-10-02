@@ -565,6 +565,12 @@ function CoachChoiceRibbon({ points, edgeId, selected, onPick }: {
           <meshBasicMaterial color="#7fb069" transparent opacity={0.85} depthWrite={false} side={THREE.DoubleSide} />
         </mesh>
       )}
+      {/* Faint underlay so a pickable route is visibly pickable. The hit mesh
+          below is invisible, which reads as "nothing there" on touch where
+          there is no hover cursor to discover it. */}
+      <mesh geometry={geometry} renderOrder={3}>
+        <meshBasicMaterial color="#ffffff" transparent opacity={0.14} depthWrite={false} side={THREE.DoubleSide} />
+      </mesh>
       <mesh
         geometry={hitGeometry}
         renderOrder={4}

@@ -1,9 +1,10 @@
 'use client'
 
 import { GitCompareArrows, Play } from 'lucide-react'
+import { describeBehaviourChange, summarizeBehaviourChange } from '../../services/behaviourDelta'
 import type { PracticeComparison } from '../../services/practiceComparison'
 import styles from '../environment/ArenaScene.module.css'
-import { friendlyActionLabel } from './readouts'
+import { friendlyActionLabel, routeLabel } from './readouts'
 
 export function LessonComparison({
   comparison,
@@ -18,12 +19,31 @@ export function LessonComparison({
 }) {
   const delta = comparison.bankedDelta
   const divergence = comparison.firstDivergence
+  // The learning itself, not just the score: how many decisions actually moved,
+  // and which route swaps account for it.
+  const behaviour = summarizeBehaviourChange(comparison.baseline.decisions, comparison.trained.decisions)
+  const routeSwaps: { tick: number; from: string; to: string }[] = []
+  for (const decision of comparison.baseline.decisions) {
+    if (!decision.accepted || decision.action.type !== 'move') continue
+    const other = comparison.trained.decisions.find(candidate => candidate.tick === decision.tick)
+    if (!other?.accepted || other.action.type !== 'move' || other.action.edgeId === decision.action.edgeId) continue
+    routeSwaps.push({
+      tick: decision.tick,
+      from: routeLabel(decision.action.edgeId),
+      to: routeLabel(other.action.edgeId),
+    })
+    if (routeSwaps.length >= 6) break
+  }
   return (
     <section className={styles.lessonCard} aria-label="Practice comparison" role="status">
       <div className={styles.trainingResultHeader}>
         <GitCompareArrows size={14} />
         <strong>Lesson comparison · {comparison.scenarioId}</strong>
       </div>
+      <p className={styles.behaviourLine}>
+        <strong>What your brain changed</strong>
+        {describeBehaviourChange(behaviour)}
+      </p>
       <div className={styles.trainingResultGrid}>
         <div>
           <span>Parent</span>
@@ -60,6 +80,21 @@ export function LessonComparison({
         </p>
       ) : (
         <p className={styles.correctionNote}>No different accepted decisions on this practice run.</p>
+      )}
+      {routeSwaps.length > 0 && (
+        <details className={styles.referenceDetails}>
+          <summary>Route changes ({routeSwaps.length}{comparison.baseline.decisions.length > routeSwaps.length ? '+' : ''})</summary>
+          <ul className={styles.routeSwapList}>
+            {routeSwaps.map(swap => (
+              <li key={swap.tick}>
+                <span className={styles.routeSwapTick}>t{swap.tick}</span>
+                <span className={styles.routeSwapFrom}>{swap.from}</span>
+                <span aria-hidden="true">→</span>
+                <span className={styles.routeSwapTo}>{swap.to}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
       <div className={styles.replayButtons}>
         <button type="button" className={styles.frameCoachButton} onClick={() => onWatch('trained')} aria-pressed={reviewing === 'trained'}>

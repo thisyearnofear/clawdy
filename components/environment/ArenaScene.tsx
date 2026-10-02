@@ -9,15 +9,16 @@ import { isEvaluationScenario, rejectEvaluationExamples } from '../../services/a
 import { ArenaSession, SESSION_SPEEDS, type SessionSpeed } from '../../services/arenaSession'
 import type { ArenaMotion } from '../../services/arenaPhysics'
 import { type EntrantPolicyOption } from '../../services/arenaPolicy'
-import { buildMatchTimeline, MOMENT_LABELS, MOMENT_LEAD_TICKS, nextMomentAfter, type MatchMoment } from '../../services/matchTimeline'
+import { MOMENT_LABELS, MOMENT_LEAD_TICKS, nextMomentAfter, type MatchMoment } from '../../services/matchTimeline'
 import { createTournament, runTournament, type ArenaTournament, type TournamentEntrant, type TournamentMatch } from '../../services/arenaTournament'
 import { type PolicyCheckpoint, SEASON_0_BASE_CHECKPOINT } from '../../services/policyModel'
 import { isBundledStarter, SEASON_0_STARTER_CHECKPOINT } from '../../services/starterCheckpoint'
-import { trainPolicyCheckpoint } from '../../services/policyTrainer'
 import { proposeCorrection, summarizeCoachFocus } from '../../services/coachingEngine'
 import { rankCoachingCandidates, type CoachingCandidate } from '../../services/coachingCandidates'
 import { draftRecordedCorrection, recordedCoachContext } from '../../services/coachingReview'
-import { comparePracticeCheckpoints, comparisonFrameAt, type PracticeComparison } from '../../services/practiceComparison'
+import { comparisonFrameAt, type PracticeComparison } from '../../services/practiceComparison'
+import { useCoachingWorker } from '../utils/useCoachingWorker'
+import { liveCallContext, type LiveCallContext } from '../../services/liveCall'
 import { ArenaSound } from '../../services/arenaSound'
 import {
   encounterDistance,
@@ -57,11 +58,12 @@ import { BootScreen } from '../workbench/BootScreen'
 import { BrandHeader } from '../workbench/BrandHeader'
 import { CoachPanel } from '../workbench/CoachPanel'
 import { LessonComparison } from '../workbench/LessonComparison'
+import { LiveCallPrompt } from '../workbench/LiveCallPrompt'
 import { HelpDrawer } from '../workbench/HelpDrawer'
 import { ReplayPanel } from '../workbench/ReplayPanel'
 import { TournamentBracket } from '../workbench/TournamentBracket'
 import { ViewportHud, type HudFeedEvent } from '../workbench/ViewportHud'
-import { actionsEqual, COACH_ANYTIME_KEY, COACH_MISTAKE_KEY, COACH_NUDGE_KEY, isExecutableCheckpoint, PLAY_HINT_KEY, readHintDismissed, routeLabel } from '../workbench/readouts'
+import { actionsEqual, COACH_ANYTIME_KEY, COACH_MISTAKE_KEY, COACH_NUDGE_KEY, friendlyActionLabel, isExecutableCheckpoint, PLAY_HINT_KEY, readHintDismissed, routeLabel } from '../workbench/readouts'
 import styles from './ArenaScene.module.css'
 
 const WorldView = dynamic(() => import('./ArenaWorldView'), { ssr: false })
@@ -108,6 +110,8 @@ function Workbench({
   const [coachNudgeOpen, setCoachNudgeOpen] = useState(false)
   const [hasCompletedRun, setHasCompletedRun] = useState(false)
   const [mistakeMoment, setMistakeMoment] = useState<{ tick: number; headline: string; detail: string } | null>(null)
+  const [liveCall, setLiveCall] = useState<LiveCallContext | null>(null)
+  const liveCallUsedRef = useRef(false)
   const [trainFocusLine, setTrainFocusLine] = useState<string | null>(null)
   const [modeBanner, setModeBanner] = useState<WorkbenchPlayMode | null>(null)
   const [runTip, setRunTip] = useState<string | null>(null)
@@ -180,6 +184,11 @@ function Workbench({
   const recordStreamRef = useRef<MediaStream | null>(null)
   const recordChunksRef = useRef<Blob[]>([])
   const clipUrlRef = useRef<string | null>(null)
+
+  // Training, the two comparison matches, and the beat forecast all run in a
+  // worker so the canvas never stalls at the moment the player is waiting on
+  // the result.
+  const coachWorker = useCoachingWorker()
 
   const onReady = useCallback(() => { setVisualReady(true); recordFunnelEvent('boot.ready') }, [])
   const onError = useCallback((error: Error) => session.fail(error.message), [session])
@@ -338,6 +347,36 @@ function Workbench({
     }, 15000)
   }, [view.phase, view.episode, playMode, mistakeMoment, flooded, activeCourse.scenario.edges, applySpeed])
 
+  // The mid-race verb: once per Practice run, offer to call the champion's next
+  // route while it is live. Scoped to practice — a scored Match locks coaching,
+  // so this can never touch a result.
+  useEffect(() => {
+    if (view.phase !== 'running' || playMode !== 'practice') return
+    if (liveCall || liveCallUsedRef.current || isTraining) return
+    let observation
+    try {
+      observation = session.observe('champion', { forceDecision: true })
+    } catch {
+      return
+    }
+    const championAgent = view.episode.agents.find(agent => agent.id === 'champion')
+    if (!championAgent) return
+    const context = liveCallContext({
+      tick: view.episode.tick,
+      durationTicks: activeCourse.scenario.durationTicks,
+      observation,
+      // What it will do absent coaching is whatever it last committed, so the
+      // prompt can name the default a call is overriding.
+      plannedAction: championAgent.lastOutcome?.accepted && championAgent.lastOutcome.action
+        ? championAgent.lastOutcome.action
+        : null,
+      alreadyCalled: liveCallUsedRef.current,
+    })
+    if (!context) return
+    recordFunnelEvent('tip.livecall', `t${context.tick}`)
+    setLiveCall(context)
+  }, [view.phase, view.episode, playMode, liveCall, isTraining, mistakeMoment, session, activeCourse.scenario.durationTicks])
+
   // Funnel: first paint of the play hint, each coach-studio open, and the
   // moment a user-owned brain exists (tournament unlock) — the three
   // disclosures whose conversion decides whether the ladder works.
@@ -396,6 +435,40 @@ function Workbench({
     setStudioOpen(true)
     setMistakeMoment(null)
   }, [mistakeMoment, session])
+
+  const handleLiveCall = (edgeId: string) => {
+    if (!liveCall) return
+    liveCallUsedRef.current = true
+    setLiveCall(null)
+    const preferred: ArenaAction = { type: 'move', edgeId }
+    if (!liveCall.routeOptions.some(option => option.edgeId === edgeId)) {
+      setTrainMessage('That route is not available right now — the champion keeps its own plan for this run.')
+      return
+    }
+    try {
+      exampleCounter.current += 1
+      // Recorded as an approved example directly: the player chose it live, in
+      // the moment, rather than in post-hoc review — that is the whole point.
+      const example = {
+        id: `live-${liveCall.tick}-${exampleCounter.current.toString(36)}`,
+        sourceEpisodeId: activeCourse.scenario.id,
+        tick: liveCall.tick,
+        observation: structuredClone(liveCall.observation),
+        originalAction: structuredClone(liveCall.plannedAction ?? { type: 'wait' as const }),
+        preferredAction: preferred,
+        rationale: `Called live at tick ${liveCall.tick}: take ${routeLabel(edgeId)} instead of ${liveCall.plannedAction ? friendlyActionLabel(liveCall.plannedAction) : 'waiting'}.`,
+        approved: true,
+        source: 'approved' as const,
+        provenance: { kind: 'human' as const },
+      }
+      setExamples(prev => [example, ...prev])
+      recordFunnelEvent('example.draft', 'live-call')
+      setStudioOpen(true)
+      setTrainMessage(`Live call saved — teach it ${routeLabel(edgeId)}. The champion keeps driving this run; hit Train after the race to make it stick.`)
+    } catch {
+      setTrainMessage("Couldn't save that call — pause and use Coach instead.")
+    }
+  }
 
   const dismissMistake = useCallback(() => {
     if (mistakeTimer.current) {
@@ -555,17 +628,16 @@ function Workbench({
     for (const [id, strategy] of Object.entries(view.policies)) {
       options[id] = strategy === 'learned' ? { strategy: 'learned', checkpoint: view.checkpoint! } : strategy
     }
-    const timer = window.setTimeout(() => {
-      try {
-        const moments = buildMatchTimeline(scenario, options, createMotion)
-        setDirector({ matchId, moments })
-      } catch {
-        // No forecast, no problem — Skip still falls through to the finish.
-        setDirector({ matchId, moments: [{ tick: scenario.durationTicks, kind: 'finish' }] })
-      }
-    }, 0)
-    return () => window.clearTimeout(timer)
-  }, [view.phase, view.episode.tick, session, activeCourse.scenario, view.policies, view.checkpoint, createMotion, director])
+    let cancelled = false
+    void coachWorker.timeline({ scenario, options }).then(moments => {
+      if (cancelled) return
+      setDirector({ matchId, moments })
+    }).catch(() => {
+      // No forecast, no problem — Skip still falls through to the finish.
+      if (!cancelled) setDirector({ matchId, moments: [{ tick: scenario.durationTicks, kind: 'finish' }] })
+    })
+    return () => { cancelled = true }
+  }, [view.phase, view.episode.tick, session, activeCourse.scenario, view.policies, view.checkpoint, coachWorker, director])
 
   // Live race feed: banks, flood flips, drains, and the full-time score.
   // Throttled to one decision cadence (5 ticks) so snapshot pumps never churn renders.
@@ -766,6 +838,8 @@ function Workbench({
   const switchPlayMode = (mode: WorkbenchPlayMode) => {
     if (view.phase !== 'ready' || mode === playMode || isTraining) return
     setCoachSelection(null)
+    setLiveCall(null)
+    liveCallUsedRef.current = false
     const next = selectWorkbenchCourse(course, rushCourse, mode)
     setPlayMode(mode)
     setActiveCourse(next)
@@ -940,103 +1014,117 @@ function Workbench({
     setCoachSelection(null)
 
     if (trainTimerRef.current !== null) window.clearTimeout(trainTimerRef.current)
-    trainTimerRef.current = window.setTimeout(() => {
-      trainTimerRef.current = null
-      if (abort.signal.aborted) { trainingBusyRef.current = false; return }
-      const jobId = `train-${Date.now().toString(36)}`
-      let trained: PolicyCheckpoint
+    const jobId = `train-${Date.now().toString(36)}`
+    const trainOptions = {
+      // Browser coach-train config, pinned in versions.test.ts and
+      // docs/COMPATIBILITY.md: 60 epochs, lr 0.008 with a deterministic
+      // 0.5x step at epoch 30 (few-shot stable; the old 100/0.02 ran
+      // hot enough to diverge on ~10-example lessons).
+      epochs: 60,
+      learningRate: 0.008,
+      learningRateDecay: { atEpoch: 30, factor: 0.5 },
+      name: `${championIdentity.name} v${checkpoints.length} (+${approved.length})`,
+    }
+    queueTrainingJobSync({
+      jobId,
+      status: 'running',
+      parentCheckpointId: parent.id,
+      resultCheckpointId: null,
+      exampleCount: approved.length,
+      message: null,
+    })
+    const focusLine = summarizeCoachFocus(approved)
+    setTrainFocusLine(focusLine)
+    const failTraining = (err: unknown) => {
+      trainingBusyRef.current = false
+      setIsTraining(false)
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      setTrainMessage(`Training didn't take: ${message}. Your approved notes are still here — try again.`)
+      queueTrainingJobSync({
+        jobId,
+        status: 'failed',
+        parentCheckpointId: parent.id,
+        resultCheckpointId: null,
+        exampleCount: approved.length,
+        message,
+      })
+    }
+    const adoptChild = (trained: PolicyCheckpoint): boolean => {
+      try { session.reset() } catch (err) {
+        setTrainMessage(`Saved the new brain, but the practice session wouldn't reset: ${err instanceof Error ? err.message : 'unknown error'}. Try Reset.`)
+        return false
+      }
       try {
-        queueTrainingJobSync({
-          jobId,
-          status: 'running',
-          parentCheckpointId: parent.id,
-          resultCheckpointId: null,
-          exampleCount: approved.length,
-          message: null,
-        })
-        trained = trainPolicyCheckpoint(parent, approved, {
-          // Browser coach-train config, pinned in versions.test.ts and
-          // docs/COMPATIBILITY.md: 60 epochs, lr 0.008 with a deterministic
-          // 0.5x step at epoch 30 (few-shot stable; the old 100/0.02 ran
-          // hot enough to diverge on ~10-example lessons).
-          epochs: 60,
-          learningRate: 0.008,
-          learningRateDecay: { atEpoch: 30, factor: 0.5 },
-          name: `${championIdentity.name} v${checkpoints.length} (+${approved.length})`,
-        })
-        setCheckpoints(prev => [trained, ...prev])
-        queueCheckpointSync(trained, approved.map(example => example.id))
+        session.setCheckpoint(trained)
+        session.selectPolicy('champion', 'learned', trained)
+        setActiveCheckpoint(trained)
+        return true
       } catch (err) {
-        trainingBusyRef.current = false
-        setIsTraining(false)
-        setTrainMessage(`Training didn't take: ${err instanceof Error ? err.message : 'Unknown error'}. Your approved notes are still here — try again.`)
-        queueTrainingJobSync({
-          jobId,
-          status: 'failed',
-          parentCheckpointId: parent.id,
-          resultCheckpointId: null,
-          exampleCount: approved.length,
-          message: err instanceof Error ? err.message : 'Unknown error',
-        })
-        return
+        setTrainMessage(`Saved the new brain, but it wouldn't load into the arena: ${err instanceof Error ? err.message : 'incompatible checkpoint'}.`)
+        return false
       }
+    }
+    const finishTraining = (trained: PolicyCheckpoint, message: string) => {
+      trainingBusyRef.current = false
+      setIsTraining(false)
+      setTrainMessage(message)
+      queueTrainingJobSync({
+        jobId,
+        status: 'succeeded',
+        parentCheckpointId: parent.id,
+        resultCheckpointId: trained.id,
+        exampleCount: approved.length,
+        message: `loss ${trained.trainingSummary.loss.toFixed(4)}`,
+      })
+    }
 
-      const finishTraining = (message: string) => {
-        trainingBusyRef.current = false
-        setIsTraining(false)
-        setTrainMessage(message)
-        queueTrainingJobSync({
-          jobId,
-          status: 'succeeded',
-          parentCheckpointId: parent.id,
-          resultCheckpointId: trained.id,
-          exampleCount: approved.length,
-          message: `loss ${trained.trainingSummary.loss.toFixed(4)}`,
-        })
-      }
-      const adoptChild = (): boolean => {
-        try { session.reset() } catch (err) {
-          setTrainMessage(`Saved the new brain, but the practice session wouldn't reset: ${err instanceof Error ? err.message : 'unknown error'}. Try Reset.`)
-          return false
-        }
-        try {
-          session.setCheckpoint(trained)
-          session.selectPolicy('champion', 'learned', trained)
-          setActiveCheckpoint(trained)
-          return true
-        } catch (err) {
-          setTrainMessage(`Saved the new brain, but it wouldn't load into the arena: ${err instanceof Error ? err.message : 'incompatible checkpoint'}.`)
-          return false
-        }
-      }
-      const focusLine = summarizeCoachFocus(approved)
-      setTrainFocusLine(focusLine)
-      const lossLine = `Loss ${trained.trainingSummary.loss.toFixed(4)} · ${(trained.trainingSummary.accuracy * 100).toFixed(0)}% of the notes landed.`
+    // 60 epochs of backprop, then two full 1200-tick comparison matches, both
+    // in the worker. The canvas keeps rendering and the coach panel keeps its
+    // "teaching" message instead of the tab freezing at the payoff moment.
+    void coachWorker.train({ parent, examples: approved, options: trainOptions }).then(trained => {
+      if (abort.signal.aborted) { trainingBusyRef.current = false; return }
+      setCheckpoints(prev => [trained, ...prev])
+      queueCheckpointSync(trained, approved.map(example => example.id))
       setTrainMessage("Training's done — let's see how the new brain stacks up against the old one…")
-      comparePracticeCheckpoints(parent, trained, practiceScenario, createMotion, {
+      return coachWorker.compare({
+        parent,
+        child: trained,
+        scenario: practiceScenario,
         rival: rivalOption,
         controllerVersion,
-        signal: abort.signal,
-      }).then(result => {
-        if (abort.signal.aborted) { trainingBusyRef.current = false; return }
-        setComparison(result)
-        requestAnimationFrame(() => comparisonRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }))
-        const adopted = adoptChild()
-        recordFunnelEvent('train.done', `n=${approved.length} loss=${trained.trainingSummary.loss.toFixed(4)} banked ${result.baseline.banked}→${result.trained.banked}`)
-        if (!adopted) { trainingBusyRef.current = false; setIsTraining(false); return }
-        finishTraining(
-          focusLine
-            ? `New brain trained. ${focusLine} ${lossLine} See how it did below.`
-            : `New brain trained. ${lossLine} See how it did below.`,
-        )
-      }).catch(err => {
-        if (abort.signal.aborted) { trainingBusyRef.current = false; return }
-        const adopted = adoptChild()
+      }).then(result => ({ trained, result }), (err: unknown) => {
+        // The brain trained and saved fine — only the side-by-side failed.
+        // Adopt it anyway; the player keeps the lesson even without the replay.
+        if (abort.signal.aborted) throw err
+        const adopted = adoptChild(trained)
         recordFunnelEvent('train.done', `n=${approved.length} comparison-unavailable`)
-        if (!adopted) { trainingBusyRef.current = false; setIsTraining(false); return }
-        finishTraining(`New brain trained and saved, though the side-by-side comparison didn't run (${err instanceof Error ? err.message : 'unknown error'}). ${lossLine}`)
+        if (!adopted) { trainingBusyRef.current = false; setIsTraining(false); throw err }
+        const lossLine = `Loss ${trained.trainingSummary.loss.toFixed(4)} · ${(trained.trainingSummary.accuracy * 100).toFixed(0)}% of the notes landed.`
+        finishTraining(trained, `New brain trained and saved, though the side-by-side comparison didn't run (${err instanceof Error ? err.message : 'unknown error'}). ${lossLine}`)
+        throw err
       })
-    }, 0)
+    }).then(outcome => {
+      if (!outcome) return
+      if (abort.signal.aborted) { trainingBusyRef.current = false; return }
+      const { trained, result } = outcome
+      setComparison(result)
+      requestAnimationFrame(() => comparisonRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }))
+      const adopted = adoptChild(trained)
+      recordFunnelEvent('train.done', `n=${approved.length} loss=${trained.trainingSummary.loss.toFixed(4)} banked ${result.baseline.banked}→${result.trained.banked}`)
+      if (!adopted) { trainingBusyRef.current = false; setIsTraining(false); return }
+      const lossLine = `Loss ${trained.trainingSummary.loss.toFixed(4)} · ${(trained.trainingSummary.accuracy * 100).toFixed(0)}% of the notes landed.`
+      finishTraining(
+        trained,
+        focusLine
+          ? `New brain trained. ${focusLine} ${lossLine} See how it did below.`
+          : `New brain trained. ${lossLine} See how it did below.`,
+      )
+    }).catch(err => {
+      if (abort.signal.aborted) { trainingBusyRef.current = false; return }
+      // Only a genuine training failure lands here; the comparison branch
+      // above has already settled its own message and rethrows.
+      if (trainingBusyRef.current) failTraining(err)
+    })
   }
 
   const reviewRecording = view.phase === 'review' ? session.activeRecording() : null
@@ -1441,6 +1529,17 @@ function Workbench({
                 Got it
               </button>
             </div>
+          )}
+          {liveCall && view.phase === 'running' && (
+            <LiveCallPrompt
+              context={liveCall}
+              onCall={handleLiveCall}
+              onDismiss={() => {
+                liveCallUsedRef.current = true
+                setLiveCall(null)
+                recordFunnelEvent('tip.livecall.dismiss')
+              }}
+            />
           )}
           {mistakeMoment && (view.phase === 'running' || view.phase === 'paused') && (
             <div className={`${styles.playHint} ${styles.hintEnter}`} role="status">
