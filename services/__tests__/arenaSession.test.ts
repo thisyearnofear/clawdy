@@ -227,6 +227,43 @@ describe('application episode session', () => {
     session.dispose()
   })
 
+  it('switches to an unscored Rush course while ready and reviews its events', () => {
+    const { session } = setup()
+    const original = session.recording().scenario
+    const rushCourse: ArenaCourse = {
+      config: { id: 'fixture', name: 'Rush fixture', terrain: { url: '/fixture-terrain.glb', sha256: 'fixture' } },
+      center: [0, 0, 0],
+      floodZones: [],
+      scenario: {
+        ...original,
+        id: 'session-rush-fixture',
+        resources: original.resources.map((resource, index) => index === 0 ? { ...resource, spawnTick: 5 } : resource),
+        rush: { contactRadiusM: 1.1, bumpStaggerTicks: 24, bumpCooldownTicks: 60 },
+      },
+    }
+    session.setCourse(rushCourse)
+    session.setScored(false)
+    expect(session.getSnapshot()).toMatchObject({ phase: 'ready', scored: false })
+    expect(session.recording().scenario.id).toBe('session-rush-fixture')
+    session.start()
+    while (session.getSnapshot().phase === 'running') session.advanceMicroseconds(1_000_000)
+    const recording = session.recording()
+    expect(recording.scenario.id).toBe('session-rush-fixture')
+    expect(recording.checkpoints.at(-1)?.state.events?.some(event => event.type === 'core_spawn')).toBe(true)
+    session.review()
+    session.seek(recording.checkpoints.length - 1)
+    expect(session.getSnapshot().episode.events).toEqual(recording.checkpoints.at(-1)?.state.events)
+    session.returnToRun()
+    session.reset()
+    session.setCourse({
+      ...rushCourse,
+      scenario: { ...original, id: 'session-fixture' },
+    })
+    expect(session.recording().scenario.rush).toBeUndefined()
+    expect(session.getSnapshot().episode.events).toBeUndefined()
+    session.dispose()
+  })
+
   it('setSpeed multiplies sim time per pump and widens the catch-up cap', () => {
     const { session } = setup()
     session.start()

@@ -8,6 +8,7 @@ import { ArenaEpisode, DEFAULT_RUSH_RULES, type ArenaAction, type ArenaScenario 
 import { ArenaRunner, type EntrantPolicyOption } from '../arenaPolicy'
 import { buildRushCourse, RUSH_WAVE_TICKS } from '../arenaCourse'
 import { isEvaluationScenario } from '../arenaScenarios'
+import { replayArenaEpisode } from '../arenaReplay'
 
 function rushScenario(overrides: Partial<ArenaScenario> = {}): ArenaScenario {
   return {
@@ -177,6 +178,23 @@ describe('Rush arena on the grounded basin', () => {
     } finally {
       physics.dispose()
     }
+  })
+
+  it('records a complete contested match and replays every event and score', () => {
+    const probe = new ArenaPhysics(collider)
+    const scenario = buildRushCourse(probe).scenario
+    probe.dispose()
+    const runner = new ArenaRunner(scenario, { champion: 'poach', rival: 'poach' })
+    runner.advanceTicks(scenario.durationTicks)
+    const recording = runner.recording()
+    const events = runner.snapshot().events ?? []
+    expect(recording.finalTick).toBe(scenario.durationTicks)
+    expect(events.filter(event => event.type === 'core_spawn').map(event => event.tick)).toEqual([...RUSH_WAVE_TICKS])
+    expect(events.some(event => event.type === 'bump')).toBe(true)
+    expect(recording.checkpoints.at(-1)?.state.events).toEqual(events)
+    const replay = replayArenaEpisode(recording)
+    expect(replay.divergedAt).toBeNull()
+    expect(replay.final).toEqual(runner.snapshot())
   })
 
   it('agrees exactly between physics-backed and route-only matches, bumps included', () => {
