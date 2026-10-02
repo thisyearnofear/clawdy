@@ -301,7 +301,7 @@ function BroadcastExperience({ session, request = 0, onFeedReady }: BroadcastPan
     if (request === lastRequestRef.current) return
     lastRequestRef.current = request
     pendingStartRef.current = true
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- responding to an external request signal
+    // Responding to an external request signal rather than deriving state.
     setExpanded(true)
     if (modeRef.current === 'off') void connectLive()
   }, [request, connectLive])

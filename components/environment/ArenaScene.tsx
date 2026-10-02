@@ -1224,6 +1224,11 @@ function Workbench({
       }
     }, 140)
     return () => window.clearTimeout(timer)
+    // Deliberately keyed on the review frame, not on view.episode/session/
+    // activeCourse.scenario. Adding them would re-run the ranking rollouts on
+    // every published tick instead of once per scrubbed frame, which is the
+    // exact cost the debounce above exists to avoid.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view.phase, view.replayIndex, coachingLocked])
 
   const handleSelectCheckpoint = (ckptId: string) => {
@@ -1317,7 +1322,11 @@ function Workbench({
     try { session.seek(best) } catch { /* frame may have raced a trim */ }
   }
 
-  const resetForTeaching = useCallback(() => {
+  // Plain function, not useCallback: it is called only from runNextStep below,
+  // which is itself recreated each render, so the manual memoization bought no
+  // referential stability and only forced a hand-maintained dependency list
+  // (which the React Compiler flagged as unpreservable).
+  const resetForTeaching = () => {
     floodWarnedRef.current = null
     setDirector(null)
     setComparison(null)
@@ -1325,7 +1334,7 @@ function Workbench({
     setCoachSelection(null)
     setRunTip(null)
     session.reset()
-  }, [session])
+  }
 
   const championIntent = !champion
     ? null
