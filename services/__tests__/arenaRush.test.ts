@@ -6,7 +6,7 @@ import { createWorldSurface } from '../worldSurface'
 import { ArenaPhysics, initializeArenaPhysics } from '../arenaPhysics'
 import { ArenaEpisode, DEFAULT_RUSH_RULES, type ArenaAction, type ArenaScenario } from '../arenaEpisode'
 import { ArenaRunner, type EntrantPolicyOption } from '../arenaPolicy'
-import { buildRushCourse, RUSH_WAVE_TICKS } from '../arenaCourse'
+import { applyCourseMode, buildArenaCourse, buildRushCourse, RUSH_WAVE_TICKS, selectWorkbenchCourse } from '../arenaCourse'
 import { isEvaluationScenario } from '../arenaScenarios'
 import { replayArenaEpisode } from '../arenaReplay'
 
@@ -195,6 +195,22 @@ describe('Rush arena on the grounded basin', () => {
     const replay = replayArenaEpisode(recording)
     expect(replay.divergedAt).toBeNull()
     expect(replay.final).toEqual(runner.snapshot())
+  })
+
+  it('selects Rush without falling through to scored Match and preserves Practice/Match layouts', () => {
+    const physics = new ArenaPhysics(collider)
+    try {
+      const practice = buildArenaCourse(physics)
+      const rush = buildRushCourse(physics)
+      expect(selectWorkbenchCourse(practice, rush, 'rush')).toBe(rush)
+      expect(selectWorkbenchCourse(practice, rush, 'rush').scenario.split).toBe('practice')
+      expect(selectWorkbenchCourse(practice, rush, 'rush').scenario.rush).toBeDefined()
+      expect(selectWorkbenchCourse(practice, rush, 'practice')).toEqual(applyCourseMode(practice, 'practice'))
+      expect(selectWorkbenchCourse(practice, rush, 'compete')).toEqual(applyCourseMode(practice, 'compete'))
+      expect(selectWorkbenchCourse(practice, rush, 'compete').scenario.split).toBe('evaluation')
+    } finally {
+      physics.dispose()
+    }
   })
 
   it('agrees exactly between physics-backed and route-only matches, bumps included', () => {

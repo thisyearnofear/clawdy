@@ -469,7 +469,9 @@ function Resource({ session, id, position }: { session: ArenaSession; id: string
   const innerRingRef = useRef<THREE.Mesh>(null)
   useFrame((_, delta) => {
     if (!group.current) return
-    group.current.visible = session.liveEpisode().resources.some(resource => resource.id === id && resource.collectedBy === null)
+    const episode = session.liveEpisode()
+    group.current.visible = episode.resources.some(resource => resource.id === id && resource.collectedBy === null &&
+      (resource.spawnTick === undefined || episode.tick >= resource.spawnTick))
     if (outerRingRef.current) outerRingRef.current.rotation.y += delta * 0.85
     if (innerRingRef.current) innerRingRef.current.rotation.x += delta * 0.6
     group.current.position.y = position[1] + Math.sin(performance.now() * 0.003 + position[0]) * 0.04

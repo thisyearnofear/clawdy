@@ -4,6 +4,7 @@ import {
   RUSH_EVENT_PREVIEW,
   TRAINING_PREVIEW,
   newlyAppendedRushEvents,
+  liveRushEvents,
 } from '../experienceMocks'
 
 describe('Experience contract previews', () => {
@@ -27,6 +28,18 @@ describe('Experience contract previews', () => {
     if (bump.type !== 'bump') throw new Error('Expected bump fixture')
     expect(newlyAppendedRushEvents([spawn], [{ ...spawn }, { ...bump, position: [...bump.position] as [number, number, number] }])).toEqual([bump])
     expect(newlyAppendedRushEvents([bump], [{ ...bump, position: [...bump.position] as [number, number, number] }])).toEqual([])
+  })
+
+  it('shows new events across skipped live ticks but never old ones', () => {
+    const [spawn, bump] = RUSH_EVENT_PREVIEW
+    expect(liveRushEvents([], [spawn, bump], 159, 175)).toEqual([spawn, bump])
+    expect(liveRushEvents([spawn], [spawn, bump], 160, 175)).toEqual([bump])
+    expect(liveRushEvents([], [spawn, bump], 174, 175)).toEqual([])
+    expect(liveRushEvents([spawn, bump], [spawn, bump], 175, 180)).toEqual([])
+    const live = [spawn]
+    const cursor = live.slice()
+    live.push(bump)
+    expect(liveRushEvents(cursor, live, 160, 175)).toEqual([bump])
   })
 
   it('treats a swapped recording or reset as a fresh log without missing events', () => {

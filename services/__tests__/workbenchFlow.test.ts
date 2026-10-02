@@ -34,6 +34,10 @@ describe('computeNextStep — golden branch order (mirrors the pre-extraction Ar
       label: 'Press Play to start Practice',
       run: 'play',
     })
+    expect(step({ phase: 'ready', playMode: 'rush' })).toEqual({
+      label: 'Press Play to start Rush (unranked)',
+      run: 'play',
+    })
   })
 
   it('running has no action', () => {

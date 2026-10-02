@@ -6,9 +6,9 @@
  * queries/events when each service lands. Never show mock ratings as live.
  */
 
-export type RushPresentationEvent =
-  | { type: 'core_spawn'; tick: number; resourceId: string; nodeId: string; value: number }
-  | { type: 'bump'; tick: number; winnerId: string; loserId: string; position: [number, number, number]; stolen: number }
+import type { ArenaSimEvent } from '../../services/arenaEpisode'
+
+export type RushPresentationEvent = ArenaSimEvent
 
 export interface LadderPreviewEntry {
   roverId: string
@@ -70,4 +70,14 @@ export function newlyAppendedRushEvents(
       return false
     })
   return unchangedPrefix ? current.slice(previous.length) : current
+}
+
+/** Show events crossed in a live frame, including ticks skipped by the HUD throttle. */
+export function liveRushEvents(
+  previous: readonly RushPresentationEvent[] | undefined,
+  current: readonly RushPresentationEvent[] | undefined,
+  previousTick: number,
+  tick: number,
+): readonly RushPresentationEvent[] {
+  return newlyAppendedRushEvents(previous, current).filter(event => event.tick > previousTick && event.tick <= tick)
 }

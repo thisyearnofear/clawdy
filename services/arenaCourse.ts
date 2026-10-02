@@ -249,6 +249,12 @@ export function buildRushCourse(physics: ArenaPhysics): ArenaCourse {
 }
 
 export type CoursePlayMode = 'practice' | 'practice-deep' | 'compete'
+export type WorkbenchPlayMode = CoursePlayMode | 'rush'
+
+/** Rush is its own practice-split course, not a fallback to the compete layout. */
+export function selectWorkbenchCourse(base: ArenaCourse, rush: ArenaCourse, mode: WorkbenchPlayMode): ArenaCourse {
+  return mode === 'rush' ? rush : applyCourseMode(base, mode)
+}
 
 /**
  * Same grounded world, different match. Compete keeps the collider and routes

@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { ArrowRight, Clapperboard, Download, Eye, FastForward, HelpCircle, Pause, Play, Printer, Radio, RotateCcw, SkipForward, Sparkles, Volume2, VolumeX } from 'lucide-react'
 import { ARENA_RULES, observeSnapshot, type ArenaAction, type ArenaObservation, type ArenaRecording } from '../../services/arenaEpisode'
-import { loadArenaCourse, applyCourseMode, type ArenaCourse, type CoursePlayMode } from '../../services/arenaCourse'
+import { loadArenaCourse, selectWorkbenchCourse, type ArenaCourse, type WorkbenchPlayMode } from '../../services/arenaCourse'
 import { isEvaluationScenario, rejectEvaluationExamples } from '../../services/arenaScenarios'
 import { ArenaSession, SESSION_SPEEDS, type SessionSpeed } from '../../services/arenaSession'
 import type { ArenaMotion } from '../../services/arenaPhysics'
@@ -75,12 +75,13 @@ const CAMERA_LABELS: Record<ArenaCamera, string> = {
   rival: 'Follow rival',
 }
 
-type LoadedSession = { session: ArenaSession; course: ArenaCourse; createMotion: () => ArenaMotion }
+type LoadedSession = { session: ArenaSession; course: ArenaCourse; rushCourse: ArenaCourse; createMotion: () => ArenaMotion }
 
 
 function Workbench({
   session,
   course,
+  rushCourse,
   createMotion,
   onRetry,
   championIdentity,
@@ -99,7 +100,7 @@ function Workbench({
   const [cinematic, setCinematic] = useState(false)
   const [tournament, setTournament] = useState<ArenaTournament | null>(null)
   const [tournamentRunning, setTournamentRunning] = useState(false)
-  const [playMode, setPlayMode] = useState<CoursePlayMode>('practice')
+  const [playMode, setPlayMode] = useState<WorkbenchPlayMode>('practice')
   const [activeCourse, setActiveCourse] = useState(course)
   const [studioOpen, setStudioOpen] = useState(false)
   const [broadcastRequest, setBroadcastRequest] = useState(0)
@@ -108,7 +109,7 @@ function Workbench({
   const [hasCompletedRun, setHasCompletedRun] = useState(false)
   const [mistakeMoment, setMistakeMoment] = useState<{ tick: number; headline: string; detail: string } | null>(null)
   const [trainFocusLine, setTrainFocusLine] = useState<string | null>(null)
-  const [modeBanner, setModeBanner] = useState<CoursePlayMode | null>(null)
+  const [modeBanner, setModeBanner] = useState<WorkbenchPlayMode | null>(null)
   const [runTip, setRunTip] = useState<string | null>(null)
   const floodWarnedRef = useRef<number | null>(null)
   const lastEncounterTickRef = useRef<number | null>(null)
@@ -762,10 +763,10 @@ function Workbench({
     return () => window.removeEventListener('keydown', onKey)
   })
 
-  const switchPlayMode = (mode: CoursePlayMode) => {
+  const switchPlayMode = (mode: WorkbenchPlayMode) => {
     if (view.phase !== 'ready' || mode === playMode || isTraining) return
     setCoachSelection(null)
-    const next = applyCourseMode(course, mode)
+    const next = selectWorkbenchCourse(course, rushCourse, mode)
     setPlayMode(mode)
     setActiveCourse(next)
     recordFunnelEvent('mode.select', mode)
@@ -1406,8 +1407,8 @@ function Workbench({
           </div>
           {modeBanner && (
             <div className={styles.modeFlash} key={modeBanner} role="status">
-              <span>{modeBanner === 'compete' ? 'MATCH' : 'PRACTICE'}</span>
-              <p>{modeBanner === 'compete' ? 'Held-out layout. Coaching locked.' : 'Teach freely. Same world, practice floods.'}</p>
+              <span>{modeBanner === 'compete' ? 'MATCH' : modeBanner === 'rush' ? 'RUSH' : 'PRACTICE'}</span>
+              <p>{modeBanner === 'compete' ? 'Held-out layout. Coaching locked.' : modeBanner === 'rush' ? 'Unranked race. Chase the mother cores and watch for bumps.' : 'Teach freely. Same world, practice floods.'}</p>
             </div>
           )}
           <ViewportHud
@@ -1530,6 +1531,7 @@ function Workbench({
           <div className={styles.sidebarHeader}><span>THE FIELD</span><span className={styles.timer}>{clock}</span></div>
           <div className={styles.modeToggle} role="group" aria-label="Match type" data-flash={modeBanner ?? undefined}>
             <button type="button" aria-pressed={playMode === 'practice'} disabled={view.phase !== 'ready' || isTraining} onClick={() => switchPlayMode('practice')}>Practice</button>
+            <button type="button" aria-pressed={playMode === 'rush'} disabled={view.phase !== 'ready' || isTraining} onClick={() => switchPlayMode('rush')}>Rush · unranked</button>
             <button type="button" aria-pressed={playMode === 'compete'} disabled={view.phase !== 'ready' || isTraining} onClick={() => switchPlayMode('compete')}>Match</button>
           </div>
           {view.phase === 'review' && (
@@ -1585,8 +1587,8 @@ function Workbench({
           )}
           <BroadcastPanel session={session} request={broadcastRequest} onFeedReady={() => startMatchRef.current()} />
           <div className={styles.ruleCard}>
-            <strong>{playMode === 'compete' ? 'Scored match. No coaching.' : 'Collect. Bank. Survive the flood.'}</strong>
-            <p>{playMode === 'compete' ? 'Same world, different flood and core layout. Weights stay frozen until you reset to Practice.' : `Grab cores and bank them at base. Floods slow the valley; a drain costs ${ARENA_RULES.drainCost} energy and helps both rovers.`}</p>
+            <strong>{playMode === 'compete' ? 'Scored match. No coaching.' : playMode === 'rush' ? 'Rush · unranked. Race for the mother cores.' : 'Collect. Bank. Survive the flood.'}</strong>
+            <p>{playMode === 'compete' ? 'Same world, different flood and core layout. Weights stay frozen until you reset to Practice.' : playMode === 'rush' ? 'A full-load core spawns at the centre each wave. First rover there takes it; close encounters can steal cargo. Bank at your base before time runs out.' : `Grab cores and bank them at base. Floods slow the valley; a drain costs ${ARENA_RULES.drainCost} energy and helps both rovers.`}</p>
             <div className={styles.legend}><span><i />High route</span><span><i />Floodable route</span></div>
           </div>
         </aside>
@@ -1685,7 +1687,7 @@ export default function ArenaScene() {
       if (abort.signal.aborted) { bundle.dispose(); return }
       try {
         owned = new ArenaSession(bundle.course, bundle.physics)
-        setLoaded({ session: owned, course: bundle.course, createMotion: bundle.createMotion })
+        setLoaded({ session: owned, course: bundle.course, rushCourse: bundle.rushCourse, createMotion: bundle.createMotion })
       } catch (cause) {
         bundle.dispose()
         throw cause

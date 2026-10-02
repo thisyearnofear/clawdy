@@ -14,7 +14,7 @@ export type NextStepAction =
 export interface NextStepInput {
   visualReady: boolean
   phase: ArenaPhase
-  playMode: CoursePlayMode
+  playMode: CoursePlayMode | 'rush'
   coachingLocked: boolean
   studioOpen: boolean
   approvedCount: number
@@ -33,6 +33,7 @@ export function computeNextStep(state: NextStepInput): { label: string; run: Nex
   if (phase === 'ready' && playMode === 'compete') {
     return { label: 'Press Play — Match (coaching locked)', run: 'play' }
   }
+  if (phase === 'ready' && playMode === 'rush') return { label: 'Press Play to start Rush (unranked)', run: 'play' }
   if (phase === 'ready') return { label: 'Press Play to start Practice', run: 'play' }
   if (phase === 'running') return { label: 'Watch the race — Pause anytime', run: null }
   if (phase === 'paused') return { label: 'Resume, or open Replay', run: 'review' }

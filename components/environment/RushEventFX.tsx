@@ -6,15 +6,16 @@ import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { ArenaCourse } from '../../services/arenaCourse'
+import type { ArenaSimEvent } from '../../services/arenaEpisode'
 import type { ArenaSession } from '../../services/arenaSession'
-import { newlyAppendedRushEvents, type RushPresentationEvent } from '../workbench/experienceMocks'
+import { liveRushEvents } from '../workbench/experienceMocks'
 
 const MAX_BURSTS = 4
 const BURST_SECONDS = 1.3
-type Burst = { id: string; kind: RushPresentationEvent['type']; position: [number, number, number]; started: number }
+type Burst = { id: string; kind: ArenaSimEvent['type']; position: [number, number, number]; started: number }
 
 /** Resolve an event using only its recorded facts and the active course. */
-export function rushEventPosition(event: RushPresentationEvent, course: Pick<ArenaCourse, 'scenario'>): [number, number, number] | null {
+export function rushEventPosition(event: ArenaSimEvent, course: Pick<ArenaCourse, 'scenario'>): [number, number, number] | null {
   if (event.type === 'bump') return [...event.position]
   const node = course.scenario.nodes.find(candidate => candidate.id === event.nodeId)
   return node ? [...node.position] : null
@@ -22,9 +23,11 @@ export function rushEventPosition(event: RushPresentationEvent, course: Pick<Are
 
 export function RushEventFX({ session, course }: { session: ArenaSession; course: ArenaCourse }) {
   const group = useRef<THREE.Group>(null)
-  const previous = useRef<readonly RushPresentationEvent[] | undefined>(undefined)
+  const previous = useRef<readonly ArenaSimEvent[] | undefined>(undefined)
   const previousTick = useRef(-1)
   const previousScenario = useRef(course.scenario.id)
+  const previousRecording = useRef<unknown>(null)
+  const previousPhase = useRef<string | null>(null)
   const bursts = useRef<Burst[]>([])
   const meshes = useRef<(THREE.Mesh | null)[]>([])
 
@@ -32,15 +35,18 @@ export function RushEventFX({ session, course }: { session: ArenaSession; course
     const root = group.current
     if (!root) return
     const view = session.getSnapshot()
-    const snapshot = view.episode as typeof view.episode & { events?: RushPresentationEvent[] }
+    const snapshot = view.phase === 'running' || view.phase === 'paused' ? session.liveEpisode() : view.episode
     const events = snapshot.events
-    if (previousScenario.current !== course.scenario.id || snapshot.tick < previousTick.current || view.phase === 'ready') {
+    const recording = view.phase === 'review' ? session.activeRecording() : null
+    const changedTimeline = previousScenario.current !== course.scenario.id ||
+      snapshot.tick < previousTick.current || view.phase === 'ready' ||
+      (view.phase === 'review' && recording !== previousRecording.current) ||
+      (view.phase === 'review' && previousPhase.current !== 'review')
+    if (changedTimeline) {
       bursts.current = []
-      previous.current = events
-      previousScenario.current = course.scenario.id
+      previous.current = events?.slice()
     } else if (events && previous.current) {
-      for (const event of newlyAppendedRushEvents(previous.current, events)) {
-        if (event.tick !== snapshot.tick) continue // skip history when loading a recording
+      for (const event of liveRushEvents(previous.current, events, previousTick.current, snapshot.tick)) {
         const position = rushEventPosition(event, course)
         if (!position) continue
         bursts.current = [...bursts.current.slice(-(MAX_BURSTS - 1)), {
@@ -51,8 +57,11 @@ export function RushEventFX({ session, course }: { session: ArenaSession; course
         }]
       }
     }
-    previous.current = events
+    previous.current = events?.slice()
     previousTick.current = snapshot.tick
+    previousScenario.current = course.scenario.id
+    previousRecording.current = recording
+    previousPhase.current = view.phase
 
     for (let i = 0; i < MAX_BURSTS; i++) {
       const mesh = meshes.current[i]
