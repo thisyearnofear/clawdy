@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import type { ArenaAgentState } from '../../services/arenaEpisode'
 import { RoverGeometry } from './RoverGeometry'
+import { contactShadowTexture } from './contactShadow'
 
 /**
  * The other brain, rendered where it actually was.
@@ -82,6 +83,8 @@ export function PracticeGhost({
     }
   }, [accent])
 
+  const shadowTexture = useMemo(() => contactShadowTexture(), [])
+
   return (
     <group position={agent.position} quaternion={agent.rotation} renderOrder={20}>
       <group ref={body}>
@@ -93,9 +96,13 @@ export function PracticeGhost({
         <ringGeometry args={[0.42, 0.5, 28]} />
         <meshBasicMaterial color={accent} transparent opacity={0.55} depthWrite={false} side={THREE.DoubleSide} />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.015, 0]} renderOrder={19}>
-        <circleGeometry args={[0.4, 24]} />
-        <meshBasicMaterial color="#1a352e" transparent opacity={0.16} depthWrite={false} />
+      {/* Same soft contact shadow the live rovers use, so the ghost is grounded
+          rather than floating. */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.018, 0]} renderOrder={19}>
+        <planeGeometry args={[1.0, 1.0]} />
+        {shadowTexture
+          ? <meshBasicMaterial map={shadowTexture} transparent opacity={0.3} depthWrite={false} />
+          : <meshBasicMaterial color="#1a352e" transparent opacity={0.16} depthWrite={false} />}
       </mesh>
       {texture && (
         <sprite position={[0, 1.05, 0]} scale={[1.5, 0.38, 1]} renderOrder={21}>

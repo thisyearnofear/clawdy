@@ -19,6 +19,8 @@ import { RushEventFX } from './RushEventFX'
 import { RoverStatus } from './RoverStatus'
 import { RoverGeometry, RivalRoverGeometry } from './RoverGeometry'
 import { RoverFX } from './RoverFX'
+import { ArenaEnvironment } from './ArenaEnvironment'
+import { contactShadowTexture } from './contactShadow'
 import { PracticeGhost } from './PracticeGhost'
 import FrameLimiter from '../utils/FrameLimiter'
 import { getMintAsset, getMintModelArtifact, getMintModelTransform, getMintModelUrl } from '../../services/mintAssets'
@@ -299,6 +301,7 @@ function RoverShadow({ session, id }: { session: ArenaSession; id: string }) {
   const meshRef = useRef<THREE.Mesh>(null)
   const pos = useRef(new THREE.Vector3())
   const rot = useRef(new THREE.Quaternion())
+  const texture = useMemo(() => contactShadowTexture(), [])
   useFrame((state) => {
     if (!meshRef.current) return
     if (!sampleInterpolatedPose(session, id, state.clock.elapsedTime, pos.current, rot.current)) return
@@ -306,8 +309,10 @@ function RoverShadow({ session, id }: { session: ArenaSession; id: string }) {
   })
   return (
     <mesh ref={meshRef} rotation={[-Math.PI / 2, 0, 0]}>
-      <circleGeometry args={[0.42, 24]} />
-      <meshBasicMaterial color="#000000" transparent opacity={0.32} depthWrite={false} />
+      <planeGeometry args={[1.05, 1.05]} />
+      {texture
+        ? <meshBasicMaterial map={texture} transparent opacity={0.5} depthWrite={false} />
+        : <meshBasicMaterial color="#000000" transparent opacity={0.4} depthWrite={false} />}
     </mesh>
   )
 }
@@ -894,6 +899,7 @@ export default memo(function ArenaWorldView(props: WorldProps) {
       fallback={<p role="alert">This device could not create a WebGL view.</p>}
     >
       {lite ? <FrameLimiter fps={30} /> : null}
+      <ArenaEnvironment lite={lite} />
       <World {...props} lite={lite} />
     </Canvas>
   )
