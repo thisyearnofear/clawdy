@@ -17,6 +17,7 @@ export function AgentCard({
   onChampionIdentity,
   focusVector,
   focusNote,
+  compact = false,
 }: {
   agent: ArenaAgentState
   policy: CollectorStrategy
@@ -26,12 +27,19 @@ export function AgentCard({
   onChampionIdentity?: (next: ChampionIdentity) => void
   focusVector?: FocusVector | null
   focusNote?: string
+  /**
+   * First-visit mode: name, score and live decision only. The stats grid,
+   * strategy line, focus note and setup drawer all describe machinery the
+   * player has not used yet, and rendering them on arrival is what made the
+   * landing view hard to parse.
+   */
+  compact?: boolean
 }) {
   const champion = agent.id === 'champion'
   const look = championIdentity ? getChampionLook(championIdentity.lookId) : null
   const focus = focusVector ?? null
   return (
-    <section className={styles.agentCard} data-entrant={agent.id} aria-label={champion ? 'Your champion' : 'House rival'}>
+    <section className={styles.agentCard} data-entrant={agent.id} data-compact={compact || undefined} aria-label={champion ? 'Your champion' : 'House rival'}>
       <div className={styles.agentHeading}>
         <span
           className={styles.agentMark}
@@ -42,28 +50,30 @@ export function AgentCard({
         </span>
         <div>
           <h3>{champion ? (championIdentity?.name ?? 'Your champion') : 'House rival'}</h3>
-          <span>{POLICY_LABELS[policy]}</span>
+          {!compact && <span>{POLICY_LABELS[policy]}</span>}
         </div>
         <span className={styles.score}>{agent.banked}<small>banked</small></span>
       </div>
-      {champion ? (
-        focus ? (
-          <div className={styles.fingerprint} title={fingerprintLine(focus)}>
-            <span>{fingerprintLine(focus)}</span>
-            <div className={styles.fingerprintBars} aria-hidden>
-              {SPECIALIZATION_FOCI.map(key => (
-                <i key={key} style={{ transform: `scaleY(${Math.max(0.08, focus[key])})` }} data-focus={key} />
-              ))}
+      {!compact && (champion
+        ? focus
+          ? (
+            <div className={styles.fingerprint} title={fingerprintLine(focus)}>
+              <span>{fingerprintLine(focus)}</span>
+              <div className={styles.fingerprintBars} aria-hidden>
+                {SPECIALIZATION_FOCI.map(key => (
+                  <i key={key} style={{ transform: `scaleY(${Math.max(0.08, focus[key])})` }} data-focus={key} />
+                ))}
+              </div>
+              {focusNote && <span className={styles.focusNote}>{focusNote}</span>}
             </div>
-            {focusNote && <span className={styles.focusNote}>{focusNote}</span>}
-          </div>
-        ) : (
-          <p className={styles.focusNote}>No personal lessons yet.</p>
-        )
-      ) : (
-        <p className={styles.focusNote}>House strategy.</p>
-      )}
-      {unlocked && (
+          )
+          : (
+            <p className={styles.focusNote}>No personal lessons yet.</p>
+          )
+        : (
+          <p className={styles.focusNote}>House strategy.</p>
+        ))}
+      {!compact && unlocked && (
         <details className={styles.setupDetails}>
           <summary>{champion ? 'Champion setup' : 'Rival setup'}</summary>
           {champion && championIdentity && onChampionIdentity && (
@@ -106,11 +116,13 @@ export function AgentCard({
           </label>
         </details>
       )}
-      <dl className={styles.agentStats}>
-        <div><dt>Cargo</dt><dd>{formatStat(agent.cargo)}<small> / {ARENA_RULES.capacity}</small></dd></div>
-        <div><dt>Energy</dt><dd>{formatStat(agent.energy)}<small> / {ARENA_RULES.initialEnergy}</small></dd></div>
-        <div><dt>Recovery</dt><dd>{agent.recoveries}</dd></div>
-      </dl>
+      {!compact && (
+        <dl className={styles.agentStats}>
+          <div><dt>Cargo</dt><dd>{formatStat(agent.cargo)}<small> / {ARENA_RULES.capacity}</small></dd></div>
+          <div><dt>Energy</dt><dd>{formatStat(agent.energy)}<small> / {ARENA_RULES.initialEnergy}</small></dd></div>
+          <div><dt>Recovery</dt><dd>{agent.recoveries}</dd></div>
+        </dl>
+      )}
       <p className={styles.decision}>{describeArenaDecision(agent)}</p>
     </section>
   )

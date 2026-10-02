@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { ArrowRight, Clapperboard, Download, Eye, FastForward, HelpCircle, Pause, Play, Printer, Radio, RotateCcw, SkipForward, Sparkles, Volume2, VolumeX } from 'lucide-react'
+import { Clapperboard, Download, Eye, FastForward, HelpCircle, Pause, Play, Printer, Radio, RotateCcw, SkipForward, Sparkles, Volume2, VolumeX } from 'lucide-react'
 import { ARENA_RULES, observeSnapshot, type ArenaAction, type ArenaObservation, type ArenaRecording } from '../../services/arenaEpisode'
 import { loadArenaCourse, selectWorkbenchCourse, type ArenaCourse, type WorkbenchPlayMode } from '../../services/arenaCourse'
 import { isEvaluationScenario, rejectEvaluationExamples } from '../../services/arenaScenarios'
@@ -19,6 +19,8 @@ import { draftRecordedCorrection, recordedCoachContext } from '../../services/co
 import { comparisonFrameAt, type PracticeComparison } from '../../services/practiceComparison'
 import { useCoachingWorker } from '../utils/useCoachingWorker'
 import { liveCallContext, type LiveCallContext } from '../../services/liveCall'
+import { engagementView, heroLedeMode } from '../../services/engagement'
+import { loadEngagementProgress, saveEngagementProgress } from '../../services/engagementProgress'
 import { ArenaSound } from '../../services/arenaSound'
 import {
   encounterDistance,
@@ -108,7 +110,7 @@ function Workbench({
   const [broadcastRequest, setBroadcastRequest] = useState(0)
   const [hintOpen, setHintOpen] = useState(() => !readHintDismissed())
   const [coachNudgeOpen, setCoachNudgeOpen] = useState(false)
-  const [hasCompletedRun, setHasCompletedRun] = useState(false)
+  const [hasCompletedRun, setHasCompletedRun] = useState(() => loadEngagementProgress().hasCompletedRun)
   const [mistakeMoment, setMistakeMoment] = useState<{ tick: number; headline: string; detail: string } | null>(null)
   const [liveCall, setLiveCall] = useState<LiveCallContext | null>(null)
   const liveCallUsedRef = useRef(false)
@@ -148,6 +150,10 @@ function Workbench({
     && !isBundledStarter(checkpoint)
     && checkpoint.id !== SEASON_0_BASE_CHECKPOINT.id,
   )
+  // Progressive disclosure: how much of the workbench is shown depends on how
+  // far into the product this player is. A first visit gets one job and one
+  // button instead of every surface at once.
+  const engagement = engagementView({ hasCompletedRun, hasOwnBrain })
   const setCheckpoints = useArenaStore(state => state.setCheckpoints)
   const activeCheckpoint = useArenaStore(state => state.activeCheckpoint)
   const setActiveCheckpoint = useArenaStore(state => state.setActiveCheckpoint)
@@ -487,6 +493,8 @@ function Workbench({
     if (view.phase !== 'finished') return
     // eslint-disable-next-line react-hooks/set-state-in-effect -- first finish unlocks the souvenir controls; phase transitions only land here
     setHasCompletedRun(true)
+    // Persisted so a returning player is not re-shown the first-visit layout.
+    saveEngagementProgress({ ...loadEngagementProgress(), hasCompletedRun: true })
     const champion = view.episode.agents.find(agent => agent.id === 'champion')
     const rival = view.episode.agents.find(agent => agent.id === 'rival')
     if (finishedLoggedRef.current !== session.matchId) {
@@ -1358,14 +1366,20 @@ function Workbench({
         <div>
           <p className={styles.eyebrow}>TRAIN YOUR CHAMPION</p>
           <h1>Watch it play. Then teach it.</h1>
-          <p className={styles.lede}>A trained rover races for cores on its own — and Orbis broadcasts the match live as generated video. Hit <strong>Watch it broadcast live</strong>, or Play to replay a mistake, approve a fix and train a new brain.</p>
+          <p className={styles.lede}>
+            {heroLedeMode(engagement) === 'loop-only'
+              ? <>Press <strong>Play</strong> and watch your rover race for cores on its own. Then coach it into your own.</>
+              : <>A trained rover races for cores on its own — and Orbis broadcasts the match live as generated video. Hit <strong>Watch it broadcast live</strong>, or Play to replay a mistake, approve a fix and train a new brain.</>}
+          </p>
         </div>
         <div className={styles.introAside}>
-          <ol className={styles.progress}>
-            <li data-active={view.phase === 'ready' || view.phase === 'running'}>Play</li>
-            <li data-active={view.phase === 'paused' || view.phase === 'finished' || view.phase === 'review'}>Replay</li>
-            <li data-active={studioOpen && !coachingLocked}>Coach</li>
-          </ol>
+          {engagement.showProgressRail && (
+            <ol className={styles.progress}>
+              <li data-active={view.phase === 'ready' || view.phase === 'running'}>Play</li>
+              <li data-active={view.phase === 'paused' || view.phase === 'finished' || view.phase === 'review'}>Replay</li>
+              <li data-active={studioOpen && !coachingLocked}>Coach</li>
+            </ol>
+          )}
           <button type="button" className={styles.helpInline} onClick={onOpenHelp}>
             <HelpCircle size={13} /> What do I do?
           </button>
@@ -1390,7 +1404,7 @@ function Workbench({
             {view.phase === 'running' ? <Pause size={16} /> : <Play size={16} />}
             {primaryLabel}
           </button>
-          {canBroadcast && (
+          {canBroadcast && engagement.showBroadcastCta && (
             <button
               className={styles.broadcastCta}
               onClick={() => setBroadcastRequest(n => n + 1)}
@@ -1421,19 +1435,34 @@ function Workbench({
               </button>
             </>
           )}
-          <button className={styles.secondaryButton} onClick={() => { setCinematic(false); floodWarnedRef.current = null; lastEncounterTickRef.current = null; lastSightingTickRef.current = null; sightingCountRef.current = 0; setDirector(null); setComparison(null); setComparisonReviewing(null); setCoachSelection(null); setRunTip(null); session.reset() }} disabled={!visualReady || view.phase === 'error' || isTraining}><RotateCcw size={15} />Reset</button>
-          <button className={styles.secondaryButton} onClick={() => session.review()} title={view.phase === 'paused' || view.phase === 'finished' ? 'Scrub the recorded round' : 'Available once a round is paused or finished'} disabled={(view.phase !== 'paused' && view.phase !== 'finished') || isTraining}><Eye size={16} />Replay</button>
-          {(hasCompletedRun || view.phase !== 'ready' || view.episode.tick > 0) && (
-            <button
-              className={styles.secondaryButton}
-              type="button"
-              aria-pressed={clipArmed}
-              disabled={view.phase === 'finished' || view.phase === 'error' || view.phase === 'review' || isTraining}
-              onClick={() => setClipArmed(armed => !armed)}
-              title={clipArmed ? 'Clip recording armed — encodes while you play' : 'Arm a low-cost souvenir clip for this run'}
-            >
-              <Clapperboard size={16} />{clipArmed ? 'Record on' : 'Record'}
-            </button>
+          {/* Play and Coach are the loop itself and stay visible from the
+              start. The run utilities are inert before a first round. */}
+          {engagement.showRunControls && (
+            <>
+              <button className={styles.secondaryButton} onClick={() => { setCinematic(false); floodWarnedRef.current = null; lastEncounterTickRef.current = null; lastSightingTickRef.current = null; sightingCountRef.current = 0; setDirector(null); setComparison(null); setComparisonReviewing(null); setCoachSelection(null); setRunTip(null); session.reset() }} disabled={!visualReady || view.phase === 'error' || isTraining}><RotateCcw size={15} />Reset</button>
+              <button className={styles.secondaryButton} onClick={() => session.review()} title={view.phase === 'paused' || view.phase === 'finished' ? 'Scrub the recorded round' : 'Available once a round is paused or finished'} disabled={(view.phase !== 'paused' && view.phase !== 'finished') || isTraining}><Eye size={16} />Replay</button>
+              <button
+                className={styles.secondaryButton}
+                type="button"
+                aria-pressed={clipArmed}
+                disabled={view.phase === 'finished' || view.phase === 'error' || view.phase === 'review' || isTraining}
+                onClick={() => setClipArmed(armed => !armed)}
+                title={clipArmed ? 'Clip recording armed — encodes while you play' : 'Arm a low-cost souvenir clip for this run'}
+              >
+                <Clapperboard size={16} />{clipArmed ? 'Record on' : 'Record'}
+              </button>
+              <button
+                className={styles.secondaryButton}
+                type="button"
+                aria-pressed={soundState === 'on'}
+                disabled={soundState === 'unavailable'}
+                onClick={toggleSound}
+                title="Short synthesized cues for banks, floods and the finish"
+              >
+                {soundState === 'on' ? <Volume2 size={15} /> : <VolumeX size={15} />}
+                {soundState === 'unavailable' ? 'Sound unavailable' : soundState === 'on' ? 'Sound on' : 'Sound off'}
+              </button>
+            </>
           )}
           <button
             className={styles.secondaryButton}
@@ -1442,17 +1471,6 @@ function Workbench({
             disabled={coachingLocked && examples.length === 0}
           >
             <Sparkles size={15} />{studioOpen ? 'Hide coach' : 'Coach'}
-          </button>
-          <button
-            className={styles.secondaryButton}
-            type="button"
-            aria-pressed={soundState === 'on'}
-            disabled={soundState === 'unavailable'}
-            onClick={toggleSound}
-            title="Short synthesized cues for banks, floods and the finish"
-          >
-            {soundState === 'on' ? <Volume2 size={15} /> : <VolumeX size={15} />}
-            {soundState === 'unavailable' ? 'Sound unavailable' : soundState === 'on' ? 'Sound on' : 'Sound off'}
           </button>
         </div>
         <div className={styles.runMeta}>
@@ -1515,7 +1533,7 @@ function Workbench({
             error={view.error}
             onRetry={onRetry}
           />
-          {visualReady && hintOpen && view.phase === 'ready' && !modeBanner && (
+          {engagement.showPlayHint && visualReady && hintOpen && view.phase === 'ready' && !modeBanner && (
             <div className={`${styles.playHint} ${styles.hintEnter}`} role="status">
               <p><strong>Press Play.</strong> Follow your champion — it runs the house starter brain until you coach it into your own.</p>
               <button
@@ -1618,11 +1636,13 @@ function Workbench({
             </div>
           )}
           <div className={styles.worldBottomline}>
-            <div className={styles.cameraButtons} role="group" aria-label="Camera view">
-              {(['overview', 'champion', 'rival'] as const).map(camera => (
-                <button key={camera} aria-pressed={follow === camera} onClick={() => { setFollow(camera); setCinematic(false) }}>{CAMERA_LABELS[camera]}</button>
-              ))}
-            </div>
+            {engagement.showCameraSwitcher && (
+              <div className={styles.cameraButtons} role="group" aria-label="Camera view">
+                {(['overview', 'champion', 'rival'] as const).map(camera => (
+                  <button key={camera} aria-pressed={follow === camera} onClick={() => { setFollow(camera); setCinematic(false) }}>{CAMERA_LABELS[camera]}</button>
+                ))}
+              </div>
+            )}
             <span className={styles.weather} data-flooded={view.episode.weather.flooded}>{view.episode.weather.flooded ? 'Flood · valley slowed' : 'Clear · all routes open'}</span>
           </div>
         </section>
@@ -1675,6 +1695,7 @@ function Workbench({
                 key={agent.id}
                 agent={agent}
                 policy={view.policies[agent.id]}
+                compact={!engagement.showAgentDetail}
                 unlocked={view.phase === 'ready' && playMode === 'practice' && !isTraining}
                 onPolicy={policy => { if (isTraining || view.phase !== 'ready' || coachingLocked) return; session.selectPolicy(agent.id, policy, activeCheckpoint) }}
                 championIdentity={agent.id === 'champion' ? championIdentity : undefined}
@@ -1684,10 +1705,14 @@ function Workbench({
               />
             ))
           )}
-          <BroadcastPanel session={session} request={broadcastRequest} onFeedReady={() => startMatchRef.current()} />
+          {engagement.showBroadcastPanel && <BroadcastPanel session={session} request={broadcastRequest} onFeedReady={() => startMatchRef.current()} />}
           <div className={styles.ruleCard}>
             <strong>{playMode === 'compete' ? 'Scored match. No coaching.' : playMode === 'rush' ? 'Rush · unranked. Race for the mother cores.' : 'Collect. Bank. Survive the flood.'}</strong>
-            <p>{playMode === 'compete' ? 'Same world, different flood and core layout. Weights stay frozen until you reset to Practice.' : playMode === 'rush' ? 'A full-load core spawns at the centre each wave. First rover there takes it; close encounters can steal cargo. Bank at your base before time runs out.' : `Grab cores and bank them at base. Floods slow the valley; a drain costs ${ARENA_RULES.drainCost} energy and helps both rovers.`}</p>
+            {/* The paragraph is a second instruction competing with the lede on
+                arrival; the one-line rule and the legend carry the same idea. */}
+            {engagement.showRulesDetail && (
+              <p>{playMode === 'compete' ? 'Same world, different flood and core layout. Weights stay frozen until you reset to Practice.' : playMode === 'rush' ? 'A full-load core spawns at the centre each wave. First rover there takes it; close encounters can steal cargo. Bank at your base before time runs out.' : `Grab cores and bank them at base. Floods slow the valley; a drain costs ${ARENA_RULES.drainCost} energy and helps both rovers.`}</p>
+            )}
             <div className={styles.legend}><span><i />High route</span><span><i />Floodable route</span></div>
           </div>
         </aside>
@@ -1739,31 +1764,31 @@ function Workbench({
         </div>
       )}
 
-      <details className={styles.tournamentDetails}>
-        <summary>Tournament · single elimination</summary>
-        {hasOwnBrain ? (
-          <TournamentBracket
-            tournament={tournament}
-            running={tournamentRunning}
-            visualReady={visualReady}
-            phase={view.phase}
-            onRun={runBracket}
-            onWatch={watchMatch}
-          />
-        ) : (
-          <section className={styles.replay} aria-label="Tournament bracket">
-            <div>
-              <strong>Tournament · single elimination</strong>
-              <span>Unlocks once you train or import your first brain</span>
-            </div>
-          </section>
-        )}
-      </details>
+      {engagement.showTournament && (
+        <details className={styles.tournamentDetails}>
+          <summary>Tournament · single elimination</summary>
+          {hasOwnBrain ? (
+            <TournamentBracket
+              tournament={tournament}
+              running={tournamentRunning}
+              visualReady={visualReady}
+              phase={view.phase}
+              onRun={runBracket}
+              onWatch={watchMatch}
+            />
+          ) : (
+            <section className={styles.replay} aria-label="Tournament bracket">
+              <div>
+                <strong>Tournament · single elimination</strong>
+                <span>Unlocks once you train or import your first brain</span>
+              </div>
+            </section>
+          )}
+        </details>
+      )}
 
-      <footer className={styles.footer}>
-        <p><strong>Play → Replay → Coach → Train → Match.</strong> The new brain is a real weight update, not a saved prompt.</p>
-        <span>Play <ArrowRight size={13} /> Coach <ArrowRight size={13} /> Match</span>
-      </footer>
+      {/* The loop was restated in the hero lede, the progress rail and this
+          footer. The rail is gone and the footer would be the third telling. */}
     </div>
   )
 }

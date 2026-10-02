@@ -157,6 +157,10 @@
 .timer { font-size: 22px; letter-spacing: -0.04em; color: var(--ink); }
 .agentCard { border: 1px solid var(--line); border-radius: 5px; padding: 15px 13px 0; background: #f4f7ed; }
 .agentCard[data-entrant="rival"] { background: #f8f4ed; }
+/* First-visit mode: name, score, live decision. Tighter box so two entrants
+   read as a scoreboard rather than two dashboards. */
+.agentCard[data-compact] { padding-bottom: 0; background: #f7f9f1; }
+.agentCard[data-compact] .decision { margin-top: 8px; }
 .agentHeading { display: flex; gap: 9px; align-items: center; }
 .agentMark { display: grid; place-items: center; width: 30px; height: 34px; border-radius: 4px; background: #bedb9c; color: #314c30; font-weight: 750; font-size: 15px; }
 .agentCard[data-entrant="rival"] .agentMark { background: #efd3aa; color: #704e2e; }
