@@ -91,7 +91,7 @@ Also new: `rushVariant(base, 'train' | 'hidden', seed)` (seeded wave/flood timet
 
 ## 6b. Trained Rush rover artifact
 
-`starter/rush-champion.json` is the best ES checkpoint so far (`es-g15-b03d7b`, warm-started from the bundled starter). On 12 hidden Rush variants x 2 sides (24 matches per opponent) it wins 96% vs greedy, 92% vs poach, 38% vs safe, 33% vs weather, and goes 10-0-14 (wins-losses-draws) against the imitation starter, which itself wins 0% vs safe/greedy/weather. It is experimental: it does not yet beat the strongest house bots.
+`starter/rush-champion.json` is the best ES checkpoint so far (`es-g115-c53fbf`, a timetable checkpoint: 38 inputs, warm-started from an earlier ES champion with the public wave schedule as extra inputs). On 40 hidden Rush variants x 2 sides (80 matches per opponent, pinned in `docs/eval-es.json`) it goes 77-3-0 (wins-losses-draws) vs safe, 68-6-6 vs greedy, 75-0-5 vs poach and 40-0-40 vs the imitation starter. It does not beat weather: 35-45-0, margin -0.25. Held-out layouts were never used for selection (validation seeds are separate). It is a Rush-only artifact; Haul and `eval:gate` are unchanged.
 
 ## 7. Ownership and workflow
 

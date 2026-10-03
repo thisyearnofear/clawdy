@@ -575,7 +575,11 @@ the collider's. The renderer multiplies a procedural, tileable grain/bump textur
   the new rows (pinned by `rushTimetable.test.ts`); lineage is recorded in
   `parentCheckpointId` and the id gains `-tt`. The learned policy and the trainer
   read the checkpoint's own widths, so both kinds run side by side.
-- **Pins untouched:** `eval:gate`, `docs/eval-es.json`, the starter checkpoint,
+- **Result:** timetable ES (hub prior 1.5, 200 generations, 10 validation seeds) took the Rush
+  champion from 63% wins vs `safe` to 77-3-0 on 40 hidden variants; `starter/rush-champion.json`
+  and `docs/eval-es.json` were re-pinned to it. Weather is still unbeaten (35-45-0). A run with a
+  zero-initialised prior found nothing, so the warm start matters.
+- **Pins untouched:** `eval:gate`, the bundled starter checkpoint,
   `ARENA_RULES.version`, `ROVER_PHYSICS.version` and the collider hash are
   unchanged; the new constants are pinned in `versions.test.ts`.
 
