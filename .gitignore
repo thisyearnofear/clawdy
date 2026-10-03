@@ -25,6 +25,7 @@
 # (starter/champion-checkpoint.json is now TRACKED on purpose: it is bundled
 #  as the first-run default brain via services/starterCheckpoint.ts —
 #  regenerate with `npm run starter:train` and commit the diff deliberately)
+/runs/
 
 # misc
 .DS_Store

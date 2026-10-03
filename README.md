@@ -40,15 +40,17 @@ Your progress is saved in this browser as you play. When cloud sync is available
 ```bash
 npm ci
 npm run dev              # web app at http://localhost:3000
-npx convex dev           # optional — dual-write coaching lineage
+npx convex dev           # optional — dual-write coaching lineage & auth
 npm test                 # unit/integration suites
 npm run build            # static Next.js build
 npm run starter:train    # headless trainer, exports a checkpoint
+npm run teacher:run      # local code coach harness (e.g. starter/teachers/ridge-runner.ts)
+npm run eval:es          # evaluate Rush champion against house field
 ```
 
 Requires Node.js 20+ and npm 10+. Production Convex + Vercel env notes: [docs/DEPLOY.md](docs/DEPLOY.md).
 
-**World visuals:** since September 18 the playable course is a mesh-first Blender-authored terrain (`public/terrain/sandstone-basin.glb` — included, no Blender needed to run the app; explicit rebuild `blender --background --factory-startup --python scripts/build-arena-terrain.py -- --force` with Blender 4.5 LTS on PATH, then re-pin the printed SHA in `services/arenaCourse.ts`), used identically for rendering and physics collision, plus path/landmark overlays. The earlier generated-world (Marble) pipeline was retired and removed on September 26, 2026; git history holds it.
+**World visuals:** since September 18 the playable course is a mesh-first Blender-authored terrain (`public/terrain/sandstone-basin.glb` — included, no Blender needed to run the app; explicit rebuild `blender --background --factory-startup --python scripts/build-arena-terrain.py -- --force` with Blender 4.5 LTS on PATH, then re-pin the printed SHA in `services/arenaCourse.ts`), used identically for rendering and physics collision, plus path/landmark overlays. An enhanced visual twin (`public/terrain/sandstone-basin-visual.glb`) authored via pinned Docker Blender 4.2.3 provides procedural detail textures without altering collision geometry. The earlier generated-world (Marble) pipeline was retired and removed on September 26, 2026; git history holds it.
 
 ## Documentation
 
@@ -57,6 +59,7 @@ Product, contract, demo, and submission materials live in `/docs`:
 - [Product and implementation plan](docs/HACKATHON.md) — direction, scope, architecture, status.
 - [Implementation contract](AGENT.md) — module boundaries and verification rules.
 - [Compatibility policy](docs/COMPATIBILITY.md) — versioned rules, schemas, worlds, and checkpoints.
+- [Authentication and ladder](docs/AUTH.md) — Convex Auth (GitHub OAuth), guest claims, and server-verified Rush ladder.
 - [Current opportunity plan](docs/TRIPOTHON.md) — the active external opportunity, timeline, and risk register.
 - [Product roadmap](docs/ROADMAP.md) — identity → encounters → league → curriculum horizons.
 - [Submission materials](docs/SUBMISSION_CHECKLIST.md).
