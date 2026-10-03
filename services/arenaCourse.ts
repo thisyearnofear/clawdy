@@ -1,6 +1,7 @@
 import { ARENA_RULES, DEFAULT_RUSH_RULES, type ArenaPosition, type ArenaScenario } from './arenaEpisode'
 import { ArenaPhysics, initializeArenaPhysics } from './arenaPhysics'
 import { disposeArenaTerrain, loadArenaTerrain } from './arenaTerrain'
+import { WAVE_JITTER_TICKS } from './rushVariants'
 import { createWorldSurface } from './worldSurface'
 
 export const ARENA_WORLD = Object.freeze({
@@ -10,11 +11,16 @@ export const ARENA_WORLD = Object.freeze({
   colliderUrl: '/terrain/sandstone-basin.glb',
   terrainUrl: '/terrain/sandstone-basin.glb',
   colliderSha256: '7633067b2624fb476f36adfb14e1a13b1325c71143fbd4d5087cfaf209c993af',
+  // Render-only twin of the collider mesh, same geometry plus UVs. Never read by
+  // physics, so it sits outside the eval pin. Built by infra/blender (Blender 4.2.3,
+  // byte-identical across rebuilds); null would make the renderer use the collider GLB.
+  visualUrl: '/terrain/sandstone-basin-visual.glb',
+  visualSha256: '6c45f215635f7fd6987c7dde843a74b009c2889bc5cddbdf1a424b3ecac1f36b' as string | null,
 })
 
 export interface ArenaCourse {
   scenario: ArenaScenario
-  config: { id: string; name: string; terrain: { url: string; sha256: string } }
+  config: { id: string; name: string; terrain: { url: string; sha256: string }; visual?: { url: string; sha256: string } }
   center: ArenaPosition
   floodZones: { position: ArenaPosition; size: [number, number] }[]
 }
@@ -141,6 +147,7 @@ export function buildArenaCourse(physics: ArenaPhysics): ArenaCourse {
     id: ARENA_WORLD.id,
     name: ARENA_WORLD.name,
     terrain: { url: ARENA_WORLD.terrainUrl, sha256: ARENA_WORLD.colliderSha256 },
+    ...(ARENA_WORLD.visualSha256 ? { visual: { url: ARENA_WORLD.visualUrl, sha256: ARENA_WORLD.visualSha256 } } : {}),
   }
   return {
     config,
@@ -243,7 +250,14 @@ export function buildRushCourse(physics: ArenaPhysics): ArenaCourse {
         ...scatter.map(([nodeId, value], index) => ({ id: `core-${index + 1}`, nodeId, value })),
       ],
       floods: [{ startTick: 120, endTick: 420 }, { startTick: 780, endTick: 1080 }],
-      rush: { ...DEFAULT_RUSH_RULES },
+      rush: {
+        ...DEFAULT_RUSH_RULES,
+        waves: waves.map(wave => ({
+          resourceId: wave.id,
+          windowStart: wave.spawnTick - WAVE_JITTER_TICKS,
+          windowEnd: wave.spawnTick + WAVE_JITTER_TICKS,
+        })),
+      },
     },
   }
 }

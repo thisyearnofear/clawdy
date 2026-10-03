@@ -1,7 +1,7 @@
 /**
  * Evolution-strategies training on Rush, with a held-out proof at the end.
  *
- *   npx tsx scripts/train-es.ts [--gens 30] [--pairs 8] [--sigma 0.08] [--lr 1] [--tasks 3] [--seed 7] [--init checkpoint.json] [--out starter/rush-champion.json]
+ *   npx tsx scripts/train-es.ts [--gens 30] [--pairs 8] [--sigma 0.08] [--lr 1] [--tasks 3] [--seed 7] [--init checkpoint.json] [--out starter/rush-champion.json] [--val 3] [--schedule 0,2,1,0,2,3,4] [--save-every 10] [--timetable [--hub-prior 0]]
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import { cpus } from 'node:os'
@@ -12,7 +12,7 @@ import { ArenaPhysics } from '../services/arenaPhysics'
 import type { EntrantPolicyOption } from '../services/arenaPolicy'
 import { exportCheckpointJson } from '../services/checkpointStorage'
 import { trainES, type EsContext, type EsEvaluator, type EsTask } from '../services/policyES'
-import type { PolicyCheckpoint } from '../services/policyModel'
+import { extendCheckpointForTimetable, type PolicyCheckpoint } from '../services/policyModel'
 import { SEASON_0_STARTER_CHECKPOINT } from '../services/starterCheckpoint'
 import { workerPool } from './es-pool'
 import { loadGroundedWorld } from './eval-lib'
@@ -58,10 +58,19 @@ async function main() {
 
   // Warm start: continue from a saved checkpoint instead of the bundled starter.
   const initIndex = process.argv.indexOf('--init')
-  const parent: PolicyCheckpoint = initIndex === -1
+  const loaded: PolicyCheckpoint = initIndex === -1
     ? starter
     : JSON.parse(readFileSync(resolve(repoRoot, process.argv[initIndex + 1]), 'utf-8'))
+  // `--timetable` adds the public-wave inputs (zero-init); `--hub-prior w` seeds the hub edge weight.
+  const parent = process.argv.includes('--timetable')
+    ? extendCheckpointForTimetable(loaded, { hubPrior: arg('hub-prior', 0) })
+    : loaded
   let final: PolicyCheckpoint = parent
+  // Hard opponents (safe=0, weather=2) twice as often by default; `--schedule 0,0,2` overrides.
+  const scheduleIndex = process.argv.indexOf('--schedule')
+  const opponentSchedule = scheduleIndex === -1 ? [0, 2, 1, 0, 2, 3, 4] : process.argv[scheduleIndex + 1].split(',').map(Number)
+  const outPath = process.argv.includes('--out') ? process.argv[process.argv.indexOf('--out') + 1] : 'starter/rush-champion.json'
+  const saveEvery = arg('save-every', 10)
   for await (const progress of trainES({
     parent,
     context,
@@ -70,14 +79,14 @@ async function main() {
     sigma: config.sigma,
     learningRate: config.lr,
     trainScenariosPerGen: arg('tasks', 3),
-    // Hard opponents (safe=0, weather=2) twice as often; the rest once.
-    opponentSchedule: [0, 2, 1, 0, 2, 3, 4],
-    validationSeeds: [101, 102, 103],
+    opponentSchedule,
+    validationSeeds: Array.from({ length: arg('val', 3) }, (_, index) => 101 + index),
     seed: config.seed,
     evaluator: pool.evaluator,
     name: 'Rush champion (ES)',
   })) {
     final = progress.checkpoint
+    if (saveEvery > 0 && progress.generation % saveEvery === 0) writeFileSync(resolve(repoRoot, outPath), exportCheckpointJson(final), 'utf-8')
     console.log(
       `gen ${String(progress.generation).padStart(3)}  pop ${progress.mean.toFixed(2).padStart(6)}  ` +
       `val ${progress.validation.fitness.toFixed(2).padStart(6)} (margin ${progress.validation.margin.toFixed(2)})  ` +
@@ -86,9 +95,8 @@ async function main() {
   }
 
   await holdout('trained (after)', final, pool.evaluator, holdoutSeeds)
-  const out = process.argv.includes('--out') ? process.argv[process.argv.indexOf('--out') + 1] : 'starter/rush-champion.json'
-  writeFileSync(resolve(repoRoot, out), exportCheckpointJson(final), 'utf-8')
-  console.log(`\nwrote ${out} (${final.id})`)
+  writeFileSync(resolve(repoRoot, outPath), exportCheckpointJson(final), 'utf-8')
+  console.log(`\nwrote ${outPath} (${final.id})`)
   await pool.close()
 }
 

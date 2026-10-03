@@ -75,12 +75,29 @@ export const ENCODER_VERSION = 'season-0.encoder.v2' as const
 export const ENCODER_V1_DIM = 32
 export const ACTION_CLASSES = 8 // 0: wait, 1: bank, 2: collect, 3: drain, 4: move-low, 5: move-high, 6: move-resource, 7: move-home
 export const EDGE_FEATURE_DIM = 8 // v3 edge-pointer head input (see encodeEdgeFeatures)
+/**
+ * Timetable-aware shapes. Not a new default: a checkpoint opts in through its own
+ * layer sizes (38 input rows, 9 edge-head rows), created only by
+ * `extendCheckpointForTimetable`. Every existing 36/8 checkpoint, pin and test keeps
+ * its exact behavior.
+ */
+export const TIMETABLE_FEATURE_DIM = OBSERVATION_FEATURE_DIM + 2
+export const TIMETABLE_EDGE_FEATURE_DIM = EDGE_FEATURE_DIM + 1
+/** Ticks of slack at which a wave stops mattering (pressure 0 at or beyond this). */
+const WAVE_SLACK_SCALE_TICKS = 300
+
+/** 1 when the next wave window is open or the rover is already late, falling to 0 with 300+ ticks of slack. */
+function wavePressure(tick: number, wave: { windowStart: number }, hubCost: number): number {
+  const slack = wave.windowStart - tick - hubCost
+  return Math.max(0, Math.min(1, 1 - slack / WAVE_SLACK_SCALE_TICKS))
+}
 
 /**
  * Encodes an ArenaObservation into a normalized 32-dimensional feature vector.
  */
-export function encodeObservation(observation: ArenaObservation): Float32Array {
-  const vec = new Float32Array(OBSERVATION_FEATURE_DIM)
+export function encodeObservation(observation: ArenaObservation, dim: number = OBSERVATION_FEATURE_DIM): Float32Array {
+  if (dim !== OBSERVATION_FEATURE_DIM && dim !== TIMETABLE_FEATURE_DIM) throw new Error(`Unsupported encoder dimension: ${dim}`)
+  const vec = new Float32Array(dim)
   const self = observation.self
   const rules = ARENA_RULES
 
@@ -186,6 +203,17 @@ export function encodeObservation(observation: ArenaObservation): Float32Array {
   vec[34] = Math.min(1, hiddenCount / nodeCount) // Exploration pressure
   vec[35] = Math.min(1, rememberedCount / nodeCount) // Coverage from memory
 
+  // Timetable features (38-input checkpoints only): how soon the next public
+  // Rush wave lands relative to how far this rover is from its node.
+  const wave = dim >= TIMETABLE_FEATURE_DIM ? observation.rushWaves?.[0] : undefined
+  if (wave) {
+    const hubCost = routeCostsFrom(observation, self.nodeId).get(wave.nodeId)
+    if (hubCost !== undefined) {
+      vec[36] = wavePressure(observation.tick, wave, hubCost)
+      vec[37] = Math.min(1, hubCost / 120)
+    }
+  }
+
   return vec
 }
 
@@ -283,8 +311,8 @@ function onwardProspect(observation: ArenaObservation, from: string): number {
  * energy, connectivity) — v3 lets the coach's junction examples fit the
  * weights instead of fixed constants.
  */
-export function encodeEdgeFeatures(observation: ArenaObservation, edgeId: string): Float32Array {
-  const vec = new Float32Array(EDGE_FEATURE_DIM)
+export function encodeEdgeFeatures(observation: ArenaObservation, edgeId: string, dim: number = EDGE_FEATURE_DIM): Float32Array {
+  const vec = new Float32Array(dim)
   const edge = observation.edges.find(e => e.id === edgeId)
   if (!edge) return vec
   const self = observation.self
@@ -304,6 +332,16 @@ export function encodeEdgeFeatures(observation: ArenaObservation, edgeId: string
   vec[6] = clamp01((edge.currentTravelTicks * ARENA_RULES.moveCostPerTick) / ARENA_RULES.initialEnergy)
   const degree = observation.edges.filter(e => !e.blocked && (e.from === target || e.to === target)).length
   vec[7] = clamp01(degree / 4)
+  // Hub progress (9-feature heads only): how much of the remaining trip to the
+  // next wave's node this road covers, scaled by how pressing the wave is.
+  const wave = dim >= TIMETABLE_EDGE_FEATURE_DIM ? observation.rushWaves?.[0] : undefined
+  if (wave) {
+    const fromSelf = routeCostsFrom(observation, self.nodeId).get(wave.nodeId)
+    const fromTarget = routeCostsFrom(observation, target).get(wave.nodeId)
+    if (fromSelf !== undefined && fromTarget !== undefined && fromSelf > 0) {
+      vec[8] = clamp01((fromSelf - fromTarget) / fromSelf) * wavePressure(observation.tick, wave, fromSelf)
+    }
+  }
   return vec
 }
 
@@ -339,7 +377,7 @@ export function edgeResidualScore(
 ): number {
   const heur = scoreMoveEdge(observation, edgeId, cls)
   if (!Number.isFinite(heur)) return heur
-  return heur / EDGE_HEURISTIC_SCALE + scoreEdgeWithHead(edgeHead, encodeEdgeFeatures(observation, edgeId))
+  return heur / EDGE_HEURISTIC_SCALE + scoreEdgeWithHead(edgeHead, encodeEdgeFeatures(observation, edgeId, edgeHead.weights.length))
 }
 
 /** Executor's v2 heuristic road score; exported for the residual trainer. */
@@ -580,11 +618,14 @@ export function forwardPolicy(
   const h1Dim = weights.hidden1.biases.length
   const h2Dim = weights.hidden2.biases.length
   const outDim = weights.actionHead.biases.length
+  // Inputs beyond the checkpoint's own rows are ignored, so a 36-row checkpoint
+  // stays exact when handed a wider encoding.
+  const inputDim = Math.min(input.length, weights.hidden1.weights.length)
 
   const h1 = new Float32Array(h1Dim)
   for (let j = 0; j < h1Dim; j++) {
     let sum = weights.hidden1.biases[j]
-    for (let i = 0; i < input.length; i++) {
+    for (let i = 0; i < inputDim; i++) {
       sum += input[i] * weights.hidden1.weights[i][j]
     }
     h1[j] = Math.tanh(sum)
@@ -674,7 +715,7 @@ export function createLearnedPolicy(
     if (!observation.decisionDue) return { type: 'wait' }
     if (observation.availableActions.length === 0) return { type: 'wait' }
 
-    const input = encodeObservation(observation)
+    const input = encodeObservation(observation, checkpoint.weights.hidden1.weights.length)
     const { logits } = forwardPolicy(input, checkpoint.weights)
 
     // Rank CLASSES by logit, then resolve each class to its best LEGAL
@@ -723,7 +764,8 @@ export function validateCheckpoint(checkpoint: PolicyCheckpoint): void {
   if (!checkpoint.weights) throw new Error('Checkpoint missing weights')
 
   const { hidden1, hidden2, actionHead } = checkpoint.weights
-  if (hidden1.weights.length !== expectedInputDim || hidden1.weights[0]?.length !== 32) {
+  const timetableInput = checkpoint.schemaVersion === POLICY_SCHEMA_VERSION && hidden1.weights.length === TIMETABLE_FEATURE_DIM
+  if ((hidden1.weights.length !== expectedInputDim && !timetableInput) || hidden1.weights[0]?.length !== 32) {
     throw new Error(`Invalid hidden1 layer shape: expected ${expectedInputDim}x32`)
   }
   if (hidden2.weights.length !== 32 || hidden2.weights[0]?.length !== 16) {
@@ -734,8 +776,12 @@ export function validateCheckpoint(checkpoint: PolicyCheckpoint): void {
   }
   if (checkpoint.weights.edgeHead) {
     const eh = checkpoint.weights.edgeHead
-    if (eh.weights.length !== EDGE_FEATURE_DIM || eh.weights[0]?.length !== 1 || eh.biases.length !== 1) {
+    if ((eh.weights.length !== EDGE_FEATURE_DIM && eh.weights.length !== TIMETABLE_EDGE_FEATURE_DIM) || eh.weights[0]?.length !== 1 || eh.biases.length !== 1) {
       throw new Error(`Invalid edgeHead layer shape: expected ${EDGE_FEATURE_DIM}x1`)
+    }
+    // The two timetable shapes travel together: a half-extended checkpoint is not a defined artifact.
+    if ((eh.weights.length === TIMETABLE_EDGE_FEATURE_DIM) !== (hidden1.weights.length === TIMETABLE_FEATURE_DIM)) {
+      throw new Error('Invalid timetable shapes: input rows and edge-head rows must both be extended or both standard')
     }
   }
   if (checkpoint.schemaVersion === POLICY_SCHEMA_VERSION && !checkpoint.weights.edgeHead) {
@@ -786,6 +832,48 @@ export function validateCheckpoint(checkpoint: PolicyCheckpoint): void {
       }
       if (typeof rec.recordedAt !== 'string') throw new Error('Invalid evaluation record recordedAt')
     }
+  }
+}
+
+/**
+ * Migration: give a standard v3 checkpoint the timetable inputs. The new input rows
+ * and edge-head row are zero, so the result plays exactly like its parent until
+ * training moves them (pinned by an equivalence test). Parent lineage is recorded;
+ * an already-extended checkpoint is returned unchanged. `hubPrior` seeds the edge-head
+ * weight for "this edge heads for the hub while a wave is near" (a non-zero value
+ * deliberately breaks the equivalence, as a training warm start).
+ */
+export function extendCheckpointForTimetable(parent: PolicyCheckpoint, options: { hubPrior?: number } = {}): PolicyCheckpoint {
+  validateCheckpoint(parent)
+  if (parent.schemaVersion !== POLICY_SCHEMA_VERSION || !parent.weights.edgeHead) {
+    throw new Error('Only v3 checkpoints with an edge head can be extended for the timetable')
+  }
+  if (parent.weights.hidden1.weights.length === TIMETABLE_FEATURE_DIM) return parent
+  const hidden1Width = parent.weights.hidden1.biases.length
+  const weights: PolicyWeights = {
+    hidden1: {
+      weights: [
+        ...parent.weights.hidden1.weights.map(row => [...row]),
+        ...Array.from({ length: TIMETABLE_FEATURE_DIM - OBSERVATION_FEATURE_DIM }, () => new Array<number>(hidden1Width).fill(0)),
+      ],
+      biases: [...parent.weights.hidden1.biases],
+    },
+    hidden2: { weights: parent.weights.hidden2.weights.map(row => [...row]), biases: [...parent.weights.hidden2.biases] },
+    actionHead: { weights: parent.weights.actionHead.weights.map(row => [...row]), biases: [...parent.weights.actionHead.biases] },
+    edgeHead: {
+      weights: [...parent.weights.edgeHead.weights.map(row => [...row]), [options.hubPrior ?? 0]],
+      biases: [...parent.weights.edgeHead.biases],
+    },
+  }
+  const weightsHash = computeWeightsHash(weights)
+  return {
+    ...parent,
+    id: `${parent.id}-tt`,
+    name: `${parent.name} (timetable)`,
+    parentCheckpointId: parent.id,
+    createdAt: new Date().toISOString(),
+    weightsHash,
+    weights,
   }
 }
 

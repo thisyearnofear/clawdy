@@ -14,7 +14,8 @@ import { createRng } from './rng'
  */
 export type RushVariantKind = 'train' | 'hidden'
 
-const WAVE_JITTER_TICKS = 60
+/** Also the half-width of the public wave windows: a variant never spawns outside them. */
+export const WAVE_JITTER_TICKS = 60
 const MIN_WAVE_GAP_TICKS = 150
 
 export function rushVariant(base: ArenaScenario, kind: RushVariantKind, seed: number): ArenaScenario {

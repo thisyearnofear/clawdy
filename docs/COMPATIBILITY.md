@@ -136,6 +136,19 @@ Two disjoint namespaces, never mixed:
 about terrain. The distinction is load-bearing: abstract graphs train the policy,
 grounded courses prove it.
 
+**Visual twin.** `public/terrain/sandstone-basin-visual.glb` is a render-only copy
+of the terrain with UVs (`ARENA_WORLD.visualUrl` / `visualSha256`). Physics, the
+trainer worker, and `eval:gate` read only the collider GLB, so the twin sits
+outside the pin: building or changing it never changes `colliderSha256`, the
+world version, or `docs/eval-gate.json`. The renderer falls back to the collider
+GLB while `visualSha256` is `null` or if the twin fails to load. Build with
+`infra/blender/build-visual-terrain.sh` (Docker, Blender 4.2.3 pinned, no local
+install; rebuilds are byte-identical) or `npm run terrain:build:visual` with a
+local Blender, then paste the printed SHA into `ARENA_WORLD.visualSha256`;
+`arenaVisualTerrain.test.ts` checks the hash and that the twin's geometry equals
+the collider's. The renderer multiplies a procedural, tileable grain/bump texture
+(`components/environment/terrainDetail.ts`) onto the twin's UVs.
+
 ## 5. Migration log
 
 ### v2 encoder + public scoreboard (observation v2 / encoder v2 / checkpoint v2)
@@ -542,6 +555,29 @@ grounded courses prove it.
   (claims: abstract 8/8 within 1, wins 3=3, physics 12/12, frames
   24/24). Starter regenerated: `weightsHash=525eba353d75` (same
   distillation the gate runs).
+
+### Public Rush timetable + timetable checkpoints (additive, no version-axis change)
+
+- **What:** Rush scenarios may publish `rush.waves` (nominal spawn, jitter window,
+  node). The observation gains an optional `rushWaves` field (unspawned waves,
+  soonest first); episodes without waves, including all Haul scenarios, are
+  byte-identical to before. The Rush course publishes its waves with the same
+  `WAVE_JITTER_TICKS` the variants use, so a published window always contains the
+  real spawn (validated: "rush waves").
+- **Why:** the trainer's measured ceiling was timing. A wave-aware staging bot
+  (bank before the wave, wait empty at the hub) beat `safe` 34-7, but a policy that
+  cannot see the schedule cannot learn it.
+- **Checkpoints:** a standard v3 checkpoint is 36 inputs / 8 edge features and is
+  unchanged. A *timetable* checkpoint is 38 / 9 (`TIMETABLE_FEATURE_DIM`,
+  `TIMETABLE_EDGE_FEATURE_DIM`); the two widths must travel together
+  (`validateCheckpoint` rejects a mix). `extendCheckpointForTimetable` zero-extends
+  a standard checkpoint, so it plays identically to its parent until training moves
+  the new rows (pinned by `rushTimetable.test.ts`); lineage is recorded in
+  `parentCheckpointId` and the id gains `-tt`. The learned policy and the trainer
+  read the checkpoint's own widths, so both kinds run side by side.
+- **Pins untouched:** `eval:gate`, `docs/eval-es.json`, the starter checkpoint,
+  `ARENA_RULES.version`, `ROVER_PHYSICS.version` and the collider hash are
+  unchanged; the new constants are pinned in `versions.test.ts`.
 
 ## 6. Non-goals
 - No cross-version *execution*: a v1 checkpoint is never run under v2 rules "to see

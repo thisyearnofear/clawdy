@@ -8,6 +8,7 @@ import type { ArenaCourse } from '../../services/arenaCourse'
 import type { ArenaSession } from '../../services/arenaSession'
 import type { ArenaAgentState, ArenaPosition } from '../../services/arenaEpisode'
 import { disposeArenaTerrain, loadArenaTerrain } from '../../services/arenaTerrain'
+import { createTerrainDetailTextures } from './terrainDetail'
 import { createRouteRibbonGeometry, advancePoseHistory, samplePoseHistory, type PoseHistory } from '../../services/arenaPresentation'
 import { planCinematicShots, shotAt, type CinematicShot } from '../../services/arenaCinematic'
 import { MintModel } from './MintModel'
@@ -149,7 +150,8 @@ function FollowCamera({ session, course, follow, ghostPose }: Pick<WorldProps, '
       }
     }
     desired.current.set(agentPos.current.x + 3.2, agentPos.current.y + 3.8, agentPos.current.z + 4.6)
-    camera.position.lerp(desired.current, 1 - Math.exp(-delta * 5))
+    // A negative delta would blow the lerp factor past 1 and NaN the camera for good.
+    camera.position.lerp(desired.current, 1 - Math.exp(-Math.max(delta, 0) * 5))
     camera.lookAt(lookAt.current)
   })
   return null
@@ -238,17 +240,21 @@ function CinematicCamera({ session, course }: Pick<WorldProps, 'session' | 'cour
 }
 
 /**
- * Primary terrain: the authored Sandstone Basin GLB, the same file the physics
- * collider is extracted from, so no clipping or fallback layer is needed.
+ * Primary terrain. Renders the UV-carrying visual twin when the course pins
+ * one, otherwise the collider GLB itself. The twin has the same geometry, so
+ * there is no clipping either way; if it fails to load we fall back to the
+ * collider mesh rather than leave the arena empty.
  */
 function TerrainMesh({
   url,
   sha256,
+  visual,
   onReady,
   onError,
 }: {
   url: string
   sha256: string
+  visual?: { url: string; sha256: string }
   onReady?: () => void
   onError?: (error: Error) => void
 }) {
@@ -262,19 +268,45 @@ function TerrainMesh({
     onErrorRef.current = onError
   })
 
+  const visualUrl = visual?.url
+  const visualSha256 = visual?.sha256
+
   useEffect(() => {
     const abort = new AbortController()
     let loaded: THREE.Group | null = null
-    loadArenaTerrain(url, sha256, abort.signal)
+    const load = async () => {
+      if (visualUrl && visualSha256) {
+        try {
+          return await loadArenaTerrain(visualUrl, visualSha256, abort.signal)
+        } catch (error) {
+          if (abort.signal.aborted) throw error
+          console.warn('Visual terrain failed to load; using the collider mesh', error)
+        }
+      }
+      return loadArenaTerrain(url, sha256, abort.signal)
+    }
+    load()
       .then(scene => {
         if (abort.signal.aborted) {
           disposeArenaTerrain(scene)
           return
         }
+        let detail: ReturnType<typeof createTerrainDetailTextures> | null = null
         scene.traverse(object => {
           if (!(object instanceof THREE.Mesh)) return
           object.receiveShadow = true
           object.castShadow = object.name.startsWith('Rock')
+          // Only the visual twin carries UVs; the collider fallback renders flat as before.
+          if (object.name.startsWith('Terrain') && object.geometry.getAttribute('uv')) {
+            for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+              if (!(material instanceof THREE.MeshStandardMaterial)) continue
+              detail ??= createTerrainDetailTextures()
+              material.map = detail.map
+              material.bumpMap = detail.bump
+              material.bumpScale = 0.6
+              material.needsUpdate = true
+            }
+          }
         })
         loaded = scene
         setScene(scene)
@@ -287,7 +319,7 @@ function TerrainMesh({
       abort.abort()
       if (loaded) disposeArenaTerrain(loaded)
     }
-  }, [url, sha256])
+  }, [url, sha256, visualUrl, visualSha256])
 
   useEffect(() => {
     if (scene) onReadyRef.current?.()
@@ -787,9 +819,10 @@ function World({
       <directionalLight position={[9, 7, 13]} color="#b0ccdc" intensity={0.35} />
 
       <TerrainMesh
-        key={`${course.config.terrain.url}:${course.config.terrain.sha256}`}
+        key={`${course.config.terrain.url}:${course.config.terrain.sha256}:${course.config.visual?.sha256 ?? ''}`}
         url={course.config.terrain.url}
         sha256={course.config.terrain.sha256}
+        visual={course.config.visual}
         onReady={() => setTerrainReady(true)}
         onError={onError}
       />
@@ -890,7 +923,7 @@ export default memo(function ArenaWorldView(props: WorldProps) {
       frameloop="always"
       // preserveDrawingBuffer is required for the gift-card share capture
       // (canvas.toDataURL in ArenaScene.handleShareCard). Cost is one buffer
-      // copy per frame — negligible next to the 600k-tri terrain.
+      // copy per frame — negligible next to the terrain draw.
       gl={{ antialias: !lite, alpha: false, powerPreference: lite ? 'low-power' : 'high-performance', preserveDrawingBuffer: true }}
       onCreated={({ gl }) => {
         gl.toneMapping = THREE.ACESFilmicToneMapping

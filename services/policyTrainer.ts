@@ -7,8 +7,6 @@ import {
 } from './arenaEpisode'
 import {
   POLICY_SCHEMA_VERSION,
-  OBSERVATION_FEATURE_DIM,
-  EDGE_FEATURE_DIM,
   EDGE_HEURISTIC_SCALE,
   type CheckpointEvaluationRecord,
   type PolicyCheckpoint,
@@ -189,13 +187,17 @@ export function trainPolicyCheckpoint(
   // v3 edge-pointer head: linear EDGE_FEATURE_DIM->1. validateCheckpoint
   // guarantees the shape on a v3 parent.
   const edgeHead = weights.edgeHead!
+  // Standard checkpoints are 36 inputs / 8 edge features; timetable checkpoints
+  // are 38 / 9. The parent decides, so the standard path is unchanged.
+  const inputDim = weights.hidden1.weights.length
+  const edgeDim = edgeHead.weights.length
   const vWEdge = edgeHead.weights.map(row => new Array(row.length).fill(0))
   const vBEdge = new Array(edgeHead.biases.length).fill(0)
   const EDGE_CE_WEIGHT = 1.0
 
   // Pre-encode datasets
   const dataset = approvedExamples.map((example, index) => {
-    const input = encodeObservation(example.observation)
+    const input = encodeObservation(example.observation, inputDim)
     const targetClass = classifyAction(example.preferredAction, example.observation)
     const weight = sampleWeights?.[index] ?? 1
     if (!Number.isFinite(weight) || weight < 0) {
@@ -223,7 +225,7 @@ export function trainPolicyCheckpoint(
       if (target >= 0 && candidates.length > 1) {
         edge = {
           bases: candidates.map(id => scoreMoveEdge(example.observation, id, cls) / EDGE_HEURISTIC_SCALE),
-          features: candidates.map(id => encodeEdgeFeatures(example.observation, id)),
+          features: candidates.map(id => encodeEdgeFeatures(example.observation, id, edgeDim)),
           target,
         }
       }
@@ -315,7 +317,7 @@ export function trainPolicyCheckpoint(
         vB1[j] = momentum * vB1[j] - lrEpoch * (gradJ + weightDecay * weights.hidden1.biases[j])
         weights.hidden1.biases[j] += vB1[j]
 
-        for (let i = 0; i < OBSERVATION_FEATURE_DIM; i++) {
+        for (let i = 0; i < inputDim; i++) {
           const gradW = gradJ * input[i]
           vW1[i][j] = momentum * vW1[i][j] - lrEpoch * (gradW + weightDecay * weights.hidden1.weights[i][j])
           weights.hidden1.weights[i][j] += vW1[i][j]
@@ -335,7 +337,7 @@ export function trainPolicyCheckpoint(
         epochLoss += -EDGE_CE_WEIGHT * Math.log(pTarget) * importance
         const biasGrad = edge.features.reduce((acc, _f, c) =>
           acc + (probsE[c] - (c === edge.target ? 1 : 0)), 0) * EDGE_CE_WEIGHT * importance
-        for (let i = 0; i < EDGE_FEATURE_DIM; i++) {
+        for (let i = 0; i < edgeDim; i++) {
           let gradW = 0
           for (let c = 0; c < probsE.length; c++) {
             gradW += EDGE_CE_WEIGHT * (probsE[c] - (c === edge.target ? 1 : 0)) * importance * edge.features[c][i]

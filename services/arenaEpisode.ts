@@ -45,6 +45,13 @@ export interface ArenaScenario {
   rush?: ArenaRushRules
 }
 
+/**
+ * Public timetable entry for a Rush wave: the core `resourceId` is guaranteed to
+ * spawn inside [windowStart, windowEnd]. Disclosed to policies as the additive
+ * `rushWaves` observation field; it never changes simulation behavior.
+ */
+export type ArenaRushWave = { resourceId: string; windowStart: number; windowEnd: number }
+
 export type ArenaRushRules = {
   /** Route-reference distance (m) at which two rovers bump. */
   contactRadiusM: number
@@ -52,6 +59,8 @@ export type ArenaRushRules = {
   bumpStaggerTicks: number
   /** Minimum ticks between bumps of the same pair. */
   bumpCooldownTicks: number
+  /** Optional public wave timetable; absent on scenarios recorded before it existed. */
+  waves?: ArenaRushWave[]
 }
 
 export const DEFAULT_RUSH_RULES: ArenaRushRules = Object.freeze({
@@ -135,6 +144,12 @@ export interface ArenaObservation {
   edges: (ArenaEdge & { currentTravelTicks: number; blocked: boolean })[]
   /** `flare`: stale sighting that came from a public spawn announcement (a trustworthy target, unlike a remembered ghost). */
   resources: (ArenaResource & { available: boolean; visible: boolean; stale: boolean; flare?: boolean })[]
+  /**
+   * Rush only: the public timetable of waves that have not spawned yet, earliest
+   * first. Additive (docs/COMPATIBILITY.md Rule 3); absent in Haul and in
+   * scenarios without a timetable.
+   */
+  rushWaves?: { nodeId: string; value: number; windowStart: number; windowEnd: number }[]
   weather: ArenaSnapshot['weather']
   availableActions: ArenaAction[]
   fog: { visible: string[]; remembered: string[]; hidden: string[] }
@@ -216,6 +231,16 @@ function validateScenario(scenario: ArenaScenario) {
     const { contactRadiusM, bumpStaggerTicks, bumpCooldownTicks } = scenario.rush
     assert(Number.isFinite(contactRadiusM) && contactRadiusM > 0 && contactRadiusM <= 5 &&
       integer(bumpStaggerTicks, 0, 200) && integer(bumpCooldownTicks, 1, 600), 'rush rules')
+    const { waves } = scenario.rush
+    if (waves !== undefined) {
+      // A disclosed window must never lie: the spawn has to fall inside it.
+      assert(Array.isArray(waves) && waves.length <= 16 && waves.every(wave => {
+        const resource = scenario.resources.find(candidate => candidate.id === wave.resourceId)
+        return resource?.spawnTick !== undefined &&
+          integer(wave.windowStart, 0, scenario.durationTicks) && integer(wave.windowEnd, wave.windowStart, scenario.durationTicks) &&
+          resource.spawnTick >= wave.windowStart && resource.spawnTick <= wave.windowEnd
+      }), 'rush waves')
+    }
   }
   assert(Array.isArray(scenario.floods) && scenario.floods.length <= 32, 'flood schedule')
   assert(scenario.floods.every(flood => integer(flood.startTick, 0, scenario.durationTicks - 1) &&
@@ -790,6 +815,16 @@ export function checkActionRejection(
   return agent.cargo === 0 ? 'nothing-to-bank' : null
 }
 
+function upcomingRushWaves(scenario: ArenaScenario, state: ArenaSnapshot): NonNullable<ArenaObservation['rushWaves']> {
+  const upcoming: NonNullable<ArenaObservation['rushWaves']> = []
+  for (const wave of scenario.rush?.waves ?? []) {
+    const resource = state.resources.find(candidate => candidate.id === wave.resourceId)
+    if (!resource || isResourceSpawned(resource, state.tick)) continue
+    upcoming.push({ nodeId: resource.nodeId, value: resource.value, windowStart: wave.windowStart, windowEnd: wave.windowEnd })
+  }
+  return upcoming.sort((a, b) => a.windowStart - b.windowStart)
+}
+
 export function observeSnapshot(
   scenario: ArenaScenario,
   state: ArenaSnapshot,
@@ -869,6 +904,7 @@ export function observeSnapshot(
       }
       return result
     })()),
+    ...(scenario.rush?.waves ? { rushWaves: upcomingRushWaves(scenario, state) } : {}),
     weather: clonePlain(state.weather),
     availableActions: clonePlain(decisionDue ? choices.filter(action => checkActionRejection(scenario, state, agent, action) === null) : []),
     fog,

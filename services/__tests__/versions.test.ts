@@ -17,6 +17,8 @@ import {
   OBSERVATION_FEATURE_DIM,
   POLICY_SCHEMA_VERSION,
   SEASON_0_BASE_CHECKPOINT,
+  TIMETABLE_EDGE_FEATURE_DIM,
+  TIMETABLE_FEATURE_DIM,
   classifyAction,
   createLearnedPolicy,
   encodeEdgeFeatures,
@@ -59,6 +61,10 @@ describe('v1 compatibility inventory', () => {
     expect(edgeHead?.weights).toHaveLength(EDGE_FEATURE_DIM)
     expect(edgeHead?.weights[0]).toHaveLength(1)
     expect(edgeHead?.biases).toHaveLength(1)
+    // Timetable checkpoints are an opt-in extension; the standard widths above never change.
+    expect(TIMETABLE_FEATURE_DIM).toBe(38)
+    expect(TIMETABLE_EDGE_FEATURE_DIM).toBe(9)
+    expect(ARENA_WORLD.visualUrl).toBe('/terrain/sandstone-basin-visual.glb')
   })
 
   it('pins the trainer configs on every production surface', () => {

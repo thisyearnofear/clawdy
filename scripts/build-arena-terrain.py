@@ -9,6 +9,9 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_DIR = os.path.join(REPO_ROOT, "public", "terrain")
 GLB_PATH = os.path.join(OUT_DIR, "sandstone-basin.glb")
 BLEND_PATH = os.path.join(OUT_DIR, "sandstone-basin.blend")
+VISUAL_GLB_PATH = os.path.join(OUT_DIR, "sandstone-basin-visual.glb")
+# World units per texture repeat for the render-only mesh's UVs.
+UV_TILE = 4.0
 SKIRT_BOTTOM = -1.2
 SEED = 20260918
 
@@ -29,11 +32,12 @@ def ground_height(x, z):
 def parse_args():
     argv = sys.argv
     extra = argv[argv.index("--") + 1:] if "--" in argv else []
-    return {"force": "--force" in extra}
+    return {"force": "--force" in extra, "visual": "--visual" in extra}
 
 
-def guard_outputs(force):
-    existing = [path for path in (GLB_PATH, BLEND_PATH) if os.path.exists(path)]
+def guard_outputs(force, visual):
+    targets = (VISUAL_GLB_PATH,) if visual else (GLB_PATH, BLEND_PATH)
+    existing = [path for path in targets if os.path.exists(path)]
     if existing and not force:
         raise SystemExit(
             "Refusing to overwrite existing terrain assets: "
@@ -91,7 +95,22 @@ def face_material_name(x, z, face_index):
     return "sandstone_v" if face_index % 7 == 0 else "sandstone"
 
 
-def build_terrain():
+def assign_planar_uvs(mesh, grid_faces):
+    # UVs are a pure function of position, so the grid never splits vertices and
+    # the geometry stays identical to the collider mesh. Grid and bottom cap
+    # project top-down; the axis-aligned skirt walls use (x + y, height).
+    uv_layer = mesh.uv_layers.new(name="UVMap")
+    for poly in mesh.polygons:
+        skirt_wall = grid_faces <= poly.index < len(mesh.polygons) - 1
+        for loop_index in poly.loop_indices:
+            co = mesh.vertices[mesh.loops[loop_index].vertex_index].co
+            if skirt_wall:
+                uv_layer.data[loop_index].uv = ((co.x + co.y) / UV_TILE, co.z / UV_TILE)
+            else:
+                uv_layer.data[loop_index].uv = (co.x / UV_TILE, co.y / UV_TILE)
+
+
+def build_terrain(with_uvs=False):
     xs = [x * 0.25 for x in range(-12, 69)]
     zs = [z * 0.25 for z in range(-24, 89)]
     nx, nz = len(xs), len(zs)
@@ -144,6 +163,9 @@ def build_terrain():
             poly.use_smooth = True
         else:
             poly.material_index = mat_index["sandstone"]
+
+    if with_uvs:
+        assign_planar_uvs(mesh, grid_faces)
 
     obj = bpy.data.objects.new("Terrain", mesh)
     bpy.context.collection.objects.link(obj)
@@ -207,10 +229,10 @@ def build_rocks():
     return rocks
 
 
-def export():
+def export(path):
     bpy.ops.object.select_all(action="SELECT")
     bpy.ops.export_scene.gltf(
-        filepath=GLB_PATH,
+        filepath=path,
         export_format="GLB",
         export_apply=True,
         export_yup=True,
@@ -220,14 +242,15 @@ def export():
         export_skins=False,
         export_morph=False,
     )
-    with open(GLB_PATH, "rb") as handle:
+    with open(path, "rb") as handle:
         digest = hashlib.sha256(handle.read()).hexdigest()
-    print(f"EXPORTED {GLB_PATH} bytes={os.path.getsize(GLB_PATH)} sha256={digest}")
+    print(f"EXPORTED {path} bytes={os.path.getsize(path)} sha256={digest}")
 
 
 def main():
     args = parse_args()
-    guard_outputs(args["force"])
+    visual = args["visual"]
+    guard_outputs(args["force"], visual)
     os.makedirs(OUT_DIR, exist_ok=True)
     bpy.ops.object.select_all(action="SELECT")
     bpy.ops.object.delete()
@@ -235,11 +258,14 @@ def main():
         for block in list(datablocks):
             datablocks.remove(block)
     setup_materials()
-    build_terrain()
+    build_terrain(with_uvs=visual)
     build_rocks()
+    if visual:
+        export(VISUAL_GLB_PATH)
+        return
     bpy.context.preferences.filepaths.save_version = 0
     bpy.ops.wm.save_as_mainfile(filepath=BLEND_PATH)
-    export()
+    export(GLB_PATH)
 
 
 if __name__ == "__main__":

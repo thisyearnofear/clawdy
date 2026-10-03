@@ -15,6 +15,7 @@
     "eval:gate": "tsx scripts/eval-gate.ts",
     "analyze:legs": "tsx scripts/analyze-legs.ts",
     "terrain:build": "blender --background --factory-startup --python scripts/build-arena-terrain.py",
+    "terrain:build:visual": "blender --background --factory-startup --python scripts/build-arena-terrain.py -- --visual",
     "mint:sync": "node .devin/skills/mint-threejs-skills/scripts/sync-mint-assets.mjs",
     "postinstall": "node -e \"const v=JSON.parse(require('fs').readFileSync(require.resolve('@dimforge/rapier3d-compat').replace(/\\/[^\\/]*$/,'/package.json'),'utf8')).version;if(!v.startsWith('0.19')){console.error('WRONG rapier:',v);process.exit(1)}console.log('rapier3d-compat:',v)\""
   },
