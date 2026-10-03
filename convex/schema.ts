@@ -1,13 +1,14 @@
 import { defineSchema, defineTable } from 'convex/server'
+import { authTables } from '@convex-dev/auth/server'
 import { v } from 'convex/values'
 import { checkpointDocV, exampleDocV } from './lib/payload'
 
 /**
  * Season 0 Convex schema — system of record for the coaching lineage.
  *
- * Trust model: records are keyed by a browser-issued `guestKey` and owned by
- * `resolveOwner(guestKey)` (convex/lib/identity.ts) — the single seam for a
- * later Convex Auth swap to `user:<id>`. Convex never sits on the physics or
+ * Trust model: records are keyed by a browser-issued `guestKey` (guests) or a
+ * server-derived `user-<id>` key (signed in via Convex Auth), owned by
+ * `resolveOwner(key)`; see convex/lib/identity.ts. Convex never sits on the physics or
  * inference path.
  *
  * Sync protocol (services/syncEngine.ts ⇄ convex/sync.ts):
@@ -34,6 +35,8 @@ const syncFields = {
 }
 
 export default defineSchema({
+  ...authTables,
+
   checkpoints: defineTable({
     guestKey: v.string(),
     checkpointId: v.string(),
@@ -106,4 +109,34 @@ export default defineSchema({
     .index('by_guest', ['guestKey'])
     .index('by_guest_job', ['guestKey', 'jobId'])
     .index('by_guest_seen', ['guestKey', 'serverSeenAt']),
+
+  // Server-verified ladder: one best entry per account. Rows are written only by
+  // internal mutations after the server has replayed the submission itself.
+  ladder: defineTable({
+    userId: v.id('users'),
+    displayName: v.string(),
+    checkpointId: v.string(),
+    weightsHash: v.string(),
+    score: v.number(),
+    perOpponent: v.array(v.object({
+      opponent: v.string(),
+      matches: v.number(),
+      wins: v.number(),
+      losses: v.number(),
+      margin: v.number(),
+    })),
+    seeds: v.array(v.number()),
+    rulesVersion: v.string(),
+    physicsVersion: v.string(),
+    colliderSha256: v.string(),
+    verifiedAt: v.number(),
+    submissions: v.number(),
+  })
+    .index('by_user', ['userId'])
+    .index('by_score', ['score']),
+
+  ladderAttempts: defineTable({
+    userId: v.id('users'),
+    at: v.number(),
+  }).index('by_user_at', ['userId', 'at']),
 })

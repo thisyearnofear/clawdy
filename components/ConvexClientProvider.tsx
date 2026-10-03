@@ -1,6 +1,7 @@
 'use client'
 
-import { ConvexProvider, ConvexReactClient, useQuery } from 'convex/react'
+import { ConvexAuthProvider } from '@convex-dev/auth/react'
+import { ConvexReactClient, useQuery } from 'convex/react'
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
 import { api } from '../convex/_generated/api'
 import { getOrCreateGuestKey, shortGuestLabel } from '../services/guestIdentity'
@@ -59,8 +60,8 @@ export function ConvexAppProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <ConvexProvider client={client}>
+    <ConvexAuthProvider client={client}>
       <ConvexClientContext.Provider value={client}>{children}</ConvexClientContext.Provider>
-    </ConvexProvider>
+    </ConvexAuthProvider>
   )
 }

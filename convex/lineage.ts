@@ -1,4 +1,5 @@
 import { v } from 'convex/values'
+import { withCaller } from './lib/identity'
 import { query } from './_generated/server'
 
 /**
@@ -21,7 +22,8 @@ export const latestChain = query({
       matchWinner: v.union(v.string(), v.null()),
     }),
   ),
-  handler: async (ctx, args) => {
+  handler: async (ctx, rawArgs) => {
+    const args = await withCaller(ctx, rawArgs)
     const jobs = await ctx.db
       .query('trainingJobs')
       .withIndex('by_guest', q => q.eq('guestKey', args.guestKey))

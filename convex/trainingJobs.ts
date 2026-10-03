@@ -1,6 +1,6 @@
 import { ConvexError, v } from 'convex/values'
 import { mutation, query } from './_generated/server'
-import { resolveOwner } from './lib/identity'
+import { resolveOwner, withCaller } from './lib/identity'
 
 const MAX_JOBS_PER_GUEST = 40
 
@@ -24,7 +24,8 @@ export const listForGuest = query({
       serverSeenAt: v.optional(v.number()),
     }),
   ),
-  handler: async (ctx, args) => {
+  handler: async (ctx, rawArgs) => {
+    const args = await withCaller(ctx, rawArgs)
     const rows = await ctx.db
       .query('trainingJobs')
       .withIndex('by_guest', q => q.eq('guestKey', args.guestKey))
@@ -63,7 +64,8 @@ export const upsert = mutation({
     updatedAt: v.string(),
   },
   returns: v.id('trainingJobs'),
-  handler: async (ctx, args) => {
+  handler: async (ctx, rawArgs) => {
+    const args = await withCaller(ctx, rawArgs)
     const owner = resolveOwner(args.guestKey)
     const existing = await ctx.db
       .query('trainingJobs')

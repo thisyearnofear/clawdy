@@ -1,7 +1,7 @@
 import { ConvexError, v } from 'convex/values'
 import { internalMutation, mutation, query, type MutationCtx } from './_generated/server'
 import { checkpointDocV, exampleDocV } from './lib/payload'
-import { resolveOwner } from './lib/identity'
+import { resolveOwner, withCaller } from './lib/identity'
 
 /**
  * Offline-first sync protocol — the only Convex surface the client uses.
@@ -98,7 +98,8 @@ export const pull = query({
     })),
     serverTime: v.number(),
   }),
-  handler: async (ctx, args) => {
+  handler: async (ctx, rawArgs) => {
+    const args = await withCaller(ctx, rawArgs)
     const owner = resolveOwner(args.guestKey)
 
     const checkpoints = await ctx.db
@@ -226,7 +227,8 @@ export const upsertCheckpoint = mutation({
     updatedAtMs: v.number(),
   },
   returns: lwwResultV,
-  handler: async (ctx, args) => {
+  handler: async (ctx, rawArgs) => {
+    const args = await withCaller(ctx, rawArgs)
     const owner = resolveOwner(args.guestKey)
     const existing = await ctx.db
       .query('checkpoints')
@@ -292,7 +294,8 @@ export const upsertExample = mutation({
     updatedAtMs: v.number(),
   },
   returns: lwwResultV,
-  handler: async (ctx, args) => {
+  handler: async (ctx, rawArgs) => {
+    const args = await withCaller(ctx, rawArgs)
     const owner = resolveOwner(args.guestKey)
     const existing = await ctx.db
       .query('examples')
@@ -359,7 +362,8 @@ function deleteGate<R extends { tombstone?: boolean; updatedAtMs?: number; serve
 export const deleteCheckpoint = mutation({
   args: deleteArgs,
   returns: lwwResultV,
-  handler: async (ctx, args) => {
+  handler: async (ctx, rawArgs) => {
+    const args = await withCaller(ctx, rawArgs)
     const existing = await ctx.db
       .query('checkpoints')
       .withIndex('by_guest_checkpoint', q => q.eq('guestKey', args.guestKey).eq('checkpointId', args.recordId))
@@ -381,7 +385,8 @@ export const deleteCheckpoint = mutation({
 export const deleteExample = mutation({
   args: deleteArgs,
   returns: lwwResultV,
-  handler: async (ctx, args) => {
+  handler: async (ctx, rawArgs) => {
+    const args = await withCaller(ctx, rawArgs)
     const existing = await ctx.db
       .query('examples')
       .withIndex('by_guest_example', q => q.eq('guestKey', args.guestKey).eq('exampleId', args.recordId))

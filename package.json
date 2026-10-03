@@ -20,6 +20,8 @@
     "postinstall": "node -e \"const v=JSON.parse(require('fs').readFileSync(require.resolve('@dimforge/rapier3d-compat').replace(/\\/[^\\/]*$/,'/package.json'),'utf8')).version;if(!v.startsWith('0.19')){console.error('WRONG rapier:',v);process.exit(1)}console.log('rapier3d-compat:',v)\""
   },
   "dependencies": {
+    "@auth/core": "^0.41.2",
+    "@convex-dev/auth": "^0.0.96",
     "@dimforge/rapier3d-compat": "0.19.2",
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.1",

@@ -8,6 +8,11 @@
  * @module
  */
 
+import type * as account from "../account.js";
+import type * as auth from "../auth.js";
+import type * as http from "../http.js";
+import type * as ladder from "../ladder.js";
+import type * as ladderRun from "../ladderRun.js";
 import type * as lib_identity from "../lib/identity.js";
 import type * as lib_payload from "../lib/payload.js";
 import type * as lineage from "../lineage.js";
@@ -22,6 +27,11 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  account: typeof account;
+  auth: typeof auth;
+  http: typeof http;
+  ladder: typeof ladder;
+  ladderRun: typeof ladderRun;
   "lib/identity": typeof lib_identity;
   "lib/payload": typeof lib_payload;
   lineage: typeof lineage;
