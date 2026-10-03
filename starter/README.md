@@ -31,6 +31,35 @@ This will:
 
 ---
 
+## Teach with code
+
+A teacher is a plain function from what the rover sees to what it does:
+
+```ts
+import type { Teacher } from '../../services/teacher'
+
+const myTeacher: Teacher = observation => {
+  const bank = observation.availableActions.find(action => action.type === 'bank')
+  return bank ?? { type: 'wait' }
+}
+export default myTeacher
+```
+
+```bash
+npm run teacher:run -- starter/teachers/ridge-runner.ts --out starter/teacher-checkpoint.json
+```
+
+The harness plays your teacher on **practice** scenarios only (held-out boards are refused), records each
+legal decision as an approved example, trains a normal checkpoint from the base brain, and then prints a
+before/after comparison on practice and held-out boards. Illegal choices and thrown errors are counted,
+not hidden. The result imports into the app like any other checkpoint, and a signed-in player can submit it
+to the server-verified ladder (`docs/AUTH.md`).
+
+Teachers run as trusted local code. Pasting teacher code into the hosted app is deliberately not supported:
+that needs a real sandbox first.
+
+---
+
 ## Deploying to the Live Web Arena
 
 Once you have generated `starter/champion-checkpoint.json`:

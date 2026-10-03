@@ -10,6 +10,7 @@
     "prepare": "git config core.hooksPath .husky || true",
     "test": "vitest run",
     "starter:train": "tsx starter/train.ts",
+    "teacher:run": "tsx scripts/teacher-run.ts",
     "print:stl": "python3 scripts/export-print-stl.py public/assets/mint/champion-rover.glb public/prints/champion-rover.stl",
     "eval:holdout": "tsx scripts/eval-holdout.ts",
     "eval:gate": "tsx scripts/eval-gate.ts",
