@@ -111,10 +111,19 @@ Owner: assets developer.
 - Keep the World Labs claim exactly as written in `docs/TRIPOTHON.md`.
 - Refresh `docs/assets/asset-board.png` and the build-log drafts at the end.
 
+Status (Oct 5): bodies, compression, resolver, Forge backend and STL export are landed; nothing below is deployed or visible in the live app yet.
+- **Bodies:** `chassis.scout|hauler|raider` are Tripo P1 text-to-model assets (40 credits each, task IDs in `mint-assets.json`). The scout's detached sensor dish was removed from the mesh. All GLBs, including the rival and core, were resized to 1024 px textures and quantized: ~3.4 MB to ~1.0–1.3 MB, bounding boxes unchanged. Quantization was chosen over Draco so rendering does not depend on the Mint CDN decoder.
+- **Resolver:** `services/chassisAssets.ts` picks chassis body, then the legacy `championRover`/`rivalRover`, then the procedural rover. `ArenaWorldView` takes an optional `chassisByEntrant` prop; **nothing passes it yet** (Stream A/B own the call site), so every rover still renders its legacy model.
+- **Forge:** `convex/forge.ts` (`start`, scheduled `poll`, `mine`) with limits and messages in `services/forge.ts`. Chassis and paint come from fixed menus, so players cannot write prompts. Credits are reserved atomically before Tripo is called and released on every failure. Limits default to 2 forges per account and 2,000 credits globally (`FORGE_PER_ACCOUNT_LIMIT`, `FORGE_GLOBAL_CREDIT_CAP`). Tested with a mocked Tripo (`convex/__tests__/forge.test.ts`); **never run against the real Tripo API from Convex**. It needs `TRIPO_API_KEY` set in the Convex env. There is **no client UI yet**.
+- **Print:** `scripts/export-print-stl.py` reads quantized GLBs, takes a URL (a forged rover) and `--scale-mm`; STLs for the three chassis are in `public/prints/` (see `docs/PRINT_KIT.md`). Nothing was test-printed.
+- **Facing:** checked in an offline three.js render using the game's own transforms and the sim's +Z forward axis. The scout, hauler, raider and the rival all face +Z with the current `-π/2` Y rotation, so no flip was needed. This is not the live app and not the cloud harness.
+
+Open: show a forged GLB as the champion's look, Forge UI in the Coach panel, `chassisByEntrant` call site, prod harness run per chassis, refresh asset board and build-log drafts.
+
 Acceptance:
-- Each chassis renders on prod, verified by the harness.
-- Forge fails safely: limit reached, Tripo error, and cap reached each show a clear message.
-- Rival hauler facing is confirmed (flip the rotation if it is backwards).
+- Each chassis renders on prod, verified by the harness. (Open: renders correctly offline; not yet shown in the app.)
+- Forge fails safely: limit reached, Tripo error, and cap reached each show a clear message. (Messages and refunds covered by tests; no UI yet.)
+- Rival hauler facing is confirmed (flip the rotation if it is backwards). (Confirmed correct in an offline render.)
 
 ## Sequencing
 
