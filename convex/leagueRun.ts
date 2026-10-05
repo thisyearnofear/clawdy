@@ -10,6 +10,7 @@ import { buildV } from './schema'
 import { buildLadderContext, legalLeagueBuild, parseSubmission, runMatch, traitsForBuild } from '../services/ladderRunner'
 import { budgetSpent, STAT_BUDGET, validateBuild, type Build } from '../services/chassis'
 import { summarizeReplayMarkers } from '../services/replayMarkers'
+import { normalizeRuleset } from './lib/ruleset'
 
 /**
  * League write path (docs/LEAGUE_PLAN.md, Stream C). Everything here runs in
@@ -48,11 +49,16 @@ export const publish = action({
     checkpointJson: v.string(),
     build: v.optional(buildV),
     mode: v.optional(v.string()),
+    rulesetId: v.optional(v.string()),
   },
   returns: v.object({ brainId: v.string(), replaced: v.boolean() }),
   handler: async (ctx, args): Promise<{ brainId: string; replaced: boolean }> => {
     const userId = await getAuthUserId(ctx)
     if (!userId) throw new ConvexError('sign-in-required')
+
+    const rulesetId = normalizeRuleset(args.rulesetId)
+    // Skirmish perks come from the chassis, so a build is part of the entry.
+    if (rulesetId && !args.build) throw new ConvexError('build-required')
 
     let checkpoint
     try {
@@ -77,6 +83,7 @@ export const publish = action({
       build: args.build,
       chassis: args.build?.chassis,
       mode: args.mode ?? 'rush',
+      rulesetId,
     })
   },
 })
@@ -107,14 +114,16 @@ export const challenge = action({
 
     await ctx.runMutation(internal.ladder.beginAttempt, { userId })
 
+    const rulesetId = normalizeRuleset(challenger.rulesetId)
     const seed = randomInt(0, 2 ** 31)
     try {
       const context = await leagueContext()
       const result = runMatch(
-        { checkpoint: parseSubmission(challenger.checkpointJson), traits: traitsForBuild(challenger.build) },
-        { checkpoint: parseSubmission(defender.checkpointJson), traits: traitsForBuild(defender.build) },
+        { checkpoint: parseSubmission(challenger.checkpointJson), traits: traitsForBuild(challenger.build, rulesetId) },
+        { checkpoint: parseSubmission(defender.checkpointJson), traits: traitsForBuild(defender.build, rulesetId) },
         context.rushBase,
         seed,
+        rulesetId,
       )
 
       const storageIds = []
@@ -150,6 +159,7 @@ export const challenge = action({
         mode: challenger.mode,
         seed,
         message: error instanceof Error ? error.message : 'match failed',
+        rulesetId,
       })
       throw error
     }
@@ -163,12 +173,13 @@ export const challenge = action({
  * also runnable by hand for demos: `npx convex run --prod leagueRun:runRound`.
  */
 export const runRound = internalAction({
-  args: { mode: v.optional(v.string()), seed: v.optional(v.number()) },
+  args: { mode: v.optional(v.string()), seed: v.optional(v.number()), rulesetId: v.optional(v.string()) },
   returns: v.object({ round: v.union(v.number(), v.null()), pairings: v.number() }),
   handler: async (ctx, args): Promise<{ round: number | null; pairings: number }> => {
     const mode = args.mode ?? 'rush'
+    const rulesetId = normalizeRuleset(args.rulesetId)
     const brains: { userId: Id<'users'>; brainId: string; name: string; checkpointJson: string; chassis?: string; build?: { chassis: string; points: Record<string, number>; modules: string[] }; rating: number }[] =
-      await ctx.runQuery(internal.league.listedForRound, { mode })
+      await ctx.runQuery(internal.league.listedForRound, { mode, rulesetId })
     if (brains.length < 2) return { round: null, pairings: 0 }
 
     const context = await leagueContext()
@@ -186,10 +197,11 @@ export const runRound = internalAction({
       const b = brains[pair + 1]
       const seed = (baseSeed + pair) >>> 0
       const result = runMatch(
-        { checkpoint: parseSubmission(a.checkpointJson), traits: traitsForBuild(a.build) },
-        { checkpoint: parseSubmission(b.checkpointJson), traits: traitsForBuild(b.build) },
+        { checkpoint: parseSubmission(a.checkpointJson), traits: traitsForBuild(a.build, rulesetId) },
+        { checkpoint: parseSubmission(b.checkpointJson), traits: traitsForBuild(b.build, rulesetId) },
         context.rushBase,
         seed,
+        rulesetId,
       )
       const storageIds = []
       for (const recording of result.recordings) {
@@ -215,6 +227,6 @@ export const runRound = internalAction({
         rulesVersion: result.rulesVersion,
       })
     }
-    return await ctx.runMutation(internal.league.recordRound, { mode, seed: baseSeed, matches })
+    return await ctx.runMutation(internal.league.recordRound, { mode, rulesetId, seed: baseSeed, matches })
   },
 })

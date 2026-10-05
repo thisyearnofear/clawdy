@@ -156,9 +156,12 @@ export default defineSchema({
     build: v.optional(buildV),
     /** League season the entry was verified in; missing counts as season 0. */
     season: v.optional(v.number()),
+    /** Named ruleset (e.g. 'skirmish'); absent = Training Grounds (Season 0). One row per account per ruleset. */
+    rulesetId: v.optional(v.string()),
   })
     .index('by_user', ['userId'])
-    .index('by_score', ['score']),
+    .index('by_score', ['score'])
+    .index('by_ruleset_score', ['rulesetId', 'score']),
 
   ladderAttempts: defineTable({
     userId: v.id('users'),
@@ -188,11 +191,14 @@ export default defineSchema({
     listed: v.boolean(),
     /** League season the brain was last published in; missing counts as 0. */
     season: v.optional(v.number()),
+    /** Ruleset the brain was published for; absent = Training Grounds. Ratings never mix across rulesets. */
+    rulesetId: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index('by_user', ['userId'])
     .index('by_user_brain', ['userId', 'brainId'])
-    .index('by_mode_listed', ['mode', 'listed']),
+    .index('by_mode_listed', ['mode', 'listed'])
+    .index('by_ruleset_mode_listed', ['rulesetId', 'mode', 'listed']),
 
   // A challenge between two stored brains, run and scored by the server
   // (convex/leagueRun.ts). The replay lives in file storage; `replayId`
@@ -212,6 +218,7 @@ export default defineSchema({
     message: v.optional(v.string()),
     replayId: v.optional(v.id('replays')),
     season: v.optional(v.number()),
+    rulesetId: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index('by_challenger', ['challengerUserId', 'createdAt'])
@@ -246,10 +253,24 @@ export default defineSchema({
     seed: v.number(),
     rulesVersion: v.string(),
     season: v.optional(v.number()),
+    /** Ruleset the match was played under; absent = Training Grounds. The recording's scenario carries the same tag. */
+    rulesetId: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index('by_share', ['shareId'])
     .index('by_ref', ['refId']),
+
+  // One row per (replay, participating account). Convex indexes are ordered
+  // lists of document fields, so an index over an array of user ids cannot be
+  // queried per element; this join table can ("all replays I played in").
+  replayParticipants: defineTable({
+    replayId: v.id('replays'),
+    userId: v.id('users'),
+    /** Copied from the replay so a library page is one index range, newest first. */
+    createdAt: v.number(),
+  })
+    .index('by_user', ['userId', 'createdAt'])
+    .index('by_replay', ['replayId', 'userId']),
 
   // One row per scheduled tournament round (convex/crons.ts → leagueRun.runRound).
   tournamentRounds: defineTable({
@@ -258,8 +279,11 @@ export default defineSchema({
     seed: v.number(),
     pairings: v.number(),
     season: v.optional(v.number()),
+    rulesetId: v.optional(v.string()),
     createdAt: v.number(),
-  }).index('by_mode', ['mode', 'round']),
+  })
+    .index('by_mode', ['mode', 'round'])
+    .index('by_ruleset_mode', ['rulesetId', 'mode', 'round']),
 
   // Forge your champion (docs/LEAGUE_PLAN.md Stream D). One row per forge request.
   // `credits` is reserved while pending/ready and refunded (row marked failed) on

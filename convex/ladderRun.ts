@@ -6,6 +6,7 @@ import { randomInt } from 'node:crypto'
 import { internal } from './_generated/api'
 import { action } from './_generated/server'
 import { buildV } from './schema'
+import { normalizeRuleset } from './lib/ruleset'
 import { buildLadderContext, ladderSeeds, legalLeagueBuild, parseSubmission, runLadder, traitsForBuild } from '../services/ladderRunner'
 
 /**
@@ -18,7 +19,7 @@ interface OpponentResult { opponent: string; matches: number; wins: number; loss
 interface SubmitResult { score: number; improved: boolean; best: number; submissions: number; perOpponent: OpponentResult[] }
 
 export const submit = action({
-  args: { checkpointJson: v.string(), build: v.optional(buildV), mode: v.optional(v.string()) },
+  args: { checkpointJson: v.string(), build: v.optional(buildV), mode: v.optional(v.string()), rulesetId: v.optional(v.string()) },
   returns: v.object({
     score: v.number(),
     improved: v.boolean(),
@@ -29,6 +30,10 @@ export const submit = action({
   handler: async (ctx, args): Promise<SubmitResult> => {
     const userId = await getAuthUserId(ctx)
     if (!userId) throw new ConvexError('sign-in-required')
+
+    const rulesetId = normalizeRuleset(args.rulesetId)
+    // Skirmish perks come from the chassis, so a build is part of the entry.
+    if (rulesetId && !args.build) throw new ConvexError('build-required')
 
     let checkpoint
     try {
@@ -46,7 +51,7 @@ export const submit = action({
     if (!response.ok) throw new ConvexError(`terrain unavailable (${response.status})`)
     const context = await buildLadderContext(new Uint8Array(await response.arrayBuffer()))
 
-    const result = runLadder(checkpoint, context, ladderSeeds(randomInt(0, 2 ** 31)), traitsForBuild(args.build))
+    const result = runLadder(checkpoint, context, ladderSeeds(randomInt(0, 2 ** 31)), traitsForBuild(args.build, rulesetId))
     const recorded: { improved: boolean; best: number; submissions: number } = await ctx.runMutation(internal.ladder.recordResult, {
       userId,
       checkpointId: checkpoint.id,
@@ -60,6 +65,7 @@ export const submit = action({
       build: args.build,
       chassis: args.build?.chassis,
       mode: args.mode ?? 'rush',
+      rulesetId,
     })
     return { score: result.score, perOpponent: result.perOpponent, ...recorded }
   },

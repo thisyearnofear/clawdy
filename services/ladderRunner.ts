@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { ARENA_WORLD, buildRushCourse } from './arenaCourse'
-import { buildToTraits, budgetSpent, STAT_BUDGET, validateBuild, type Build } from './chassis'
+import { buildToTraits, budgetSpent, STAT_BUDGET, validateBuild, type Build, type RulesetId } from './chassis'
 import { ARENA_RULES, type ArenaRecording, type ArenaScenario, type EntrantTraits } from './arenaEpisode'
 import { ArenaPhysics, ROVER_PHYSICS, initializeArenaPhysics } from './arenaPhysics'
 import { ArenaRunner, type EntrantPolicyOption } from './arenaPolicy'
@@ -124,9 +124,9 @@ export function legalLeagueBuild(build: { chassis: string; points: Record<string
 }
 
 /** Simulation traits for a stored build, or the hauler baseline when absent/illegal. */
-export function traitsForBuild(build: { chassis: string; points: Record<string, number>; modules: string[] } | undefined): EntrantTraits | undefined {
+export function traitsForBuild(build: { chassis: string; points: Record<string, number>; modules: string[] } | undefined, rulesetId?: RulesetId): EntrantTraits | undefined {
   const legal = legalLeagueBuild(build)
-  return legal ? buildToTraits(legal) : undefined
+  return legal ? buildToTraits(legal, rulesetId) : undefined
 }
 
 // ------------------------------------------------------------------ PvP
@@ -194,9 +194,11 @@ function playSide(scenario: ArenaScenario, champion: MatchEntrant, rival: MatchE
  * recording is re-simulated before it is returned, so a stored replay is
  * always a faithful receipt.
  */
-export function runMatch(a: MatchEntrant, b: MatchEntrant, base: ArenaScenario, seed: number): MatchResult {
+export function runMatch(a: MatchEntrant, b: MatchEntrant, base: ArenaScenario, seed: number, rulesetId?: RulesetId): MatchResult {
   if (!Number.isSafeInteger(seed)) throw new Error('Match seed must be an integer')
-  const variant = rushVariant(base, 'hidden', seed)
+  // The tag rides in the scenario, hence in both stored recordings: a replay
+  // names the ruleset it was played under and re-simulates from its own traits.
+  const variant = { ...rushVariant(base, 'hidden', seed), ...(rulesetId ? { rulesetId } : {}) }
   const first = playSide(variant, a, b)
   const second = playSide(swapSides(variant), b, a)
   const banked = { a: first.banked[0] + second.banked[1], b: first.banked[1] + second.banked[0] }

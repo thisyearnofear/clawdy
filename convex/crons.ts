@@ -14,6 +14,9 @@ const crons = cronJobs()
 
 crons.interval('league tournament round', { hours: 6 }, internal.leagueRun.runRound, { mode: 'rush' })
 
+// Per-ruleset rounds: Skirmish has its own pool, ratings and round numbers. A no-op until two Skirmish brains are listed.
+crons.interval('league skirmish round', { hours: 6 }, internal.leagueRun.runRound, { mode: 'rush', rulesetId: 'skirmish' })
+
 // Forge safety net (Stream D): fail overdue forges and restart quiet polls. See convex/forge.ts sweep.
 crons.interval('forge sweep', { minutes: 2 }, internal.forge.sweep, {})
 
