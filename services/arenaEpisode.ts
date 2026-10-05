@@ -40,6 +40,15 @@ export type EntrantTraits = {
   maxEnergy: number
   /** Positive wins bumps: the entrant with the higher (cargo - strength) loses. */
   contactStrength: number
+  /** Cargo capacity (Skirmish ruleset); absent = ARENA_RULES.capacity. */
+  capacity?: number
+  /** Bump winner takes the loser's whole cargo (up to own space), not one unit. */
+  stealAll?: boolean
+  /** Fog radius in graph hops (1 = pinned rules). */
+  visionHops?: number
+}
+export function capacityOf(agent: { traits?: EntrantTraits }): number {
+  return agent.traits?.capacity ?? ARENA_RULES.capacity
 }
 export type ArenaEntrant = { id: string; baseNode: string; policyVersion: string; traits?: EntrantTraits }
 
@@ -52,6 +61,8 @@ export interface ArenaScenario {
   nodes: ArenaNode[]
   edges: ArenaEdge[]
   entrants: ArenaEntrant[]
+  /** Named ruleset (e.g. 'skirmish'); absent = Training Grounds (Season 0). */
+  rulesetId?: string
   resources: ArenaResource[]
   floods: { startTick: number; endTick: number }[]
   /** Present only in Rush scenarios: enables authoritative rover-vs-rover contact. */
@@ -240,9 +251,11 @@ function validateScenario(scenario: ArenaScenario) {
   assert(scenario.entrants.every(({ traits }) => traits === undefined || (
     Number.isFinite(traits.travelSpeed) && traits.travelSpeed >= 0.5 && traits.travelSpeed <= 2 &&
     Number.isFinite(traits.maxEnergy) && traits.maxEnergy >= 4 && traits.maxEnergy <= 24 &&
-    Number.isFinite(traits.contactStrength) && Math.abs(traits.contactStrength) <= 5)), 'entrant traits')
+    Number.isFinite(traits.contactStrength) && Math.abs(traits.contactStrength) <= 5 &&
+    (traits.capacity === undefined || (Number.isInteger(traits.capacity) && traits.capacity >= 1 && traits.capacity <= 8)) &&
+    (traits.visionHops === undefined || (Number.isInteger(traits.visionHops) && traits.visionHops >= 1 && traits.visionHops <= 3)))), 'entrant traits')
   assert(scenario.resources.every(resource => nodes.has(resource.nodeId) &&
-    integer(resource.value, 1, ARENA_RULES.capacity) &&
+    integer(resource.value, 1, 8) &&
     (resource.spawnTick === undefined || integer(resource.spawnTick, 0, scenario.durationTicks - 1))), 'resources')
   if (scenario.rush !== undefined) {
     const { contactRadiusM, bumpStaggerTicks, bumpCooldownTicks } = scenario.rush
@@ -443,11 +456,7 @@ export class ArenaEpisode {
 
   #updateKnownResources() {
     for (const agent of this.#state.agents) {
-      const visibleNodes = new Set<string>([agent.nodeId])
-      for (const edge of this.#scenario.edges) {
-        if (edge.from === agent.nodeId) visibleNodes.add(edge.to)
-        if (edge.to === agent.nodeId) visibleNodes.add(edge.from)
-      }
+      const visibleNodes = visibleNodeSet(this.#scenario, agent)
       for (const resource of this.#state.resources) {
         if (visibleNodes.has(resource.nodeId) && isResourceSpawned(resource, this.#state.tick)) {
           const existing = agent.knownResources.find(r => r.id === resource.id)
@@ -569,7 +578,7 @@ export class ArenaEpisode {
     if (!winner || !loser) throw new Error('Encounter agents missing')
     let transferred = 0
     if (args.transferCargo && loser.cargo > 0) {
-      const space = Math.max(0, ARENA_RULES.capacity - winner.cargo)
+      const space = Math.max(0, capacityOf(winner) - winner.cargo)
       transferred = Math.min(1, loser.cargo, space)
       loser.cargo -= transferred
       winner.cargo += transferred
@@ -712,7 +721,7 @@ export class ArenaEpisode {
       : a.energy !== b.energy ? (a.energy < b.energy ? a : b)
       : (bias === 0 ? a : b)
     const winner = loser === a ? b : a
-    const stolen = Math.min(1, loser.cargo, Math.max(0, ARENA_RULES.capacity - winner.cargo))
+    const stolen = Math.min(winner.traits?.stealAll ? loser.cargo : 1, loser.cargo, Math.max(0, capacityOf(winner) - winner.cargo))
     loser.cargo -= stolen
     winner.cargo += stolen
     loser.staggeredUntilTick = Math.max(loser.staggeredUntilTick, state.tick + rules.bumpStaggerTicks)
@@ -832,7 +841,7 @@ export function checkActionRejection(
     const resource = state.resources.find(candidate => candidate.id === action.resourceId)
     if (!resource || resource.collectedBy !== null || !isResourceSpawned(resource, state.tick)) return 'resource-unavailable'
     if (resource.nodeId !== agent.nodeId) return 'unreachable-resource'
-    return agent.cargo + resource.value > ARENA_RULES.capacity ? 'cargo-full' : null
+    return agent.cargo + resource.value > capacityOf(agent) ? 'cargo-full' : null
   }
   if (agent.nodeId !== agent.baseNode) return 'not-at-base'
   return agent.cargo === 0 ? 'nothing-to-bank' : null
@@ -846,6 +855,18 @@ function upcomingRushWaves(scenario: ArenaScenario, state: ArenaSnapshot): NonNu
     upcoming.push({ nodeId: resource.nodeId, value: resource.value, windowStart: wave.windowStart, windowEnd: wave.windowEnd })
   }
   return upcoming.sort((a, b) => a.windowStart - b.windowStart)
+}
+
+function visibleNodeSet(scenario: ArenaScenario, agent: { nodeId: string; traits?: EntrantTraits }): Set<string> {
+  const visible = new Set<string>([agent.nodeId])
+  for (let hop = 0; hop < (agent.traits?.visionHops ?? 1); hop++) {
+    const frontier = [...visible]
+    for (const edge of scenario.edges) {
+      if (frontier.includes(edge.from)) visible.add(edge.to)
+      if (frontier.includes(edge.to)) visible.add(edge.from)
+    }
+  }
+  return visible
 }
 
 export function observeSnapshot(
@@ -863,11 +884,7 @@ export function observeSnapshot(
     ...scenario.resources.map(resource => ({ type: 'collect' as const, resourceId: resource.id })),
   ]
   const fogSets = (() => {
-    const visible = new Set<string>([agent.nodeId])
-    for (const edge of scenario.edges) {
-      if (edge.from === agent.nodeId) visible.add(edge.to)
-      if (edge.to === agent.nodeId) visible.add(edge.from)
-    }
+    const visible = visibleNodeSet(scenario, agent)
     const remembered = new Set<string>(agent.visitedNodes.filter(node => !visible.has(node)))
     const hidden = scenario.nodes.filter(node => !visible.has(node.id) && !remembered.has(node.id)).map(node => node.id)
     return { visible, remembered, hidden }
