@@ -62,7 +62,8 @@ Owner: sim developer.
 - **Landed (stage 2):** build cost is escalating (`axisSpend`, `budgetSpent`) and enforced by `validateBuild`, so the server is the authority and the Build screen mirrors it.
 - **Landed (stage 3):** brains can see their own build. `CHASSIS_FEATURE_DIM` (41) adds speed, battery and bump strength to the input, created only by `extendCheckpointForChassis` with zero rows, so old checkpoints and the pins are untouched. `buildToObservation` is not used by the encoder; the encoder reads the traits from `observation.self`.
 - **Landed (stage 4):** `train-es` and `eval-es` take `--chassis scout|hauler|raider`. Results: [CHASSIS_RESULTS.md](CHASSIS_RESULTS.md). Trained brains: `starter/chassis-<chassis>.json`.
-- **Open:** chassis-vs-chassis and brain-vs-brain balance (needs the PvP stream), and whether Hauler needs a perk. The first bench used house bots that ignore the chassis and is superseded by the trained results.
+- **Landed (stage 5):** `scripts/bench-chassis-pvp.ts` plays the trained chassis brains against each other. Result: not balanced. Scout leads, Hauler trails (see CHASSIS_RESULTS.md). Speed bonus lowered from +0.06 to +0.04 per point; Scout still leads.
+- **Open:** rebalance (Hauler perk, speed bonus), and several training seeds per chassis before drawing balance conclusions.
 
 Acceptance:
 - Pins and champion regression test passes.

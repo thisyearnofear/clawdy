@@ -1,0 +1,73 @@
+{
+  "variants": 40,
+  "brains": {
+    "scout": "es-g88-3d4307",
+    "hauler": "es-g117-db42de",
+    "raider": "es-g161-964304"
+  },
+  "result": {
+    "scout-vs-scout": {
+      "wins": 40,
+      "losses": 40,
+      "draws": 0,
+      "banked": 402,
+      "foe": 402
+    },
+    "scout-vs-hauler": {
+      "wins": 57,
+      "losses": 14,
+      "draws": 9,
+      "banked": 510,
+      "foe": 415
+    },
+    "scout-vs-raider": {
+      "wins": 65,
+      "losses": 15,
+      "draws": 0,
+      "banked": 493,
+      "foe": 381
+    },
+    "hauler-vs-scout": {
+      "wins": 14,
+      "losses": 57,
+      "draws": 9,
+      "banked": 415,
+      "foe": 510
+    },
+    "hauler-vs-hauler": {
+      "wins": 40,
+      "losses": 40,
+      "draws": 0,
+      "banked": 535,
+      "foe": 535
+    },
+    "hauler-vs-raider": {
+      "wins": 35,
+      "losses": 40,
+      "draws": 5,
+      "banked": 545,
+      "foe": 540
+    },
+    "raider-vs-scout": {
+      "wins": 15,
+      "losses": 65,
+      "draws": 0,
+      "banked": 381,
+      "foe": 493
+    },
+    "raider-vs-hauler": {
+      "wins": 40,
+      "losses": 35,
+      "draws": 5,
+      "banked": 540,
+      "foe": 545
+    },
+    "raider-vs-raider": {
+      "wins": 39,
+      "losses": 39,
+      "draws": 2,
+      "banked": 454,
+      "foe": 454
+    }
+  }
+}

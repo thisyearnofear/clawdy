@@ -116,7 +116,7 @@ export function buildToTraits(build: Build): EntrantTraits {
   const errors = validateBuild(build)
   if (errors.length > 0) throw new Error(`Invalid build: ${errors.join('; ')}`)
   const p = build.points
-  let travelSpeed = 1 + 0.06 * (p.speed - HAULER.speed)
+  let travelSpeed = 1 + 0.04 * (p.speed - HAULER.speed)
   let maxEnergy = 12 + (p.hardiness - HAULER.hardiness)
   let contactStrength = 0.5 * ((p.attack - HAULER.attack) + (p.defence - HAULER.defence))
   for (const id of build.modules) {

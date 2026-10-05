@@ -1,27 +1,48 @@
 # Chassis training results
 
-One brain per chassis, each warm-started from the champion `es-g115-c53fbf`, with the chassis traits in its input (`--chassis`, 250 generations, hub prior 1.5, seed 11) and then scored on 25 unseen hidden Rush variants x 2 sides (50 matches per opponent).
+One brain per chassis, each warm-started from the champion `es-g115-c53fbf` with the chassis traits in its input (`--chassis`, 250 generations, hub prior 1.5, seed 11, one training run per chassis). Reproduce:
 
-Reproduce: `npx tsx scripts/train-es.ts --init starter/rush-champion.json --chassis scout --gens 250 --pairs 12 --tasks 4 --seed 11 --hub-prior 1.5 --out runs/ch-scout.json`, then `npx tsx scripts/eval-es.ts <checkpoint> --chassis scout --variants 25 --write`. Records: `docs/eval-es-<chassis>.json`. Brains: `starter/chassis-<chassis>.json`.
+```
+npx tsx scripts/train-es.ts --init starter/rush-champion.json --chassis scout --gens 250 --pairs 12 --tasks 4 --seed 11 --hub-prior 1.5 --out runs/ch-scout.json
+npx tsx scripts/eval-es.ts runs/ch-scout.json --chassis scout --variants 25 --write
+npx tsx scripts/bench-chassis-pvp.ts 40 --write
+```
 
-## Results (wins-losses-draws out of 50)
+Brains: `starter/chassis-<chassis>.json`. Records: `docs/eval-es-<chassis>.json`, `docs/eval-chassis-pvp.json`. The first mapping (speed +0.06 per point) is kept in `docs/chassis-v1/`.
+
+## Against the house bots (v2: speed +0.04 per point)
+
+Wins-losses-draws out of 50 on 25 unseen hidden Rush variants x 2 sides.
 
 | Brain | vs safe | vs greedy | vs weather | vs poach |
 | --- | --- | --- | --- | --- |
 | Champion, unmodified (Hauler baseline) | 48-2-0 | 43-4-3 | 21-29-0 | 48-0-2 |
 | Hauler, trained | 48-2-0 | 43-4-3 | 25-25-0 | 49-0-1 |
-| Scout, champion untrained for it | 21-29-0 | 23-27-0 | 25-25-0 | 49-1-0 |
-| Scout, trained | 41-8-1 | 38-11-1 | 36-14-0 | 46-2-2 |
-| Raider, champion untrained for it | 1-49-0 | 5-45-0 | 9-41-0 | 49-0-1 |
-| Raider, trained | 40-8-2 | 37-11-2 | 37-13-0 | 45-1-4 |
+| Scout, trained | 42-8-0 | 29-20-1 | 33-17-0 | 49-0-1 |
+| Raider, trained | 36-14-0 | 33-15-2 | 34-16-0 | 49-1-0 |
+
+The Hauler baseline is the same checkpoint as before (its traits did not change), which is a useful determinism check.
+
+## Brain against brain (v2)
+
+The three trained brains play each other on 40 unseen variants x 2 sides, each with its own build. Row brain's record against the column brain (wins-losses-draws out of 80):
+
+| | vs scout | vs hauler | vs raider |
+| --- | --- | --- | --- |
+| scout | 40-40-0 | 57-14-9 | 65-15-0 |
+| hauler | 14-57-9 | 40-40-0 | 35-40-5 |
+| raider | 15-65-0 | 40-35-5 | 39-39-2 |
+
+With the first mapping (v1, speed +0.06) the picture was: Scout beat Hauler 71-9 and was even with Raider (39-41), and Raider beat Hauler 45-35.
 
 ## What this supports
 
-- **A brain has to be trained for its build.** The unmodified champion collapses on a Raider chassis (1-49 against `safe`) and is much weaker on a Scout. Training recovers most of it. The chassis choice is a real constraint on the brain, not a skin.
-- **Chassis change which opponents are hard.** Scout and Raider brains give up a few wins against `safe` and `greedy` (about 41 and 40 of 50, against 48) and win more against `weather` (36 and 37 of 50, against 21 for the Hauler baseline).
+- **A brain has to be trained for its build.** With the v1 mapping, the unmodified champion on a Raider chassis went 1-49 against `safe` and on a Scout 21-29. Training recovered it. The chassis is a real constraint on the brain, not a skin.
+- **Chassis change which opponents are hard.** Scout and Raider brains win less against `safe` and `greedy` than the Hauler and more against `weather`.
+- **Scout is ahead in both mappings.** It beat the Hauler by a wide margin in both, and beat the Raider in v2. Speed is the strongest stat in this sim today. Lowering its bonus from +0.06 to +0.04 per point did not fix that.
 
 ## What this does not support
 
-- **It does not show that `weather` is beaten.** In these runs only the scored brain has the build; the house bots run the pinned, unmodified chassis. A Scout is faster than the bot it plays. The 21-29 and 35-45 records for the equal-footing champion are a different comparison.
-- **It is one training seed per chassis** on route-only (server-style) matches. Differences of a few wins are noise. Nothing here is a balance claim between chassis.
-- **Chassis do not face each other here.** Chassis-vs-chassis and brain-vs-brain results need the PvP stream.
+- **It does not show that `weather` is beaten.** The house bots run the pinned, unmodified chassis, so a Scout or Raider is faster than the bot it plays. The equal-footing record (21-29 here, 35-45 on the pinned eval) is a different comparison.
+- **It is not a balance result.** There is one training run per chassis, and the Raider-vs-Scout result changed a lot between v1 and v2 (39-41 to 15-65), which is probably training variance rather than the mapping alone. Treat any single cell as noisy.
+- **The chassis are not balanced.** Hauler is the weakest, and Scout is the strongest. This is the main open item for the build system. Likely fixes: lower or remove the speed bonus, give Hauler a perk that matters in a race for timed cores, and train several seeds per chassis before drawing conclusions.

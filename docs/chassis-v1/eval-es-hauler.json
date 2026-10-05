@@ -1,0 +1,104 @@
+{
+  "checkpointId": "es-g117-db42de",
+  "weightsHash": "c78706db42de",
+  "variants": 25,
+  "seeds": [
+    9001,
+    9025
+  ],
+  "starter": {
+    "safe": {
+      "fitness": -6.2,
+      "margin": -4.7,
+      "ownBanked": 3,
+      "foeBanked": 7.7,
+      "wins": 0,
+      "losses": 50,
+      "matches": 50
+    },
+    "greedy": {
+      "fitness": -6.5,
+      "margin": -5,
+      "ownBanked": 3,
+      "foeBanked": 8,
+      "wins": 0,
+      "losses": 50,
+      "matches": 50
+    },
+    "weather": {
+      "fitness": -6.5,
+      "margin": -5,
+      "ownBanked": 3,
+      "foeBanked": 8,
+      "wins": 0,
+      "losses": 50,
+      "matches": 50
+    },
+    "poach": {
+      "fitness": 3.9,
+      "margin": 2.58,
+      "ownBanked": 3.34,
+      "foeBanked": 0.76,
+      "wins": 46,
+      "losses": 2,
+      "matches": 50
+    },
+    "starter": {
+      "fitness": 0,
+      "margin": 0,
+      "ownBanked": 3,
+      "foeBanked": 3,
+      "wins": 0,
+      "losses": 0,
+      "matches": 50
+    }
+  },
+  "trained": {
+    "safe": {
+      "fitness": 2.46,
+      "margin": 1.08,
+      "ownBanked": 8.74,
+      "foeBanked": 7.66,
+      "wins": 48,
+      "losses": 2,
+      "matches": 50
+    },
+    "greedy": {
+      "fitness": 1.83,
+      "margin": 0.66,
+      "ownBanked": 8.44,
+      "foeBanked": 7.78,
+      "wins": 43,
+      "losses": 4,
+      "matches": 50
+    },
+    "weather": {
+      "fitness": 0,
+      "margin": 0,
+      "ownBanked": 8.5,
+      "foeBanked": 8.5,
+      "wins": 25,
+      "losses": 25,
+      "matches": 50
+    },
+    "poach": {
+      "fitness": 5.65,
+      "margin": 4.18,
+      "ownBanked": 6.04,
+      "foeBanked": 1.86,
+      "wins": 49,
+      "losses": 0,
+      "matches": 50
+    },
+    "starter": {
+      "fitness": 3.13,
+      "margin": 2.38,
+      "ownBanked": 5.5,
+      "foeBanked": 3.12,
+      "wins": 25,
+      "losses": 0,
+      "matches": 50
+    }
+  },
+  "chassis": "hauler"
+}
