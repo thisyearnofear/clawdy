@@ -84,6 +84,9 @@ import { HelpDrawer } from '../workbench/HelpDrawer'
 import { ReplayPanel } from '../workbench/ReplayPanel'
 import { TournamentBracket } from '../workbench/TournamentBracket'
 import { ViewportHud, type HudFeedEvent } from '../workbench/ViewportHud'
+import { RulesetPicker } from '../workbench/RulesetPicker'
+import type { RulesetId } from '../../services/chassis'
+import { courseForRuleset, isSkirmishUnlocked, skirmishDisclosure, subscribeSkirmishUnlock, unlockSkirmish } from '../../services/workbenchRuleset'
 import { actionsEqual, COACH_ANYTIME_KEY, COACH_MISTAKE_KEY, COACH_NUDGE_KEY, friendlyActionLabel, isExecutableCheckpoint, PLAY_HINT_KEY, readHintDismissed, routeLabel } from '../workbench/readouts'
 import styles from './ArenaScene.module.css'
 
@@ -137,6 +140,8 @@ function Workbench({
   const [tournamentRunning, setTournamentRunning] = useState(false)
   const [playMode, setPlayMode] = useState<WorkbenchPlayMode>('practice')
   const [activeCourse, setActiveCourse] = useState(course)
+  const [rulesetId, setRulesetId] = useState<RulesetId | undefined>(undefined)
+  const skirmishUnlocked = useSyncExternalStore(subscribeSkirmishUnlock, isSkirmishUnlocked, () => false)
   const [studioOpen, setStudioOpen] = useState(false)
   const [broadcastRequest, setBroadcastRequest] = useState(0)
   const [hintOpen, setHintOpen] = useState(() => !readHintDismissed())
@@ -959,11 +964,13 @@ function Workbench({
   })
 
   const switchPlayMode = (mode: WorkbenchPlayMode) => {
-    if (view.phase !== 'ready' || mode === playMode || isTraining) return
+    if (view.phase !== 'ready' || mode === playMode || isTraining || tournamentRunning || sharedReplay) return
     setCoachSelection(null)
     setLiveCall(null)
     liveCallUsedRef.current = false
-    const next = selectWorkbenchCourse(course, rushCourse, mode)
+    const nextRuleset = mode === 'rush' ? rulesetId : undefined
+    const next = courseForRuleset(selectWorkbenchCourse(course, rushCourse, mode), build, nextRuleset)
+    setRulesetId(nextRuleset)
     setPlayMode(mode)
     setActiveCourse(next)
     recordFunnelEvent('mode.select', mode)
@@ -983,6 +990,35 @@ function Workbench({
     if (modeBannerTimer.current) window.clearTimeout(modeBannerTimer.current)
     modeBannerTimer.current = window.setTimeout(() => setModeBanner(null), 1100)
   }
+  const switchRuleset = (nextRuleset: RulesetId | undefined, unlock = false) => {
+    if (view.phase !== 'ready' || isTraining || tournamentRunning || sharedReplay) return
+    if (nextRuleset === 'skirmish' && !skirmishUnlocked && !unlock) return
+    if (unlock) {
+      if (!skirmishDisclosure({ unlocked: skirmishUnlocked, hasCompletedRun, hasOwnBrain }).canSkip) return
+      unlockSkirmish()
+    }
+    const mode = nextRuleset === 'skirmish' ? 'rush' : 'practice'
+    const next = courseForRuleset(selectWorkbenchCourse(course, rushCourse, mode), build, nextRuleset)
+    session.setScored(false)
+    session.setCourse(next)
+    setRulesetId(nextRuleset)
+    setPlayMode(mode)
+    setActiveCourse(next)
+    setCoachSelection(null)
+    setLiveCall(null)
+    liveCallUsedRef.current = false
+    setDirector(null)
+    setComparison(null)
+    setComparisonWatched(false)
+    setComparisonReviewing(null)
+    setRunTip(null)
+    setModeBanner(null)
+    floodWarnedRef.current = null
+    lastEncounterTickRef.current = null
+    lastSightingTickRef.current = null
+    sightingCountRef.current = 0
+  }
+  const skipToSkirmish = () => switchRuleset('skirmish', true)
   const download = () => {
     const url = URL.createObjectURL(new Blob([JSON.stringify(session.recording())], { type: 'application/json' }))
     const anchor = document.createElement('a')
@@ -1081,9 +1117,16 @@ function Workbench({
   }
 
   const handleBuildChange = (next: Build) => {
+    if (isTraining || coachingLocked || view.phase === 'running' || (rulesetId === 'skirmish' && view.phase !== 'ready')) return
     if (!isValidBuild(next)) {
       setTrainMessage('That build is over budget — the panel will not accept it.')
       return
+    }
+    if (rulesetId === 'skirmish') {
+      const nextCourse = courseForRuleset(rushCourse, next, rulesetId)
+      session.setCourse(nextCourse)
+      setActiveCourse(nextCourse)
+      setDirector(null)
     }
     setBuild(next)
     try {
@@ -1754,6 +1797,8 @@ function Workbench({
             isMatch={playMode === 'compete'}
             sideHint={follow === 'overview' ? 'Drag to look around' : activeCourse.config.name}
             score={champion && rival ? { you: champion.banked, foe: rival.banked, cargo: champion.cargo } : null}
+            agent={champion}
+            rulesetId={sharedReplay ? sharedReplay.recordings[sharedReplay.index]?.scenario.rulesetId : activeCourse.scenario.rulesetId}
             intent={championIntent}
             clock={clock}
             flooded={flooded}
@@ -1882,11 +1927,25 @@ function Workbench({
         </section>
         <aside className={styles.sidebar} aria-label="Competitor status">
           <div className={styles.sidebarHeader}><span>THE FIELD</span><span className={styles.timer}>{clock}</span></div>
+          {!sharedReplayActive && (
+            <RulesetPicker
+              rulesetId={rulesetId}
+              unlocked={skirmishUnlocked}
+              canSkip={skirmishDisclosure({ unlocked: skirmishUnlocked, hasCompletedRun, hasOwnBrain }).canSkip}
+              disabled={view.phase !== 'ready' || isTraining || tournamentRunning || !!sharedReplay}
+              onChange={next => switchRuleset(next)}
+              onSkip={skipToSkirmish}
+            />
+          )}
+          {rulesetId === 'skirmish' ? (
+            <p className={`${styles.buildReadout} ${styles.rulesetModeNote}`}>Skirmish preview is unranked. Choose Training Grounds above for the original Practice, Rush and Match modes.</p>
+          ) : (
           <div className={styles.modeToggle} role="group" aria-label="Match type" data-flash={modeBanner ?? undefined}>
             <button type="button" aria-pressed={playMode === 'practice'} disabled={view.phase !== 'ready' || isTraining} onClick={() => switchPlayMode('practice')}>Practice</button>
             <button type="button" aria-pressed={playMode === 'rush'} disabled={view.phase !== 'ready' || isTraining} onClick={() => switchPlayMode('rush')}>Rush · unranked</button>
             <button type="button" aria-pressed={playMode === 'compete'} disabled={view.phase !== 'ready' || isTraining} onClick={() => switchPlayMode('compete')}>Match</button>
           </div>
+          )}
           {view.phase === 'review' && sharedReplayActive && sharedReplay && (
             <section className={styles.replayPanel} aria-label="Shared league replay">
               <div className={styles.replayHead}>
@@ -2004,6 +2063,7 @@ function Workbench({
               trainMessage={trainMessage}
               build={build}
               onBuildChange={handleBuildChange}
+              rulesetId={rulesetId}
               trainingConfig={trainingConfig}
               onTrainingConfigChange={handleTrainingConfigChange}
               onForgedLookChange={setForgedLook}

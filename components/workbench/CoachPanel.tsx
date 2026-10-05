@@ -8,6 +8,7 @@ import { TrainingControls } from './TrainingControls'
 import { ForgePanel } from './ForgePanel'
 import type { ForgedLook } from '../../services/forgeView'
 import type { Build } from '../../services/buildBudget'
+import type { RulesetId } from '../../services/chassis'
 import type { TrainingConfig } from '../../services/trainingConfig'
 import { isEvaluationScenario } from '../../services/arenaScenarios'
 import type { ArenaTrainingExample } from '../../services/policyTrainer'
@@ -48,6 +49,7 @@ export function CoachPanel({
   trainMessage,
   build,
   onBuildChange,
+  rulesetId,
   trainingConfig,
   onTrainingConfigChange,
   onForgedLookChange,
@@ -74,6 +76,7 @@ export function CoachPanel({
   trainMessage: string | null
   build: Build
   onBuildChange: (next: Build) => void
+  rulesetId?: RulesetId
   trainingConfig: TrainingConfig
   onTrainingConfigChange: (next: TrainingConfig) => void
   /** When provided, shows the Forge panel and reports the champion's forged look (or null). */
@@ -113,7 +116,7 @@ export function CoachPanel({
 
       <details className={styles.guidanceDetails}>
         <summary>Build your rover</summary>
-        <BuildScreen build={build} onChange={onBuildChange} disabled={busy || coachingLocked} />
+        <BuildScreen build={build} onChange={onBuildChange} rulesetId={rulesetId} disabled={busy || coachingLocked || (rulesetId === 'skirmish' && phase !== 'ready')} />
       </details>
 
       <details className={styles.guidanceDetails}>

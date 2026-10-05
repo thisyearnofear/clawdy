@@ -1,6 +1,6 @@
 'use client'
 
-import { ARENA_RULES, type ArenaAgentState } from '../../services/arenaEpisode'
+import { ARENA_RULES, capacityOf, type ArenaAgentState } from '../../services/arenaEpisode'
 import type { CollectorStrategy } from '../../services/arenaPolicy'
 import { fingerprintLine } from '../../services/arenaEncounter'
 import { SPECIALIZATION_FOCI, type FocusVector } from '../../services/coachingEngine'
@@ -118,7 +118,7 @@ export function AgentCard({
       )}
       {!compact && (
         <dl className={styles.agentStats}>
-          <div><dt>Cargo</dt><dd>{formatStat(agent.cargo)}<small> / {ARENA_RULES.capacity}</small></dd></div>
+          <div><dt>Cargo</dt><dd>{formatStat(agent.cargo)}<small> / {capacityOf(agent)}</small></dd></div>
           <div><dt>Energy</dt><dd>{formatStat(agent.energy)}<small> / {ARENA_RULES.initialEnergy}</small></dd></div>
           <div><dt>Recovery</dt><dd>{agent.recoveries}</dd></div>
         </dl>

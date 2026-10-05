@@ -23,6 +23,8 @@ import {
   toggleModule,
   type Build,
 } from '../../services/buildBudget'
+import type { RulesetId } from '../../services/chassis'
+import { chassisRuleSummary } from '../../services/workbenchRuleset'
 import styles from '../environment/ArenaScene.module.css'
 
 /**
@@ -49,10 +51,12 @@ export function BuildScreen({
   build,
   onChange,
   disabled = false,
+  rulesetId,
 }: {
   build: Build
   onChange: (next: Build) => void
   disabled?: boolean
+  rulesetId?: RulesetId
 }) {
   const headingId = useId()
   const errors = useMemo(() => budgetErrors(build), [build])
@@ -61,6 +65,12 @@ export function BuildScreen({
 
   return (
     <section className={styles.buildScreen} aria-labelledby={headingId}>
+      <h3 id={headingId}>Build for {rulesetId === 'skirmish' ? 'Skirmish' : 'Training Grounds'}</h3>
+      <p className={styles.buildReadout}>
+        {rulesetId === 'skirmish'
+          ? 'Your build applies to this unranked preview. The house rival uses a base Hauler.'
+          : 'This course keeps the original rules. Your chassis changes its look here; build stats apply in build-enabled matches.'}
+      </p>
       <div className={styles.buildChassisRow} role="radiogroup" aria-labelledby={headingId}>
         {CHASSIS_IDS.map(id => {
           const selected = build.chassis === id
@@ -79,6 +89,7 @@ export function BuildScreen({
               <span>
                 {CHASSIS_BASE[id].speed} speed · {CHASSIS_BASE[id].hardiness} hardiness
               </span>
+              <span>{chassisRuleSummary(id, rulesetId)}</span>
             </button>
           )
         })}

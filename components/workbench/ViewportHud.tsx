@@ -1,6 +1,6 @@
 'use client'
 
-import { ARENA_RULES } from '../../services/arenaEpisode'
+import { capacityOf, type ArenaAgentState } from '../../services/arenaEpisode'
 import type { ArenaPhase } from '../../services/arenaProtocol'
 import styles from '../environment/ArenaScene.module.css'
 
@@ -20,6 +20,8 @@ interface ViewportHudProps {
   isMatch: boolean
   sideHint: string
   score: { you: number; foe: number; cargo: number } | null
+  agent?: Pick<ArenaAgentState, 'traits'>
+  rulesetId?: string
   intent?: string | null
   clock: string
   flooded: boolean
@@ -32,20 +34,20 @@ interface ViewportHudProps {
   onRetry: () => void
 }
 
-export function ViewportHud({ phase, isMatch, sideHint, score, intent, clock, flooded, drained, floodEndsIn, nextFloodIn, runTip, feed, error, onRetry }: ViewportHudProps) {
+export function ViewportHud({ phase, isMatch, sideHint, score, agent, rulesetId, intent, clock, flooded, drained, floodEndsIn, nextFloodIn, runTip, feed, error, onRetry }: ViewportHudProps) {
   return (
     <>
       <div className={styles.worldTopline}>
         <div>
           <span className={styles.liveDot} data-active={phase === 'running'} />
-          {PHASE_LABELS[phase]}{isMatch ? ' · Match' : ' · Practice'}
+          {PHASE_LABELS[phase]}{rulesetId === 'skirmish' ? ' · Skirmish' : ' · Training Grounds'}{isMatch ? ' · Match' : rulesetId === 'skirmish' ? ' · Unranked preview' : ' · Practice'}
           {score && (
             <span className={styles.scorebug} aria-label={`Score: you ${score.you}, rival ${score.foe}`}>
               {' · '}<strong className={styles.you}>{score.you}</strong>
               <span className={styles.sep}>YOU–RIVAL</span>
               <strong className={styles.foe}>{score.foe}</strong>
               {' · '}{clock}
-              {score.cargo > 0 && <span>●{score.cargo}/{ARENA_RULES.capacity}</span>}
+              {score.cargo > 0 && <span>●{score.cargo}/{capacityOf(agent ?? {})}</span>}
               {flooded && floodEndsIn !== null && <span className={styles.floodWarn}>FLOOD {floodEndsIn}s</span>}
               {!flooded && drained && <span className={styles.drained}>DRAINED</span>}
               {!flooded && !drained && nextFloodIn !== null && nextFloodIn <= 30 && <span className={styles.floodWarn}>FLOOD IN {nextFloodIn}s</span>}

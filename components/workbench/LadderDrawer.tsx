@@ -8,6 +8,8 @@ import type { Id } from '../../convex/_generated/dataModel'
 import { useArenaStore } from '../../services/arenaStore'
 import { exportCheckpointJson } from '../../services/checkpointStorage'
 import { BUILD_STORAGE_KEY, parseBuild } from '../../services/buildBudget'
+import { leagueBrainId, unlockSkirmish } from '../../services/workbenchRuleset'
+import type { RulesetId } from '../../services/chassis'
 import styles from '../environment/ArenaScene.module.css'
 
 const MESSAGES: Record<string, string> = {
@@ -19,6 +21,9 @@ const MESSAGES: Record<string, string> = {
   'cannot-challenge-self': 'You cannot challenge your own brain.',
   'opponent-not-listed': 'That brain is not accepting challenges.',
   'mode-mismatch': 'Brains can only race within the same mode.',
+  'ruleset-mismatch': 'Brains can only race within the same ruleset. Publish a separate entry for this ruleset.',
+  'build-required': 'Skirmish needs a saved chassis build. Open Lessons and build your rover first.',
+  'unknown-ruleset': 'This deployment does not support that ruleset yet.',
 }
 
 function describeError(error: unknown): string {
@@ -33,11 +38,14 @@ function replayHref(shareId: string): string {
 export function LadderDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const panelRef = useRef<HTMLElement>(null)
   const checkpoint = useArenaStore(state => state.activeCheckpoint)
-  const board = useQuery(api.ladder.top, open ? { limit: 10 } : 'skip')
-  const mine = useQuery(api.ladder.mine, open ? {} : 'skip')
-  const chassisBoard = useQuery(api.league.topByChassis, open ? {} : 'skip')
+  const [rulesetId, setRulesetId] = useState<RulesetId | undefined>(undefined)
+  const rulesetArgs = rulesetId ? { rulesetId } : {}
+  const rulesetName = rulesetId ? 'Skirmish' : 'Training Grounds'
+  const board = useQuery(api.ladder.top, open ? { limit: 10, ...rulesetArgs } : 'skip')
+  const mine = useQuery(api.ladder.mine, open ? rulesetArgs : 'skip')
+  const chassisBoard = useQuery(api.league.topByChassis, open ? rulesetArgs : 'skip')
   const brains = useQuery(api.league.mine, open ? {} : 'skip')
-  const pool = useQuery(api.league.pool, open ? {} : 'skip')
+  const pool = useQuery(api.league.pool, open ? rulesetArgs : 'skip')
   const history = useQuery(api.league.challenges, open ? {} : 'skip')
   const submit = useAction(api.ladderRun.submit)
   const publish = useAction(api.leagueRun.publish)
@@ -54,6 +62,10 @@ export function LadderDrawer({ open, onClose }: { open: boolean; onClose: () => 
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
+  useEffect(() => {
+    if (brains && brains.length > 0) unlockSkirmish()
+  }, [brains])
+
   if (!open) return null
 
   const currentBuild = () => parseBuild(window.localStorage.getItem(BUILD_STORAGE_KEY))
@@ -61,19 +73,19 @@ export function LadderDrawer({ open, onClose }: { open: boolean; onClose: () => 
   const run = async () => {
     setStatus({ kind: 'running' })
     try {
-      const result = await submit({ checkpointJson: exportCheckpointJson(checkpoint), build: currentBuild() })
+      const result = await submit({ checkpointJson: exportCheckpointJson(checkpoint), build: currentBuild(), ...rulesetArgs })
       setStatus({ kind: 'done', text: `Verified: ${result.score.toFixed(1)} points${result.improved ? ' (new best)' : ` (best ${result.best.toFixed(1)})`}.` })
     } catch (error) {
       setStatus({ kind: 'error', text: describeError(error) })
     }
   }
 
-  // The brain's league id is its checkpoint id: republishing the same brain
-  // updates it in place rather than stacking copies.
+  // Each ruleset gets its own league identity; republishing updates that entry.
   const publishBrain = async () => {
     setBusy('publish')
     try {
-      const result = await publish({ brainId: checkpoint.id, name: checkpoint.name, checkpointJson: exportCheckpointJson(checkpoint), build: currentBuild() })
+      const result = await publish({ brainId: leagueBrainId(checkpoint.id, rulesetId), name: checkpoint.name, checkpointJson: exportCheckpointJson(checkpoint), build: currentBuild(), ...rulesetArgs })
+      unlockSkirmish()
       setStatus({ kind: 'done', text: result.replaced ? `"${checkpoint.name}" updated in the league.` : `"${checkpoint.name}" is listed in the league.` })
     } catch (error) {
       setStatus({ kind: 'error', text: describeError(error) })
@@ -95,7 +107,9 @@ export function LadderDrawer({ open, onClose }: { open: boolean; onClose: () => 
     }
   }
 
-  const challenger = brains?.find(brain => brain.brainId === checkpoint.id) ?? brains?.[0]
+  const rulesetBrains = brains?.filter(brain => brain.rulesetId === rulesetId)
+  const rulesetHistory = history?.filter(row => row.rulesetId === rulesetId)
+  const challenger = rulesetBrains?.find(brain => brain.brainId === leagueBrainId(checkpoint.id, rulesetId)) ?? rulesetBrains?.[0]
 
   return (
     <div className={styles.helpScrim} role="presentation" onClick={onClose}>
@@ -104,14 +118,26 @@ export function LadderDrawer({ open, onClose }: { open: boolean; onClose: () => 
           <h2>Ladder</h2>
           <button type="button" className={styles.helpClose} onClick={onClose} aria-label="Close ladder">Close</button>
         </div>
+        <label className={styles.policyLabel}>
+          <span>League ruleset</span>
+          <select aria-label="League ruleset" value={rulesetId ?? ''} disabled={busy !== null || status.kind === 'running'}
+            onChange={event => { setRulesetId(event.target.value === 'skirmish' ? 'skirmish' : undefined); setStatus({ kind: 'idle' }) }}>
+            <option value="">Training Grounds</option>
+            <option value="skirmish">Skirmish</option>
+          </select>
+        </label>
+        <p className={styles.helpFooterNote}>
+          {rulesetName} board and challenge pool. Ratings stay separate across rulesets.
+          {rulesetId && ' Skirmish server support must be deployed before submitting. Trained brains and balance are not verified.'}
+        </p>
         <p className={styles.helpFooterNote}>
           The server replays your brain on fresh hidden layouts against every house bot. Scores come from that replay, never from your browser.
         </p>
         <div className={styles.helpFooter}>
-          <button type="button" className={styles.helpClose} onClick={() => void run()} disabled={status.kind === 'running'}>
+          <button type="button" className={styles.helpClose} onClick={() => void run()} disabled={status.kind === 'running' || busy !== null}>
             {status.kind === 'running' ? 'Verifying…' : `Submit ${checkpoint.name}`}
           </button>
-          <button type="button" className={styles.helpClose} onClick={() => void publishBrain()} disabled={busy === 'publish'}>
+          <button type="button" className={styles.helpClose} onClick={() => void publishBrain()} disabled={busy !== null || status.kind === 'running'}>
             {busy === 'publish' ? 'Publishing…' : 'Publish to league'}
           </button>
           {status.text && <span className={styles.helpFooterNote} role="status">{status.text}</span>}
@@ -144,9 +170,9 @@ export function LadderDrawer({ open, onClose }: { open: boolean; onClose: () => 
           Published brains race other players&rsquo; brains on the pinned arena. Both sides run server-side and the replay is shared by link.
         </p>
         <ol className={styles.helpSteps}>
-          {brains === undefined && <li>Loading…</li>}
-          {brains?.length === 0 && <li>No published brains yet — publish {checkpoint.name} above.</li>}
-          {brains?.map(brain => (
+          {rulesetBrains === undefined && <li>Loading…</li>}
+          {rulesetBrains?.length === 0 && <li>No published brains yet — publish {checkpoint.name} above.</li>}
+          {rulesetBrains?.map(brain => (
             <li key={brain.brainId}>
               <strong>{brain.name}</strong> · rating {brain.rating.toFixed(0)} · {brain.matchesPlayed} match{brain.matchesPlayed === 1 ? '' : 'es'}
               {' '}
@@ -172,7 +198,7 @@ export function LadderDrawer({ open, onClose }: { open: boolean; onClose: () => 
               <button
                 type="button"
                 className={styles.helpClose}
-                disabled={!challenger || busy === brain._id}
+                disabled={!challenger || busy !== null || status.kind === 'running'}
                 title={challenger ? `Challenge with ${challenger.name}` : 'Publish a brain first'}
                 onClick={() => challenger && void runChallenge(brain._id, challenger.brainId)}
               >
@@ -182,11 +208,11 @@ export function LadderDrawer({ open, onClose }: { open: boolean; onClose: () => 
           ))}
         </ol>
 
-        {history && history.length > 0 && (
+        {rulesetHistory && rulesetHistory.length > 0 && (
           <>
             <h3 className={styles.helpHeading}>Recent challenges</h3>
             <ol className={styles.helpSteps}>
-              {history.map(row => (
+              {rulesetHistory.map(row => (
                 <li key={row._id}>
                   {row.challengerName} vs {row.defenderName} · {row.status === 'failed' ? 'failed' : row.winnerSide === null ? 'draw' : row.winnerSide === row.side ? 'won' : 'lost'} · banked {row.banked.join('–')}
                   {row.shareId && <> · <a href={replayHref(row.shareId)}>replay</a></>}
