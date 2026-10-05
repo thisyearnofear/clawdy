@@ -1,5 +1,6 @@
 import {
   ARENA_RULES,
+  capacityOf,
   type ArenaAction,
   type ArenaObservation,
 } from './arenaEpisode'
@@ -108,7 +109,7 @@ export function encodeObservation(observation: ArenaObservation, dim: number = O
   const rules = ARENA_RULES
 
   // Agent physical and state properties
-  vec[0] = Math.max(0, Math.min(1, self.cargo / rules.capacity))
+  vec[0] = Math.max(0, Math.min(1, self.cargo / capacityOf(self)))
   vec[1] = Math.max(0, Math.min(1, self.energy / rules.initialEnergy))
   vec[2] = observation.weather.flooded ? 1.0 : 0.0
   vec[3] = observation.weather.drainedUntilTick > observation.tick ? 1.0 : 0.0
@@ -426,7 +427,7 @@ export function scoreMoveEdge(observation: ArenaObservation, edgeId: string, cls
       const flare = flareFirstEdges(observation).get(edgeId)
       return flare ? -flare.cost * 10 + flare.value * 20 : -Infinity
     }
-    const freeSlots = Math.max(0, ARENA_RULES.capacity - self.cargo)
+    const freeSlots = Math.max(0, capacityOf(self) - self.cargo)
     if (freeSlots <= 0) return -Infinity
     const extras = Math.max(0, Math.min(freeSlots, visibleHere.length) - 1)
     return -nowCost * 10 + extras * 2 + onwardProspect(observation, target) * 0.15
@@ -442,7 +443,7 @@ export function scoreMoveEdge(observation: ArenaObservation, edgeId: string, cls
   // remains: chasing remembered ghosts (heldout-02 ridge-s1) must not beat
   // a direct path home. Visible cores still unlock normal prospect ranking.
   const visiblePickupExists = observation.resources.some(r => r.available && r.visible)
-  if (self.cargo > 0 && (self.cargo >= ARENA_RULES.capacity || !visiblePickupExists)) {
+  if (self.cargo > 0 && (self.cargo >= capacityOf(self) || !visiblePickupExists)) {
     const homeFromHere = routeCostsFrom(observation, self.nodeId).get(self.baseNode) ?? Infinity
     const homeFromTarget = routeCostsFrom(observation, target).get(self.baseNode) ?? Infinity
     if (homeFromTarget > homeFromHere + 1e-6) return -Infinity
@@ -498,7 +499,7 @@ function flareFirstEdges(observation: ArenaObservation): Map<string, { cost: num
   const cached = flareCache.get(observation)
   if (cached) return cached
   const edges = new Map<string, { cost: number; value: number }>()
-  const room = ARENA_RULES.capacity - observation.self.cargo
+  const room = capacityOf(observation.self) - observation.self.cargo
   for (const resource of observation.resources) {
     if (!resource.flare || !resource.available || resource.visible || resource.value > room) continue
     if (resource.nodeId === observation.self.nodeId) continue
@@ -535,7 +536,7 @@ export function classifyAction(action: ArenaAction, observation: ArenaObservatio
     // class 4/5 home-ranking must be allowed to win. Otherwise a homeward
     // edge through a stocked node classifies as 6, scores -Infinity, and the
     // agent waits forever with cargo aboard (practice-normal death at ridge-s1).
-    const freeSlots = Math.max(0, ARENA_RULES.capacity - observation.self.cargo)
+    const freeSlots = Math.max(0, capacityOf(observation.self) - observation.self.cargo)
     if (
       freeSlots > 0 &&
       observation.resources.some(r => r.available && r.visible && r.nodeId === targetNode)

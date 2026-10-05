@@ -1,5 +1,6 @@
 import {
   ARENA_RULES,
+  capacityOf,
   ArenaEpisode,
   type ArenaAction,
   type ArenaObservation,
@@ -459,7 +460,7 @@ function defaultRivalPolicy(obs: ArenaObservation): ArenaAction {
   if (!obs.decisionDue) return { type: 'wait' }
   const available = obs.availableActions
   const bank = available.find(a => a.type === 'bank')
-  if (bank && obs.self.cargo >= ARENA_RULES.capacity) return bank
+  if (bank && obs.self.cargo >= capacityOf(obs.self)) return bank
   const collect = available.find(a => a.type === 'collect')
   if (collect) return collect
   const move = available.find(a => a.type === 'move')

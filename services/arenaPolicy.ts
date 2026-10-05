@@ -1,5 +1,6 @@
 import {
   ARENA_RULES,
+  capacityOf,
   ArenaEpisode,
   type ArenaAction,
   type ArenaObservation,
@@ -210,7 +211,7 @@ function proposeCollectorAction(observation: ArenaObservation, strategy: Collect
   if (available.some(action => action.type === 'bank')) return { type: 'bank' }
   const home = findArenaRoute(observation, observation.self.baseNode, strategy === 'learned' ? 'safe' : strategy)
   const shouldBank = observation.self.cargo > 0 && (
-    observation.self.cargo >= ARENA_RULES.capacity || observation.resources.length === 0 ||
+    observation.self.cargo >= capacityOf(observation.self) || observation.resources.length === 0 ||
     (home !== null && observation.remainingTicks <= home.cost + ARENA_RULES.decisionEveryTicks * 2)
   )
   if (shouldBank) return home?.firstEdge ? { type: 'move', edgeId: home.firstEdge } : wait
@@ -238,7 +239,7 @@ function proposeCollectorAction(observation: ArenaObservation, strategy: Collect
     }
   }
   const targets = observation.resources
-    .filter(resource => resource.value + observation.self.cargo <= ARENA_RULES.capacity)
+    .filter(resource => resource.value + observation.self.cargo <= capacityOf(observation.self))
     .map(resource => ({ resource, route: findArenaRoute(observation, resource.nodeId, strategy === 'learned' ? 'safe' : strategy) }))
     .filter((entry): entry is typeof entry & { route: Route } => entry.route !== null)
     .sort((a, b) => {

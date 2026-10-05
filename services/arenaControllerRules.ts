@@ -1,4 +1,4 @@
-import { ARENA_RULES, type ArenaAction, type ArenaObservation } from './arenaEpisode'
+import { ARENA_RULES, capacityOf, type ArenaAction, type ArenaObservation } from './arenaEpisode'
 
 /**
  * Trip-horizon clock constant for the patience rule: only sit on the pad
@@ -57,7 +57,7 @@ function isLegal(observation: ArenaObservation, action: ArenaAction): boolean {
  * so teacher and student gate on identical target selection.
  */
 function routeTargets(observation: ArenaObservation): Route[] {
-  const capacityLeft = ARENA_RULES.capacity - observation.self.cargo
+  const capacityLeft = capacityOf(observation.self) - observation.self.cargo
   return observation.resources
     .filter(resource => resource.available && resource.value <= capacityLeft)
     .map(resource => ({ resource, route: routeFrom(observation, observation.self.nodeId, resource.nodeId) }))
@@ -107,7 +107,7 @@ export function applyControllerRules(observation: ArenaObservation, proposed: Ar
 
   const homeRoute = routeFrom(observation, self.nodeId, self.baseNode)
   const committed = self.cargo > 0 && (
-    self.cargo >= ARENA_RULES.capacity ||
+    self.cargo >= capacityOf(self) ||
     observation.resources.length === 0 ||
     (homeRoute !== null && observation.remainingTicks <= homeRoute.cost + ARENA_RULES.decisionEveryTicks * 2)
   )
@@ -160,7 +160,7 @@ export function applyControllerRules(observation: ArenaObservation, proposed: Ar
         (desiredEdge.from === self.nodeId || desiredEdge.to === self.nodeId)
       if (gatedNotGhosts) {
         const cheapTarget = edgeTarget(observation, action.edgeId)
-        const capacityLeft = ARENA_RULES.capacity - self.cargo
+        const capacityLeft = capacityOf(self) - self.cargo
         const cheapHasCore = observation.resources.some(
           r => r.available && r.nodeId === cheapTarget && r.value <= capacityLeft,
         )
