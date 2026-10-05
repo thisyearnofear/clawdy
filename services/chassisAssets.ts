@@ -37,6 +37,21 @@ export function resolveRoverModel(entrantId: string, chassis?: ChassisId | strin
   return modelFor(`${entrantId}Rover`) ?? {}
 }
 
+const IDENTITY_TRANSFORM: MintAssetTransform = { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] }
+
+/**
+ * A forged rover (Forge, Stream D) is a raw Tripo GLB stored in Convex. Tripo
+ * normalises size and the same style of prompt comes back oriented like the
+ * shipped chassis bodies, so the forged model borrows its chassis body's
+ * registry transform (facing, ground offset, scale). A forged model never
+ * replaces the legacy model unless it loads: the caller wraps it in an error
+ * boundary that falls back to {@link resolveRoverModel}.
+ */
+export function resolveForgedModel(chassis: string, url: string): RoverModelSource {
+  const body = (CHASSIS_IDS as readonly string[]).includes(chassis) ? modelFor(chassisAssetKey(chassis as ChassisId)) : undefined
+  return { key: `forged.${chassis}`, url, transform: body?.transform ?? IDENTITY_TRANSFORM }
+}
+
 /** Chassis ids that currently have a registered body, for the asset board and the harness. */
 export function registeredChassisBodies(): ChassisId[] {
   return CHASSIS_IDS.filter(id => modelFor(chassisAssetKey(id)) !== undefined)

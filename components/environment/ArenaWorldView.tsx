@@ -25,7 +25,8 @@ import { contactShadowTexture } from './contactShadow'
 import { PracticeGhost } from './PracticeGhost'
 import FrameLimiter from '../utils/FrameLimiter'
 import { getMintAsset, getMintModelArtifact, getMintModelTransform, getMintModelUrl } from '../../services/mintAssets'
-import { resolveRoverModel } from '../../services/chassisAssets'
+import { resolveForgedModel, resolveRoverModel } from '../../services/chassisAssets'
+import { ModelBoundary } from './ModelBoundary'
 import type { ChassisId } from '../../services/chassis'
 
 export type ArenaCamera = 'overview' | 'champion' | 'rival' | 'compare'
@@ -43,6 +44,8 @@ type WorldProps = {
   championName?: string
   /** Optional chassis per entrant id; picks the chassis body model. Absent keeps the legacy rover look. */
   chassisByEntrant?: Partial<Record<string, ChassisId>>
+  /** The champion's forged look (Forge). Falls back to the standard rover if the model cannot load. */
+  forgedLook?: { url: string; chassis: string } | null
   /** Champion accent for ring + rover tint (defaults to canopy green). */
   championAccent?: string
   /** Presentation-side beat detected by the scene (clash / sighting). */
@@ -353,7 +356,7 @@ function RoverShadow({ session, id }: { session: ArenaSession; id: string }) {
   )
 }
 
-function Rover({ session, id, color, chassis }: { session: ArenaSession; id: string; color: string; chassis?: ChassisId }) {
+function Rover({ session, id, color, chassis, forged }: { session: ArenaSession; id: string; color: string; chassis?: ChassisId; forged?: { url: string; chassis: string } | null }) {
   const group = useRef<THREE.Group>(null)
   const previous = useRef(new THREE.Vector3())
   const target = useRef(new THREE.Vector3())
@@ -397,19 +400,29 @@ function Rover({ session, id, color, chassis }: { session: ArenaSession; id: str
 
   const { url: modelUrl, transform } = resolveRoverModel(id, chassis)
   const ProceduralGeometry = id === 'rival' ? RivalRoverGeometry : RoverGeometry
+  const forgedSource = forged ? resolveForgedModel(forged.chassis, forged.url) : undefined
+
+  const standardBody = modelUrl ? (
+    <Suspense fallback={<ProceduralGeometry color={color} wheelRefs={wheelRefs} />}>
+      <MintModel url={modelUrl} transform={transform} tint={color} />
+    </Suspense>
+  ) : (
+    <ProceduralGeometry color={color} wheelRefs={wheelRefs} />
+  )
 
   return (
     <>
       <RoverShadow session={session} id={id} />
       <group ref={group}>
         <group ref={body} scale={1.35}>
-          {modelUrl ? (
-            <Suspense fallback={<ProceduralGeometry color={color} wheelRefs={wheelRefs} />}>
-              <MintModel url={modelUrl} transform={transform} tint={color} />
-            </Suspense>
-          ) : (
-            <ProceduralGeometry color={color} wheelRefs={wheelRefs} />
-          )}
+          {forgedSource?.url ? (
+            // Forged models keep their own paint (no accent tint). Any load failure shows the standard rover.
+            <ModelBoundary key={forgedSource.url} fallback={standardBody}>
+              <Suspense fallback={standardBody}>
+                <MintModel url={forgedSource.url} transform={forgedSource.transform} />
+              </Suspense>
+            </ModelBoundary>
+          ) : standardBody}
         </group>
       </group>
     </>
@@ -811,6 +824,7 @@ function World({
   ghostPose,
   championName = 'You',
   chassisByEntrant,
+  forgedLook,
   championAccent = '#bce478',
   fxCue,
   onReady,
@@ -897,7 +911,7 @@ function World({
               <ringGeometry args={[0.62, 0.82, 40]} />
               <meshBasicMaterial color={color} side={THREE.DoubleSide} transparent opacity={0.7} />
             </mesh>
-            <Rover session={session} id={entrant.id} color={color} chassis={chassisByEntrant?.[entrant.id]} />
+            <Rover session={session} id={entrant.id} color={color} chassis={chassisByEntrant?.[entrant.id]} forged={entrant.id === 'champion' ? forgedLook : null} />
             <RoverStatus session={session} id={entrant.id} tint={color} />
             <RoverFX session={session} id={entrant.id} />
           </group>
