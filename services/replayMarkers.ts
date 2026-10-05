@@ -54,6 +54,20 @@ export function summarizeReplayMarkers(recording: ArenaRecording): ReplayMarker[
       })
     } else if (event.type === 'core_spawn') {
       markers.push({ type: 'core-spawn', tick: event.tick, note: `${event.resourceId} at ${event.nodeId} (value ${event.value})` })
+    } else {
+      // A future ArenaSimEvent still becomes a marker rather than silently
+      // dropping: emit its type, the first *Id field as the subject, and the
+      // remaining scalar fields as the note. The union is statically
+      // exhaustive today, so read through a generic record.
+      const generic = event as unknown as { type: string; tick: number } & Record<string, unknown>
+      const entries = Object.entries(generic).filter(([key]) => key !== 'type' && key !== 'tick')
+      const subjectKey = entries.find(([key, value]) => key.endsWith('Id') && typeof value === 'string')?.[0]
+      const subject = generic[subjectKey ?? ''] as string | undefined
+      const note = entries
+        .filter(([key, value]) => key !== subjectKey && (typeof value === 'string' || typeof value === 'number'))
+        .map(([key, value]) => `${key}=${value}`)
+        .join(' ')
+      markers.push({ type: generic.type, tick: generic.tick, agentId: subject, note: note || undefined })
     }
   }
 

@@ -338,6 +338,8 @@ function Workbench({
       })
       setCinematic(true)
       session.reviewFrom(recordings[0])
+      // Consume the share link so leaving review and reloading doesn't reopen it.
+      window.history.replaceState(null, '', window.location.pathname)
     }).catch(() => { if (!cancelled) setTrainMessage('Could not load that replay link.') })
     return () => { cancelled = true }
   }, [convex, session])

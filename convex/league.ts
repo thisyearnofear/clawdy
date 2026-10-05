@@ -231,20 +231,24 @@ export const topByChassis = query({
 })
 
 /**
- * Per-axis report card: mean and max points per stat axis across ladder
- * entries that carry a build, plus the caller's own build for comparison.
+ * Per-axis report card: mean and max points per stat axis across the league's
+ * published brains that carry a build — what the field actually races — plus
+ * the caller's most-played brain for comparison.
  */
 export const reportCard = query({
-  args: {},
+  args: { mode: v.optional(v.string()) },
   returns: v.object({
     entriesWithBuilds: v.number(),
     axes: v.array(v.object({ axis: v.string(), mean: v.number(), max: v.number() })),
     mine: v.union(v.null(), v.object({ chassis: v.string(), points: v.record(v.string(), v.number()) })),
   }),
-  handler: async ctx => {
-    const rows = await ctx.db.query('ladder').withIndex('by_score').order('desc').take(50)
+  handler: async (ctx, args) => {
+    const rows = await ctx.db
+      .query('brains')
+      .withIndex('by_mode_listed', q => q.eq('mode', args.mode ?? 'rush'))
+      .collect()
     const axes = ['navigation', 'speed', 'hardiness', 'defence', 'attack']
-    const totals = new Map<string, { sum: number; max: number; count: number }>(axes.map(axis => [axis, { sum: 0, max: 0, count: 0 }]))
+    const totals = new Map<string, { sum: number; max: number }>(axes.map(axis => [axis, { sum: 0, max: 0 }]))
     let entriesWithBuilds = 0
     for (const row of rows) {
       if (!row.build) continue
@@ -257,7 +261,12 @@ export const reportCard = query({
       }
     }
     const userId = await getAuthUserId(ctx)
-    const mineRow = userId ? await ctx.db.query('ladder').withIndex('by_user', q => q.eq('userId', userId)).unique() : null
+    const mineRows = userId
+      ? await ctx.db.query('brains').withIndex('by_user', q => q.eq('userId', userId)).collect()
+      : []
+    const mineRow = mineRows
+      .filter(row => row.build)
+      .sort((a, b) => b.matchesPlayed - a.matchesPlayed || b.createdAt - a.createdAt)[0]
     return {
       entriesWithBuilds,
       axes: axes.map(axis => {

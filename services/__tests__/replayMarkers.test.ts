@@ -73,6 +73,16 @@ describe('replay markers', () => {
     expect(bump.note).toContain('learned.champ')
   })
 
+  it('passes through future sim event types instead of dropping them', () => {
+    const rec = recording([{
+      events: [
+        { type: 'collision-damage', tick: 60, agentId: 'rival', amount: 2 } as never,
+      ],
+    }])
+    const markers = summarizeReplayMarkers(rec)
+    expect(markers).toContainEqual({ type: 'collision-damage', tick: 60, agentId: 'rival', note: 'amount=2' })
+  })
+
   it('marks the first checkpoint where a battery bottoms out, once per agent', () => {
     const rec = recording([
       { tick: 0, agents: [agent('champion', { energy: 8 }), agent('rival')] },
