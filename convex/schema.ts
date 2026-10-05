@@ -253,4 +253,23 @@ export default defineSchema({
     pairings: v.number(),
     createdAt: v.number(),
   }).index('by_mode', ['mode', 'round']),
+
+  // Forge your champion (docs/LEAGUE_PLAN.md Stream D). One row per forge request.
+  // `credits` is reserved while pending/ready and refunded (row marked failed) on
+  // any Tripo failure, so the global cap is the sum over pending + ready rows.
+  forges: defineTable({
+    userId: v.id('users'),
+    chassis: v.string(),
+    paint: v.string(),
+    status: v.union(v.literal('pending'), v.literal('ready'), v.literal('failed')),
+    credits: v.number(),
+    taskId: v.optional(v.string()),
+    storageId: v.optional(v.id('_storage')),
+    errorCode: v.optional(v.string()),
+    createdAt: v.number(),
+    deadline: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index('by_user', ['userId', 'createdAt'])
+    .index('by_status', ['status']),
 })

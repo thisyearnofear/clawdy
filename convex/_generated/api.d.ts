@@ -11,6 +11,7 @@
 import type * as account from "../account.js";
 import type * as auth from "../auth.js";
 import type * as crons from "../crons.js";
+import type * as forge from "../forge.js";
 import type * as http from "../http.js";
 import type * as ladder from "../ladder.js";
 import type * as ladderRun from "../ladderRun.js";
@@ -33,6 +34,7 @@ declare const fullApi: ApiFromModules<{
   account: typeof account;
   auth: typeof auth;
   crons: typeof crons;
+  forge: typeof forge;
   http: typeof http;
   ladder: typeof ladder;
   ladderRun: typeof ladderRun;
