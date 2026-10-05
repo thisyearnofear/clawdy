@@ -104,6 +104,84 @@
           1
         ]
       }
+    },
+    "rivalRover": {
+      "source": {
+        "manifestVersion": 1,
+        "kind": "tripo-model",
+        "assetType": "model",
+        "assetId": "36cb77d1-85c1-4c6e-8616-f4edf160ae2c",
+        "generator": "Tripo P1-20260311",
+        "prompt": "Low wide tracked cargo hauler robot, rust-orange and charcoal armor, open cargo bed"
+      },
+      "artifacts": {
+        "original_glb": {
+          "artifactId": "original_glb",
+          "role": "canonical_model",
+          "format": "glb",
+          "contentType": "model/gltf-binary",
+          "filename": "rival-rover.glb",
+          "localPath": "public/assets/tripo/rival-rover.glb",
+          "loaderHint": "gltf",
+          "byteSize": 3430076
+        }
+      },
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          -1.5707963267948966,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    "energyCore": {
+      "source": {
+        "manifestVersion": 1,
+        "kind": "tripo-model",
+        "assetType": "model",
+        "assetId": "b5be4f69-a06a-4c6c-83eb-34cce1feb77e",
+        "generator": "Tripo P1-20260311",
+        "prompt": "Glowing amber faceted crystal energy core with brass collar"
+      },
+      "artifacts": {
+        "original_glb": {
+          "artifactId": "original_glb",
+          "role": "canonical_model",
+          "format": "glb",
+          "contentType": "model/gltf-binary",
+          "filename": "energy-core.glb",
+          "localPath": "public/assets/tripo/energy-core.glb",
+          "loaderHint": "gltf",
+          "byteSize": 2725948
+        }
+      },
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          0.34,
+          0.34,
+          0.34
+        ]
+      }
     }
   }
 }

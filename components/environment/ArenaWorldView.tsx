@@ -416,6 +416,27 @@ function Rover({ session, id, color }: { session: ArenaSession; id: string; colo
   )
 }
 
+function ProceduralCoreBody() {
+  return (
+    <mesh castShadow>
+      <octahedronGeometry args={[0.14]} />
+      <meshStandardMaterial color="#ffe08a" emissive="#ff9b3a" emissiveIntensity={0.25} metalness={0.45} roughness={0.2} />
+    </mesh>
+  )
+}
+
+// The Tripo-generated crystal when the registry has it; the procedural gem while it loads or if it is absent.
+function CoreBody() {
+  const asset = getMintAsset('energyCore')
+  const artifact = asset ? getMintModelArtifact(asset) : undefined
+  if (!asset || !artifact) return <ProceduralCoreBody />
+  return (
+    <Suspense fallback={<ProceduralCoreBody />}>
+      <MintModel url={getMintModelUrl(artifact)} transform={getMintModelTransform(asset)} />
+    </Suspense>
+  )
+}
+
 function Resource({ session, id, position }: { session: ArenaSession; id: string; position: ArenaPosition }) {
   const group = useRef<THREE.Group>(null)
   const outerRingRef = useRef<THREE.Mesh>(null)
@@ -431,10 +452,7 @@ function Resource({ session, id, position }: { session: ArenaSession; id: string
   })
   return (
     <group ref={group} position={position}>
-      <mesh castShadow>
-        <octahedronGeometry args={[0.14]} />
-        <meshStandardMaterial color="#ffe08a" emissive="#ff9b3a" emissiveIntensity={0.25} metalness={0.45} roughness={0.2} />
-      </mesh>
+      <CoreBody />
       <mesh ref={outerRingRef} castShadow>
         <torusGeometry args={[0.22, 0.018, 12, 32]} />
         <meshStandardMaterial color="#ffb14d" emissive="#ff8c1a" emissiveIntensity={0.25} metalness={0.4} roughness={0.25} />
