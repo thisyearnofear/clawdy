@@ -3,21 +3,32 @@
  *
  * ## Relationship to `services/chassis.ts` (Stream A)
  *
- * `chassis.ts` owns the contract and is authoritative: the flat stat cap, the
- * per-axis integer range, the module slots, and `validateBuild`. This module
- * does not redefine any of that. It re-exports the pieces the UI needs and adds
- * only the two things `chassis.ts` deliberately leaves to the presentation
- * layer:
+ * `chassis.ts` owns the contract and is authoritative: the per-axis integer
+ * range, the module slots, `validateBuild`'s flat stat cap, and the escalating
+ * `axisSpend`/`budgetSpent` curve. This module does not redefine any of that.
+ * It re-exports the pieces the UI needs and adds only the two things
+ * `chassis.ts` deliberately leaves to the presentation layer:
  *
- *  1. **An escalating marginal cost curve** over the small discretionary
- *     budget, so the sliders express a real tradeoff instead of a flat buy.
+ *  1. **A marginal-cost label for sliders**, so a drag can say "the next one
+ *     costs 2" without reimplementing the accumulation.
  *  2. **Clamping and save/load helpers**, so the UI cannot offer a build the
- *     sim would reject.
+ *     league would reject.
  *
- * `chassis.ts` validates the flat total because the sim only cares about the
- * final stat vector. That is the right rule for the authority. It is not by
- * itself a rule for *how a player spends three points*, which is a UX
- * decision — that is what lives here.
+ * ## The legality gate is two checks, not one
+ *
+ * `validateBuild` enforces the *flat* total (the sim only cares about the final
+ * stat vector), but the match authority in `services/ladderRunner.ts`
+ * (`legalLeagueBuild`, reused by `convex/leagueRun.ts`) additionally rejects
+ * anything over the escalating curve:
+ *
+ *     validateBuild(build).length > 0 || budgetSpent(build) > STAT_BUDGET
+ *
+ * So a hand-authored build can be flat-legal and still be unable to race. This
+ * module treats **both** as the definition of "over budget" via `budgetErrors`,
+ * and every guard below uses it, so the panel blocks a build at the point of
+ * purchase rather than letting a player assemble something the league will
+ * refuse with a message they cannot act on. The error string is deliberately
+ * byte-identical to the server's, so the UI and the API say the same thing.
  *
  * ## The cost curve
  *
@@ -36,9 +47,8 @@
  * reversible.
  *
  * Lowering an axis below its chassis base refunds its points to the budget, so
- * "give up 2 hardiness to buy 2 speed" is expressible. The flat cap in
- * `validateBuild` is therefore always respected by construction, and
- * `affordableBuild` is the hard guarantee the UI leans on.
+ * "give up 2 hardiness to buy 2 speed" is expressible. `affordableBuild` is the
+ * hard guarantee the UI leans on: anything it produces satisfies `budgetErrors`.
  */
 
 import {
@@ -152,6 +162,32 @@ export function remainingBudget(build: Build): number {
 }
 
 /**
+ * Everything wrong with `build`, as the *league* would judge it — not just
+ * `validateBuild`'s flat cap.
+ *
+ * This is the check the Build screen has to make. Stream A's `validateBuild`
+ * alone is not enough: it accepts a build that sits on the flat cap but breaks
+ * the escalating curve, and `legalLeagueBuild` (`services/ladderRunner.ts`,
+ * reused by `convex/leagueRun.ts`) rejects that same build. A panel that only
+ * called `validateBuild` would therefore let a player assemble something the
+ * league refuses to race, and they would meet the rejection at submit time with
+ * no way to act on it.
+ *
+ * The curve message is byte-identical to the server's
+ * (`build costs N but the budget is 3`), so the panel and the API agree on the
+ * wording rather than describing the same failure two different ways.
+ */
+export function budgetErrors(build: Build): string[] {
+  const errors = validateBuild(build)
+  // Only worth adding when the flat checks passed; otherwise the first error is
+  // the actionable one and a second message would just be noise.
+  if (errors.length > 0) return errors
+  const spent = budgetSpent(build)
+  if (spent > STAT_BUDGET) errors.push(`build costs ${spent} but the budget is ${STAT_BUDGET}`)
+  return errors
+}
+
+/**
  * The highest level `axis` can reach in `build` without exceeding the budget or
  * `STAT_MAX`. A slider reads this as its `max`, so a drag can never overspend.
  */
@@ -194,13 +230,14 @@ export function setAxisLevel(build: Build, axis: StatAxis, level: number): Build
   const clamped = Math.max(minLevel(axis, build), Math.min(requested, ceiling))
   const next: Build = { ...build, points: { ...build.points, [axis]: clamped } }
   // The clamp is the guarantee; this is the belt-and-braces check that the
-  // flat rule in `validateBuild` agrees with us.
-  if (validateBuild(next).length > 0) return build
+  // league's own gate agrees with us.
+  if (budgetErrors(next).length > 0) return build
   return next
 }
 
+/** Whether the league would accept this build — both the flat cap and the curve. */
 export function isValidBuild(build: unknown): build is Build {
-  return validateBuild(build as Build).length === 0
+  return budgetErrors(build as Build).length === 0
 }
 
 /** Switching chassis resets to that chassis's base, discarding spend. */
@@ -213,7 +250,7 @@ export function toggleModule(build: Build, id: ModuleId): Build {
   if (has) return { ...build, modules: build.modules.filter(existing => existing !== id) }
   if (build.modules.length >= MODULE_SLOTS) return build
   const next: Build = { ...build, modules: [...build.modules, id] }
-  return validateBuild(next).length === 0 ? next : build
+  return budgetErrors(next).length === 0 ? next : build
 }
 
 /**
@@ -237,10 +274,12 @@ export function affordableBuild(build: Build): Build {
  */
 export function describeBuildSummary(build: Build): string {
   // Stream A's `describeBuild` derives from `buildToTraits`, which *throws* on
-  // an invalid build. The readout sits next to the error list in the same
+  // a build it rejects. The readout sits next to the error list in the same
   // render, so it must not throw there: an illegal build gets a readable line
-  // and the error alert below carries the detail.
-  const invalid = validateBuild(build)
+  // and the error alert below carries the detail. Guarded with `budgetErrors`
+  // rather than `validateBuild` so an over-curve build also degrades instead
+  // of describing traits the league will never run.
+  const invalid = budgetErrors(build)
   const traits = invalid.length === 0 ? describeBuildTraits(build) : 'This build is not legal yet'
   const clauses: string[] = [traits]
 
@@ -267,7 +306,7 @@ export const BUILD_STORAGE_KEY = 'clawdy_build_v1'
 
 /** Serialise for localStorage / JSON export. */
 export function serializeBuild(build: Build): string {
-  const errors = validateBuild(build)
+  const errors = budgetErrors(build)
   if (errors.length > 0) throw new Error(`Refusing to save an invalid build: ${errors.join('; ')}`)
   return JSON.stringify(build)
 }
@@ -281,7 +320,7 @@ export function parseBuild(raw: string | null | undefined): Build {
   if (!raw) return baseBuild(DEFAULT_BUILD.chassis)
   try {
     const parsed = JSON.parse(raw) as Build
-    return validateBuild(parsed).length === 0 ? parsed : baseBuild(DEFAULT_BUILD.chassis)
+    return budgetErrors(parsed).length === 0 ? parsed : baseBuild(DEFAULT_BUILD.chassis)
   } catch {
     return baseBuild(DEFAULT_BUILD.chassis)
   }

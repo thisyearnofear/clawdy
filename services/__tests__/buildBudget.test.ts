@@ -4,6 +4,7 @@ import {
   axisSpend,
   affordableBuild,
   baseBuild,
+  budgetErrors,
   budgetSpent,
   CHASSIS_BASE,
   CHASSIS_TOTAL,
@@ -28,9 +29,9 @@ import {
   validateBuild,
   type Build,
   type ChassisId,
-  type ModuleId,
   type StatAxis,
 } from '../buildBudget'
+import { legalLeagueBuild } from '../ladderRunner'
 
 const CHASSIS_IDS_FOR_TEST: ChassisId[] = ['scout', 'hauler', 'raider']
 
@@ -192,6 +193,16 @@ describe('chassis and modules', () => {
 })
 
 describe('over-budget builds are rejected (Stream B acceptance criterion)', () => {
+  it('uses the league’s own gate, not just the flat cap', () => {
+    // The load-bearing cross-module invariant: anything this panel accepts is
+    // something `legalLeagueBuild` accepts. If Stream A tightens the gate, this
+    // fails here first instead of at a player's league submit.
+    const greedy = withPoints({ navigation: 5 })
+    expect(isValidBuild(greedy)).toBe(false)
+    expect(legalLeagueBuild(greedy)).toBeUndefined()
+    expect(budgetErrors(greedy)).toEqual(['build costs 6 but the budget is 3'])
+  })
+
   it('rejects a flat total over the cap with Stream A’s own error', () => {
     const over: Build = {
       chassis: 'hauler',
@@ -216,6 +227,25 @@ describe('over-budget builds are rejected (Stream B acceptance criterion)', () =
       modules: [],
     }
     expect(() => serializeBuild(over)).toThrow(/Refusing to save an invalid build/)
+  })
+
+  it('refuses to save a flat-legal but over-curve build', () => {
+    expect(() => serializeBuild(withPoints({ navigation: 5 }))).toThrow(/build costs 6 but the budget is 3/)
+  })
+
+  it('never lets a slider move produce a build the league would refuse', () => {
+    // Every move the panel can make, from every axis, on every chassis, must
+    // land inside the league gate. This is the acceptance criterion as an
+    // executable statement rather than a claim.
+    for (const chassis of CHASSIS_IDS_FOR_TEST) {
+      for (const axis of STAT_AXES) {
+        for (const target of [0, 1, 2, 3, 4, STAT_MAX]) {
+          const moved = setAxisLevel(baseBuild(chassis), axis, target)
+          expect(budgetErrors(moved), `${chassis} ${axis}=${target}`).toEqual([])
+          expect(legalLeagueBuild(moved), `${chassis} ${axis}=${target}`).toBeDefined()
+        }
+      }
+    }
   })
 })
 
@@ -247,6 +277,15 @@ describe('build and config round-trip through save and load (Stream B acceptance
     expect(parseBuild('{not json')).toEqual(baseBuild(DEFAULT_BUILD.chassis))
     expect(parseBuild('{"chassis":"tank","points":{}}')).toEqual(baseBuild(DEFAULT_BUILD.chassis))
   })
+
+  it('falls back rather than loading a stored build the league would refuse', () => {
+    // A build saved before the curve became authoritative, or hand-edited in
+    // devtools, must not survive the load: it would otherwise be handed to
+    // `handleBuildChange` and then rejected at submit time.
+    const stale = withPoints({ navigation: 5 })
+    expect(isValidBuild(stale)).toBe(false)
+    expect(parseBuild(JSON.stringify(stale))).toEqual(baseBuild(DEFAULT_BUILD.chassis))
+  })
 })
 
 describe('readout honesty (ground rule 4)', () => {
@@ -272,12 +311,18 @@ describe('readout honesty (ground rule 4)', () => {
     expect(describeBuildSummary(affordableBuild(baseBuild('hauler')))).toMatch(/every point is spent/)
   })
 
-  it('describes a hand-authored build that breaks the point-buy curve honestly', () => {
-    // A build can satisfy Stream A's flat cap while breaking this layer's
-    // escalating-cost rule. The readout must say so rather than hide it.
+  it('describes a flat-legal but over-curve build as illegal, not as a working rover', () => {
+    // `withPoints({navigation: 5})` puts three points on one axis: flat-legal
+    // (total is exactly CHASSIS_TOTAL + STAT_BUDGET) but over the escalating
+    // curve, so the league refuses to race it. The panel must say so rather
+    // than describe traits the match would never use.
     const greedy = withPoints({ navigation: 5 })
     expect(validateBuild(greedy)).toEqual([])
-    expect(describeBuildSummary(greedy)).toMatch(/3 points over budget/)
+    expect(legalLeagueBuild(greedy)).toBeUndefined()
+
+    const text = describeBuildSummary(greedy)
+    expect(text).toMatch(/not legal yet/i)
+    expect(text).toMatch(/3 points over budget/)
   })
 
   it('always returns non-empty copy for every chassis', () => {

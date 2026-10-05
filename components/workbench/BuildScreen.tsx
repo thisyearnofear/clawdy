@@ -3,6 +3,7 @@
 import { useId, useMemo } from 'react'
 import {
   baseBuild,
+  budgetErrors,
   CHASSIS_BASE,
   CHASSIS_IDS,
   CHASSIS_LABELS,
@@ -20,9 +21,7 @@ import {
   setAxisLevel,
   STAT_MAX,
   toggleModule,
-  validateBuild,
   type Build,
-  type ModuleId,
 } from '../../services/buildBudget'
 import styles from '../environment/ArenaScene.module.css'
 
@@ -34,6 +33,11 @@ import styles from '../environment/ArenaScene.module.css'
  * by this component. If a slider cannot overspend it is because
  * `maxAffordableLevel` refused to offer the level, not because a stylesheet
  * greys the input out.
+ *
+ * The alert reads `budgetErrors`, not `validateBuild`, because the league's gate
+ * (`legalLeagueBuild`) is the flat cap *and* the escalating curve. Announcing
+ * only the flat cap would let a player finish a build the league will refuse to
+ * race with no warning on screen.
  *
  * Accessibility follows the research: a native `input[type=range]` already
  * exposes value/min/max to assistive tech, and `aria-valuetext` carries the
@@ -51,7 +55,7 @@ export function BuildScreen({
   disabled?: boolean
 }) {
   const headingId = useId()
-  const errors = useMemo(() => validateBuild(build), [build])
+  const errors = useMemo(() => budgetErrors(build), [build])
   const remaining = remainingBudget(build)
   const blocked = errors.length > 0
 
