@@ -48,7 +48,7 @@ Writes `CONVEX_DEPLOYMENT` and `NEXT_PUBLIC_CONVEX_URL` into `.env.local`. With 
 
 **Schema changes are a two-push, reviewed procedure.** `convex/schema.ts` changes with new *optional* columns go to a **preview/dev** deployment first together with any backfill (`npx convex run sync:backfillLegacy` — idempotent; stamps owner/LWW clocks and promotes legacy `payload` blobs into the typed `doc` column, flagging rejects as `payloadRejected` instead of destroying them). Verify on the preview, then push to prod. Never deploy a schema that narrows or reinterprets existing columns without the backfill having run. `convex.json` is not required: the default deploy ships every module in `convex/`.
 
-**Production (Vercel):** set `NEXT_PUBLIC_CONVEX_URL` to the **prod** deployment URL (e.g. `https://<deployment>.convex.cloud`) on the Vercel project, then redeploy so the client bundle inlines it. Live app: [https://clawdy.trustfall.xyz/](https://clawdy.trustfall.xyz/). Dashboard: Convex project `clawdy` on the team that owns the deployment.
+**Production (Vercel):** set `NEXT_PUBLIC_CONVEX_URL` to the **prod** deployment URL (e.g. `https://<deployment>.convex.cloud`) on the Vercel project, then redeploy so the client bundle inlines it. Live app: [https://clawdy.trustfall.xyz/](https://clawdy.trustfall.xyz/). Dashboard: Convex project `clawdy` on the team that owns the deployment. Sign-in needs extra Convex env vars on each deployment: see [AUTH.md](AUTH.md#deployments).
 
 ---
 
@@ -78,7 +78,7 @@ npm run starter:train
 ## Architecture & Deployment Notes
 
 - **Hosting:** Production runs on Vercel ([clawdy.trustfall.xyz](https://clawdy.trustfall.xyz/)). Git pushes to `main` deploy; after changing `NEXT_PUBLIC_*` vars, redeploy so the client rebuild picks them up.
-- **Convex:** system of record for the coaching lineage (checkpoints, examples, match/job history) under a browser **guest key** — exhibition trust, not Convex Auth. Uniqueness is transactional (composite-index read-then-insert); ordering converges on the server `serverSeenAt` clock. Guest keys are exhibition-only; ranked identity needs Convex Auth later (single seam: `convex/lib/identity.ts`).
+- **Convex:** system of record for the coaching lineage (checkpoints, examples, match/job history) under a browser **guest key**, or under a verified account when signed in (Convex Auth, GitHub; see [AUTH.md](AUTH.md)). Uniqueness is transactional (composite-index read-then-insert); ordering converges on the server `serverSeenAt` clock. Guest keys are exhibition-only; ranked ladder results require a signed-in account (single seam: `convex/lib/identity.ts`).
 - **Client-Side Storage:** `localStorage` (`clawdy_checkpoints_v1`, `clawdy_examples_v1`) is a write-behind cache of the zustand arena store (`services/arenaStore.ts`) plus the sync outbox — instant boot, offline play, never a second source of truth when Convex is configured.
 - **Import/Export:** Checkpoints are serialized to standard JSON files that can be imported and exported between browser sessions and builder CLI scripts.
 - **World Assets:** Sandstone Basin terrain GLB is served statically with a SHA-256 pin in `services/arenaCourse.ts`. The Marble pipeline was retired and removed September 26, 2026 (git history holds the provenance); Spark bank bursts generate splats procedurally and load no Marble assets.

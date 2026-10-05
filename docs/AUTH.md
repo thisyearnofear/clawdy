@@ -45,3 +45,25 @@ account's best; the client never supplies one. One verification per account per 
 Extra deployment variable: `ASSET_BASE_URL`, a publicly reachable origin that serves
 `/terrain/sandstone-basin.glb` (falls back to `SITE_URL`, which is not reachable from Convex when it
 is `localhost`). Tests: `convex/__tests__/ladder.test.ts`, `services/__tests__/ladderRunner.test.ts`.
+
+## Deployments
+
+Canonical site: `https://clawdy.trustfall.xyz` (Vercel). Each Convex deployment has its own GitHub OAuth app,
+JWT keys and env vars; secrets are never committed.
+
+| | Dev | Prod |
+|---|---|---|
+| Convex deployment | `cheerful-elk-726` | `accomplished-capybara-638` |
+| GitHub callback | `https://cheerful-elk-726.convex.site/api/auth/callback/github` | `https://accomplished-capybara-638.convex.site/api/auth/callback/github` |
+| `SITE_URL` | where you run the app (for example `http://localhost:3000`) | `https://clawdy.trustfall.xyz` |
+| `ASSET_BASE_URL` | a public origin serving the terrain file | `https://clawdy.trustfall.xyz` |
+
+Also set on each: `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET`, `JWT_PRIVATE_KEY`, `JWKS`. Use
+`npx convex env set --deployment prod ...` for prod and `npx convex deploy` to push code. Leave "Allow wildcard
+matching", "Enable Device Flow" and "Expire user access tokens" unchecked on the GitHub app.
+
+Check the server side without a browser: `npx convex run --prod auth:signIn '{"provider":"github","params":{}}'`
+returns a `redirect` URL; following it should send you to GitHub's authorize page with the right `client_id` and
+`redirect_uri`. A full sign-in round trip still needs a person to approve on GitHub.
+
+If a client secret is exposed, generate a new one on the GitHub app page, set it with `convex env set`, then delete the old one.
