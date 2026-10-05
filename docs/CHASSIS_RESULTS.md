@@ -46,3 +46,22 @@ With the first mapping (v1, speed +0.06) the picture was: Scout beat Hauler 71-9
 - **It does not show that `weather` is beaten.** The house bots run the pinned, unmodified chassis, so a Scout or Raider is faster than the bot it plays. The equal-footing record (21-29 here, 35-45 on the pinned eval) is a different comparison.
 - **It is not a balance result.** There is one training run per chassis, and the Raider-vs-Scout result changed a lot between v1 and v2 (39-41 to 15-65), which is probably training variance rather than the mapping alone. Treat any single cell as noisy.
 - **The chassis are not balanced.** Hauler is the weakest, and Scout is the strongest. This is the main open item for the build system. Likely fixes: lower or remove the speed bonus, give Hauler a perk that matters in a race for timed cores, and train several seeds per chassis before drawing conclusions.
+
+## Skirmish ruleset (Hauler capacity 5, Raider steal-all, Scout two-hop vision)
+
+Same recipe with `--ruleset skirmish`, two seeds (11, 12) per chassis. Only the trained brain gets its chassis perk; the house bots are unmodified (capacity 3, one-hop vision, steal one). Wins-losses-draws out of 50 on 25 unseen hidden Rush variants x 2 sides (evaluated without `--write`, so these numbers come from the training-host logs, not a pinned record).
+
+| Brain (seed 11 / seed 12) | vs safe | vs greedy | vs weather | vs poach |
+| --- | --- | --- | --- | --- |
+| Scout | 24-1-25 / 24-1-25 | 22-4-24 / 22-5-23 | 26-13-11 / 26-17-7 | 28-1-21 / 29-1-20 |
+| Hauler | 49-0-1 / 49-0-1 | 50-0-0 / 50-0-0 | 49-0-1 / 49-0-1 | 45-3-2 / 46-3-1 |
+| Raider | 39-11-0 / 35-15-0 | 35-15-0 / 33-15-2 | 31-19-0 / 34-16-0 | 48-1-1 / 48-0-2 |
+
+What this shows:
+- The two seeds agree closely, so the picture is reproducible, not luck.
+- **Skirmish is not balanced.** Capacity 5 makes the Hauler dominant: it banks about 10 per match against about 7 for the house bots. Scout and Raider are roughly level with safe and greedy.
+- **Weather is still not beaten** by Scout or Raider (31-34 wins of 50 for Raider, a small edge; Scout wins more but with many draws). Hauler wins it, but with the capacity advantage.
+- Scout's training stopped improving early (best at generation 23 and 53). Two-hop vision is not yet used well; the encoder has no input for the wider view.
+- These are scores against house bots, not brain-vs-brain. The PvP bench has not been run for Skirmish, so no claim about chassis vs chassis.
+
+Next: lower Hauler capacity to 4 or make the extra slot cost speed, run the Skirmish PvP bench, give the encoder a far-resource feature for Scout. Brains: `starter/skirmish-<chassis>.json` (seed 11); both seeds in `docs/skirmish-v1/`.
