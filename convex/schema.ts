@@ -275,6 +275,8 @@ export default defineSchema({
     errorCode: v.optional(v.string()),
     createdAt: v.number(),
     deadline: v.number(),
+    /** When a poll last started, so the sweep can restart a chain that died. */
+    polledAt: v.optional(v.number()),
     completedAt: v.optional(v.number()),
   })
     .index('by_user', ['userId', 'createdAt'])

@@ -16,6 +16,8 @@ export const DEFAULT_GLOBAL_CREDIT_CAP = 2000
 /** Give up polling Tripo after this long. */
 export const FORGE_TIMEOUT_MS = 8 * 60_000
 export const FORGE_POLL_MS = 5_000
+/** A pending forge whose poll has not started for this long is restarted by the sweep. */
+export const FORGE_POLL_STALE_MS = 45_000
 
 /** Paint is a fixed menu, never free text, so the prompt cannot be steered by a player. */
 export const FORGE_PAINTS = ['moss', 'ember', 'ice', 'violet', 'sand'] as const

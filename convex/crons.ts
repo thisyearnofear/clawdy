@@ -14,4 +14,7 @@ const crons = cronJobs()
 
 crons.interval('league tournament round', { hours: 6 }, internal.leagueRun.runRound, { mode: 'rush' })
 
+// Forge safety net (Stream D): fail overdue forges and restart quiet polls. See convex/forge.ts sweep.
+crons.interval('forge sweep', { minutes: 2 }, internal.forge.sweep, {})
+
 export default crons

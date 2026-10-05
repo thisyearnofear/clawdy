@@ -2,11 +2,14 @@ import { getAuthUserId } from '@convex-dev/auth/server'
 import { ConvexError, v } from 'convex/values'
 import { internal } from './_generated/api'
 import { action, internalAction, internalMutation, internalQuery, query } from './_generated/server'
+import type { Doc, Id } from './_generated/dataModel'
+import type { ActionCtx, MutationCtx } from './_generated/server'
 import {
   FORGE_CREDITS,
   FORGE_MESSAGES,
   FORGE_NEGATIVE_PROMPT,
   FORGE_POLL_MS,
+  FORGE_POLL_STALE_MS,
   FORGE_TIMEOUT_MS,
   buildForgePrompt,
   classifyTripoFailure,
@@ -34,9 +37,25 @@ function fail(code: ForgeErrorCode): never {
   throw new ConvexError(code)
 }
 
+/** Fail every pending forge whose deadline has passed. Returns how many were expired. */
+async function expireOverdue(ctx: MutationCtx, rows: Doc<'forges'>[]): Promise<number> {
+  const now = Date.now()
+  let expired = 0
+  for (const row of rows) {
+    if (row.status === 'pending' && row.deadline < now) {
+      await ctx.db.patch(row._id, { status: 'failed', errorCode: 'tripo-timeout', completedAt: now })
+      expired++
+    }
+  }
+  return expired
+}
+
 export const reserve = internalMutation({
   args: { userId: v.id('users'), chassis: v.string(), paint: v.string() },
   handler: async (ctx, args) => {
+    // A pending forge past its deadline is dead (its poll chain broke). Fail it here so the
+    // player is never locked out and its credits are released, even if the sweep has not run.
+    await expireOverdue(ctx, await ctx.db.query('forges').withIndex('by_user', q => q.eq('userId', args.userId)).collect())
     const mine = await ctx.db.query('forges').withIndex('by_user', q => q.eq('userId', args.userId)).collect()
     const live = await Promise.all(['pending', 'ready'].map(status => ctx.db.query('forges').withIndex('by_status', q => q.eq('status', status as 'pending' | 'ready')).collect()))
     const decision = decideForge(
@@ -72,8 +91,41 @@ export const finish = internalMutation({
   args: { forgeId: v.id('forges'), storageId: v.id('_storage') },
   handler: async (ctx, { forgeId, storageId }) => {
     const row = await ctx.db.get(forgeId)
-    if (!row || row.status !== 'pending') return
+    if (!row || row.status !== 'pending') return false
     await ctx.db.patch(forgeId, { status: 'ready', storageId, completedAt: Date.now() })
+    return true
+  },
+})
+
+/** Records that a poll started, so the sweep only restarts chains that have gone quiet. */
+export const markPolled = internalMutation({
+  args: { forgeId: v.id('forges') },
+  handler: async (ctx, { forgeId }) => {
+    const row = await ctx.db.get(forgeId)
+    if (row && row.status === 'pending') await ctx.db.patch(forgeId, { polledAt: Date.now() })
+  },
+})
+
+/**
+ * Safety net, run by a cron. A scheduled action is not retried if it fails, so a transient
+ * failure would leave a forge pending forever (player blocked, credits held). The sweep fails
+ * overdue forges and restarts polling for any pending forge whose poll has gone quiet.
+ */
+export const sweep = internalMutation({
+  args: {},
+  handler: async ctx => {
+    const pending = await ctx.db.query('forges').withIndex('by_status', q => q.eq('status', 'pending')).collect()
+    const expired = await expireOverdue(ctx, pending)
+    const now = Date.now()
+    let restarted = 0
+    for (const row of pending) {
+      if (row.status !== 'pending' || row.deadline < now || !row.taskId) continue
+      if (now - (row.polledAt ?? row.createdAt) < FORGE_POLL_STALE_MS) continue
+      await ctx.db.patch(row._id, { polledAt: now })
+      await ctx.scheduler.runAfter(0, internal.forge.poll, { forgeId: row._id })
+      restarted++
+    }
+    return { expired, restarted }
   },
 })
 
@@ -144,48 +196,61 @@ export const poll = internalAction({
   handler: async (ctx, { forgeId }) => {
     const row = await ctx.runQuery(internal.forge.get, { forgeId })
     if (!row || row.status !== 'pending' || !row.taskId) return
-    const key = process.env.TRIPO_API_KEY
-    if (!key) {
-      await ctx.runMutation(internal.forge.failForge, { forgeId, code: 'forge-not-configured' })
-      return
-    }
-    if (Date.now() > row.deadline) {
-      await ctx.runMutation(internal.forge.failForge, { forgeId, code: 'tripo-timeout' })
-      return
-    }
-
-    let task: { status?: string; output?: { pbr_model?: string; model?: string; base_model?: string } } | undefined
+    await ctx.runMutation(internal.forge.markPolled, { forgeId })
     try {
-      const response = await fetch(`${TRIPO_API}/task/${row.taskId}`, { headers: { Authorization: `Bearer ${key}` } })
-      task = ((await response.json()) as { data?: typeof task }).data
+      await pollOnce(ctx, forgeId, row.taskId, row.deadline)
     } catch {
-      // A dropped poll is retried below until the deadline.
+      // Any unexpected error must not strand the forge: retry until the deadline, then fail it.
+      if (Date.now() > row.deadline) await ctx.runMutation(internal.forge.failForge, { forgeId, code: 'tripo-failed' })
+      else await ctx.scheduler.runAfter(FORGE_POLL_MS, internal.forge.poll, { forgeId })
     }
-
-    const status = task?.status
-    if (status === 'success') {
-      const url = task?.output?.pbr_model ?? task?.output?.model ?? task?.output?.base_model
-      if (!url) {
-        await ctx.runMutation(internal.forge.failForge, { forgeId, code: 'tripo-failed' })
-        return
-      }
-      const download = await fetch(url)
-      const bytes = download.ok ? await download.arrayBuffer() : undefined
-      if (!bytes || bytes.byteLength === 0 || bytes.byteLength > MAX_MODEL_BYTES) {
-        await ctx.runMutation(internal.forge.failForge, { forgeId, code: 'tripo-failed' })
-        return
-      }
-      const storageId = await ctx.storage.store(new Blob([bytes], { type: 'model/gltf-binary' }))
-      await ctx.runMutation(internal.forge.finish, { forgeId, storageId })
-      return
-    }
-    if (status && ['failed', 'cancelled', 'banned', 'expired', 'unknown'].includes(status)) {
-      await ctx.runMutation(internal.forge.failForge, { forgeId, code: classifyTripoFailure({ taskStatus: status }) })
-      return
-    }
-    await ctx.scheduler.runAfter(FORGE_POLL_MS, internal.forge.poll, { forgeId })
   },
 })
+
+async function pollOnce(ctx: ActionCtx, forgeId: Id<'forges'>, taskId: string, deadline: number): Promise<void> {
+  const key = process.env.TRIPO_API_KEY
+  if (!key) {
+    await ctx.runMutation(internal.forge.failForge, { forgeId, code: 'forge-not-configured' })
+    return
+  }
+  if (Date.now() > deadline) {
+    await ctx.runMutation(internal.forge.failForge, { forgeId, code: 'tripo-timeout' })
+    return
+  }
+
+  let task: { status?: string; output?: { pbr_model?: string; model?: string; base_model?: string } } | undefined
+  try {
+    const response = await fetch(`${TRIPO_API}/task/${taskId}`, { headers: { Authorization: `Bearer ${key}` } })
+    task = ((await response.json()) as { data?: typeof task }).data
+  } catch {
+    // A dropped poll is retried below until the deadline.
+  }
+
+  const status = task?.status
+  if (status === 'success') {
+    const url = task?.output?.pbr_model ?? task?.output?.model ?? task?.output?.base_model
+    if (!url) {
+      await ctx.runMutation(internal.forge.failForge, { forgeId, code: 'tripo-failed' })
+      return
+    }
+    const download = await fetch(url)
+    const bytes = download.ok ? await download.arrayBuffer() : undefined
+    if (!bytes || bytes.byteLength === 0 || bytes.byteLength > MAX_MODEL_BYTES) {
+      await ctx.runMutation(internal.forge.failForge, { forgeId, code: 'tripo-failed' })
+      return
+    }
+    const storageId = await ctx.storage.store(new Blob([bytes], { type: 'model/gltf-binary' }))
+    const applied = await ctx.runMutation(internal.forge.finish, { forgeId, storageId })
+    // A duplicate poll can lose the race to finish; do not leave its copy orphaned in storage.
+    if (!applied) await ctx.storage.delete(storageId)
+    return
+  }
+  if (status && ['failed', 'cancelled', 'banned', 'expired', 'unknown'].includes(status)) {
+    await ctx.runMutation(internal.forge.failForge, { forgeId, code: classifyTripoFailure({ taskStatus: status }) })
+    return
+  }
+  await ctx.scheduler.runAfter(FORGE_POLL_MS, internal.forge.poll, { forgeId })
+}
 
 /** The signed-in player's forges, newest first. Never exposes other accounts, task ids, or the key. */
 export const mine = query({

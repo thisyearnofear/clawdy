@@ -146,4 +146,74 @@ describe('forge', () => {
     expect(row?.status).toBe('ready')
     expect(row?.userId).toBe(userId)
   })
+  describe('when a poll dies (scheduled actions are not retried)', () => {
+    async function strandedForge(t: ReturnType<typeof convexTest>, userId: never, overrides: Record<string, unknown> = {}) {
+      const now = Date.now()
+      return await t.run(ctx => ctx.db.insert('forges', {
+        userId,
+        chassis: 'scout',
+        paint: 'moss',
+        status: 'pending',
+        credits: FORGE_CREDITS,
+        taskId: 'task-1',
+        createdAt: now - 120_000,
+        deadline: now + 300_000,
+        ...overrides,
+      } as never))
+    }
+
+    it('sweep restarts a quiet poll and the forge completes', async () => {
+      const t = convexTest(schema, modules)
+      const { as, userId } = await makeUser(t, 'Octo')
+      vi.stubGlobal('fetch', tripoFetch({}))
+      await strandedForge(t, userId as never)
+      expect(await t.mutation(internal.forge.sweep, {})).toEqual({ expired: 0, restarted: 1 })
+      await t.finishAllScheduledFunctions(() => vi.advanceTimersByTime(6_000))
+      expect((await as.query(api.forge.mine, {}))[0]).toMatchObject({ status: 'ready', error: null })
+    })
+
+    it('sweep leaves a recently polled forge alone, so poll chains do not pile up', async () => {
+      const t = convexTest(schema, modules)
+      const { userId } = await makeUser(t, 'Octo')
+      await strandedForge(t, userId as never, { polledAt: Date.now() - 5_000 })
+      expect(await t.mutation(internal.forge.sweep, {})).toEqual({ expired: 0, restarted: 0 })
+    })
+
+    it('sweep fails a forge past its deadline and frees the account and the cap', async () => {
+      const t = convexTest(schema, modules)
+      const { as, userId } = await makeUser(t, 'Octo')
+      vi.stubGlobal('fetch', tripoFetch({}))
+      await strandedForge(t, userId as never, { deadline: Date.now() - 1_000 })
+      expect(await t.mutation(internal.forge.sweep, {})).toEqual({ expired: 1, restarted: 0 })
+      expect((await as.query(api.forge.mine, {}))[0]).toMatchObject({ status: 'failed', error: FORGE_MESSAGES['tripo-timeout'] })
+      await as.action(api.forge.start, { chassis: 'scout', paint: 'moss' })
+    })
+
+    it('a new forge request self-heals an overdue pending one even if the sweep has not run', async () => {
+      const t = convexTest(schema, modules)
+      const { as, userId } = await makeUser(t, 'Octo')
+      vi.stubGlobal('fetch', tripoFetch({}))
+      await strandedForge(t, userId as never, { deadline: Date.now() - 1_000 })
+      await expect(as.action(api.forge.start, { chassis: 'hauler', paint: 'ice' })).resolves.toMatchObject({ forgeId: expect.any(String) })
+      const rows = await t.run(ctx => ctx.db.query('forges').collect())
+      expect(rows.map(row => row.status).sort()).toEqual(['failed', 'pending'])
+    })
+
+    it('does not restart a forge that has no Tripo task yet', async () => {
+      const t = convexTest(schema, modules)
+      const { userId } = await makeUser(t, 'Octo')
+      await strandedForge(t, userId as never, { taskId: undefined })
+      expect(await t.mutation(internal.forge.sweep, {})).toEqual({ expired: 0, restarted: 0 })
+    })
+
+    it('finish reports whether it applied, so a duplicate poll can clean up its copy', async () => {
+      const t = convexTest(schema, modules)
+      const { userId } = await makeUser(t, 'Octo')
+      const forgeId = await strandedForge(t, userId as never)
+      const storageId = await t.run(ctx => ctx.storage.store(new Blob(['a'])))
+      expect(await t.mutation(internal.forge.finish, { forgeId, storageId })).toBe(true)
+      const second = await t.run(ctx => ctx.storage.store(new Blob(['b'])))
+      expect(await t.mutation(internal.forge.finish, { forgeId, storageId: second })).toBe(false)
+    })
+  })
 })
