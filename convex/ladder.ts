@@ -1,6 +1,7 @@
 import { getAuthUserId } from '@convex-dev/auth/server'
 import { ConvexError, v } from 'convex/values'
 import { internalMutation, query } from './_generated/server'
+import { buildV } from './schema'
 
 /** One verification run per account per window; a run costs real server CPU. */
 export const ATTEMPT_WINDOW_MS = 60_000
@@ -23,9 +24,11 @@ const entryV = v.object({
   rulesVersion: v.string(),
   verifiedAt: v.number(),
   submissions: v.number(),
+  mode: v.optional(v.string()),
+  chassis: v.optional(v.string()),
 })
 
-function publicEntry(row: { displayName: string; checkpointId: string; weightsHash: string; score: number; perOpponent: { opponent: string; matches: number; wins: number; losses: number; margin: number }[]; rulesVersion: string; verifiedAt: number; submissions: number }) {
+function publicEntry(row: { displayName: string; checkpointId: string; weightsHash: string; score: number; perOpponent: { opponent: string; matches: number; wins: number; losses: number; margin: number }[]; rulesVersion: string; verifiedAt: number; submissions: number; mode?: string; chassis?: string }) {
   return {
     displayName: row.displayName,
     checkpointId: row.checkpointId,
@@ -35,6 +38,8 @@ function publicEntry(row: { displayName: string; checkpointId: string; weightsHa
     rulesVersion: row.rulesVersion,
     verifiedAt: row.verifiedAt,
     submissions: row.submissions,
+    mode: row.mode,
+    chassis: row.chassis,
   }
 }
 
@@ -86,6 +91,9 @@ export const recordResult = internalMutation({
     rulesVersion: v.string(),
     physicsVersion: v.string(),
     colliderSha256: v.string(),
+    build: v.optional(buildV),
+    chassis: v.optional(v.string()),
+    mode: v.optional(v.string()),
   },
   returns: v.object({ improved: v.boolean(), best: v.number(), submissions: v.number() }),
   handler: async (ctx, args) => {

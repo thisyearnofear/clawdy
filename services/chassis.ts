@@ -56,8 +56,10 @@ export function axisSpend(n: number): number {
 
 /**
  * Budget committed by a build, measured against its own chassis base.
- * Points taken below base refund one-for-one. The server uses this as the
- * authority; the Build screen mirrors it.
+ * Points taken below base refund one-for-one. The match authority uses this
+ * as the escalating-cost check — a hand-authored build may satisfy
+ * `validateBuild`'s flat cap yet exceed this curve; the server rejects it,
+ * while the UI describes it honestly rather than throwing.
  */
 export function budgetSpent(build: Build): number {
   const base = CHASSIS_BASE[build.chassis]
@@ -85,9 +87,6 @@ export function validateBuild(build: Build): string[] {
     }
   }
   if (total > CHASSIS_TOTAL + STAT_BUDGET) errors.push(`stat total ${total} exceeds budget ${CHASSIS_TOTAL + STAT_BUDGET}`)
-  if (errors.length === 0 && budgetSpent(build) > STAT_BUDGET) {
-    errors.push(`build costs ${budgetSpent(build)} but the budget is ${STAT_BUDGET}`)
-  }
   const modules = build.modules ?? []
   if (modules.length > MODULE_SLOTS) errors.push(`at most ${MODULE_SLOTS} modules`)
   if (new Set(modules).size !== modules.length) errors.push('duplicate module')

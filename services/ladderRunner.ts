@@ -1,12 +1,15 @@
 import { createHash } from 'node:crypto'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { ARENA_WORLD, buildRushCourse } from './arenaCourse'
-import { ARENA_RULES } from './arenaEpisode'
+import { buildToTraits, budgetSpent, STAT_BUDGET, validateBuild, type Build } from './chassis'
+import { ARENA_RULES, type ArenaRecording, type ArenaScenario, type EntrantTraits } from './arenaEpisode'
 import { ArenaPhysics, ROVER_PHYSICS, initializeArenaPhysics } from './arenaPhysics'
-import type { EntrantPolicyOption } from './arenaPolicy'
+import { ArenaRunner, type EntrantPolicyOption } from './arenaPolicy'
+import { replayArenaEpisode } from './arenaReplay'
 import { importCheckpointJson } from './checkpointStorage'
 import { scoreCheckpoint, type EsContext, type EsScore, type EsTask } from './policyES'
 import type { PolicyCheckpoint } from './policyModel'
+import { rushVariant, swapSides } from './rushVariants'
 import { SEASON_0_STARTER_CHECKPOINT } from './starterCheckpoint'
 import { createWorldSurface } from './worldSurface'
 
@@ -89,10 +92,10 @@ export function ladderSeeds(base: number, count = LADDER_VARIANTS): number[] {
   return Array.from({ length: count }, (_, index) => (base + index) >>> 0)
 }
 
-export function runLadder(checkpoint: PolicyCheckpoint, context: EsContext, seeds: number[]): LadderResult {
+export function runLadder(checkpoint: PolicyCheckpoint, context: EsContext, seeds: number[], traits?: EntrantTraits): LadderResult {
   const perOpponent = LADDER_OPPONENTS.map((opponent, index): LadderOpponentResult => {
     const tasks: EsTask[] = seeds.map(seed => ({ kind: 'hidden', seed, opponent: index }))
-    const score: EsScore = scoreCheckpoint(checkpoint, tasks, context)
+    const score: EsScore = scoreCheckpoint(checkpoint, tasks, context, traits)
     return { opponent, matches: score.matches, wins: score.wins, losses: score.losses, margin: Math.round(score.margin * 100) / 100 }
   })
   return {
@@ -102,5 +105,113 @@ export function runLadder(checkpoint: PolicyCheckpoint, context: EsContext, seed
     rulesVersion: ARENA_RULES.version,
     physicsVersion: ROVER_PHYSICS.version,
     colliderSha256: ARENA_WORLD.colliderSha256,
+  }
+}
+
+// ------------------------------------------------------------------ builds
+
+/**
+ * The league's build gate, shared by ladder submits and PvP. `validateBuild`
+ * only checks the flat stat cap; the escalating point-buy curve
+ * (`budgetSpent`) is the match authority's own check — a hand-authored build
+ * can be flat-legal yet over the curve, and it must not race.
+ */
+export function legalLeagueBuild(build: { chassis: string; points: Record<string, number>; modules: string[] } | undefined): Build | undefined {
+  if (!build) return undefined
+  const typed = build as Build
+  if (validateBuild(typed).length > 0 || budgetSpent(typed) > STAT_BUDGET) return undefined
+  return typed
+}
+
+/** Simulation traits for a stored build, or the hauler baseline when absent/illegal. */
+export function traitsForBuild(build: { chassis: string; points: Record<string, number>; modules: string[] } | undefined): EntrantTraits | undefined {
+  const legal = legalLeagueBuild(build)
+  return legal ? buildToTraits(legal) : undefined
+}
+
+// ------------------------------------------------------------------ PvP
+
+/**
+ * One stored brain on the league: a validated checkpoint plus the optional
+ * per-entrant sim overrides a build produced (`services/chassis.ts`, Stream A).
+ * `traits` is `undefined` for brains published before builds existed — they
+ * run on the pinned `ARENA_RULES` exactly like a ladder submission.
+ */
+export interface MatchEntrant {
+  checkpoint: PolicyCheckpoint
+  traits?: EntrantTraits
+}
+
+export interface MatchResult {
+  /** `a` / `b` by aggregate banked across both sides; null on an exact tie. */
+  winner: 'a' | 'b' | null
+  banked: { a: number; b: number }
+  margin: number
+  /** One recording per side: [0] has `a` as champion, [1] has `b` as champion. */
+  recordings: [ArenaRecording, ArenaRecording]
+  seed: number
+  rulesVersion: string
+  /** Both recordings re-simulated cleanly (fail-closed: a diverging replay throws instead). */
+  replayVerified: true
+}
+
+function withTraits(scenario: ArenaScenario, champion: MatchEntrant, rival: MatchEntrant): ArenaScenario {
+  return {
+    ...scenario,
+    entrants: [
+      { ...scenario.entrants[0], traits: champion.traits },
+      { ...scenario.entrants[1], traits: rival.traits },
+    ],
+  }
+}
+
+function playSide(scenario: ArenaScenario, champion: MatchEntrant, rival: MatchEntrant): { recording: ArenaRecording; banked: [number, number] } {
+  const runner = new ArenaRunner(
+    withTraits(scenario, champion, rival),
+    {
+      champion: { strategy: 'learned', checkpoint: champion.checkpoint },
+      rival: { strategy: 'learned', checkpoint: rival.checkpoint },
+    },
+    undefined,
+    { record: true },
+  )
+  runner.advanceTicks(scenario.durationTicks)
+  const recording = runner.recording()
+  const final = runner.snapshot()
+  const banked: [number, number] = [
+    final.agents.find(agent => agent.id === 'champion')!.banked,
+    final.agents.find(agent => agent.id === 'rival')!.banked,
+  ]
+  return { recording, banked }
+}
+
+/**
+ * `runMatch(brainA, brainB, scenario, seed)` — the shared PvP contract
+ * (docs/LEAGUE_PLAN.md). Two learned policies race a fresh hidden Rush
+ * variant, once on each side so neither keeps a base advantage; the winner is
+ * decided by aggregate banked. Route-only like the ladder (no physics motion):
+ * deterministic, cheap enough to run inside a Convex action, and honest — the
+ * recording is re-simulated before it is returned, so a stored replay is
+ * always a faithful receipt.
+ */
+export function runMatch(a: MatchEntrant, b: MatchEntrant, base: ArenaScenario, seed: number): MatchResult {
+  if (!Number.isSafeInteger(seed)) throw new Error('Match seed must be an integer')
+  const variant = rushVariant(base, 'hidden', seed)
+  const first = playSide(variant, a, b)
+  const second = playSide(swapSides(variant), b, a)
+  const banked = { a: first.banked[0] + second.banked[1], b: first.banked[1] + second.banked[0] }
+  for (const { recording } of [first, second]) {
+    if (replayArenaEpisode(recording).divergedAt !== null) {
+      throw new Error('match replay diverged — refusing to record an unverifiable result')
+    }
+  }
+  return {
+    winner: banked.a === banked.b ? null : banked.a > banked.b ? 'a' : 'b',
+    banked,
+    margin: banked.a - banked.b,
+    recordings: [first.recording, second.recording],
+    seed,
+    rulesVersion: ARENA_RULES.version,
+    replayVerified: true,
   }
 }

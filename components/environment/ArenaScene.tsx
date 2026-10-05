@@ -40,7 +40,18 @@ import {
   loadStoredExamples,
   readCheckpointFile,
 } from '../../services/checkpointStorage'
+import {
+  BUILD_STORAGE_KEY,
+  baseBuild,
+  DEFAULT_BUILD,
+  isValidBuild,
+  parseBuild,
+  serializeBuild,
+  type Build,
+} from '../../services/buildBudget'
 import { useConvexClient } from '../ConvexClientProvider'
+import { api } from '../../convex/_generated/api'
+import type { ReplayMarker } from '../../services/replayMarkers'
 import {
   deleteExampleRecord,
   queueCheckpointSync,
@@ -82,6 +93,17 @@ const CAMERA_LABELS: Record<ArenaCamera, string> = {
 
 type LoadedSession = { session: ArenaSession; course: ArenaCourse; rushCourse: ArenaCourse; createMotion: () => ArenaMotion }
 
+type SharedReplay = {
+  shareId: string
+  kind: 'challenge' | 'tournament'
+  participants: { name: string; brainId: string }[]
+  /** championIndex[i] is the participant index whose brain is the champion in recordings[i]. */
+  championIndex: number[]
+  recordings: ArenaRecording[]
+  index: number
+  markers: ReplayMarker[]
+}
+
 
 function Workbench({
   session,
@@ -110,6 +132,17 @@ function Workbench({
   const [studioOpen, setStudioOpen] = useState(false)
   const [broadcastRequest, setBroadcastRequest] = useState(0)
   const [hintOpen, setHintOpen] = useState(() => !readHintDismissed())
+  // The chassis build is a player preference, persisted beside the other
+  // local records. A build saved by an older build of the app (or a corrupt
+  // entry) resolves to the hauler baseline rather than throwing, matching the
+  // additive-and-versioned rule the checkpoint format already uses.
+  const [build, setBuild] = useState<Build>(() => {
+    try {
+      return parseBuild(typeof window === 'undefined' ? null : window.localStorage.getItem(BUILD_STORAGE_KEY))
+    } catch {
+      return baseBuild(DEFAULT_BUILD.chassis)
+    }
+  })
   const [coachNudgeOpen, setCoachNudgeOpen] = useState(false)
   const [hasCompletedRun, setHasCompletedRun] = useState(() => loadEngagementProgress().hasCompletedRun)
   const [mistakeMoment, setMistakeMoment] = useState<{ tick: number; headline: string; detail: string } | null>(null)
@@ -118,6 +151,7 @@ function Workbench({
   const [trainFocusLine, setTrainFocusLine] = useState<string | null>(null)
   const [modeBanner, setModeBanner] = useState<WorkbenchPlayMode | null>(null)
   const [runTip, setRunTip] = useState<string | null>(null)
+  const [sharedReplay, setSharedReplay] = useState<SharedReplay | null>(null)
   const floodWarnedRef = useRef<number | null>(null)
   const lastEncounterTickRef = useRef<number | null>(null)
   const modeBannerTimer = useRef<number | null>(null)
@@ -268,6 +302,56 @@ function Workbench({
     store.markHydrated()
     return startArenaSync(convex)
   }, [session, convex])
+
+  // ?replay=<shareId> boots straight into review of a published league match.
+  // The slug is the capability, so this path does not need sign-in. Recordings
+  // arrive as storage URLs; the session validates the schema before presenting
+  // them, and user ids never cross the wire.
+  useEffect(() => {
+    const shareId = new URLSearchParams(window.location.search).get('replay')
+    if (!shareId) return
+    if (!convex) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot boot read; the notice is the offline failure surface
+      setTrainMessage('Shared replays need a live Convex connection.')
+      return
+    }
+    let cancelled = false
+    void convex.query(api.league.viewReplay, { shareId }).then(async doc => {
+      if (cancelled) return
+      if (!doc) { setTrainMessage('That replay link does not point at a saved match.'); return }
+      const recordings = await Promise.all(doc.urls.map(async url => {
+        const parsed = JSON.parse(await (await fetch(url)).text()) as ArenaRecording
+        if (parsed?.schemaVersion !== 'arena-recording-v1' || !Array.isArray(parsed.checkpoints) || parsed.checkpoints.length === 0) {
+          throw new Error('recording-schema-mismatch')
+        }
+        return parsed
+      }))
+      if (cancelled || recordings.length === 0) return
+      setSharedReplay({
+        shareId,
+        kind: doc.kind,
+        participants: doc.participants,
+        championIndex: doc.championIndex,
+        recordings,
+        index: 0,
+        markers: doc.markers,
+      })
+      setCinematic(true)
+      session.reviewFrom(recordings[0])
+    }).catch(() => { if (!cancelled) setTrainMessage('Could not load that replay link.') })
+    return () => { cancelled = true }
+  }, [convex, session])
+
+  const selectSharedSide = (index: number) => {
+    setSharedReplay(current => {
+      if (!current || index === current.index || !current.recordings[index]) return current
+      session.reviewFrom(current.recordings[index])
+      return { ...current, index }
+    })
+  }
+
+  /** The banner only applies while the shared recording is the one under review. */
+  const sharedReplayActive = sharedReplay !== null && session.activeRecording() === sharedReplay.recordings[sharedReplay.index]
 
   const championAccent = getChampionLook(championIdentity.lookId).accent
 
@@ -972,6 +1056,19 @@ function Workbench({
         }
         setTrainMessage(`That file didn't import: ${err instanceof Error ? err.message : 'Invalid checkpoint file'}. Double-check it's a Clawdy checkpoint export.`)
       })
+  }
+
+  const handleBuildChange = (next: Build) => {
+    if (!isValidBuild(next)) {
+      setTrainMessage('That build is over budget — the panel will not accept it.')
+      return
+    }
+    setBuild(next)
+    try {
+      window.localStorage.setItem(BUILD_STORAGE_KEY, serializeBuild(next))
+    } catch (err) {
+      setTrainMessage(`Build applied, but it wouldn't save to this browser: ${err instanceof Error ? err.message : 'storage unavailable'}.`)
+    }
   }
 
   const toggleApprove = (id: string) => {
@@ -1753,6 +1850,35 @@ function Workbench({
             <button type="button" aria-pressed={playMode === 'rush'} disabled={view.phase !== 'ready' || isTraining} onClick={() => switchPlayMode('rush')}>Rush · unranked</button>
             <button type="button" aria-pressed={playMode === 'compete'} disabled={view.phase !== 'ready' || isTraining} onClick={() => switchPlayMode('compete')}>Match</button>
           </div>
+          {view.phase === 'review' && sharedReplayActive && sharedReplay && (
+            <section className={styles.replayPanel} aria-label="Shared league replay">
+              <div className={styles.replayHead}>
+                <strong>{sharedReplay.kind === 'tournament' ? 'Tournament replay' : 'Challenge replay'}</strong>
+                <span>{sharedReplay.participants.map(participant => participant.name).join(' vs ')}</span>
+              </div>
+              {sharedReplay.recordings.length > 1 && (
+                <div className={styles.modeToggle} role="group" aria-label="Replay side">
+                  {sharedReplay.recordings.map((_, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      aria-pressed={sharedReplay.index === index}
+                      onClick={() => selectSharedSide(index)}
+                    >
+                      {sharedReplay.participants[sharedReplay.championIndex[index]]?.name ?? `Side ${index + 1}`}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {sharedReplay.markers.length > 0 && (
+                <p className={styles.correctionNote}>
+                  {[...sharedReplay.markers.reduce((counts, marker) => counts.set(marker.type, (counts.get(marker.type) ?? 0) + 1), new Map<string, number>())]
+                    .map(([type, count]) => `${type.replace('_', ' ')} ×${count}`)
+                    .join(' · ')}
+                </p>
+              )}
+            </section>
+          )}
           {view.phase === 'review' && (
             <ReplayPanel
               tick={view.episode.tick}
@@ -1839,6 +1965,8 @@ function Workbench({
               onToggleApprove={toggleApprove}
               onRemoveExample={removeExample}
               trainMessage={trainMessage}
+              build={build}
+              onBuildChange={handleBuildChange}
             />
           </div>
         )}

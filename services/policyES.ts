@@ -1,4 +1,4 @@
-import type { ArenaScenario } from './arenaEpisode'
+import type { ArenaScenario, EntrantTraits } from './arenaEpisode'
 import { ArenaRunner, type EntrantPolicyOption } from './arenaPolicy'
 import { computeWeightsHash, POLICY_SCHEMA_VERSION, type PolicyCheckpoint, type PolicyWeights } from './policyModel'
 import { createRng, gaussian } from './rng'
@@ -108,16 +108,19 @@ export interface EsScore {
 
 const WIN_BONUS = 1.5
 
-export function scoreCheckpoint(checkpoint: PolicyCheckpoint, tasks: readonly EsTask[], context: EsContext): EsScore {
+export function scoreCheckpoint(checkpoint: PolicyCheckpoint, tasks: readonly EsTask[], context: EsContext, traits?: EntrantTraits): EsScore {
   const option: EntrantPolicyOption = { strategy: 'learned', checkpoint }
   let fitness = 0, margin = 0, own = 0, foeTotal = 0, wins = 0, losses = 0, matches = 0
   for (const task of tasks) {
     const opponent = context.opponents[task.opponent]
     if (!opponent) throw new Error(`Unknown opponent index ${task.opponent}`)
-    const scenario = rushVariant(context.rushBase, task.kind, task.seed)
-    for (const played of [scenario, swapSides(scenario)]) {
-      const runner = new ArenaRunner(played, { champion: option, rival: opponent }, undefined, { record: false })
-      runner.advanceTicks(played.durationTicks)
+    const variant = rushVariant(context.rushBase, task.kind, task.seed)
+    for (const played of [variant, swapSides(variant)]) {
+      // The scored brain is always the champion slot; a build's traits ride
+      // with it on both sides. `undefined` runs the pinned rover unchanged.
+      const scenario = traits ? { ...played, entrants: [{ ...played.entrants[0], traits }, played.entrants[1]] } : played
+      const runner = new ArenaRunner(scenario, { champion: option, rival: opponent }, undefined, { record: false })
+      runner.advanceTicks(scenario.durationTicks)
       const snap = runner.snapshot()
       const ownBanked = snap.agents.find(agent => agent.id === 'champion')!.banked
       const foe = snap.agents.find(agent => agent.id === 'rival')!.banked

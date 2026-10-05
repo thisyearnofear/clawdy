@@ -9,6 +9,7 @@ import {
   ladderSeeds,
   parseSubmission,
   runLadder,
+  runMatch,
 } from '../ladderRunner'
 import { exportCheckpointJson } from '../checkpointStorage'
 import { SEASON_0_STARTER_CHECKPOINT } from '../starterCheckpoint'
@@ -63,5 +64,38 @@ describe('server-side ladder run', () => {
     expect(first.score).toBeGreaterThanOrEqual(-100)
     expect(first.score).toBeLessThanOrEqual(100)
     expect(first.seeds).toEqual(seeds)
+  }, 60_000)
+})
+
+describe('runMatch (PvP)', () => {
+  it('plays both sides, verifies its replays, and is deterministic per seed', async () => {
+    const context = await buildLadderContext(collider())
+    const a = { checkpoint: SEASON_0_STARTER_CHECKPOINT }
+    const b = { checkpoint: SEASON_0_STARTER_CHECKPOINT }
+    const first = runMatch(a, b, context.rushBase, 777)
+    const second = runMatch(a, b, context.rushBase, 777)
+    expect(second).toEqual(first)
+    expect(first.replayVerified).toBe(true)
+    expect(first.recordings).toHaveLength(2)
+    // Identical brains tie on aggregate.
+    expect(first.winner).toBeNull()
+    expect(first.banked.a).toBe(first.banked.b)
+    // Each recording's champion slot is a different brain's base.
+    expect(first.recordings[0].scenario.entrants[0].baseNode).not.toBe(first.recordings[1].scenario.entrants[0].baseNode)
+    // Marker derivation sees the recorded match.
+    const { summarizeReplayMarkers } = await import('../replayMarkers')
+    expect(summarizeReplayMarkers(first.recordings[0]).length).toBeGreaterThan(0)
+  }, 60_000)
+
+  it('lets a build bias the sim through entrant traits', async () => {
+    const context = await buildLadderContext(collider())
+    const a = { checkpoint: SEASON_0_STARTER_CHECKPOINT }
+    const b = { checkpoint: SEASON_0_STARTER_CHECKPOINT, traits: { travelSpeed: 2, maxEnergy: 24, contactStrength: 5 } }
+    const result = runMatch(a, b, context.rushBase, 777)
+    // The boosted rover reaches cores faster on both sides and banks more.
+    expect(result.winner).toBe('b')
+    expect(result.banked.b).toBeGreaterThan(result.banked.a)
+    expect(result.recordings[0].scenario.entrants[0].traits).toBeUndefined()
+    expect(result.recordings[0].scenario.entrants[1].traits).toEqual(b.traits)
   }, 60_000)
 })

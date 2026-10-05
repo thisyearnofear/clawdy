@@ -51,10 +51,15 @@ describe('chassis builds', () => {
     const concentrated = baseBuild('hauler')
     concentrated.points.speed += 3 // costs 6, not 3
     expect(budgetSpent(concentrated)).toBe(6)
-    expect(validateBuild(concentrated).join()).toMatch(/costs 6/)
+    // Flat cap is the only thing validateBuild enforces; the escalating curve
+    // is the match authority's budgetSpent gate (league publish/race paths).
+    expect(validateBuild(concentrated)).toEqual([])
+    expect(budgetSpent(concentrated)).toBeGreaterThan(STAT_BUDGET)
     concentrated.points.navigation -= 2 // refund 2 -> net 4, still over
-    expect(validateBuild(concentrated).join()).toMatch(/costs 4/)
+    expect(budgetSpent(concentrated)).toBe(4)
+    expect(budgetSpent(concentrated)).toBeGreaterThan(STAT_BUDGET)
     concentrated.points.hardiness -= 1 // refund 1 -> net 3
+    expect(budgetSpent(concentrated)).toBe(3)
     expect(validateBuild(concentrated)).toEqual([])
   })
 

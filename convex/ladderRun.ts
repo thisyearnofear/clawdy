@@ -5,7 +5,8 @@ import { ConvexError, v } from 'convex/values'
 import { randomInt } from 'node:crypto'
 import { internal } from './_generated/api'
 import { action } from './_generated/server'
-import { buildLadderContext, ladderSeeds, parseSubmission, runLadder } from '../services/ladderRunner'
+import { buildV } from './schema'
+import { buildLadderContext, ladderSeeds, legalLeagueBuild, parseSubmission, runLadder, traitsForBuild } from '../services/ladderRunner'
 
 /**
  * Verifies a champion on the server: the checkpoint is validated, the pinned terrain is
@@ -17,7 +18,7 @@ interface OpponentResult { opponent: string; matches: number; wins: number; loss
 interface SubmitResult { score: number; improved: boolean; best: number; submissions: number; perOpponent: OpponentResult[] }
 
 export const submit = action({
-  args: { checkpointJson: v.string() },
+  args: { checkpointJson: v.string(), build: v.optional(buildV), mode: v.optional(v.string()) },
   returns: v.object({
     score: v.number(),
     improved: v.boolean(),
@@ -35,6 +36,7 @@ export const submit = action({
     } catch (error) {
       throw new ConvexError(error instanceof Error ? error.message : 'invalid checkpoint')
     }
+    if (args.build && legalLeagueBuild(args.build) === undefined) throw new ConvexError('invalid build')
 
     await ctx.runMutation(internal.ladder.beginAttempt, { userId })
 
@@ -44,7 +46,7 @@ export const submit = action({
     if (!response.ok) throw new ConvexError(`terrain unavailable (${response.status})`)
     const context = await buildLadderContext(new Uint8Array(await response.arrayBuffer()))
 
-    const result = runLadder(checkpoint, context, ladderSeeds(randomInt(0, 2 ** 31)))
+    const result = runLadder(checkpoint, context, ladderSeeds(randomInt(0, 2 ** 31)), traitsForBuild(args.build))
     const recorded: { improved: boolean; best: number; submissions: number } = await ctx.runMutation(internal.ladder.recordResult, {
       userId,
       checkpointId: checkpoint.id,
@@ -55,6 +57,9 @@ export const submit = action({
       rulesVersion: result.rulesVersion,
       physicsVersion: result.physicsVersion,
       colliderSha256: result.colliderSha256,
+      build: args.build,
+      chassis: args.build?.chassis,
+      mode: args.mode ?? 'rush',
     })
     return { score: result.score, perOpponent: result.perOpponent, ...recorded }
   },

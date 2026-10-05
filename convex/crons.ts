@@ -1,0 +1,17 @@
+import { cronJobs } from 'convex/server'
+import { internal } from './_generated/api'
+
+/**
+ * League schedule (docs/LEAGUE_PLAN.md, Stream C): every six hours the listed
+ * brains in each mode are paired by rating and raced on fresh hidden seeds.
+ * Matches are ~0.3 s of server CPU each, so a round stays cheap even as the
+ * pool grows. Rounds can also be run on demand:
+ * `npx convex run --prod leagueRun:runRound '{"mode":"rush"}'` is not possible
+ * (internal), but a deployment admin can invoke it from the Convex dashboard
+ * or a dev shell.
+ */
+const crons = cronJobs()
+
+crons.interval('league tournament round', { hours: 6 }, internal.leagueRun.runRound, { mode: 'rush' })
+
+export default crons

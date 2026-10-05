@@ -5,10 +5,12 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('../../components/ConvexClientProvider', () => ({ ConvexLineageBadge: () => null }))
 
 import { CoachPanel } from '../../components/workbench/CoachPanel'
+import { BuildScreen } from '../../components/workbench/BuildScreen'
 import { LessonComparison } from '../../components/workbench/LessonComparison'
 import type { PracticeComparison } from '../practiceComparison'
 import { SEASON_0_STARTER_CHECKPOINT } from '../starterCheckpoint'
 import type { ArenaRecording } from '../arenaEpisode'
+import { baseBuild, CHASSIS_BASE, DEFAULT_BUILD, setAxisLevel, STAT_BUDGET, toggleModule } from '../buildBudget'
 
 const noop = () => {}
 const fileInputRef = createRef<HTMLInputElement>()
@@ -35,6 +37,8 @@ function coachPanel(props: Partial<Parameters<typeof CoachPanel>[0]> = {}) {
     onToggleApprove: noop,
     onRemoveExample: noop,
     trainMessage: null,
+    build: baseBuild(DEFAULT_BUILD.chassis),
+    onBuildChange: noop,
     ...props,
   }))
 }
@@ -154,5 +158,83 @@ describe('LessonComparison presentation', () => {
     expect(html).toContain('Jump to first different decision')
     expect(html).toContain('Watch the lesson')
     expect(html).toContain('Parent replay')
+  })
+})
+
+describe('BuildScreen', () => {
+  const render = (props: Partial<Parameters<typeof BuildScreen>[0]> = {}) =>
+    renderToStaticMarkup(createElement(BuildScreen, { build: baseBuild(DEFAULT_BUILD.chassis), onChange: noop, ...props }))
+
+  it('renders every chassis, axis and module as a labelled control', () => {
+    const html = render()
+    for (const chassis of ['Scout', 'Hauler', 'Raider']) expect(html).toContain(chassis)
+    for (const axis of ['Navigation', 'Speed', 'Hardiness', 'Defence', 'Attack']) expect(html).toContain(axis)
+    for (const label of ['Wide sensor', 'Armour', 'Ram plate', 'Extra cell']) expect(html).toContain(label)
+  })
+
+  it('shows the remaining budget in plain words', () => {
+    expect(render()).toContain(`${STAT_BUDGET} of ${STAT_BUDGET} points left`)
+  })
+
+  it('caps each slider at what the budget allows, so a drag cannot overspend', () => {
+    const spent = setAxisLevel(baseBuild('hauler'), 'speed', 4)
+    const html = render({ build: spent })
+    // Two points on speed cost 1 + 2 = 3, the whole budget, so no axis may
+    // offer an increase beyond what is already held.
+    expect(html).toMatch(/max="4"/)
+    expect(html).toContain(`0 of ${STAT_BUDGET} points left`)
+  })
+
+  it('prices the next point per axis instead of showing a bare number', () => {
+    const html = render()
+    expect(html).toContain('next costs 1')
+  })
+
+  it('labels an inert axis as roadmap rather than implying an effect', () => {
+    const html = render()
+    expect(html).toContain('roadmap')
+    expect(html).toContain('no effect in this sim yet')
+  })
+
+  it('announces the readout as a live region for assistive tech', () => {
+    const html = render()
+    expect(html).toContain('aria-live="polite"')
+    expect(html).toContain('role="status"')
+  })
+
+  it('gives every slider an accessible value text', () => {
+    const html = render()
+    expect(html).toMatch(/aria-valuetext="Speed \d+ of \d+"/)
+    expect(html).toContain('aria-describedby=')
+  })
+
+  it('disables a third module slot rather than overfilling', () => {
+    const two = toggleModule(toggleModule(baseBuild('hauler'), 'armour'), 'ram-plate')
+    const html = render({ build: two })
+    expect(html).toMatch(/aria-pressed="true"/)
+    // The remaining chips are disabled once both slots are full.
+    expect(html).toContain('disabled')
+  })
+
+  it('surfaces an invalid build as an alert instead of silently accepting it', () => {
+    const invalid = { ...baseBuild('hauler'), points: { ...CHASSIS_BASE.hauler, speed: 99 } }
+    const html = render({ build: invalid })
+    expect(html).toContain('role="alert"')
+    // Stream A's message, verbatim: the readout must not invent its own rules.
+    expect(html).toContain('speed must be an integer from 0 to 6')
+    // The readout must survive an invalid build rather than throwing mid-render.
+    expect(html).toContain('This build is not legal yet')
+  })
+
+  it('never renders a nonsensical remaining-point count', () => {
+    const invalid = { ...baseBuild('hauler'), points: { ...CHASSIS_BASE.hauler, speed: 99 } }
+    const html = render({ build: invalid })
+    expect(html).not.toMatch(/-\d+ of \d+ points left/)
+    expect(html).toContain('over the 3-point budget')
+  })
+
+  it('disables every control during a locked match', () => {
+    const html = render({ disabled: true })
+    expect(html).toContain('disabled')
   })
 })

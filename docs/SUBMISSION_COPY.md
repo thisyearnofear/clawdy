@@ -22,6 +22,7 @@ The theme, "a world as a gift for the kid I used to be": the kid who could never
 - The held-out layouts are a separate registry that is never used for training or checkpoint selection.
 - Rush champion, 40 hidden layouts played from both sides (80 matches per opponent): 77-3-0 vs `safe`, 75-0-5 vs `poach`, 68-6-6 vs `greedy`, 40-0-40 vs the starter. It **loses to `weather`, 35-45-0**. Results are pinned in `docs/eval-es.json`.
 - Sign-in with GitHub keeps guest play working. A signed-in player can submit a brain to a ladder the server runs itself on hidden layouts; the browser never reports a score.
+- Brains can be published to a league (checkpoint + chassis build, versioned). Challenges run server-side on fresh hidden seeds, both sides, replay-verified before they are stored; every match gets a public `?replay=<shareId>` link that reloads the recording with event markers (bumps, core spawns, battery-outs, recoveries, banks). A scheduled round pairs listed brains by rating every six hours. Deployed to prod; the two-account challenge path is verified in Convex tests and awaits a live run.
 - Code coaches can write a teacher function and train a checkpoint with `npm run teacher:run`.
 
 ## Tool use
@@ -32,7 +33,7 @@ The theme, "a world as a gift for the kid I used to be": the kid who could never
 
 ## Known limits (say them before a judge finds them)
 - The trained champion does not beat the `weather` bot.
-- The ladder is verified in tests and the sign-in works on production, but it has had little live use.
+- The ladder is verified in tests and the sign-in works on production, but it has had little live use. The league paths (publish, challenge, share-link replay) are on prod and covered by Convex tests — including a real two-account match — but no human has run a challenge on production yet.
 - The GPU look of the terrain texture was only checked under software rendering.
 
 ## Build log drafts

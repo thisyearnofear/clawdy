@@ -25,6 +25,8 @@ import { contactShadowTexture } from './contactShadow'
 import { PracticeGhost } from './PracticeGhost'
 import FrameLimiter from '../utils/FrameLimiter'
 import { getMintAsset, getMintModelArtifact, getMintModelTransform, getMintModelUrl } from '../../services/mintAssets'
+import { resolveRoverModel } from '../../services/chassisAssets'
+import type { ChassisId } from '../../services/chassis'
 
 export type ArenaCamera = 'overview' | 'champion' | 'rival' | 'compare'
 
@@ -39,6 +41,8 @@ type WorldProps = {
   onCoachEdge?: (edgeId: string) => void
   ghostPose?: { agent: Pick<ArenaAgentState, 'position' | 'rotation'>; label: string; accent?: string } | null
   championName?: string
+  /** Optional chassis per entrant id; picks the chassis body model. Absent keeps the legacy rover look. */
+  chassisByEntrant?: Partial<Record<string, ChassisId>>
   /** Champion accent for ring + rover tint (defaults to canopy green). */
   championAccent?: string
   /** Presentation-side beat detected by the scene (clash / sighting). */
@@ -349,7 +353,7 @@ function RoverShadow({ session, id }: { session: ArenaSession; id: string }) {
   )
 }
 
-function Rover({ session, id, color }: { session: ArenaSession; id: string; color: string }) {
+function Rover({ session, id, color, chassis }: { session: ArenaSession; id: string; color: string; chassis?: ChassisId }) {
   const group = useRef<THREE.Group>(null)
   const previous = useRef(new THREE.Vector3())
   const target = useRef(new THREE.Vector3())
@@ -391,11 +395,7 @@ function Rover({ session, id, color }: { session: ArenaSession; id: string; colo
     previous.current.copy(target.current)
   })
 
-  const assetKey = `${id}Rover`
-  const asset = getMintAsset(assetKey)
-  const artifact = asset ? getMintModelArtifact(asset) : undefined
-  const modelUrl = artifact ? getMintModelUrl(artifact) : undefined
-  const transform = asset ? getMintModelTransform(asset) : undefined
+  const { url: modelUrl, transform } = resolveRoverModel(id, chassis)
   const ProceduralGeometry = id === 'rival' ? RivalRoverGeometry : RoverGeometry
 
   return (
@@ -810,6 +810,7 @@ function World({
   onCoachEdge,
   ghostPose,
   championName = 'You',
+  chassisByEntrant,
   championAccent = '#bce478',
   fxCue,
   onReady,
@@ -896,7 +897,7 @@ function World({
               <ringGeometry args={[0.62, 0.82, 40]} />
               <meshBasicMaterial color={color} side={THREE.DoubleSide} transparent opacity={0.7} />
             </mesh>
-            <Rover session={session} id={entrant.id} color={color} />
+            <Rover session={session} id={entrant.id} color={color} chassis={chassisByEntrant?.[entrant.id]} />
             <RoverStatus session={session} id={entrant.id} tint={color} />
             <RoverFX session={session} id={entrant.id} />
           </group>
