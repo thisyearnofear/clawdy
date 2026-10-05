@@ -91,6 +91,8 @@ export interface EsTask {
 export interface EsContext {
   rushBase: ArenaScenario
   opponents: EntrantPolicyOption[]
+  /** Build traits for the scored rover, so worker threads train and score the same chassis. */
+  traits?: EntrantTraits
 }
 
 export interface EsScore {
@@ -110,6 +112,7 @@ const WIN_BONUS = 1.5
 
 export function scoreCheckpoint(checkpoint: PolicyCheckpoint, tasks: readonly EsTask[], context: EsContext, traits?: EntrantTraits): EsScore {
   const option: EntrantPolicyOption = { strategy: 'learned', checkpoint }
+  traits ??= context.traits
   let fitness = 0, margin = 0, own = 0, foeTotal = 0, wins = 0, losses = 0, matches = 0
   for (const task of tasks) {
     const opponent = context.opponents[task.opponent]
