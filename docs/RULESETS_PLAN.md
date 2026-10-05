@@ -68,6 +68,16 @@ In priority order, each as its own ruleset:
 3. **Capture the flag.** A flag objective on a second landscape, with team or solo play.
 4. **Mid-match events** (a core that moves, a closing edge, a second wave of cores) for variation between matches.
 
+## Player journey across rulesets
+
+The disclosure rules in [LEAGUE_PLAN.md](LEAGUE_PLAN.md) (monotonic flags through a pure flag-map, no ad-hoc conditionals) apply to rulesets too.
+
+- **First visit:** the Training Grounds, starting with the guided first loop (one coaching action, then the behaviour change). The recording is generated at runtime from the deterministic sim, not shipped as an asset.
+- **Skip:** a returning player or one who brings a brain gets a "skip to Skirmish" path. Skipping is a one-way unlock and does not remove the Training Grounds.
+- **Unlock for everyone else:** Skirmish appears after the first publish, with a short explanation of the three rules.
+- **Events and ladders are per ruleset.** An event has a join code and runs on one ruleset; ratings never mix across rulesets.
+- **Spectators** arriving by a shared replay see the ruleset's name and rules in plain language, then the "Train your own brain" button.
+
 ## Workstreams
 
 Each can start once the ruleset record and the per-entrant parameters exist.
@@ -78,6 +88,7 @@ Each can start once the ruleset record and the per-entrant parameters exist.
 | Training (A, server) | Skirmish held-out variants, `--ruleset` flag, multi-seed training and eval, results doc. |
 | UI (B) | Ruleset picker, build screen copy for the new rules, Training Grounds skip. |
 | League (C) | Per-ruleset ladder and rounds, `rulesetId` on stored rows, rating per ruleset. |
+| Journey (U2, U3) | Guided first loop on the Training Grounds, Skirmish unlock and skip, ruleset name and rules on the spectator view. |
 | Assets (D) | Chassis bodies that show the rule (a bigger load bed on the Hauler, a ram on the Raider, a mast on the Scout). |
 
 ## Time and risk
@@ -106,8 +117,8 @@ Found by search; these were read as search summaries only, not reviewed in depth
 | [THREE.Terrain](https://github.com/IceCreamYou/THREE.Terrain) | Procedural terrain generation for Three.js. | A starting point for generating more landscapes. Our current terrain is a Blender-authored mesh, so any new landscape must also produce collision and a pinned route graph. |
 | [Quaternius](https://poly.pizza/bundle/Cars-Bundle-FE5IWe6OMk) and Kenney free assets | CC0-style low poly models. | Set dressing for new landscapes. Chassis bodies stay Tripo-generated. |
 
-## Decisions needed
+## Decisions
 
-1. Approve Skirmish as the first ruleset and the three rules in it.
-2. Decide whether Skirmish is a build target for this submission window or the first roadmap item.
-3. Decide the player-facing name for Season 0 (Training Grounds is a placeholder).
+1. Skirmish is approved as the first ruleset with the three rules above.
+2. Skirmish is a build target for this submission window. If the capacity change cannot be verified in time, fall back to describing it as roadmap.
+3. Season 0's player-facing name is **Training Grounds** (approved).

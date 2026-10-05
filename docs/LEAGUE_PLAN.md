@@ -133,6 +133,50 @@ Acceptance:
 - Forge fails safely: limit reached, Tripo error, and cap reached each show a clear message. (Messages, refunds and the stranded-poll recovery are covered by tests; the stranded-poll recovery was also seen against real Tripo locally; the messages have not been seen in the UI.)
 - Rival hauler facing is confirmed (flip the rotation if it is backwards). (Confirmed correct in an offline render.)
 
+## Player journey and events (merged from the former UX plan)
+
+Goal: a player understands the game on arrival, is brought back at the right moments, and the same machinery can run an event of about 100 concurrent players. It sits on the league backend (Stream C) and [MONETIZATION.md](MONETIZATION.md). The workstreams here are named U1 to U3 so they do not collide with the A to D streams above.
+
+Extra ground rules for this work:
+- **Monotonic disclosure.** A player never loses something they already unlocked. Every new surface goes through a pure flag-map module (the `engagement.ts` pattern), never an ad-hoc conditional in JSX. Storage upgrades migrate and never wipe.
+- **Presentation only.** None of this touches scoring or pins.
+- **File boundaries.** `ArenaScene.tsx` and `CoachPanel.tsx` are contention hotspots: put logic in pure `services/` modules and keep render edits to one owner per workstream.
+
+Shared interfaces (settle first):
+- `EngagementInput` v2 in `services/engagement.ts`: add `hasChallenged`, `hasSubmittedLadder`, `hasWatchedSharedReplay`, `hasForged`. `hasChallenged` means a completed challenge, read from server state where possible, not a click.
+- `EnvironmentProfile = 'player' | 'spectator' | 'host'` in a new `services/environment.ts`, a flag-map orthogonal to engagement.
+- Schema (optional fields only): an `events` table (code, name, host, `endsAt`), `eventId` on brains, replays, rounds and challenges, and a per-user `lastSeenAt`.
+- **Replay participants: use a join table.** The old plan indexed a `userIds` array on `replays`. Convex indexes are ordered lists of document fields, so an index over an array field sorts by the whole array and cannot be queried per element. Add `replayParticipants { replayId, userId }` with an index on `userId` instead.
+
+U1, backend (extends Stream C):
+- **Events.** `joinEvent(code)` stamps `eventId` on the caller's brain. `lobby(eventSlug)` returns listed brains, live pairings, standings and recent replay links in one query. `runRound` and `challenge` take an optional `eventId` and scope the pool to it; absent means the open league.
+- **Heartbeat.** `league.sinceLastVisit` returns challenges and tournament replays involving the caller's brains since `lastSeenAt`, summarised (3W 2L across 5 rounds, not 50 rows). `league.markSeen` bumps the stamp.
+- **Replay library.** `league.myReplays` unions challenges by user and replays by `replayParticipants`, newest first, with share links.
+- Tests: authz negatives (cannot read another user's heartbeat), event isolation both ways, tournament replays found through the join table.
+
+U2, workbench surfaces (extends Stream B):
+- **Guided first loop** (the role-comprehension fix). A prepared replay opens in review, prompts exactly one coaching action, then shows the behaviour change (reuse the `LessonComparison` framing). The aha should arrive in about 60 seconds. Do not ship a recording as an asset: a practice-scenario episode runs in milliseconds, so generate it at runtime from the deterministic sim, pinned to the rules version. This is the first run of the Training Grounds (see [RULESETS_PLAN.md](RULESETS_PLAN.md)).
+- **Publish ceremony.** The first successful publish gets its own surface: brain name, season badge, "you are in the pool", a suggested first challenge.
+- **Heartbeat card.** "While you were away: 2W 1L" with replay links; renders nothing when empty.
+- **Replay library** drawer from `myReplays`.
+- **Unified settings drawer** (sound, camera, forge look, training config, checkpoint import and export), reading and writing the same keys. This is the most deferrable item.
+
+U3, disclosure and environments:
+- Wire the four new signals into `engagementProgress.ts` (additive storage upgrade, with a test that v1 payloads upgrade in place).
+- **Remove the stage-3 cliff.** Broadcast, tournament and agent detail each reveal on their own trigger (for example tournament after the first publish, agent detail after the first challenge). A migration test proves no previously visible flag regresses.
+- **Environment profiles.** A `?replay=` link applies `spectator`, `?env=host` applies `host`, the default is `player`. A kiosk is spectator with hidden chrome.
+- **Spectate to play.** A shared replay shows "Train your own brain", which exits review into the first-visit flow and sets `hasWatchedSharedReplay`.
+- **Host board.** `?env=host&event=<slug>`: standings, live pairings and recent replays from `league.lobby`, read-only.
+
+Acceptance: the first-visit path shows the guided loop; publish, ceremony and first challenge are one continuous flow; the heartbeat only renders with real deltas; the settings drawer round-trips every existing key; the same URL renders correctly as spectator, host and player.
+
+Risks:
+- **Event scope.** Version 1 of events is a private pool, a join code and a host board. No prizes, no byes UI, no organiser admin. That is enough to run a small bracket; add the rest when an event is scheduled.
+- **Heartbeat noise.** Only material results count (challenges and tournament rounds, not practice), and bursts are summarised.
+- **Competing priorities.** These workstreams use the same developers as Skirmish. Order: Skirmish and the guided first loop first, then publish ceremony, heartbeat and replay library, then events, environment profiles and host board, then the settings drawer.
+
+The end-to-end funnel this builds: QR code, then a shared replay (spectator), then "train your own", then the guided loop, then the publish ceremony, then the host board showing the brain racing, then the heartbeat that brings the player back.
+
 ## Sequencing
 
 | Phase | Hours | Work |
