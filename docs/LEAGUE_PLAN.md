@@ -98,6 +98,8 @@ Acceptance:
 - Two accounts complete a challenge end to end on prod.
 - Replays reload from a share link.
 
+Status (Oct 5): implemented and deployed to prod (`accomplished-capybara-638`). `convex/league.ts` + `convex/leagueRun.ts` + `convex/crons.ts` ship publish/challenge/6-hourly `runRound`, `runMatch` in `services/ladderRunner.ts` replays both sides and stores ~1 MB recordings in file storage behind a public `?replay=<shareId>` link (the workbench boots straight into review), `services/replayMarkers.ts` derives bump/spawn/battery-out/recovery/bank markers, and `league.topByChassis` + `league.reportCard` cover the per-build board and report card. `convex/__tests__/league.test.ts` covers the authz negatives and a real two-account challenge; the remaining open item is a human-driven two-account challenge on prod (needs two GitHub sign-ins).
+
 ## Stream D — Assets and Forge (Tripo, Heygears, World Labs)
 
 Owner: assets developer.

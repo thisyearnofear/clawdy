@@ -35,6 +35,9 @@ The [canonical plan](HACKATHON.md) defines the accepted direction. The following
 - [x] Evaluation shows sample count, scoring, ties, crashes, timeouts, invalid actions, and loss summary.
 - [x] Replays contain actual accepted actions and state snapshots, not reconstructed fictional decisions.
 - [x] Local/browser exhibition results are not represented as production-secure ranked competition.
+- [x] League matches are server-authoritative: `leagueRun:challenge` re-plays both stored brains on a fresh hidden seed, re-simulates the recordings, and writes replay+ratings in one internal mutation; the client only supplies brain ids.
+- [x] League authz negatives are covered by `convex/__tests__/league.test.ts` (cannot challenge with another account's brain, replays are append-only, share slugs cannot collide).
+- [ ] A human-driven two-account challenge has completed on prod and its `?replay=<shareId>` link reloads in the workbench (backend verified in tests; awaiting two signed-in GitHub sessions).
 
 ## Starter and Ownership
 - [x] The unchanged starter checkpoint loads and runs in the supported environment.

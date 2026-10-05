@@ -38,6 +38,12 @@ npx convex dev --once
 npx convex deploy --yes
 ```
 
+If the local `.env.local` points at an anonymous dev backend (`CONVEX_DEPLOYMENT=anonymous:*`, `NEXT_PUBLIC_CONVEX_URL=http://127.0.0.1:3210`), `npx convex deploy` errors with "developing anonymously" because it cannot resolve cloud auth. Pass the prod deployment explicitly instead:
+
+```bash
+CONVEX_DEPLOYMENT=prod:accomplished-capybara-638 npx convex deploy --yes
+```
+
 Day-to-day local development:
 
 ```bash
