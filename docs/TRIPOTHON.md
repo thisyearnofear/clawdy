@@ -20,7 +20,7 @@
 - **Rush mode**: public wave timetable, a trained champion that beats the `safe` bot 77-3-0 on 40 hidden layouts (both sides), and still loses to `weather` 35-45-0. Numbers are pinned in `docs/eval-es.json`; Haul and `eval:gate` are untouched.
 - **Code coaching**: typed `Teacher` contract and a practice-only harness (`npm run teacher:run`).
 - **Sign-in and ladder**: Convex Auth (GitHub) with guest-compatible ownership, plus a server-run ladder that replays a submitted brain on hidden layouts. Only the server writes scores. Setup in [AUTH.md](AUTH.md). Prod sign-in verified; a full ladder submission was not exercised before submission.
-- **Visuals**: textured visual terrain twin (pinned Docker Blender), and Tripo-generated rival hauler and energy core.
+- **Visuals**: textured visual terrain twin (pinned Docker Blender), and Tripo-generated rival hauler, energy core and three chassis bodies (scout, hauler, raider). The champion shows the body of its chosen chassis once the client is redeployed.
 - **Verification**: a Docker Playwright harness (`infra/verify/`) that found and fixed a real blank-canvas/frozen-clock bug on phones, and later mobile layout bugs.
 - **Canonical URL**: https://clawdy.trustfall.xyz (Vercel), backed by a prod Convex deployment.
 
@@ -36,7 +36,7 @@ Submission copy, build log drafts and the asset board live in [SUBMISSION_COPY.m
 | Direction 04 — App | Optional secondary | The Coach panel is a creative-tool web surface, but Game is the better home for the entry. |
 | Direction 05 — Physical Design | No | Nothing is being printed. |
 | **Best Use of World Labs** tool track | **Yes, with an honest claim** | Marble generated the first arena (retired Sep 26, in git history). What is on screen now is World Labs' Spark renderer drawing the Gaussian-splat bank and collect bursts. We say exactly that; judges decide whether it qualifies. |
-| Tripo tool track | **Yes (Oct 5)** | The house rival rover and the energy core are Tripo P1 text-to-model assets, on screen in every run (`public/assets/tripo/`, registry entries `rivalRover` and `energyCore` in `mint-assets.json`). Generation script and task IDs are in the repo (`scripts/tripo-generate.mjs`). |
+| Tripo tool track | **Yes (Oct 5)** | The house rival rover and the energy core are Tripo P1 text-to-model assets, on screen in every run (`public/assets/tripo/`, registry entries `rivalRover` and `energyCore` in `mint-assets.json`). Generation script and task IDs are in the repo (`scripts/tripo-generate.mjs`). Added Oct 5: three Tripo chassis bodies (`chassis.scout|hauler|raider`, shown on the champion by chassis once the client is redeployed) and **Forge your champion**, where a signed-in player has Tripo build a custom rover body server-side (fixed chassis and paint menus, per-account limit, global credit cap). The Forge backend is deployed and was run end to end against the real Tripo API on a local Convex deployment; no player has forged on prod yet, and its panel ships with the next client deploy. Claim only what is on screen when recording. |
 | PICO / Heygears / Jupiter tool tracks | No | Not used. |
 
 ## Theme fit — "Build a world as a Gift"
@@ -131,7 +131,7 @@ Buffer absorbs a lost day to a CI hiccup or a frame refactor without slipping th
 | "World as a gift" theme fit is narrative, not automatic. | Bake the framing into the splash and the coach UI before the asset board is captured (Day 1). |
 | Held-out generalization has to be measured, not implied. | Replay one annotated held-out success alongside the numbers on the asset board. |
 | Soft / cloudy arena readability | Path ribbons + landmarks shipped. A regenerated World Labs world would require reviving the retired Marble pipeline from git history; deferred pending credits and a fresh owner decision. |
-| Tool-track disqualification if we imply use of tools we don't have. | Enter only the World Labs and Heygears tool tracks (both live on screen); never claim Tripo / PICO / Jupiter. |
+| Tool-track disqualification if we imply use of tools we don't have. | Enter only the World Labs, Heygears and Tripo tool tracks (Tripo assets are in the repo and, for the rival and core, on screen in every run); never claim PICO / Jupiter. |
 | Replay-state equality is not cross-platform determinism. | Cite the held-out evaluation table; do not promise device-portable results. |
 
 ## Out of scope for this submission

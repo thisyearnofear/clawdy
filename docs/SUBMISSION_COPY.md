@@ -26,7 +26,7 @@ The theme, "a world as a gift for the kid I used to be": the kid who could never
 - Code coaches can write a teacher function and train a checkpoint with `npm run teacher:run`.
 
 ## Tool use
-- **Tripo**: the house rival hauler rover and the amber energy core were generated with Tripo P1 text-to-model (`scripts/tripo-generate.mjs`, task IDs in `mint-assets.json`). Both are on screen in every run.
+- **Tripo**: the house rival hauler rover and the amber energy core were generated with Tripo P1 text-to-model (`scripts/tripo-generate.mjs`, task IDs in `mint-assets.json`). Both are on screen in every run. Three chassis bodies (scout, hauler, raider) were generated the same way, and **Forge your champion** lets a signed-in player have Tripo build a custom rover body server-side with a per-account limit and a global credit cap. Verified: the Forge ran end to end against the real Tripo API on a local Convex deployment and its backend is deployed to prod. Not yet verified: a real player forging on prod, and the Forge panel and chassis bodies in the live app (they need the next client deploy). Only claim these once they are on screen.
 - **World Labs**: the Spark renderer draws the Gaussian-splat bursts on every bank and collect. (Marble generated the first arena; that world was retired in favour of a Blender terrain with an exact collider, and lives in git history.)
 - **Heygears**: "Print your champion" downloads an STL of the rover with a print profile (`docs/PRINT_KIT.md`).
 - Also: Mint (champion rover), Blender (terrain and textured visual twin, pinned Docker build), Convex (sync, auth, ladder), Vercel.

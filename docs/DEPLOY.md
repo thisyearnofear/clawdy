@@ -50,7 +50,22 @@ The Forge (`convex/forge.ts`) needs `TRIPO_API_KEY` on the Convex deployment —
 CONVEX_DEPLOYMENT=prod:accomplished-capybara-638 npx convex env set TRIPO_API_KEY <key>
 ```
 
-(Set on prod Oct 5.) Without it `forge.start` fails its calls with a clear error; nothing else depends on it.
+(Set on prod Oct 5; verified the same day by comparing a hash of the prod value with the local key. `npx convex env get` prints the secret, so compare hashes, not values.) Without it `forge.start` fails with `forge-not-configured`; nothing else depends on it. Optional: `FORGE_PER_ACCOUNT_LIMIT` (default 2) and `FORGE_GLOBAL_CREDIT_CAP` (default 2000 credits; a forge reserves 40).
+
+**The Forge needs the sweep cron.** A failed scheduled action is not retried, so a transient poll failure would otherwise leave a forge pending forever (player blocked, credits held). `convex/crons.ts` runs `forge.sweep` every 2 minutes to fail overdue forges and restart quiet polls; it ships with the normal `npx convex deploy`.
+
+**Deploy from committed code.** `npx convex deploy` bundles the working tree, including other people's uncommitted edits (for example a half-done change to `services/chassis.ts`, which the league code imports). Deploy from a clean checkout of `main` instead:
+
+```bash
+git worktree add --detach /tmp/clawdy-deploy HEAD
+ln -s "$PWD/node_modules" /tmp/clawdy-deploy/node_modules
+(cd /tmp/clawdy-deploy && CONVEX_DEPLOYMENT=prod:accomplished-capybara-638 npx convex deploy --yes)
+git worktree remove --force /tmp/clawdy-deploy
+```
+
+**Testing the Forge for real without touching prod.** The Forge needs a signed-in account, so prod cannot be exercised from the CLI. Use the local anonymous deployment instead: `npx convex dev` (keep it running; the local backend only stays up while a Convex command is attached, so scheduled polls will not fire otherwise), `npx convex env set TRIPO_API_KEY <key>`, create a user row with a throwaway internal mutation you do not commit, then `npx convex run forge:start '{"chassis":"scout","paint":"ice"}' --identity '{"subject":"<userId>|s1","issuer":"https://test"}'` and watch `forge:mine`. One run spends about 40 Tripo credits.
+
+The Forge panel is client code: the Convex deploy alone does not show it. It appears after the Vercel project is redeployed.
 
 Day-to-day local development:
 

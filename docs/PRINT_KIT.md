@@ -66,7 +66,7 @@ scaled to a real size:
 python3 scripts/export-print-stl.py "<forged rover url>" forged-rover.stl --scale-mm 120
 ```
 
-`--scale-mm N` scales the longest axis to N mm (STL has no units; slicers read mm).
+`--scale-mm N` scales the longest axis to N mm (STL has no units; slicers read mm). Checked on a real forged scout from the Forge (3.58 MB GLB, 7,792 triangles): it exports cleanly and its longest axis is X, like the shipped chassis bodies.
 Use the same FDM profile as above.
 
 **Limits, stated plainly.** Tripo meshes are multi-shell (wheels, plates and
