@@ -4,7 +4,9 @@ import type React from 'react'
 import { AlertTriangle, CheckCircle2, Download, Loader2, Sparkles, Upload, XCircle } from 'lucide-react'
 import { COACHING_RULES, SPECIALIZATION_CHIPS } from '../../services/coachingEngine'
 import { BuildScreen } from './BuildScreen'
+import { TrainingControls } from './TrainingControls'
 import type { Build } from '../../services/buildBudget'
+import type { TrainingConfig } from '../../services/trainingConfig'
 import { isEvaluationScenario } from '../../services/arenaScenarios'
 import type { ArenaTrainingExample } from '../../services/policyTrainer'
 import type { PolicyCheckpoint } from '../../services/policyModel'
@@ -44,6 +46,8 @@ export function CoachPanel({
   trainMessage,
   build,
   onBuildChange,
+  trainingConfig,
+  onTrainingConfigChange,
 }: {
   activeCheckpoint: PolicyCheckpoint
   checkpoints: PolicyCheckpoint[]
@@ -67,6 +71,8 @@ export function CoachPanel({
   trainMessage: string | null
   build: Build
   onBuildChange: (next: Build) => void
+  trainingConfig: TrainingConfig
+  onTrainingConfigChange: (next: TrainingConfig) => void
 }) {
   const busy = isTraining || phase === 'running'
   const teachableChips = SPECIALIZATION_CHIPS.filter(chip => chip.id !== 'bank-cargo' && chip.id !== 'grab-cores')
@@ -103,6 +109,11 @@ export function CoachPanel({
       <details className={styles.guidanceDetails}>
         <summary>Build your rover</summary>
         <BuildScreen build={build} onChange={onBuildChange} disabled={busy || coachingLocked} />
+      </details>
+
+      <details className={styles.guidanceDetails}>
+        <summary>Training controls</summary>
+        <TrainingControls config={trainingConfig} onChange={onTrainingConfigChange} disabled={busy || coachingLocked} />
       </details>
 
       {view.showQueue && (

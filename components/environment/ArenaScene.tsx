@@ -49,6 +49,13 @@ import {
   serializeBuild,
   type Build,
 } from '../../services/buildBudget'
+import {
+  isValidTrainingConfig,
+  parseTrainingConfig,
+  serializeTrainingConfig,
+  TRAINING_STORAGE_KEY,
+  type TrainingConfig,
+} from '../../services/trainingConfig'
 import { useConvexClient } from '../ConvexClientProvider'
 import { api } from '../../convex/_generated/api'
 import type { ReplayMarker } from '../../services/replayMarkers'
@@ -144,6 +151,17 @@ function Workbench({
     }
   })
   const [coachNudgeOpen, setCoachNudgeOpen] = useState(false)
+  // Stream B training controls. These configure the evolution-strategy builder
+  // (`services/trainingConfig.ts`), NOT the pinned browser trainer below — the
+  // Train button's 60/0.008/decay config is frozen by versions.test.ts and the
+  // eval pin, and stays exactly as it is.
+  const [trainingConfig, setTrainingConfig] = useState<TrainingConfig>(() => {
+    try {
+      return parseTrainingConfig(typeof window === 'undefined' ? null : window.localStorage.getItem(TRAINING_STORAGE_KEY))
+    } catch {
+      return parseTrainingConfig(null)
+    }
+  })
   const [hasCompletedRun, setHasCompletedRun] = useState(() => loadEngagementProgress().hasCompletedRun)
   const [mistakeMoment, setMistakeMoment] = useState<{ tick: number; headline: string; detail: string } | null>(null)
   const [liveCall, setLiveCall] = useState<LiveCallContext | null>(null)
@@ -1073,6 +1091,19 @@ function Workbench({
     }
   }
 
+  const handleTrainingConfigChange = (next: TrainingConfig) => {
+    if (!isValidTrainingConfig(next)) {
+      setTrainMessage('Those training settings are out of range — the panel will not accept them.')
+      return
+    }
+    setTrainingConfig(next)
+    try {
+      window.localStorage.setItem(TRAINING_STORAGE_KEY, serializeTrainingConfig(next))
+    } catch (err) {
+      setTrainMessage(`Training settings applied, but they wouldn't save to this browser: ${err instanceof Error ? err.message : 'storage unavailable'}.`)
+    }
+  }
+
   const toggleApprove = (id: string) => {
     if (isTraining || view.phase === 'running' || coachingLocked) return
     const target = examples.find(ex => ex.id === id)
@@ -1969,6 +2000,8 @@ function Workbench({
               trainMessage={trainMessage}
               build={build}
               onBuildChange={handleBuildChange}
+              trainingConfig={trainingConfig}
+              onTrainingConfigChange={handleTrainingConfigChange}
             />
           </div>
         )}

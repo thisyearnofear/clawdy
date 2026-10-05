@@ -6,11 +6,13 @@ vi.mock('../../components/ConvexClientProvider', () => ({ ConvexLineageBadge: ()
 
 import { CoachPanel } from '../../components/workbench/CoachPanel'
 import { BuildScreen } from '../../components/workbench/BuildScreen'
+import { TrainingControls } from '../../components/workbench/TrainingControls'
 import { LessonComparison } from '../../components/workbench/LessonComparison'
 import type { PracticeComparison } from '../practiceComparison'
 import { SEASON_0_STARTER_CHECKPOINT } from '../starterCheckpoint'
 import type { ArenaRecording } from '../arenaEpisode'
 import { baseBuild, CHASSIS_BASE, DEFAULT_BUILD, setAxisLevel, STAT_BUDGET, toggleModule } from '../buildBudget'
+import { DEFAULT_TRAINING_CONFIG, setKnob, TRAINING_KNOBS, TRAINING_LABELS } from '../trainingConfig'
 
 const noop = () => {}
 const fileInputRef = createRef<HTMLInputElement>()
@@ -39,6 +41,8 @@ function coachPanel(props: Partial<Parameters<typeof CoachPanel>[0]> = {}) {
     trainMessage: null,
     build: baseBuild(DEFAULT_BUILD.chassis),
     onBuildChange: noop,
+    trainingConfig: { ...DEFAULT_TRAINING_CONFIG },
+    onTrainingConfigChange: noop,
     ...props,
   }))
 }
@@ -236,5 +240,50 @@ describe('BuildScreen', () => {
   it('disables every control during a locked match', () => {
     const html = render({ disabled: true })
     expect(html).toContain('disabled')
+  })
+})
+
+describe('TrainingControls', () => {
+  const render = (props: Partial<Parameters<typeof TrainingControls>[0]> = {}) =>
+    renderToStaticMarkup(createElement(TrainingControls, { config: { ...DEFAULT_TRAINING_CONFIG }, onChange: noop, ...props }))
+
+  it('renders every Stream B knob as a labelled range control', () => {
+    const html = render()
+    for (const knob of TRAINING_KNOBS) expect(html).toContain(TRAINING_LABELS[knob])
+    for (const knob of TRAINING_KNOBS) expect(html).toContain(`id="training-${knob}"`)
+    expect((html.match(/type="range"/g) ?? []).length).toBe(TRAINING_KNOBS.length)
+  })
+
+  it('labels each slider for assistive tech rather than leaving a bare number', () => {
+    const html = render()
+    // aria-valuetext carries the meaning a bare number cannot.
+    for (const knob of TRAINING_KNOBS) expect(html).toContain(`aria-valuetext="${TRAINING_LABELS[knob]}`)
+    expect(html).toContain('aria-describedby=')
+  })
+
+  it('shows the real run cost in plain words', () => {
+    expect(render()).toContain('30 generations of 16 candidates')
+    expect(render()).toContain('480')
+  })
+
+  it('announces a changed config as a live region', () => {
+    const dirty = setKnob(DEFAULT_TRAINING_CONFIG, 'generations', 50)
+    expect(render({ config: dirty })).toContain('Changed from the builder defaults')
+    expect(render()).not.toContain('Changed from the builder defaults')
+  })
+
+  it('reports an out-of-range config in an alert instead of silently clamping', () => {
+    const html = render({ config: { ...DEFAULT_TRAINING_CONFIG, generations: 0 } })
+    expect(html).toContain('role="alert"')
+    expect(html).toContain('between 1 and 500')
+  })
+
+  it('disables every control during a locked match', () => {
+    expect(render({ disabled: true })).toContain('disabled')
+  })
+
+  it('is reachable from the Coach panel', () => {
+    expect(coachPanel()).toContain('Training controls')
+    expect(coachPanel()).toContain('Generations')
   })
 })
