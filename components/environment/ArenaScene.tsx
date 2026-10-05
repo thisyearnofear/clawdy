@@ -1724,6 +1724,8 @@ function Workbench({
                 ghostPose={ghostPose}
                 championName={championIdentity.name}
                 championAccent={championAccent}
+                chassisByEntrant={{ champion: build.chassis }}
+                forgedLook={forgedLook}
                 fxCue={fxCue}
                 onReady={onReady}
                 onError={onError}

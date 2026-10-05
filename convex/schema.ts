@@ -154,6 +154,8 @@ export default defineSchema({
     mode: v.optional(v.string()),
     chassis: v.optional(v.string()),
     build: v.optional(buildV),
+    /** League season the entry was verified in; missing counts as season 0. */
+    season: v.optional(v.number()),
   })
     .index('by_user', ['userId'])
     .index('by_score', ['score']),
@@ -184,6 +186,8 @@ export default defineSchema({
     matchesPlayed: v.number(),
     /** Whether this brain appears in the challenge pool. */
     listed: v.boolean(),
+    /** League season the brain was last published in; missing counts as 0. */
+    season: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index('by_user', ['userId'])
@@ -207,6 +211,7 @@ export default defineSchema({
     status: v.union(v.literal('done'), v.literal('failed')),
     message: v.optional(v.string()),
     replayId: v.optional(v.id('replays')),
+    season: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index('by_challenger', ['challengerUserId', 'createdAt'])
@@ -240,6 +245,7 @@ export default defineSchema({
     mode: v.string(),
     seed: v.number(),
     rulesVersion: v.string(),
+    season: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index('by_share', ['shareId'])
@@ -251,6 +257,7 @@ export default defineSchema({
     round: v.number(),
     seed: v.number(),
     pairings: v.number(),
+    season: v.optional(v.number()),
     createdAt: v.number(),
   }).index('by_mode', ['mode', 'round']),
 

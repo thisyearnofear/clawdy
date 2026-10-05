@@ -121,6 +121,7 @@ describe('challenges', () => {
     const replay = await t.query(api.league.viewReplay, { shareId: result.shareId })
     expect(replay).not.toBeNull()
     expect(replay!.participants.map(participant => participant.brainId)).toEqual(['beta', 'alpha'])
+    expect(replay!.season).toBe(0)
     expect(replay!.urls).toHaveLength(2)
     expect(JSON.stringify(replay)).not.toContain(String(b.userId))
 
@@ -186,5 +187,76 @@ describe('scheduled rounds', () => {
     const a = await makeUser(t, 'Alice')
     await publish(a.as, 'alpha')
     expect(await t.action(internal.leagueRun.runRound, { mode: 'rush', seed: 1 })).toEqual({ round: null, pairings: 0 })
+  })
+})
+
+describe('seasons', () => {
+  it('stamps new brains and treats unseasoned rows as the genesis season', async () => {
+    const t = convexTest(schema, modules)
+    const a = await makeUser(t, 'Alice')
+    const b = await makeUser(t, 'Bob')
+    await publish(a.as, 'alpha')
+    const mine = await a.as.query(api.league.mine, {})
+    expect(mine[0].season).toBe(0)
+
+    // A row written before seasons existed (no `season` field) counts as 0 —
+    // the current season — so it stays in the pool.
+    await t.run(ctx => ctx.db.insert('brains', {
+      userId: b.userId,
+      brainId: 'legacy',
+      name: 'Legacy',
+      checkpointId: 'cp',
+      weightsHash: 'wh',
+      checkpointJson: '{}',
+      mode: 'rush',
+      rating: 0,
+      matchesPlayed: 0,
+      listed: true,
+      createdAt: Date.now(),
+    }))
+    expect((await a.as.query(api.league.pool, {})).map(row => row.brainId)).toEqual(['legacy'])
+  })
+
+  it('keeps a past-season brain out of the pool, pairings and challenges', async () => {
+    const t = convexTest(schema, modules)
+    const a = await makeUser(t, 'Alice')
+    const b = await makeUser(t, 'Bob')
+    await publish(a.as, 'alpha')
+    await publish(b.as, 'beta')
+    const betaId = (await t.run(ctx => ctx.db
+      .query('brains')
+      .withIndex('by_user_brain', q => q.eq('userId', b.userId).eq('brainId', 'beta'))
+      .unique()))!._id
+    // Bob's brain belongs to a different season once season 1 opens.
+    await t.run(ctx => ctx.db.patch(betaId, { season: 1 }))
+
+    expect(await a.as.query(api.league.pool, {})).toHaveLength(0)
+    await expect(a.as.action(api.leagueRun.challenge, { brainId: 'alpha', defenderBrain: betaId })).rejects.toThrow('wrong-season')
+    expect(await t.action(internal.leagueRun.runRound, { mode: 'rush', seed: 1 })).toEqual({ round: null, pairings: 0 })
+  })
+
+  it('serves the hall of fame: the per-chassis board filters by season', async () => {
+    const t = convexTest(schema, modules)
+    const a = await makeUser(t, 'Alice')
+    // A legacy entry — verified before seasons existed — is season 0.
+    await t.run(ctx => ctx.db.insert('ladder', {
+      userId: a.userId,
+      displayName: 'Alice',
+      checkpointId: 'cp',
+      weightsHash: 'wh',
+      score: 10,
+      perOpponent: [],
+      seeds: [1],
+      rulesVersion: 'v',
+      physicsVersion: 'p',
+      colliderSha256: 'sha',
+      verifiedAt: 1,
+      submissions: 1,
+      chassis: 'scout',
+    }))
+    expect(await t.query(api.league.topByChassis, {})).toEqual([
+      { chassis: 'scout', displayName: 'Alice', score: 10, checkpointId: 'cp', verifiedAt: 1 },
+    ])
+    expect(await t.query(api.league.topByChassis, { season: 1 })).toHaveLength(0)
   })
 })

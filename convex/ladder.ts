@@ -2,6 +2,7 @@ import { getAuthUserId } from '@convex-dev/auth/server'
 import { ConvexError, v } from 'convex/values'
 import { internalMutation, query } from './_generated/server'
 import { buildV } from './schema'
+import { CURRENT_SEASON } from './league'
 
 /** One verification run per account per window; a run costs real server CPU. */
 export const ATTEMPT_WINDOW_MS = 60_000
@@ -102,13 +103,16 @@ export const recordResult = internalMutation({
     const existing = await ctx.db.query('ladder').withIndex('by_user', q => q.eq('userId', args.userId)).unique()
     const { userId, ...result } = args
     const verifiedAt = Date.now()
+    // Season is stamped server-side (league.ts CURRENT_SEASON): a re-verified
+    // entry always joins the season it was scored in, not the client's claim.
+    const season = CURRENT_SEASON
     if (!existing) {
-      await ctx.db.insert('ladder', { userId, displayName, ...result, verifiedAt, submissions: 1 })
+      await ctx.db.insert('ladder', { userId, displayName, ...result, verifiedAt, submissions: 1, season })
       return { improved: true, best: args.score, submissions: 1 }
     }
     const submissions = existing.submissions + 1
     if (args.score > existing.score) {
-      await ctx.db.patch(existing._id, { displayName, ...result, verifiedAt, submissions })
+      await ctx.db.patch(existing._id, { displayName, ...result, verifiedAt, submissions, season })
       return { improved: true, best: args.score, submissions }
     }
     await ctx.db.patch(existing._id, { displayName, submissions })

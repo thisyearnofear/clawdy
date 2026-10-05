@@ -20,7 +20,18 @@ import { buildV } from './schema'
 export const MAX_BRAINS_PER_USER = 8
 export const MAX_ROUNDS_PER_ROUND = 8
 export const RATING_START = 0
+/**
+ * Active league season. Rows written before seasons existed carry no `season`
+ * and count as season 0 (the genesis season) — see `seasonOf`. Rolling a new
+ * season means bumping this constant; boards/pools/pairings follow it.
+ */
+export const CURRENT_SEASON = 0
+const GENESIS_SEASON = 0
 const ELO_K = 16
+
+function seasonOf(row: { season?: number }): number {
+  return row.season ?? GENESIS_SEASON
+}
 
 const BRAIN_ID_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$/
 const LEAGUE_MODES = ['rush'] as const
@@ -45,6 +56,7 @@ const brainPublicV = v.object({
   rating: v.number(),
   matchesPlayed: v.number(),
   listed: v.boolean(),
+  season: v.number(),
   createdAt: v.number(),
 })
 
@@ -60,6 +72,7 @@ function publicBrain(row: Doc<'brains'>) {
     rating: row.rating,
     matchesPlayed: row.matchesPlayed,
     listed: row.listed,
+    season: seasonOf(row),
     createdAt: row.createdAt,
   }
 }
@@ -109,7 +122,7 @@ export const pool = query({
       .take(200)
     const out = []
     for (const row of rows) {
-      if (row.userId === userId) continue
+      if (row.userId === userId || seasonOf(row) !== CURRENT_SEASON) continue
       const owner = await ctx.db.get(row.userId)
       out.push({ ...publicBrain(row), owner: (owner?.name ?? 'Anonymous').slice(0, 40) })
     }
@@ -133,6 +146,7 @@ export const challenges = query({
     defenderBrainId: v.string(),
     side: v.union(v.literal('challenger'), v.literal('defender')),
     shareId: v.union(v.string(), v.null()),
+    season: v.number(),
     createdAt: v.number(),
   })),
   handler: async ctx => {
@@ -160,6 +174,7 @@ export const challenges = query({
       defenderBrainId: row.defenderBrainId,
       side,
       shareId: row.replayId ? ((await ctx.db.get(row.replayId))?.shareId ?? null) : null,
+      season: seasonOf(row),
       createdAt: row.createdAt,
     })))
   },
@@ -184,6 +199,7 @@ export const viewReplay = query({
     mode: v.string(),
     seed: v.number(),
     rulesVersion: v.string(),
+    season: v.number(),
     createdAt: v.number(),
   })),
   handler: async (ctx, args) => {
@@ -202,14 +218,19 @@ export const viewReplay = query({
       mode: row.mode,
       seed: row.seed,
       rulesVersion: row.rulesVersion,
+      season: seasonOf(row),
       createdAt: row.createdAt,
     }
   },
 })
 
-/** Per-chassis best on the verified ladder: the "per-build leaderboard". */
+/**
+ * Per-chassis best on the verified ladder: the "per-build leaderboard".
+ * `season` defaults to the current one; passing a past season is the hall of
+ * fame — entries verified before seasons existed count as season 0.
+ */
 export const topByChassis = query({
-  args: {},
+  args: { season: v.optional(v.number()) },
   returns: v.array(v.object({
     chassis: v.string(),
     displayName: v.string(),
@@ -217,10 +238,12 @@ export const topByChassis = query({
     checkpointId: v.string(),
     verifiedAt: v.number(),
   })),
-  handler: async ctx => {
+  handler: async (ctx, args) => {
+    const season = args.season ?? CURRENT_SEASON
     const rows = await ctx.db.query('ladder').withIndex('by_score').order('desc').take(50)
     const best = new Map<string, { chassis: string; displayName: string; score: number; checkpointId: string; verifiedAt: number }>()
     for (const row of rows) {
+      if (seasonOf(row) !== season) continue
       const chassis = row.chassis ?? 'hauler'
       if (!best.has(chassis)) {
         best.set(chassis, { chassis, displayName: row.displayName, score: row.score, checkpointId: row.checkpointId, verifiedAt: row.verifiedAt })
@@ -236,13 +259,14 @@ export const topByChassis = query({
  * the caller's most-played brain for comparison.
  */
 export const reportCard = query({
-  args: { mode: v.optional(v.string()) },
+  args: { mode: v.optional(v.string()), season: v.optional(v.number()) },
   returns: v.object({
     entriesWithBuilds: v.number(),
     axes: v.array(v.object({ axis: v.string(), mean: v.number(), max: v.number() })),
     mine: v.union(v.null(), v.object({ chassis: v.string(), points: v.record(v.string(), v.number()) })),
   }),
   handler: async (ctx, args) => {
+    const season = args.season ?? CURRENT_SEASON
     const rows = await ctx.db
       .query('brains')
       .withIndex('by_mode_listed', q => q.eq('mode', args.mode ?? 'rush'))
@@ -251,7 +275,7 @@ export const reportCard = query({
     const totals = new Map<string, { sum: number; max: number }>(axes.map(axis => [axis, { sum: 0, max: 0 }]))
     let entriesWithBuilds = 0
     for (const row of rows) {
-      if (!row.build) continue
+      if (!row.build || seasonOf(row) !== season) continue
       entriesWithBuilds++
       for (const axis of axes) {
         const stat = totals.get(axis)!
@@ -265,7 +289,7 @@ export const reportCard = query({
       ? await ctx.db.query('brains').withIndex('by_user', q => q.eq('userId', userId)).collect()
       : []
     const mineRow = mineRows
-      .filter(row => row.build)
+      .filter(row => row.build && seasonOf(row) === season)
       .sort((a, b) => b.matchesPlayed - a.matchesPlayed || b.createdAt - a.createdAt)[0]
     return {
       entriesWithBuilds,
@@ -336,6 +360,7 @@ export const upsertBrain = internalMutation({
         checkpointJson: args.checkpointJson,
         build: args.build,
         chassis: args.chassis,
+        season: CURRENT_SEASON,
       })
       return { brainId: args.brainId, replaced: true }
     }
@@ -354,6 +379,7 @@ export const upsertBrain = internalMutation({
       rating: RATING_START,
       matchesPlayed: 0,
       listed: true,
+      season: CURRENT_SEASON,
       createdAt: Date.now(),
     })
     return { brainId: args.brainId, replaced: false }
@@ -418,6 +444,7 @@ export const recordChallenge = internalMutation({
       winnerSide: args.winnerSide,
       banked: args.banked,
       status: 'done',
+      season: CURRENT_SEASON,
       createdAt: Date.now(),
     })
     const replayId = await ctx.db.insert('replays', {
@@ -436,6 +463,7 @@ export const recordChallenge = internalMutation({
       mode: args.mode,
       seed: args.seed,
       rulesVersion: args.rulesVersion,
+      season: CURRENT_SEASON,
       createdAt: Date.now(),
     })
     await ctx.db.patch(challengeId, { replayId })
@@ -473,6 +501,7 @@ export const failChallenge = internalMutation({
       banked: [],
       status: 'failed',
       message: args.message.slice(0, 200),
+      season: CURRENT_SEASON,
       createdAt: Date.now(),
     })
     return null
@@ -501,6 +530,7 @@ export const loadChallenge = internalQuery({
     if (defender.userId === args.userId) throw new ConvexError('cannot-challenge-self')
     if (!defender.listed) throw new ConvexError('opponent-not-listed')
     if (defender.mode !== challenger.mode) throw new ConvexError('mode-mismatch')
+    if (seasonOf(challenger) !== CURRENT_SEASON || seasonOf(defender) !== CURRENT_SEASON) throw new ConvexError('wrong-season')
     return {
       challenger: { brainId: challenger.brainId, name: challenger.name, checkpointJson: challenger.checkpointJson, chassis: challenger.chassis, build: challenger.build, mode: challenger.mode },
       defender: { brainId: defender.brainId, name: defender.name, checkpointJson: defender.checkpointJson, chassis: defender.chassis, build: defender.build, mode: defender.mode, userId: defender.userId },
@@ -526,6 +556,7 @@ export const listedForRound = internalQuery({
       .withIndex('by_mode_listed', q => q.eq('mode', args.mode).eq('listed', true))
       .collect()
     return rows
+      .filter(row => seasonOf(row) === CURRENT_SEASON)
       .sort((a, b) => b.rating - a.rating || a.createdAt - b.createdAt)
       .slice(0, MAX_ROUNDS_PER_ROUND * 2)
       .map(({ userId, brainId, name, checkpointJson, chassis, build, rating }) => ({ userId, brainId, name, checkpointJson, chassis, build, rating }))
@@ -602,6 +633,7 @@ export const recordRound = internalMutation({
         mode: args.mode,
         seed: args.seed,
         rulesVersion: match.rulesVersion,
+        season: CURRENT_SEASON,
         createdAt: Date.now(),
       })
       const a = await ctx.db.query('brains').withIndex('by_user_brain', q => q.eq('userId', match.aUserId).eq('brainId', match.aBrainId)).unique()
@@ -612,7 +644,7 @@ export const recordRound = internalMutation({
         await ctx.db.patch(b._id, { rating: elo(b.rating, a.rating, 1 - score), matchesPlayed: b.matchesPlayed + 1 })
       }
     }
-    await ctx.db.insert('tournamentRounds', { mode: args.mode, round, seed: args.seed, pairings: args.matches.length, createdAt: Date.now() })
+    await ctx.db.insert('tournamentRounds', { mode: args.mode, round, seed: args.seed, pairings: args.matches.length, season: CURRENT_SEASON, createdAt: Date.now() })
     return { round, pairings: args.matches.length }
   },
 })
