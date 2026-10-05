@@ -28,7 +28,20 @@ export type ArenaNode = { id: string; position: ArenaPosition }
 export type ArenaEdge = { id: string; from: string; to: string; travelTicks: number; floodable: boolean; path?: ArenaPosition[] }
 /** `spawnTick`: the core is hidden and uncollectable until that tick (Rush waves). */
 export type ArenaResource = { id: string; nodeId: string; value: number; spawnTick?: number }
-export type ArenaEntrant = { id: string; baseNode: string; policyVersion: string }
+/**
+ * Optional per-entrant overrides (chassis builds). Absent means the pinned
+ * ARENA_RULES apply unchanged, so existing scenarios and recordings replay
+ * identically.
+ */
+export type EntrantTraits = {
+  /** Multiplier on travel progress per tick (1 = pinned speed). */
+  travelSpeed: number
+  /** Battery capacity: starting energy and the regen cap. */
+  maxEnergy: number
+  /** Positive wins bumps: the entrant with the higher (cargo - strength) loses. */
+  contactStrength: number
+}
+export type ArenaEntrant = { id: string; baseNode: string; policyVersion: string; traits?: EntrantTraits }
 
 export interface ArenaScenario {
   id: string
@@ -224,6 +237,10 @@ function validateScenario(scenario: ArenaScenario) {
       edge.path[edge.path.length - 1].every((value, axis) => Math.abs(value - end[axis]) < 1e-5), 'path endpoints')
   }
   assert(scenario.entrants.every(entrant => nodes.has(entrant.baseNode) && identifier(entrant.policyVersion)), 'entrants')
+  assert(scenario.entrants.every(({ traits }) => traits === undefined || (
+    Number.isFinite(traits.travelSpeed) && traits.travelSpeed >= 0.5 && traits.travelSpeed <= 2 &&
+    Number.isFinite(traits.maxEnergy) && traits.maxEnergy >= 4 && traits.maxEnergy <= 24 &&
+    Number.isFinite(traits.contactStrength) && Math.abs(traits.contactStrength) <= 5)), 'entrant traits')
   assert(scenario.resources.every(resource => nodes.has(resource.nodeId) &&
     integer(resource.value, 1, ARENA_RULES.capacity) &&
     (resource.spawnTick === undefined || integer(resource.spawnTick, 0, scenario.durationTicks - 1))), 'resources')
@@ -359,7 +376,7 @@ export class ArenaEpisode {
         nodeId: entrant.baseNode,
         position: [...this.#nodes.get(entrant.baseNode)!.position],
         transit: null,
-        energy: ARENA_RULES.initialEnergy,
+        energy: entrant.traits?.maxEnergy ?? ARENA_RULES.initialEnergy,
         cargo: 0,
         banked: 0,
         cooldownUntilTick: 0,
@@ -482,11 +499,12 @@ export class ArenaEpisode {
     // recover energy (capped). An accepted `wait` is the recharge verb — it
     // must not tax the very recovery it exists to perform.
     for (const agent of state.agents) {
-      if (!agent.transit && agent.energy < ARENA_RULES.initialEnergy) {
+      const maxEnergy = agent.traits?.maxEnergy ?? ARENA_RULES.initialEnergy
+      if (!agent.transit && agent.energy < maxEnergy) {
         const actedThisTick = agent.lastOutcome?.tick === state.tick && agent.lastOutcome?.accepted &&
           agent.lastOutcome?.action?.type !== 'wait'
         if (!actedThisTick) {
-          agent.energy = Math.min(ARENA_RULES.initialEnergy, agent.energy + ARENA_RULES.idleRegenPerTick)
+          agent.energy = Math.min(maxEnergy, agent.energy + ARENA_RULES.idleRegenPerTick)
         }
       }
     }
@@ -615,7 +633,8 @@ export class ArenaEpisode {
       if (!transit) return { id: agent.id, position: [...this.#nodes.get(agent.nodeId)!.position] as ArenaPosition, progressUnits: 0 }
       const edge = this.#edges.get(transit.edgeId)!
       const flooded = edge.floodable && this.#state.weather.flooded
-      const progressUnits = Math.min(transit.requiredUnits, transit.progressUnits + (flooded ? 1 : ARENA_RULES.floodTravelMultiplier))
+      const step = (flooded ? 1 : ARENA_RULES.floodTravelMultiplier) * (agent.traits?.travelSpeed ?? 1)
+      const progressUnits = Math.min(transit.requiredUnits, transit.progressUnits + step)
       const progress = progressUnits / transit.requiredUnits
       return { id: agent.id, position: this.#pathPoint(edge, transit.from === edge.from ? progress : 1 - progress), progressUnits }
     })
@@ -685,7 +704,11 @@ export class ArenaEpisode {
     if (lastBump && eventTick - lastBump.tick < rules.bumpCooldownTicks) return
     if (a.staggeredUntilTick > state.tick || b.staggeredUntilTick > state.tick) return
     const bias = (this.#scenario.seed + Math.floor(state.tick / ARENA_RULES.decisionEveryTicks)) % 2
-    const loser = a.cargo !== b.cargo ? (a.cargo > b.cargo ? a : b)
+    // Strength lowers an entrant's effective load; without traits it is 0 and
+    // this reduces to the original cargo comparison.
+    const loadA = a.cargo - (a.traits?.contactStrength ?? 0)
+    const loadB = b.cargo - (b.traits?.contactStrength ?? 0)
+    const loser = loadA !== loadB ? (loadA > loadB ? a : b)
       : a.energy !== b.energy ? (a.energy < b.energy ? a : b)
       : (bias === 0 ? a : b)
     const winner = loser === a ? b : a

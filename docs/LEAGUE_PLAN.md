@@ -41,7 +41,7 @@ export interface Build {
 
 export const DEFAULT_BUILD: Build   // hauler, flat stats, no modules
 export function validateBuild(b: Build): string[]            // [] = valid
-export function buildToParams(b: Build): RoverParams         // sim parameters
+export function buildToTraits(b: Build): EntrantTraits       // optional per-entrant sim overrides
 export function buildToObservation(b: Build): number[]       // appended to brain input
 ```
 
@@ -56,8 +56,9 @@ Other shared contracts:
 Owner: sim developer.
 
 - Add `services/chassis.ts` with the interfaces above.
-- Map stats and modules to existing physics parameters (top speed, battery, carry capacity, sensor range). Start with those, since they already exist in `arenaPhysics.ts`.
-- Add a light **contact rule** to Rush so Attack, Defence and Hardiness have a mechanical effect (collision damage and knock-back). If it does not land cleanly, those three axes are labelled "roadmap" in the UI and not shown as active.
+- **Landed (stage 1):** `services/chassis.ts` and optional `EntrantTraits` on `ArenaEntrant` (travel speed, battery size, bump strength). Rush already has rover-vs-rover bumps, so Attack and Defence bias that existing rule; no new contact system was needed. Default build is verified identical to the pinned rules.
+- **Inert for now:** navigation (needs a wider fog radius), and the `wide-sensor` and `extra-cell` modules (capacity is hard-coded in the policy encoders). `ACTIVE_AXES` lists what is live, and the UI must not present inert axes as active.
+- **Known caveat:** a faster chassis moves the route reference faster than the physics controller's `maxSpeed` (2.4) can follow in live physics-backed play, so speed above 1.0 needs a physics scale before it ships to the live view. Server-side route-only matches are unaffected.
 - Append `buildToObservation` to the policy input behind a feature flag. The default input size stays unchanged for old brains.
 - Per-chassis balance runs with `scripts/eval-es.ts`. Report win rates for real, including any chassis that dominates.
 
