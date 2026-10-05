@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
+import { ROVER_PHYSICS } from '../arenaPhysics'
 import { ARENA_RULES, DEFAULT_RUSH_RULES, type ArenaScenario } from '../arenaEpisode'
 import { ArenaRunner, runArenaEpisode } from '../arenaPolicy'
 import { PRACTICE_SCENARIOS } from '../arenaScenarios'
 import {
   ACTIVE_AXES, CHASSIS_BASE, CHASSIS_IDS, CHASSIS_TOTAL, DEFAULT_BUILD, STAT_AXES, STAT_BUDGET,
-  baseBuild, budgetSpent, buildToObservation, buildToTraits, describeBuild, validateBuild,
+  MAX_TRAVEL_SPEED, baseBuild, budgetSpent, buildToObservation, buildToTraits, describeBuild, validateBuild,
 } from '../chassis'
 
 const base = PRACTICE_SCENARIOS[0]
@@ -81,6 +82,18 @@ describe('chassis builds', () => {
     expect(describeBuild(baseBuild('scout'))).toMatch(/faster/)
     expect(describeBuild(DEFAULT_BUILD as never)).toBe('balanced hauler baseline')
     expect(ACTIVE_AXES).not.toContain('navigation')
+  })
+})
+
+describe('speed headroom', () => {
+  it('never asks the physics controller for more than it can deliver', () => {
+    expect(ROVER_PHYSICS.maxSpeed).toBe(2.4)
+    expect(MAX_TRAVEL_SPEED * 1.8).toBeLessThanOrEqual(ROVER_PHYSICS.maxSpeed)
+    for (const id of CHASSIS_IDS) {
+      const maxed = baseBuild(id)
+      maxed.points.speed = 6
+      expect(buildToTraits({ ...maxed, points: { ...maxed.points, speed: 6, navigation: 0, hardiness: 0 } }).travelSpeed).toBeLessThanOrEqual(MAX_TRAVEL_SPEED)
+    }
   })
 })
 

@@ -97,6 +97,13 @@ export function validateBuild(build: Build): string[] {
 const HAULER = CHASSIS_BASE.hauler
 
 /**
+ * Rush route edges run at about 1.8 m/s at pinned speed and the physics
+ * controller tops out at 2.4 m/s (ROVER_PHYSICS.maxSpeed, asserted in tests;
+ * not imported here so server code stays free of the physics engine).
+ */
+export const MAX_TRAVEL_SPEED = 1.33
+
+/**
  * Build → simulation traits, measured against the hauler baseline so that the
  * default build resolves to exactly the pinned rules (identity). Mappings are
  * linear in points but bounded, so extreme allocations stay inside the ranges
@@ -117,7 +124,7 @@ export function buildToTraits(build: Build): EntrantTraits {
     if (id === 'ram-plate') { contactStrength += 1; maxEnergy -= 1 }
   }
   return {
-    travelSpeed: round(clamp(travelSpeed, 0.8, 1.4)),
+    travelSpeed: round(clamp(travelSpeed, 0.8, MAX_TRAVEL_SPEED)),
     maxEnergy: round(clamp(maxEnergy, 6, 14)),
     contactStrength: round(clamp(contactStrength, -3, 3)),
   }

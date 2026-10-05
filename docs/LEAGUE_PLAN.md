@@ -58,7 +58,7 @@ Owner: sim developer.
 - Add `services/chassis.ts` with the interfaces above.
 - **Landed (stage 1):** `services/chassis.ts` and optional `EntrantTraits` on `ArenaEntrant` (travel speed, battery size, bump strength). Rush already has rover-vs-rover bumps, so Attack and Defence bias that existing rule; no new contact system was needed. Default build is verified identical to the pinned rules.
 - **Inert for now:** navigation (needs a wider fog radius), and the `wide-sensor` and `extra-cell` modules (capacity is hard-coded in the policy encoders). `ACTIVE_AXES` lists what is live, and the UI must not present inert axes as active.
-- **Known caveat:** a faster chassis moves the route reference faster than the physics controller's `maxSpeed` (2.4) can follow in live physics-backed play, so speed above 1.0 needs a physics scale before it ships to the live view. Server-side route-only matches are unaffected.
+- **Speed headroom:** Rush route edges run at about 1.8 m/s and the physics controller allows 2.4, so `travelSpeed` is capped at `MAX_TRAVEL_SPEED` (1.33) and live physics can follow every chassis. A test guards the cap.
 - Append `buildToObservation` to the policy input behind a feature flag. The default input size stays unchanged for old brains.
 - Per-chassis balance runs with `scripts/eval-es.ts`. Report win rates for real, including any chassis that dominates.
 
