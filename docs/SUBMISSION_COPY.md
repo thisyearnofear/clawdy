@@ -35,6 +35,7 @@ The theme, "a world as a gift for the kid I used to be": the kid who could never
 - The trained champion does not beat the `weather` bot.
 - The ladder is verified in tests and the sign-in works on production, but it has had little live use. The league paths (publish, challenge, share-link replay) are on prod and covered by Convex tests — including a real two-account match — but no human has run a challenge on production yet.
 - The GPU look of the terrain texture was only checked under software rendering.
+- **Skirmish is roadmap, not a feature.** It is a planned second ruleset where each chassis gets a signature rule (Hauler carries 5 instead of 3, Raider takes a rival's whole cargo on a bump, Scout sees two hops ahead). Done in the repo: the per-entrant traits in the sim (capacity and two-hop vision are unit-tested; the Raider's whole-cargo steal has no gameplay test yet), brain encoders that read each rover's own capacity, ruleset-tagged league rows (separate ladders, pools, ratings and rounds), and replays that carry their ruleset. Not done: no brain has been trained or evaluated under Skirmish (there is no Skirmish eval pin), it is not playable in the app, and the ruleset-aware league code is not deployed. Nothing about its balance is claimed. The chassis bodies were generated before these rules existed and were not designed to show them.
 
 ## Build log drafts
 
@@ -55,6 +56,9 @@ Clawdy is a league now. Publish your trained brain with its chassis build, chall
 
 **Post 6 (Tripo chassis + Forge)**
 Three Tripo chassis bodies — scout, hauler, raider — now render in the arena, and your pick actually changes the sim (speed, battery, bump strength). Forge goes further: a signed-in player can have Tripo build a one-of-a-kind rover body server-side, credits reserved atomically and refunded on any failure. Verified end to end against the real API — including the day a scheduled poll died silently and stranded a forge. (Convex doesn't retry failed scheduled actions; now a 2-minute sweep rescues them.) #Tripothon @TripoAI
+
+**Post 8 (roadmap, post only as roadmap)**
+Next for Clawdy: a second ruleset, Skirmish, where each chassis gets a signature rule instead of just a stat tweak. The sim and league plumbing are in the repo and tested; the brains are not trained yet, so it is not in the live game. Training Grounds, the current game, is what you can play today. #Tripothon
 
 **Post 7 (balance honesty)**
 Trained chassis vs chassis on 80 hidden Rush variants: scout beat hauler 71–9 before a retune. Speed was overtuned — an inert-stat handicap wasn't enough to slow it down. We're iterating on the coefficient in public and the bench script is in the repo. #Tripothon

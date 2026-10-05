@@ -23,3 +23,4 @@ Before you start: open https://clawdy.trustfall.xyz in a fresh window, sign in w
 - Do one phone pass at 375x812 for the last 15 seconds if time allows: Play, then the result panel.
 - Don't narrate numbers you can't see on screen.
 - Known limit to mention if asked: the ladder has had little live use.
+- Skirmish is not playable and has no trained brains. Do not show or describe it as a feature; if asked, call it roadmap (see `docs/SUBMISSION_COPY.md`). The script above only covers what is live.

@@ -91,6 +91,13 @@ Each can start once the ruleset record and the per-entrant parameters exist.
 | Journey (U2, U3) | Guided first loop on the Training Grounds, Skirmish unlock and skip, ruleset name and rules on the spectator view. |
 | Assets (D) | Chassis bodies that show the rule (a bigger load bed on the Hauler, a ram on the Raider, a mast on the Scout). |
 
+## Status
+
+- **League (C): done in the repo, not deployed.** `rulesetId` is stored on brains, ladder entries, challenges, replays and rounds. Training Grounds is an absent field, so Season 0 rows need no backfill. The ladder holds one entry per account per ruleset; pools, ratings and round numbers are per ruleset (`skirmish-round-N` refs). A brain id is bound to one ruleset, and a cross-ruleset challenge fails with `ruleset-mismatch`. Skirmish publish and submit require a build, since the perks come from the chassis. The ruleset is derived from the stored brains, never from the client. `replayParticipants` and `league.myReplays` are in, with an idempotent `league.backfillReplayParticipants` to run once after deploy. A Skirmish challenge's stored recordings carry `scenario.rulesetId` and the perks, and re-simulate with no divergence (`convex/__tests__/rulesets.test.ts`).
+- **Not covered by League (C):** whether Stream A's zero-extended brain input shape loads in the server runner, and the Skirmish house bots (the ladder gives only the submitted champion the perks, as `train-es` does).
+- **Assets and submission (D):** the chassis bodies were generated before these rules and do not show them. Showing them means regenerating bodies with Tripo. Submission copy treats Skirmish as roadmap until a multi-seed eval is pinned and the deployed app is checked.
+- **Still open:** trained Skirmish brains and `docs/eval-skirmish.json` (A), the ruleset picker and build-screen copy (B), and the Convex deploy plus a live check of the Training Grounds board (the per-ruleset indexes rely on `eq(field, undefined)` matching rows without the field, which passes in `convex-test` but is not yet confirmed on a deployment).
+
 ## Time and risk
 
 - The capacity change touches the brain code and must not move any Season 0 behaviour. It is the part most likely to cost time. If it cannot be finished and verified before the submission window closes, Skirmish is described as roadmap and the current chassis stay as the working demo.

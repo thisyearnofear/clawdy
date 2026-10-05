@@ -203,3 +203,7 @@ Merge order for conflicts: A (types and sim) → B and C (consumers) → D (asse
 - Submit the entry form and post the build logs.
 - Rotate both GitHub OAuth client secrets (they were pasted in chat).
 - Confirm the Vercel primary domain and redirect.
+
+## Status (Oct 5, rulesets)
+
+Stream C added per-ruleset ladders, pools, ratings, rounds and replay tagging, plus the `replayParticipants` join table and `league.myReplays` replay library. Details and open items are in [RULESETS_PLAN.md](RULESETS_PLAN.md#status). In the repo and covered by Convex tests; not yet deployed to prod.
