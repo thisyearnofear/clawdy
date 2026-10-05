@@ -1,0 +1,22 @@
+variants=24 (x2 sides). Cell = row chassis points share vs column (>50% means row wins).
+
+policy=safe
+row\col  scout    hauler   raider  
+scout    50%/50w  48%/12w  50%/56w 
+hauler   52%/88w  50%/50w  50%/88w 
+raider   50%/44w  50%/13w  50%/50w 
+mirror-excluded win rate: scout=31%  hauler=46%  raider=22%
+
+policy=greedy
+row\col  scout    hauler   raider  
+scout    50%/50w  51%/100w 51%/88w 
+hauler   49%/0w   50%/50w  51%/88w 
+raider   49%/13w  49%/13w  50%/50w 
+mirror-excluded win rate: scout=27%  hauler=15%  raider=4%
+
+policy=poach
+row\col  scout    hauler   raider  
+scout    50%/50w  66%/73w  10%/0w  
+hauler   33%/25w  50%/50w  28%/18w 
+raider   90%/100w 72%/82w  50%/50w 
+mirror-excluded win rate: scout=33%  hauler=17%  raider=73%
