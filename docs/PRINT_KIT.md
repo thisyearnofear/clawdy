@@ -37,6 +37,45 @@ they were not exhaustively test-printed on every Heygears model. If you print
 on an UltraCraft Reflex series, run Heygears' AI Box auto-repair + auto-support
 pass first and prefer its suggestion where it differs.
 
+## Chassis bodies and forged rovers (league plan, Stream D)
+
+The three chassis bodies are Tripo P1 text-to-model assets (task IDs and prompts
+in `mint-assets.json`, keys `chassis.scout`, `chassis.hauler`, `chassis.raider`).
+Their print files sit next to the champion STL:
+
+| File | Source | Triangles | Size |
+| --- | --- | --- | --- |
+| `public/prints/chassis-scout.stl` | `public/assets/tripo/chassis-scout.glb` | 7,287 | ~364 KB |
+| `public/prints/chassis-hauler.stl` | `public/assets/tripo/chassis-hauler.glb` | 6,832 | ~342 KB |
+| `public/prints/chassis-raider.stl` | `public/assets/tripo/chassis-raider.glb` | 7,542 | ~377 KB |
+
+```bash
+npm run print:stl:chassis
+```
+
+The in-game GLBs are resized and quantized (`KHR_mesh_quantization`) to stay
+around 1 MB. The exporter reads quantized meshes, and its output matches the
+un-quantized source to under 0.01 mm at a 120 mm print (triangle counts are
+identical), so the STL is faithful to what the game renders.
+
+**Forged rovers.** A forged champion is stored by the Forge (Convex file storage)
+and shown to its owner as a URL. Export it for printing straight from that URL,
+scaled to a real size:
+
+```bash
+python3 scripts/export-print-stl.py "<forged rover url>" forged-rover.stl --scale-mm 120
+```
+
+`--scale-mm N` scales the longest axis to N mm (STL has no units; slicers read mm).
+Use the same FDM profile as above.
+
+**Limits, stated plainly.** Tripo meshes are multi-shell (wheels, plates and
+body are separate pieces) and are not guaranteed watertight. Nothing here was
+test-printed. Run Heygears' AI Box auto-repair and auto-support pass before
+printing. The scout had a detached sensor dish in the raw generation; it was
+removed from the shipped model, but a freshly forged rover is used as generated
+and may contain loose pieces, so check the preview in the slicer first.
+
 ## What this is (and isn't)
 
 - A visual display model of the game's champion. No electronics, no moving parts.

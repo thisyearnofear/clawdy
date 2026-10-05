@@ -3,20 +3,28 @@
 
 Usage:
     python3 scripts/export-print-stl.py public/assets/mint/champion-rover.glb public/prints/champion-rover.stl
+    python3 scripts/export-print-stl.py <glb path or https URL> out.stl [--scale-mm 120]
+
+`--scale-mm N` uniformly scales the longest axis to N millimetres (STL has no
+units; slicers read them as mm). Without it the STL stays in GLB model units.
+The input may be a forged rover URL from the Forge (Convex file storage).
 
 Walks the scene graph accumulating node transforms, triangulates all mesh
 primitives (indexed or not), and writes a single binary STL in +Y-up GLB
 space. Prints bounding-box dimensions in model units plus triangle count so
 the printer profile in docs/PRINT_KIT.md stays honest.
 
-Stdlib only. Refuses Draco-compressed inputs rather than guessing.
+Stdlib only. Handles KHR_mesh_quantization (normalized integer accessors).
+Refuses Draco-compressed inputs rather than guessing.
 """
 
 import json
 import struct
 import sys
+import urllib.request
 from pathlib import Path
 
+NORMALIZE_MAX = {5120: 127.0, 5121: 255.0, 5122: 32767.0, 5123: 65535.0}
 COMPONENT_TYPES = {"SCALAR": 1, "VEC2": 2, "VEC3": 3, "VEC4": 4}
 COMPONENT_FORMATS = {
     5120: ("b", 1),  # BYTE
@@ -36,10 +44,15 @@ def read_accessor(doc, binary, index):
     num_components = COMPONENT_TYPES[accessor["type"]]
     stride = view.get("byteStride", size * num_components)
     base = view.get("byteOffset", 0) + accessor.get("byteOffset", 0)
+    scale = NORMALIZE_MAX.get(accessor["componentType"]) if accessor.get("normalized") else None
     values = []
     for i in range(count):
         offset = base + i * stride
-        values.append(struct.unpack_from(f"<{num_components}{fmt}", binary, offset))
+        row = struct.unpack_from(f"<{num_components}{fmt}", binary, offset)
+        if scale:
+            # glTF normalized ints: unsigned map to 0..1, signed to -1..1 (clamped at the low end).
+            row = tuple(max(c / scale, -1.0) for c in row)
+        values.append(row)
     return values
 
 
@@ -78,12 +91,30 @@ def mat_vec(m, v):
     return (x, y, z)
 
 
+def load_bytes(source):
+    if source.startswith(("http://", "https://")):
+        with urllib.request.urlopen(source, timeout=60) as response:
+            return response.read()
+    return Path(source).read_bytes()
+
+
 def main():
-    if len(sys.argv) != 3:
+    args = sys.argv[1:]
+    scale_mm = None
+    if "--scale-mm" in args:
+        i = args.index("--scale-mm")
+        try:
+            scale_mm = float(args[i + 1])
+        except (IndexError, ValueError):
+            sys.exit("--scale-mm needs a number")
+        if scale_mm <= 0:
+            sys.exit("--scale-mm must be positive")
+        del args[i : i + 2]
+    if len(args) != 2:
         print(__doc__)
         sys.exit(2)
-    src, dst = Path(sys.argv[1]), Path(sys.argv[2])
-    data = src.read_bytes()
+    src, dst = args[0], Path(args[1])
+    data = load_bytes(src)
     magic, _version, _length = struct.unpack_from("<III", data, 0)
     if magic != 0x46546C67:
         sys.exit("Not a GLB file")
@@ -137,6 +168,12 @@ def main():
 
     if not triangles:
         sys.exit("No triangles found")
+
+    if scale_mm is not None:
+        flat = [c for tri in triangles for p in tri for c in p]
+        longest = max(max(flat[k::3]) - min(flat[k::3]) for k in range(3))
+        factor = scale_mm / longest
+        triangles = [tuple(tuple(c * factor for c in p) for p in tri) for tri in triangles]
 
     dst.parent.mkdir(parents=True, exist_ok=True)
     with dst.open("wb") as out:

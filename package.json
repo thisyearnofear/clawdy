@@ -12,6 +12,7 @@
     "starter:train": "tsx starter/train.ts",
     "teacher:run": "tsx scripts/teacher-run.ts",
     "print:stl": "python3 scripts/export-print-stl.py public/assets/mint/champion-rover.glb public/prints/champion-rover.stl",
+    "print:stl:chassis": "for n in scout hauler raider; do python3 scripts/export-print-stl.py public/assets/tripo/chassis-$n.glb public/prints/chassis-$n.stl; done",
     "eval:holdout": "tsx scripts/eval-holdout.ts",
     "eval:gate": "tsx scripts/eval-gate.ts",
     "analyze:legs": "tsx scripts/analyze-legs.ts",
