@@ -83,6 +83,12 @@ export const EDGE_FEATURE_DIM = 8 // v3 edge-pointer head input (see encodeEdgeF
  */
 export const TIMETABLE_FEATURE_DIM = OBSERVATION_FEATURE_DIM + 2
 export const TIMETABLE_EDGE_FEATURE_DIM = EDGE_FEATURE_DIM + 1
+/**
+ * Chassis-aware input: the timetable shape plus the rover's own traits (speed,
+ * battery, bump strength). Opt-in through layer size only, created by
+ * `extendCheckpointForChassis`; the edge head stays at the timetable width.
+ */
+export const CHASSIS_FEATURE_DIM = TIMETABLE_FEATURE_DIM + 3
 /** Ticks of slack at which a wave stops mattering (pressure 0 at or beyond this). */
 const WAVE_SLACK_SCALE_TICKS = 300
 
@@ -96,7 +102,7 @@ function wavePressure(tick: number, wave: { windowStart: number }, hubCost: numb
  * Encodes an ArenaObservation into a normalized 32-dimensional feature vector.
  */
 export function encodeObservation(observation: ArenaObservation, dim: number = OBSERVATION_FEATURE_DIM): Float32Array {
-  if (dim !== OBSERVATION_FEATURE_DIM && dim !== TIMETABLE_FEATURE_DIM) throw new Error(`Unsupported encoder dimension: ${dim}`)
+  if (dim !== OBSERVATION_FEATURE_DIM && dim !== TIMETABLE_FEATURE_DIM && dim !== CHASSIS_FEATURE_DIM) throw new Error(`Unsupported encoder dimension: ${dim}`)
   const vec = new Float32Array(dim)
   const self = observation.self
   const rules = ARENA_RULES
@@ -212,6 +218,15 @@ export function encodeObservation(observation: ArenaObservation, dim: number = O
       vec[36] = wavePressure(observation.tick, wave, hubCost)
       vec[37] = Math.min(1, hubCost / 120)
     }
+  }
+
+  if (dim >= CHASSIS_FEATURE_DIM) {
+    // Absent traits are the pinned baseline, which encodes as zeros.
+    const traits = self.traits
+    const unit = (value: number) => Math.max(-1, Math.min(1, value))
+    vec[38] = traits ? unit((traits.travelSpeed - 1) / 0.4) : 0
+    vec[39] = traits ? unit((traits.maxEnergy - rules.initialEnergy) / 6) : 0
+    vec[40] = traits ? unit(traits.contactStrength / 3) : 0
   }
 
   return vec
@@ -764,8 +779,9 @@ export function validateCheckpoint(checkpoint: PolicyCheckpoint): void {
   if (!checkpoint.weights) throw new Error('Checkpoint missing weights')
 
   const { hidden1, hidden2, actionHead } = checkpoint.weights
-  const timetableInput = checkpoint.schemaVersion === POLICY_SCHEMA_VERSION && hidden1.weights.length === TIMETABLE_FEATURE_DIM
-  if ((hidden1.weights.length !== expectedInputDim && !timetableInput) || hidden1.weights[0]?.length !== 32) {
+  const extendedInput = checkpoint.schemaVersion === POLICY_SCHEMA_VERSION &&
+    (hidden1.weights.length === TIMETABLE_FEATURE_DIM || hidden1.weights.length === CHASSIS_FEATURE_DIM)
+  if ((hidden1.weights.length !== expectedInputDim && !extendedInput) || hidden1.weights[0]?.length !== 32) {
     throw new Error(`Invalid hidden1 layer shape: expected ${expectedInputDim}x32`)
   }
   if (hidden2.weights.length !== 32 || hidden2.weights[0]?.length !== 16) {
@@ -780,7 +796,7 @@ export function validateCheckpoint(checkpoint: PolicyCheckpoint): void {
       throw new Error(`Invalid edgeHead layer shape: expected ${EDGE_FEATURE_DIM}x1`)
     }
     // The two timetable shapes travel together: a half-extended checkpoint is not a defined artifact.
-    if ((eh.weights.length === TIMETABLE_EDGE_FEATURE_DIM) !== (hidden1.weights.length === TIMETABLE_FEATURE_DIM)) {
+    if ((eh.weights.length === TIMETABLE_EDGE_FEATURE_DIM) !== (hidden1.weights.length >= TIMETABLE_FEATURE_DIM)) {
       throw new Error('Invalid timetable shapes: input rows and edge-head rows must both be extended or both standard')
     }
   }
@@ -945,3 +961,40 @@ export function createBaseCheckpoint(seed = 42): PolicyCheckpoint {
 }
 
 export const SEASON_0_BASE_CHECKPOINT: PolicyCheckpoint = Object.freeze(createBaseCheckpoint(1337))
+
+/**
+ * Migration: give a timetable checkpoint the chassis inputs. The new rows are
+ * zero, so the result plays exactly like its parent until training moves them.
+ * An already chassis-aware checkpoint is returned unchanged.
+ */
+export function extendCheckpointForChassis(parent: PolicyCheckpoint): PolicyCheckpoint {
+  validateCheckpoint(parent)
+  if (parent.schemaVersion !== POLICY_SCHEMA_VERSION || parent.weights.hidden1.weights.length === OBSERVATION_FEATURE_DIM) {
+    throw new Error('Extend the checkpoint for the timetable before the chassis')
+  }
+  if (parent.weights.hidden1.weights.length === CHASSIS_FEATURE_DIM) return parent
+  const hidden1Width = parent.weights.hidden1.biases.length
+  const weights: PolicyWeights = {
+    hidden1: {
+      weights: [
+        ...parent.weights.hidden1.weights.map(row => [...row]),
+        ...Array.from({ length: CHASSIS_FEATURE_DIM - TIMETABLE_FEATURE_DIM }, () => new Array<number>(hidden1Width).fill(0)),
+      ],
+      biases: [...parent.weights.hidden1.biases],
+    },
+    hidden2: { weights: parent.weights.hidden2.weights.map(row => [...row]), biases: [...parent.weights.hidden2.biases] },
+    actionHead: { weights: parent.weights.actionHead.weights.map(row => [...row]), biases: [...parent.weights.actionHead.biases] },
+    edgeHead: parent.weights.edgeHead
+      ? { weights: parent.weights.edgeHead.weights.map(row => [...row]), biases: [...parent.weights.edgeHead.biases] }
+      : undefined,
+  }
+  return {
+    ...parent,
+    id: `${parent.id}-ch`,
+    name: `${parent.name} (chassis)`,
+    parentCheckpointId: parent.id,
+    createdAt: new Date().toISOString(),
+    weightsHash: computeWeightsHash(weights),
+    weights,
+  }
+}
