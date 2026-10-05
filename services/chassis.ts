@@ -49,6 +49,29 @@ export function baseBuild(chassis: ChassisId): Build {
   return { chassis, points: { ...CHASSIS_BASE[chassis] }, modules: [] }
 }
 
+/** Cost of raising one axis `n` points above its chassis base: 1 + 2 + ... + n, so each extra point costs more. */
+export function axisSpend(n: number): number {
+  return (n * (n + 1)) / 2
+}
+
+/**
+ * Budget committed by a build, measured against its own chassis base.
+ * Points taken below base refund one-for-one. The server uses this as the
+ * authority; the Build screen mirrors it.
+ */
+export function budgetSpent(build: Build): number {
+  const base = CHASSIS_BASE[build.chassis]
+  if (!base) return 0
+  let gross = 0
+  let refund = 0
+  for (const axis of STAT_AXES) {
+    const delta = (build.points?.[axis] ?? 0) - base[axis]
+    if (delta > 0) gross += axisSpend(delta)
+    else refund += -delta
+  }
+  return gross - refund
+}
+
 export function validateBuild(build: Build): string[] {
   const errors: string[] = []
   if (!CHASSIS_IDS.includes(build.chassis)) errors.push(`unknown chassis: ${String(build.chassis)}`)
@@ -62,6 +85,9 @@ export function validateBuild(build: Build): string[] {
     }
   }
   if (total > CHASSIS_TOTAL + STAT_BUDGET) errors.push(`stat total ${total} exceeds budget ${CHASSIS_TOTAL + STAT_BUDGET}`)
+  if (errors.length === 0 && budgetSpent(build) > STAT_BUDGET) {
+    errors.push(`build costs ${budgetSpent(build)} but the budget is ${STAT_BUDGET}`)
+  }
   const modules = build.modules ?? []
   if (modules.length > MODULE_SLOTS) errors.push(`at most ${MODULE_SLOTS} modules`)
   if (new Set(modules).size !== modules.length) errors.push('duplicate module')

@@ -4,7 +4,7 @@ import { ArenaRunner, runArenaEpisode } from '../arenaPolicy'
 import { PRACTICE_SCENARIOS } from '../arenaScenarios'
 import {
   ACTIVE_AXES, CHASSIS_BASE, CHASSIS_IDS, CHASSIS_TOTAL, DEFAULT_BUILD, STAT_AXES, STAT_BUDGET,
-  baseBuild, buildToObservation, buildToTraits, describeBuild, validateBuild,
+  baseBuild, budgetSpent, buildToObservation, buildToTraits, describeBuild, validateBuild,
 } from '../chassis'
 
 const base = PRACTICE_SCENARIOS[0]
@@ -39,6 +39,23 @@ describe('chassis builds', () => {
     expect(validateBuild({ ...baseBuild('scout'), points: { ...baseBuild('scout').points, speed: 7 } }).join()).toMatch(/speed/)
     expect(validateBuild({ ...baseBuild('scout'), modules: ['armour', 'ram-plate', 'wide-sensor'] }).join()).toMatch(/at most/)
     expect(validateBuild({ ...baseBuild('scout'), modules: ['armour', 'armour'] }).join()).toMatch(/duplicate/)
+  })
+
+  it('charges escalating cost per axis and refunds points taken below base', () => {
+    const cheap = baseBuild('hauler')
+    cheap.points.speed += 1
+    cheap.points.attack += 1
+    cheap.points.defence += 1
+    expect(budgetSpent(cheap)).toBe(3)
+    expect(validateBuild(cheap)).toEqual([])
+    const concentrated = baseBuild('hauler')
+    concentrated.points.speed += 3 // costs 6, not 3
+    expect(budgetSpent(concentrated)).toBe(6)
+    expect(validateBuild(concentrated).join()).toMatch(/costs 6/)
+    concentrated.points.navigation -= 2 // refund 2 -> net 4, still over
+    expect(validateBuild(concentrated).join()).toMatch(/costs 4/)
+    concentrated.points.hardiness -= 1 // refund 1 -> net 3
+    expect(validateBuild(concentrated)).toEqual([])
   })
 
   it('makes the chassis genuinely different, with no strictly dominant one', () => {
