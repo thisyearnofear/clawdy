@@ -172,7 +172,7 @@ describe('skirmish matches and replays', () => {
       const [champion, rival] = recording.scenario.entrants
       const [raiderTraits, haulerTraits] = side === 0 ? [champion.traits, rival.traits] : [rival.traits, champion.traits]
       expect(raiderTraits?.stealAll).toBe(true)
-      expect(haulerTraits?.capacity).toBe(5)
+      expect(haulerTraits?.capacity).toBe(4)
       expect(replayArenaEpisode(recording).divergedAt).toBeNull()
     }
   }, 120_000)

@@ -117,7 +117,7 @@ export type RulesetId = 'skirmish'
 
 export const SKIRMISH_PERKS: Record<ChassisId, Pick<EntrantTraits, 'capacity' | 'stealAll' | 'visionHops'>> = {
   scout: { visionHops: 2 },
-  hauler: { capacity: 5 },
+  hauler: { capacity: 4 },
   raider: { stealAll: true },
 }
 

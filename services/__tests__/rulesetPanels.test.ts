@@ -35,7 +35,7 @@ describe('ruleset panels', () => {
 
   it('explains Skirmish without promising balance or stronger brains', () => {
     const html = picker({ unlocked: true, rulesetId: 'skirmish' })
-    expect(html).toContain('Hauler carries 5 cargo')
+    expect(html).toContain('Hauler carries 4 cargo')
     expect(html).toContain('up to its free space')
     expect(html).toContain('Scout sees two route hops')
     expect(html).toContain('not verified here')
@@ -51,11 +51,11 @@ describe('ruleset panels', () => {
     const render = (rulesetId?: 'skirmish') => renderToStaticMarkup(createElement(BuildScreen, {
       build: baseBuild('hauler'), onChange: noop, rulesetId,
     }))
-    expect(render('skirmish')).toContain('5 cargo')
+    expect(render('skirmish')).toContain('4 cargo')
     expect(render('skirmish')).toContain('whole load')
     expect(render('skirmish')).toContain('two route hops')
     expect(render()).toContain('No signature perk in Training Grounds')
-    expect(render()).not.toContain('5 cargo')
+    expect(render()).not.toContain('4 cargo')
   })
 
   it.each([undefined, 5])('uses actual capacity %s in both cargo readouts', capacity => {

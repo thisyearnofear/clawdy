@@ -48,7 +48,7 @@ describe('skirmish perks', () => {
 
   it('gives each chassis its signature rule', async () => {
     const { buildToTraits, baseBuild } = await import('../chassis')
-    expect(buildToTraits(baseBuild('hauler'), 'skirmish').capacity).toBe(5)
+    expect(buildToTraits(baseBuild('hauler'), 'skirmish').capacity).toBe(4)
     expect(buildToTraits(baseBuild('raider'), 'skirmish').stealAll).toBe(true)
     expect(buildToTraits(baseBuild('scout'), 'skirmish').visionHops).toBe(2)
   })

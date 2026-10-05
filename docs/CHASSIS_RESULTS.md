@@ -47,7 +47,7 @@ With the first mapping (v1, speed +0.06) the picture was: Scout beat Hauler 71-9
 - **It is not a balance result.** There is one training run per chassis, and the Raider-vs-Scout result changed a lot between v1 and v2 (39-41 to 15-65), which is probably training variance rather than the mapping alone. Treat any single cell as noisy.
 - **The chassis are not balanced.** Hauler is the weakest, and Scout is the strongest. This is the main open item for the build system. Likely fixes: lower or remove the speed bonus, give Hauler a perk that matters in a race for timed cores, and train several seeds per chassis before drawing conclusions.
 
-## Skirmish ruleset (Hauler capacity 5, Raider steal-all, Scout two-hop vision)
+## Skirmish ruleset v1 (Hauler capacity 5, superseded by 4 below, Raider steal-all, Scout two-hop vision)
 
 Same recipe with `--ruleset skirmish`, two seeds (11, 12) per chassis. Only the trained brain gets its chassis perk; the house bots are unmodified (capacity 3, one-hop vision, steal one). Wins-losses-draws out of 50 on 25 unseen hidden Rush variants x 2 sides (evaluated without `--write`, so these numbers come from the training-host logs, not a pinned record).
 

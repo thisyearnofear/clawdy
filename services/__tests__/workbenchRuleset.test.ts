@@ -40,10 +40,10 @@ describe('workbench rulesets', () => {
     expect(next.scenario.rulesetId).toBe('skirmish')
     expect(next.scenario.id).toBe(`${course.scenario.id}.skirmish`)
     expect(next.scenario.split).toBe(course.scenario.split)
-    expect(capacityOf(champion)).toBe(chassis === 'hauler' ? 5 : 3)
+    expect(capacityOf(champion)).toBe(chassis === 'hauler' ? 4 : 3)
     expect(champion.traits?.stealAll).toBe(chassis === 'raider' ? true : undefined)
     expect(champion.traits?.visionHops).toBe(chassis === 'scout' ? 2 : undefined)
-    expect(capacityOf(rival)).toBe(5)
+    expect(capacityOf(rival)).toBe(4)
     expect(course).toEqual(before)
   })
 
@@ -58,7 +58,7 @@ describe('workbench rulesets', () => {
   })
 
   it('derives honest perk labels from the engine traits', () => {
-    expect(chassisRuleSummary('hauler', 'skirmish')).toContain('5 cargo')
+    expect(chassisRuleSummary('hauler', 'skirmish')).toContain('4 cargo')
     expect(chassisRuleSummary('raider', 'skirmish')).toContain('limited by free cargo space')
     expect(chassisRuleSummary('scout', 'skirmish')).toContain('two route hops')
     for (const chassis of ['hauler', 'raider', 'scout'] as const) {
