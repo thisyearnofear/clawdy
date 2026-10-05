@@ -583,6 +583,13 @@ the collider's. The renderer multiplies a procedural, tileable grain/bump textur
   `ARENA_RULES.version`, `ROVER_PHYSICS.version` and the collider hash are
   unchanged; the new constants are pinned in `versions.test.ts`.
 
+### Chassis builds and chassis-aware checkpoints (additive, no version-axis change)
+
+- `ArenaEntrant.traits?` (`travelSpeed`, `maxEnergy`, `contactStrength`) is optional. A scenario or recording without it replays exactly as before; the default Hauler build resolves to the pinned rules, and a test asserts the runs are identical. Traits are validated with the scenario.
+- `travelSpeed` is capped at `MAX_TRAVEL_SPEED` (1.33) so the physics controller (2.4 m/s) can follow route edges (about 1.8 m/s).
+- `CHASSIS_FEATURE_DIM` (41 = timetable 38 + speed, battery, bump strength) is a third input shape. Like the timetable shape it opts in through layer size only, via `extendCheckpointForChassis` (zero rows, same edge head as the timetable shape). 36- and 38-input checkpoints keep their exact behavior.
+- Build legality is `validateBuild` in `services/chassis.ts` (escalating cost). It is not part of any pin.
+
 ## 6. Non-goals
 - No cross-version *execution*: a v1 checkpoint is never run under v2 rules "to see
   what happens". Cross-version comparison happens in the eval harness on matched

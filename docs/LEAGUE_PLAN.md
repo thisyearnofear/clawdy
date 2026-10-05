@@ -59,14 +59,16 @@ Owner: sim developer.
 - **Landed (stage 1):** `services/chassis.ts` and optional `EntrantTraits` on `ArenaEntrant` (travel speed, battery size, bump strength). Rush already has rover-vs-rover bumps, so Attack and Defence bias that existing rule; no new contact system was needed. Default build is verified identical to the pinned rules.
 - **Inert for now:** navigation (needs a wider fog radius), and the `wide-sensor` and `extra-cell` modules (capacity is hard-coded in the policy encoders). `ACTIVE_AXES` lists what is live, and the UI must not present inert axes as active.
 - **Speed headroom:** Rush route edges run at about 1.8 m/s and the physics controller allows 2.4, so `travelSpeed` is capped at `MAX_TRAVEL_SPEED` (1.33) and live physics can follow every chassis. A test guards the cap.
-- Append `buildToObservation` to the policy input behind a feature flag. The default input size stays unchanged for old brains.
-- Per-chassis balance runs with `scripts/eval-es.ts`. Report win rates for real, including any chassis that dominates.
+- **Landed (stage 2):** build cost is escalating (`axisSpend`, `budgetSpent`) and enforced by `validateBuild`, so the server is the authority and the Build screen mirrors it.
+- **Landed (stage 3):** brains can see their own build. `CHASSIS_FEATURE_DIM` (41) adds speed, battery and bump strength to the input, created only by `extendCheckpointForChassis` with zero rows, so old checkpoints and the pins are untouched. `buildToObservation` is not used by the encoder; the encoder reads the traits from `observation.self`.
+- **Landed (stage 4):** `train-es` and `eval-es` take `--chassis scout|hauler|raider`. Results: [CHASSIS_RESULTS.md](CHASSIS_RESULTS.md). Trained brains: `starter/chassis-<chassis>.json`.
+- **Open:** chassis-vs-chassis and brain-vs-brain balance (needs the PvP stream), and whether Hauler needs a perk. The first bench used house bots that ignore the chassis and is superseded by the trained results.
 
 Acceptance:
 - Pins and champion regression test passes.
 - Old checkpoints load and run unchanged.
 - A property test shows `validateBuild` rejects over-budget builds.
-- An eval table shows the three chassis are not strictly ranked.
+- An eval table shows the three trained chassis brains against the house bots (done: CHASSIS_RESULTS.md). Not yet shown: chassis against each other.
 
 ## Stream B — Coach panel and training (UX)
 

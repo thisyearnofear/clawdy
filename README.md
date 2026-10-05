@@ -46,6 +46,8 @@ npm run build            # static Next.js build
 npm run starter:train    # headless trainer, exports a checkpoint
 npm run teacher:run      # local code coach harness (e.g. starter/teachers/ridge-runner.ts)
 npm run eval:es          # evaluate Rush champion against house field
+npx tsx scripts/train-es.ts --init starter/rush-champion.json --chassis scout   # train a brain for a chassis (scout|hauler|raider)
+npx tsx scripts/bench-chassis.ts     # chassis bench with house bots
 ```
 
 Requires Node.js 20+ and npm 10+. Production Convex + Vercel env notes: [docs/DEPLOY.md](docs/DEPLOY.md).
