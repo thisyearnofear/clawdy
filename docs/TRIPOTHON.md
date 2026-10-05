@@ -5,7 +5,7 @@
 > **Submission window:** Sep 15 – Oct 5, 2026 (online; closes AoE / UTC-12).
 > **Demo Days:** Oct 5–20, 2026 across seven cities. Winner announcement Oct 25, 2026.
 > **Theme:** Build a world as a Gift — for the kid I used to be.
-> **Status:** active. Owner is the project lead. Update this file as work progresses.
+> **Status:** submission prep (Oct 5). Entering Game direction track plus Tripo, World Labs and Heygears tool tracks. Owner is the project lead.
 
 ## Why Clawdy fits
 
@@ -14,6 +14,17 @@
 - The replay → coach → train → compete loop is the synergy. The world is the data the policy learns from, and the policy is what the human trains. That is the strongest argument for "tool synergy" (25% of the tool-track score).
 - The replay → coach → train → compete loop is the synergy. The world is the data the policy learns from, and the policy is what the human trains. That is the strongest argument for "tool synergy" (25% of the tool-track score).
 - Two rovers compete on a real 3D physics arena with multiple resources, multiple routes, multiple floodable zones, an energy-budgeted drain, and a held-out evaluation split. That is the kind of playable, complete world a Game-track judge can run.
+
+## What shipped since this plan was written (Oct 3-5)
+
+- **Rush mode**: public wave timetable, a trained champion that beats the `safe` bot 77-3-0 on 40 hidden layouts (both sides), and still loses to `weather` 35-45-0. Numbers are pinned in `docs/eval-es.json`; Haul and `eval:gate` are untouched.
+- **Code coaching**: typed `Teacher` contract and a practice-only harness (`npm run teacher:run`).
+- **Sign-in and ladder**: Convex Auth (GitHub) with guest-compatible ownership, plus a server-run ladder that replays a submitted brain on hidden layouts. Only the server writes scores. Setup in [AUTH.md](AUTH.md). Prod sign-in verified; a full ladder submission was not exercised before submission.
+- **Visuals**: textured visual terrain twin (pinned Docker Blender), and Tripo-generated rival hauler and energy core.
+- **Verification**: a Docker Playwright harness (`infra/verify/`) that found and fixed a real blank-canvas/frozen-clock bug on phones, and later mobile layout bugs.
+- **Canonical URL**: https://clawdy.trustfall.xyz (Vercel), backed by a prod Convex deployment.
+
+Submission copy, build log drafts and the asset board live in [SUBMISSION_COPY.md](SUBMISSION_COPY.md) and `docs/assets/asset-board.png`.
 
 ## Track selection
 
@@ -24,8 +35,8 @@
 | Direction 03 — VR / XR / AR | No | No VR build. |
 | Direction 04 — App | Optional secondary | The Coach panel is a creative-tool web surface, but Game is the better home for the entry. |
 | Direction 05 — Physical Design | No | Nothing is being printed. |
-| **Best Use of World Labs** tool track | **Yes (additive tool track)** | World Labs is the primary environment source. World Labs is also on the judge panel. |
-| Tripo tool track | **No** | We do not use Tripo; tool-track entries that don't actually use the named tool are disqualified. |
+| **Best Use of World Labs** tool track | **Yes, with an honest claim** | Marble generated the first arena (retired Sep 26, in git history). What is on screen now is World Labs' Spark renderer drawing the Gaussian-splat bank and collect bursts. We say exactly that; judges decide whether it qualifies. |
+| Tripo tool track | **Yes (Oct 5)** | The house rival rover and the energy core are Tripo P1 text-to-model assets, on screen in every run (`public/assets/tripo/`, registry entries `rivalRover` and `energyCore` in `mint-assets.json`). Generation script and task IDs are in the repo (`scripts/tripo-generate.mjs`). |
 | PICO / Heygears / Jupiter tool tracks | No | Not used. |
 
 ## Theme fit — "Build a world as a Gift"
@@ -126,7 +137,7 @@ Buffer absorbs a lost day to a CI hiccup or a frame refactor without slipping th
 ## Out of scope for this submission
 
 - A second course or a non-World Labs world. We use the existing Course 01 to keep the held-out story defensible.
-- Connecting Tripo, PICO, Heygears, or Jupiter — and we will not imply that we have.
+- PICO and Jupiter — and we will not imply that we use them.
 - Offline Demo Day travel. We compete for the global online pool, which is open to all entrants.
 
 ## Reference
@@ -162,6 +173,6 @@ Buffer absorbs a lost day to a CI hiccup or a frame refactor without slipping th
 - [x] Sep 24 evening pin (`86f3dbeb3d2f`): practice-deep student mine + hollow class-5 ridge alias + energy patience (play floor 400) + soft on-node collect — grounded trained **36** (practice 10/8, compete **12**/6), abstract dual-side **36**. See `docs/COMPATIBILITY.md`.
 - [x] Browser QA round-trip verified: play → replay scrub → coach panel (rule buttons, propose/approve flow) → share button ("Saved share card" message confirmed). Training from replay is correctly locked until reset.
 - [ ] Desktop + mobile walkthrough captured.
-- [ ] Asset board assembled.
-- [ ] Build log posts #1 and #2 live with `#Tripothon` and `@TripoAI`.
+- [x] Asset board assembled (`docs/assets/asset-board.png`, source `infra/board/board.html`).
+- [ ] Build log posts live with `#Tripothon` and `@TripoAI` (drafts in SUBMISSION_COPY.md).
 - [ ] Submission packet submitted before Oct 5 AoE.

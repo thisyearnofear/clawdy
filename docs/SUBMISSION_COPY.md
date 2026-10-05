@@ -1,0 +1,50 @@
+# Tripothon S1 submission copy
+
+Live demo: https://clawdy.trustfall.xyz · Repo: https://github.com/thisyearnofear/clawdy
+
+## Entry tracks
+- Direction: **Game**
+- Tool tracks: **Tripo**, **World Labs**, **Heygears**
+
+## Title
+Clawdy: Train Your Champion
+
+## One-liner
+A world you give someone and then step back from: you coach a rover, train real weights, and watch whether your teaching held.
+
+## Description (short)
+Clawdy is a train-then-compete rover league inside a flooding desert arena. You never drive. You watch a practice run, call a route at a junction, scrub the replay to a mistake, approve what the rover should learn, and train a small neural policy on those lessons. Then the coaching controls go dark and your champion plays a held-out layout alone. The replay is the receipt that shows whether the gift worked.
+
+The theme, "a world as a gift for the kid I used to be": the kid who could never master a hard arena grows up and builds a game where you coach instead of play, then finds out whether the coaching was the bottleneck.
+
+## What is real
+- The training is a real gradient update on real weights, not a saved prompt.
+- The held-out layouts are a separate registry that is never used for training or checkpoint selection.
+- Rush champion, 40 hidden layouts played from both sides (80 matches per opponent): 77-3-0 vs `safe`, 75-0-5 vs `poach`, 68-6-6 vs `greedy`, 40-0-40 vs the starter. It **loses to `weather`, 35-45-0**. Results are pinned in `docs/eval-es.json`.
+- Sign-in with GitHub keeps guest play working. A signed-in player can submit a brain to a ladder the server runs itself on hidden layouts; the browser never reports a score.
+- Code coaches can write a teacher function and train a checkpoint with `npm run teacher:run`.
+
+## Tool use
+- **Tripo**: the house rival hauler rover and the amber energy core were generated with Tripo P1 text-to-model (`scripts/tripo-generate.mjs`, task IDs in `mint-assets.json`). Both are on screen in every run.
+- **World Labs**: the Spark renderer draws the Gaussian-splat bursts on every bank and collect. (Marble generated the first arena; that world was retired in favour of a Blender terrain with an exact collider, and lives in git history.)
+- **Heygears**: "Print your champion" downloads an STL of the rover with a print profile (`docs/PRINT_KIT.md`).
+- Also: Mint (champion rover), Blender (terrain and textured visual twin, pinned Docker build), Convex (sync, auth, ladder), Vercel.
+
+## Known limits (say them before a judge finds them)
+- The trained champion does not beat the `weather` bot.
+- The ladder is verified in tests and the sign-in works on production, but it has had little live use.
+- The GPU look of the terrain texture was only checked under software rendering.
+
+## Build log drafts
+
+**Post 1 (reveal)**
+I'm building a game where you never drive. You coach a rover, approve what it learns, train it, then take your hands off and watch. For #Tripothon: "a world as a gift for the kid I used to be." Playable now: https://clawdy.trustfall.xyz @TripoAI
+
+**Post 2 (Tripo props)**
+The house rival in Clawdy is now a rust-orange tracked hauler, generated with Tripo from one text prompt (40 credits). So is the amber energy core the rovers race for. Same prompt-to-prop path I used for the champion, now with Tripo. #Tripothon @TripoAI
+
+**Post 3 (honest results)**
+Trained rover vs the house bots on 40 hidden layouts, both sides: beats `safe` 77-3, `poach` 75-0, `greedy` 68-6. Loses to `weather` 35-45. I'm leaving that number on the board. Next job: teach it the weather. #Tripothon
+
+**Post 4 (bug story)**
+My cloud test harness found it before a player did: on phones the canvas went blank and the match clock froze. Cause: the frame limiter left the render clock running while paused, so the next frame had a negative time step and the camera turned to NaN. One fix, plus layout bugs a phone judge would have seen. #Tripothon

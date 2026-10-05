@@ -1,0 +1,78 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Clawdy asset board</title>
+<style>
+  :root { --ink:#18221e; --paper:#f2f3e9; --line:#cfd8c6; --green:#3f6b39; --amber:#b9722a; }
+  * { box-sizing: border-box; }
+  body { margin:0; width:1920px; background:var(--paper); color:var(--ink); font:16px/1.5 system-ui, sans-serif; }
+  header { padding:44px 56px 20px; display:flex; justify-content:space-between; align-items:flex-end; }
+  h1 { margin:0; font:700 64px/1 Georgia, serif; letter-spacing:-0.02em; }
+  .tag { max-width:760px; font-size:21px; color:#3a4a40; }
+  .grid { display:grid; grid-template-columns: 1.55fr 1fr 1fr; grid-template-rows: 420px 420px; gap:16px; padding:0 56px; }
+  figure { margin:0; position:relative; border-radius:8px; overflow:hidden; background:#dde3d6; border:1px solid var(--line); }
+  figure img { width:100%; height:100%; object-fit:cover; display:block; }
+  figcaption { position:absolute; left:10px; bottom:10px; background:#18221ee6; color:#eef4e6; padding:5px 10px; border-radius:3px; font:12px ui-monospace, monospace; letter-spacing:.04em; }
+  .hero { grid-row: span 2; }
+  .cols { display:grid; grid-template-columns: 1.2fr 1fr 1fr; gap:16px; padding:16px 56px 0; }
+  .card { border:1px solid var(--line); border-radius:8px; background:#fafbf4; padding:22px 26px; }
+  .card h2 { margin:0 0 4px; font:600 13px ui-monospace, monospace; letter-spacing:.12em; text-transform:uppercase; color:#657961; }
+  .card h3 { margin:4px 0 14px; font:600 24px Georgia, serif; }
+  .bar { display:grid; grid-template-columns: 96px 1fr 120px; gap:10px; align-items:center; margin:7px 0; font-size:14px; }
+  .track { display:flex; height:16px; border-radius:3px; overflow:hidden; background:#e3e8dc; }
+  .w { background:#4f8a49; } .d { background:#c9cfbf; } .l { background:#c0643f; }
+  .num { font:13px ui-monospace, monospace; color:#3a4a40; }
+  .note { font-size:13.5px; color:#53695f; margin:12px 0 0; }
+  ul.credits { list-style:none; margin:0; padding:0; display:grid; gap:12px; }
+  ul.credits li { display:grid; grid-template-columns: 110px 1fr; gap:10px; font-size:14.5px; }
+  ul.credits b { font:600 12px ui-monospace, monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--green); padding-top:2px; }
+  .loop { display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 12px; }
+  .loop span { padding:6px 12px; border:1px solid var(--line); border-radius:99px; background:#fff; font:600 13px ui-monospace, monospace; }
+  .loop i { align-self:center; color:#8aa085; font-style:normal; }
+  footer { padding:22px 56px 36px; display:flex; justify-content:space-between; font:13px ui-monospace, monospace; color:#53695f; }
+</style>
+<header>
+  <div>
+    <h1>Clawdy</h1>
+    <div style="font:600 14px ui-monospace,monospace;letter-spacing:.14em;color:#657961;margin-top:8px">TRAIN YOUR CHAMPION · A WORLD AS A GIFT</div>
+  </div>
+  <div class="tag">You never drive. You coach a rover through a flooding desert arena, approve what it should learn, train real weights, then step back and watch whether your teaching held.</div>
+</header>
+<section class="grid">
+  <figure class="hero"><img src="hero-race.png"><figcaption>PRACTICE RUN · CHAMPION ROUTING PAST THE ENERGY CORES</figcaption></figure>
+  <figure><img src="arena-overview.png" style="object-position:50% 40%"><figcaption>ARENA VIEW · FLOOD WINDOW OPEN</figcaption></figure>
+  <figure><img src="rival-close.png" style="object-position:50% 60%"><figcaption>HOUSE RIVAL · TRIPO-GENERATED HAULER</figcaption></figure>
+  <figure><img src="champion-close.png" style="object-position:50% 60%"><figcaption>YOUR CHAMPION · MINT-GENERATED ROVER</figcaption></figure>
+  <figure><img src="mobile-result.png" style="object-position:50% 20%"><figcaption>PHONE · ROUND COMPLETE</figcaption></figure>
+</section>
+<section class="cols">
+  <div class="card">
+    <h2>Evidence · Rush, 40 hidden layouts × both sides</h2>
+    <h3>The trained champion vs the house bots</h3>
+    <div class="bar"><span>safe</span><div class="track"><div class="w" style="width:96.25%"></div><div class="l" style="width:3.75%"></div></div><span class="num">77 – 3 – 0</span></div>
+    <div class="bar"><span>poach</span><div class="track"><div class="w" style="width:93.75%"></div><div class="d" style="width:6.25%"></div></div><span class="num">75 – 0 – 5</span></div>
+    <div class="bar"><span>greedy</span><div class="track"><div class="w" style="width:85%"></div><div class="d" style="width:7.5%"></div><div class="l" style="width:7.5%"></div></div><span class="num">68 – 6 – 6</span></div>
+    <div class="bar"><span>starter</span><div class="track"><div class="w" style="width:50%"></div><div class="d" style="width:50%"></div></div><span class="num">40 – 0 – 40</span></div>
+    <div class="bar"><span>weather</span><div class="track"><div class="w" style="width:43.75%"></div><div class="l" style="width:56.25%"></div></div><span class="num">35 – 45 – 0</span></div>
+    <p class="note">Wins – losses – draws. Held-out layouts never used for training or selection. We still lose to <b>weather</b>, and the board says so.</p>
+  </div>
+  <div class="card">
+    <h2>The loop</h2>
+    <h3>Coach it. Train it. Let go.</h3>
+    <div class="loop"><span>Play</span><i>→</i><span>Call</span><i>→</i><span>Replay</span><i>→</i><span>Coach</span><i>→</i><span>Train</span><i>→</i><span>Match</span></div>
+    <p class="note" style="margin-top:0">A small neural policy is trained on the lessons you approve, then runs a held-out arena with coaching locked. Signed-in players submit their brain to a ladder the server runs itself, so scores cannot be faked from the browser.</p>
+    <p class="note">Code coaches welcome: write a teacher function, <code>npm run teacher:run</code>, import the checkpoint.</p>
+  </div>
+  <div class="card">
+    <h2>Built with</h2>
+    <h3>Tools on screen</h3>
+    <ul class="credits">
+      <li><b>Tripo</b><span>Rival hauler rover and the amber energy core, generated with Tripo P1 (text to model)</span></li>
+      <li><b>World Labs</b><span>Spark Gaussian-splat bursts on every bank and collect</span></li>
+      <li><b>Heygears</b><span>Print your champion: STL print kit for the rover</span></li>
+      <li><b>Mint</b><span>Champion rover model</span></li>
+      <li><b>Blender</b><span>Terrain, collider and textured visual twin (pinned Docker build)</span></li>
+      <li><b>Convex</b><span>Sync, GitHub sign-in, server-verified ladder</span></li>
+    </ul>
+  </div>
+</section>
+<footer><span>clawdy.trustfall.xyz</span><span>Tripothon S1 · Game track · Tool tracks: Tripo, World Labs, Heygears</span></footer>
