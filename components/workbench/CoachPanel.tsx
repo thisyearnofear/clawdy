@@ -5,6 +5,8 @@ import { AlertTriangle, CheckCircle2, Download, Loader2, Sparkles, Upload, XCirc
 import { COACHING_RULES, SPECIALIZATION_CHIPS } from '../../services/coachingEngine'
 import { BuildScreen } from './BuildScreen'
 import { TrainingControls } from './TrainingControls'
+import { ForgePanel } from './ForgePanel'
+import type { ForgedLook } from '../../services/forgeView'
 import type { Build } from '../../services/buildBudget'
 import type { TrainingConfig } from '../../services/trainingConfig'
 import { isEvaluationScenario } from '../../services/arenaScenarios'
@@ -48,6 +50,7 @@ export function CoachPanel({
   onBuildChange,
   trainingConfig,
   onTrainingConfigChange,
+  onForgedLookChange,
 }: {
   activeCheckpoint: PolicyCheckpoint
   checkpoints: PolicyCheckpoint[]
@@ -73,6 +76,8 @@ export function CoachPanel({
   onBuildChange: (next: Build) => void
   trainingConfig: TrainingConfig
   onTrainingConfigChange: (next: TrainingConfig) => void
+  /** When provided, shows the Forge panel and reports the champion's forged look (or null). */
+  onForgedLookChange?: (look: ForgedLook | null) => void
 }) {
   const busy = isTraining || phase === 'running'
   const teachableChips = SPECIALIZATION_CHIPS.filter(chip => chip.id !== 'bank-cargo' && chip.id !== 'grab-cores')
@@ -115,6 +120,13 @@ export function CoachPanel({
         <summary>Training controls</summary>
         <TrainingControls config={trainingConfig} onChange={onTrainingConfigChange} disabled={busy || coachingLocked} />
       </details>
+
+      {onForgedLookChange && (
+        <details className={styles.guidanceDetails}>
+          <summary>Forge your champion</summary>
+          <ForgePanel onLookChange={onForgedLookChange} />
+        </details>
+      )}
 
       {view.showQueue && (
       <div className={styles.coachingCol}>

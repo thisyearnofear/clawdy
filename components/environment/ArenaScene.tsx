@@ -77,6 +77,7 @@ import { BeatTimeline } from '../workbench/BeatTimeline'
 import { BootScreen } from '../workbench/BootScreen'
 import { BrandHeader } from '../workbench/BrandHeader'
 import { CoachPanel } from '../workbench/CoachPanel'
+import type { ForgedLook } from '../../services/forgeView'
 import { LessonComparison } from '../workbench/LessonComparison'
 import { LiveCallPrompt } from '../workbench/LiveCallPrompt'
 import { HelpDrawer } from '../workbench/HelpDrawer'
@@ -163,6 +164,7 @@ function Workbench({
     }
   })
   const [hasCompletedRun, setHasCompletedRun] = useState(() => loadEngagementProgress().hasCompletedRun)
+  const [forgedLook, setForgedLook] = useState<ForgedLook | null>(null)
   const [mistakeMoment, setMistakeMoment] = useState<{ tick: number; headline: string; detail: string } | null>(null)
   const [liveCall, setLiveCall] = useState<LiveCallContext | null>(null)
   const liveCallUsedRef = useRef(false)
@@ -2004,6 +2006,7 @@ function Workbench({
               onBuildChange={handleBuildChange}
               trainingConfig={trainingConfig}
               onTrainingConfigChange={handleTrainingConfigChange}
+              onForgedLookChange={setForgedLook}
             />
           </div>
         )}
