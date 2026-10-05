@@ -1,5 +1,8 @@
 <!doctype html>
 <meta charset="utf-8">
+<!-- Images live in docs/assets/board/ — the base href lets this page render
+     from infra/board/ whether served over HTTP or opened from disk. -->
+<base href="../../docs/assets/board/">
 <title>Clawdy asset board</title>
 <style>
   :root { --ink:#18221e; --paper:#f2f3e9; --line:#cfd8c6; --green:#3f6b39; --amber:#b9722a; }
@@ -8,7 +11,7 @@
   header { padding:44px 56px 20px; display:flex; justify-content:space-between; align-items:flex-end; }
   h1 { margin:0; font:700 64px/1 Georgia, serif; letter-spacing:-0.02em; }
   .tag { max-width:760px; font-size:21px; color:#3a4a40; }
-  .grid { display:grid; grid-template-columns: 1.55fr 1fr 1fr; grid-template-rows: 420px 420px; gap:16px; padding:0 56px; }
+  .grid { display:grid; grid-template-columns: 1.55fr 1fr 1fr; grid-template-rows: 420px 420px 340px; gap:16px; padding:0 56px; }
   figure { margin:0; position:relative; border-radius:8px; overflow:hidden; background:#dde3d6; border:1px solid var(--line); }
   figure img { width:100%; height:100%; object-fit:cover; display:block; }
   figcaption { position:absolute; left:10px; bottom:10px; background:#18221ee6; color:#eef4e6; padding:5px 10px; border-radius:3px; font:12px ui-monospace, monospace; letter-spacing:.04em; }
@@ -43,6 +46,9 @@
   <figure><img src="rival-close.png" style="object-position:50% 60%"><figcaption>HOUSE RIVAL · TRIPO-GENERATED HAULER</figcaption></figure>
   <figure><img src="champion-close.png" style="object-position:50% 60%"><figcaption>YOUR CHAMPION · MINT-GENERATED ROVER</figcaption></figure>
   <figure><img src="mobile-result.png" style="object-position:50% 20%"><figcaption>PHONE · ROUND COMPLETE</figcaption></figure>
+  <figure><img src="chassis-trio.png" style="object-position:50% 45%"><figcaption>TRIPO CHASSIS · SCOUT / HAULER / RAIDER</figcaption></figure>
+  <figure><img src="live-coaching.png" style="object-position:50% 30%"><figcaption>LIVE · CALL THE NEXT ROUTE MID-FLOOD</figcaption></figure>
+  <figure><img src="forge-panel.png" style="object-position:88% 55%"><figcaption>FORGE YOUR CHAMPION · TRIPO, SERVER-SIDE</figcaption></figure>
 </section>
 <section class="cols">
   <div class="card">
@@ -54,11 +60,12 @@
     <div class="bar"><span>starter</span><div class="track"><div class="w" style="width:50%"></div><div class="d" style="width:50%"></div></div><span class="num">40 – 0 – 40</span></div>
     <div class="bar"><span>weather</span><div class="track"><div class="w" style="width:43.75%"></div><div class="l" style="width:56.25%"></div></div><span class="num">35 – 45 – 0</span></div>
     <p class="note">Wins – losses – draws. Held-out layouts never used for training or selection. We still lose to <b>weather</b>, and the board says so.</p>
+    <p class="note">League: signed-in players publish a brain plus its chassis build, challenge another player's stored brain, and get a shareable replay link — matches are re-simulated server-side on a fresh hidden seed before the result counts. Tournament rounds pair listed brains every six hours.</p>
   </div>
   <div class="card">
     <h2>The loop</h2>
     <h3>Coach it. Train it. Let go.</h3>
-    <div class="loop"><span>Play</span><i>→</i><span>Call</span><i>→</i><span>Replay</span><i>→</i><span>Coach</span><i>→</i><span>Train</span><i>→</i><span>Match</span></div>
+    <div class="loop"><span>Play</span><i>→</i><span>Call</span><i>→</i><span>Replay</span><i>→</i><span>Coach</span><i>→</i><span>Train</span><i>→</i><span>Match</span><i>→</i><span>Forge</span><i>→</i><span>Print</span></div>
     <p class="note" style="margin-top:0">A small neural policy is trained on the lessons you approve, then runs a held-out arena with coaching locked. Signed-in players submit their brain to a ladder the server runs itself, so scores cannot be faked from the browser.</p>
     <p class="note">Code coaches welcome: write a teacher function, <code>npm run teacher:run</code>, import the checkpoint.</p>
   </div>
@@ -66,12 +73,12 @@
     <h2>Built with</h2>
     <h3>Tools on screen</h3>
     <ul class="credits">
-      <li><b>Tripo</b><span>Rival hauler rover and the amber energy core, generated with Tripo P1 (text to model)</span></li>
+      <li><b>Tripo</b><span>Rival hauler, energy core, and the three chassis bodies (scout / hauler / raider); Forge lets a player have Tripo build a custom body server-side</span></li>
       <li><b>World Labs</b><span>Spark Gaussian-splat bursts on every bank and collect</span></li>
       <li><b>Heygears</b><span>Print your champion: STL print kit for the rover</span></li>
       <li><b>Mint</b><span>Champion rover model</span></li>
       <li><b>Blender</b><span>Terrain, collider and textured visual twin (pinned Docker build)</span></li>
-      <li><b>Convex</b><span>Sync, GitHub sign-in, server-verified ladder</span></li>
+      <li><b>Convex</b><span>Sync, GitHub sign-in, server-verified ladder and league — brains, challenges, six-hour tournament rounds, replay share links</span></li>
     </ul>
   </div>
 </section>

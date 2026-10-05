@@ -49,3 +49,12 @@ Trained rover vs the house bots on 40 hidden layouts, both sides: beats `safe` 7
 
 **Post 4 (bug story)**
 My cloud test harness found it before a player did: on phones the canvas went blank and the match clock froze. Cause: the frame limiter left the render clock running while paused, so the next frame had a negative time step and the camera turned to NaN. One fix, plus layout bugs a phone judge would have seen. #Tripothon
+
+**Post 5 (the league)**
+Clawdy is a league now. Publish your trained brain with its chassis build, challenge another player's brain, and the server races both on a fresh hidden seed — then re-simulates the whole match before it counts. You can't fake a result from the browser. Every match gets a public replay link with event markers (bumps, battery-outs, banks). #Tripothon
+
+**Post 6 (Tripo chassis + Forge)**
+Three Tripo chassis bodies — scout, hauler, raider — now render in the arena, and your pick actually changes the sim (speed, battery, bump strength). Forge goes further: a signed-in player can have Tripo build a one-of-a-kind rover body server-side, credits reserved atomically and refunded on any failure. Verified end to end against the real API — including the day a scheduled poll died silently and stranded a forge. (Convex doesn't retry failed scheduled actions; now a 2-minute sweep rescues them.) #Tripothon @TripoAI
+
+**Post 7 (balance honesty)**
+Trained chassis vs chassis on 80 hidden Rush variants: scout beat hauler 71–9 before a retune. Speed was overtuned — an inert-stat handicap wasn't enough to slow it down. We're iterating on the coefficient in public and the bench script is in the repo. #Tripothon

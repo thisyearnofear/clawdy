@@ -126,10 +126,10 @@ Status (Oct 5): bodies, resolver, Forge backend and panel, and STL export are la
 - **Print:** `scripts/export-print-stl.py` reads quantized GLBs, takes a URL (a forged rover) and `--scale-mm`; STLs for the three chassis are in `public/prints/` (see `docs/PRINT_KIT.md`). Nothing was test-printed.
 - **Facing:** checked in an offline three.js render using the game's own transforms and the sim's +Z forward axis. The scout, hauler, raider and the rival all face +Z with the current `-π/2` Y rotation, so no flip was needed. This is not the live app and not the cloud harness.
 
-Open: a human forge on prod with a real account; prod harness run per chassis (the champion loads its build's chassis body on prod — verified `chassis-hauler.glb` renders, Oct 5; scout and raider not yet exercised); refresh asset board and build-log drafts.
+Open: a human forge on prod with a real account. Closed Oct 5: all three chassis verified loading on prod (`chassis-hauler|scout|raider.glb` each fetched 200 on selection and the champion swaps bodies live); Forge panel renders in the Coach panel on prod; asset board regenerated (`infra/board/board.html` + `trio.html` render source) with chassis/coaching/Forge tiles and league copy; build-log drafts extended through the league, Forge, and balance posts.
 
 Acceptance:
-- Each chassis renders on prod, verified by the harness. (Partial: hauler body confirmed live on prod Oct 5; scout and raider pending a build switch or harness run.)
+- Each chassis renders on prod, verified by the harness. (Done Oct 5: hauler, scout, and raider each fetched their GLB with HTTP 200 on build selection and the champion body swapped live.)
 - Forge fails safely: limit reached, Tripo error, and cap reached each show a clear message. (Messages, refunds and the stranded-poll recovery are covered by tests; the stranded-poll recovery was also seen against real Tripo locally; the messages have not been seen in the UI.)
 - Rival hauler facing is confirmed (flip the rotation if it is backwards). (Confirmed correct in an offline render.)
 
