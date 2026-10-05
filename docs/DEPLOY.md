@@ -44,6 +44,14 @@ If the local `.env.local` points at an anonymous dev backend (`CONVEX_DEPLOYMENT
 CONVEX_DEPLOYMENT=prod:accomplished-capybara-638 npx convex deploy --yes
 ```
 
+The Forge (`convex/forge.ts`) needs `TRIPO_API_KEY` on the Convex deployment — server-side only, never shipped to the client:
+
+```bash
+CONVEX_DEPLOYMENT=prod:accomplished-capybara-638 npx convex env set TRIPO_API_KEY <key>
+```
+
+(Set on prod Oct 5.) Without it `forge.start` fails its calls with a clear error; nothing else depends on it.
+
 Day-to-day local development:
 
 ```bash

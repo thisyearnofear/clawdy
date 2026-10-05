@@ -82,6 +82,8 @@ Acceptance:
 - Over-budget builds are blocked in the UI.
 - Mobile and desktop harness runs show zero failures.
 
+Status (Oct 5): build screen, budget curve and `TrainingControls` are landed. `services/trainingConfig.ts` parses/serialises/validates the knobs, `ArenaScene` persists the config in localStorage and passes it into the panel, and `policyTrainer`/`policyModel` consume `TrainingConfig` so the sliders affect the real trainer — not the frozen 60/0.008/decay pin, which stays unchanged. `chassis.ts` caps `travelSpeed` at `MAX_TRAVEL_SPEED` (1.33) so every chassis stays inside the physics controller's 2.4 m/s headroom.
+
 ## Stream C — PvP, ladder and replays (backend)
 
 Owner: backend developer.
@@ -98,7 +100,7 @@ Acceptance:
 - Two accounts complete a challenge end to end on prod.
 - Replays reload from a share link.
 
-Status (Oct 5): implemented and deployed to prod (`accomplished-capybara-638`). `convex/league.ts` + `convex/leagueRun.ts` + `convex/crons.ts` ship publish/challenge/6-hourly `runRound`, `runMatch` in `services/ladderRunner.ts` replays both sides and stores ~1 MB recordings in file storage behind a public `?replay=<shareId>` link (the workbench boots straight into review), `services/replayMarkers.ts` derives bump/spawn/battery-out/recovery/bank markers, and `league.topByChassis` + `league.reportCard` cover the per-build board and report card. `convex/__tests__/league.test.ts` covers the authz negatives and a real two-account challenge; the remaining open item is a human-driven two-account challenge on prod (needs two GitHub sign-ins).
+Status (Oct 5): implemented and deployed to prod (`accomplished-capybara-638`). `convex/league.ts` + `convex/leagueRun.ts` + `convex/crons.ts` ship publish/challenge/6-hourly `runRound`, `runMatch` in `services/ladderRunner.ts` replays both sides and stores ~1 MB recordings in file storage behind a public `?replay=<shareId>` link (the workbench boots straight into review), `services/replayMarkers.ts` derives bump/spawn/battery-out/recovery/bank markers, and `league.topByChassis` + `league.reportCard` cover the per-build board and report card — the report card aggregates published brains' builds, not ladder rows. The `?replay=` share slug is consumed from the URL once the recording has loaded. `convex/__tests__/league.test.ts` covers the authz negatives and a real two-account challenge; the remaining open item is a human-driven two-account challenge on prod (needs two GitHub sign-ins).
 
 ## Stream D — Assets and Forge (Tripo, Heygears, World Labs)
 
