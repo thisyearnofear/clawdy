@@ -1,7 +1,7 @@
 /**
  * Evolution-strategies training on Rush, with a held-out proof at the end.
  *
- *   npx tsx scripts/train-es.ts [--gens 30] [--pairs 8] [--sigma 0.08] [--lr 1] [--tasks 3] [--seed 7] [--init checkpoint.json] [--out starter/rush-champion.json] [--val 3] [--schedule 0,2,1,0,2,3,4] [--save-every 10] [--timetable [--hub-prior 0]] [--chassis scout|hauler|raider]
+ *   npx tsx scripts/train-es.ts [--gens 30] [--pairs 8] [--sigma 0.08] [--lr 1] [--tasks 3] [--seed 7] [--init checkpoint.json] [--out starter/rush-champion.json] [--val 3] [--schedule 0,2,1,0,2,3,4] [--save-every 10] [--timetable [--hub-prior 0]] [--chassis scout|hauler|raider [--ruleset skirmish]]
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import { cpus } from 'node:os'
@@ -12,7 +12,7 @@ import { ArenaPhysics } from '../services/arenaPhysics'
 import type { EntrantPolicyOption } from '../services/arenaPolicy'
 import { exportCheckpointJson } from '../services/checkpointStorage'
 import { trainES, type EsContext, type EsEvaluator, type EsTask } from '../services/policyES'
-import { baseBuild, buildToTraits, CHASSIS_IDS, type ChassisId } from '../services/chassis'
+import { baseBuild, buildToTraits, CHASSIS_IDS, type ChassisId, type RulesetId } from '../services/chassis'
 import { extendCheckpointForChassis, extendCheckpointForTimetable, type PolicyCheckpoint } from '../services/policyModel'
 import { SEASON_0_STARTER_CHECKPOINT } from '../services/starterCheckpoint'
 import { workerPool } from './es-pool'
@@ -51,7 +51,11 @@ async function main() {
   const chassisIndex = process.argv.indexOf('--chassis')
   const chassis = chassisIndex === -1 ? undefined : process.argv[chassisIndex + 1] as ChassisId
   if (chassis !== undefined && !CHASSIS_IDS.includes(chassis)) throw new Error(`--chassis must be one of ${CHASSIS_IDS.join(', ')}`)
-  const context: EsContext = { rushBase, opponents, ...(chassis ? { traits: buildToTraits(baseBuild(chassis)) } : {}) }
+  const rulesetIndex = process.argv.indexOf('--ruleset')
+  const ruleset = rulesetIndex === -1 ? undefined : process.argv[rulesetIndex + 1] as RulesetId
+  if (ruleset !== undefined && (ruleset as string) !== 'skirmish') throw new Error('--ruleset must be skirmish')
+  if (ruleset && !chassis) throw new Error('--ruleset needs --chassis')
+  const context: EsContext = { rushBase, opponents, ...(chassis ? { traits: buildToTraits(baseBuild(chassis), ruleset) } : {}) }
   const pool = workerPool(context, Math.max(1, cpus().length - 1))
 
   const config = {

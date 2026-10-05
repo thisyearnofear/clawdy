@@ -3,7 +3,7 @@
  * against every house bot and the bundled imitation starter. Writes the result
  * to docs/eval-es.json so the claim is pinned next to the other evals.
  *
- *   npx tsx scripts/eval-es.ts <checkpoint.json> [--variants 25] [--write] [--chassis scout|hauler|raider]
+ *   npx tsx scripts/eval-es.ts <checkpoint.json> [--variants 25] [--write] [--chassis scout|hauler|raider [--ruleset skirmish]]
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import { cpus } from 'node:os'
@@ -13,7 +13,7 @@ import { buildRushCourse } from '../services/arenaCourse'
 import { ArenaPhysics } from '../services/arenaPhysics'
 import type { EntrantPolicyOption } from '../services/arenaPolicy'
 import type { EsContext, EsScore, EsTask } from '../services/policyES'
-import { baseBuild, buildToTraits, CHASSIS_IDS, type ChassisId } from '../services/chassis'
+import { baseBuild, buildToTraits, CHASSIS_IDS, type ChassisId, type RulesetId } from '../services/chassis'
 import { validateCheckpoint, type PolicyCheckpoint } from '../services/policyModel'
 import { SEASON_0_STARTER_CHECKPOINT } from '../services/starterCheckpoint'
 import { workerPool } from './es-pool'
@@ -38,7 +38,11 @@ async function main() {
   const chassisIndex = process.argv.indexOf('--chassis')
   const chassis = chassisIndex === -1 ? undefined : process.argv[chassisIndex + 1] as ChassisId
   if (chassis !== undefined && !CHASSIS_IDS.includes(chassis)) throw new Error(`--chassis must be one of ${CHASSIS_IDS.join(', ')}`)
-  const context: EsContext = { rushBase, opponents, ...(chassis ? { traits: buildToTraits(baseBuild(chassis)) } : {}) }
+  const rulesetIndex = process.argv.indexOf('--ruleset')
+  const ruleset = rulesetIndex === -1 ? undefined : process.argv[rulesetIndex + 1] as RulesetId
+  if (ruleset !== undefined && (ruleset as string) !== 'skirmish') throw new Error('--ruleset must be skirmish')
+  if (ruleset && !chassis) throw new Error('--ruleset needs --chassis')
+  const context: EsContext = { rushBase, opponents, ...(chassis ? { traits: buildToTraits(baseBuild(chassis), ruleset) } : {}) }
   const pool = workerPool(context, Math.max(1, cpus().length - 1))
 
   const seeds = Array.from({ length: variants }, (_, index) => 9001 + index)
@@ -62,8 +66,8 @@ async function main() {
 
   if (process.argv.includes('--write')) {
     const record = { checkpointId: trained.id, weightsHash: trained.weightsHash, variants, seeds: [seeds[0], seeds.at(-1)], starter: before, trained: after }
-    const file = chassis ? `eval-es-${chassis}.json` : 'eval-es.json' // the unmodified champion's pinned record is never overwritten
-    writeFileSync(resolve(repoRoot, 'docs', file), JSON.stringify({ ...record, ...(chassis ? { chassis } : {}) }, null, 2) + '\n', 'utf-8')
+    const file = chassis ? `eval-es-${ruleset ? `${ruleset}-` : ''}${chassis}.json` : 'eval-es.json' // the unmodified champion's pinned record is never overwritten
+    writeFileSync(resolve(repoRoot, 'docs', file), JSON.stringify({ ...record, ...(chassis ? { chassis, ...(ruleset ? { ruleset } : {}) } : {}) }, null, 2) + '\n', 'utf-8')
     console.log(`\nwrote docs/${file}`)
   }
 }

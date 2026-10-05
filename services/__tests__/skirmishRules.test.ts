@@ -34,3 +34,22 @@ describe('skirmish traits', () => {
     expect(ep.observe(base.entrants[0].id).self.traits?.capacity).toBe(5)
   })
 })
+
+describe('skirmish perks', () => {
+  it('leaves Training Grounds traits untouched', async () => {
+    const { buildToTraits, baseBuild } = await import('../chassis')
+    for (const id of ['scout', 'hauler', 'raider'] as const) {
+      const t = buildToTraits(baseBuild(id))
+      expect(t.capacity).toBeUndefined()
+      expect(t.stealAll).toBeUndefined()
+      expect(t.visionHops).toBeUndefined()
+    }
+  })
+
+  it('gives each chassis its signature rule', async () => {
+    const { buildToTraits, baseBuild } = await import('../chassis')
+    expect(buildToTraits(baseBuild('hauler'), 'skirmish').capacity).toBe(5)
+    expect(buildToTraits(baseBuild('raider'), 'skirmish').stealAll).toBe(true)
+    expect(buildToTraits(baseBuild('scout'), 'skirmish').visionHops).toBe(2)
+  })
+})

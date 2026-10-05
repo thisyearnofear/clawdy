@@ -112,7 +112,16 @@ export const MAX_TRAVEL_SPEED = 1.33
  * Modules only adjust the same traits; `wide-sensor` and `extra-cell` have no
  * simulation effect yet (see ACTIVE_AXES) and resolve to nothing.
  */
-export function buildToTraits(build: Build): EntrantTraits {
+/** Rulesets that give each chassis a signature rule. Absent = Training Grounds (Season 0). */
+export type RulesetId = 'skirmish'
+
+export const SKIRMISH_PERKS: Record<ChassisId, Pick<EntrantTraits, 'capacity' | 'stealAll' | 'visionHops'>> = {
+  scout: { visionHops: 2 },
+  hauler: { capacity: 5 },
+  raider: { stealAll: true },
+}
+
+export function buildToTraits(build: Build, rulesetId?: RulesetId): EntrantTraits {
   const errors = validateBuild(build)
   if (errors.length > 0) throw new Error(`Invalid build: ${errors.join('; ')}`)
   const p = build.points
@@ -127,6 +136,7 @@ export function buildToTraits(build: Build): EntrantTraits {
     travelSpeed: round(clamp(travelSpeed, 0.8, MAX_TRAVEL_SPEED)),
     maxEnergy: round(clamp(maxEnergy, 6, 14)),
     contactStrength: round(clamp(contactStrength, -3, 3)),
+    ...(rulesetId === 'skirmish' ? SKIRMISH_PERKS[build.chassis] : {}),
   }
 }
 
