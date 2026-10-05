@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { existsSync, readFileSync, statSync } from 'node:fs'
+import { join } from 'node:path'
 import { chassisAssetKey, registeredChassisBodies, resolveRoverModel } from '../chassisAssets'
 import { getMintAsset } from '../mintAssets'
 
@@ -29,5 +31,17 @@ describe('chassis assets', () => {
 
   it('only reports chassis bodies that are registered', () => {
     for (const id of registeredChassisBodies()) expect(getMintAsset(chassisAssetKey(id))).toBeDefined()
+  })
+
+  it('registers all three chassis bodies as small, valid GLBs on disk', () => {
+    expect(registeredChassisBodies().sort()).toEqual(['hauler', 'raider', 'scout'])
+    for (const id of registeredChassisBodies()) {
+      const model = resolveRoverModel('champion', id)
+      expect(model.key).toBe(chassisAssetKey(id))
+      const file = join(process.cwd(), 'public', model.url!)
+      expect(existsSync(file)).toBe(true)
+      expect(readFileSync(file).subarray(0, 4).toString('latin1')).toBe('glTF')
+      expect(statSync(file).size).toBeLessThan(1.5 * 1024 * 1024)
+    }
   })
 })

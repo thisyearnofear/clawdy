@@ -123,7 +123,7 @@
           "filename": "rival-rover.glb",
           "localPath": "public/assets/tripo/rival-rover.glb",
           "loaderHint": "gltf",
-          "byteSize": 3430076
+          "byteSize": 1093652
         }
       },
       "transform": {
@@ -162,7 +162,7 @@
           "filename": "energy-core.glb",
           "localPath": "public/assets/tripo/energy-core.glb",
           "loaderHint": "gltf",
-          "byteSize": 2725948
+          "byteSize": 960728
         }
       },
       "transform": {
@@ -180,6 +180,123 @@
           0.34,
           0.34,
           0.34
+        ]
+      }
+    },
+    "chassis.scout": {
+      "source": {
+        "manifestVersion": 1,
+        "kind": "tripo-model",
+        "assetType": "model",
+        "assetId": "60f573f5-fe77-48e6-9d21-cf0fb62770f4",
+        "generator": "Tripo P1-20260311",
+        "prompt": "Small light fast scout rover robot, sleek low aerodynamic body, four wheels, tall sensor mast with a dish, matte light grey and charcoal armor, game asset, single object"
+      },
+      "artifacts": {
+        "original_glb": {
+          "artifactId": "original_glb",
+          "role": "canonical_model",
+          "format": "glb",
+          "contentType": "model/gltf-binary",
+          "filename": "chassis-scout.glb",
+          "localPath": "public/assets/tripo/chassis-scout.glb",
+          "loaderHint": "gltf",
+          "byteSize": 1098604
+        }
+      },
+      "transform": {
+        "position": [
+          0,
+          0.08,
+          0
+        ],
+        "rotation": [
+          0,
+          -1.5707963267948966,
+          0
+        ],
+        "scale": [
+          0.9,
+          0.9,
+          0.9
+        ]
+      }
+    },
+    "chassis.hauler": {
+      "source": {
+        "manifestVersion": 1,
+        "kind": "tripo-model",
+        "assetType": "model",
+        "assetId": "235bae0d-eae2-4da2-82a6-195a31b1a64a",
+        "generator": "Tripo P1-20260311",
+        "prompt": "Low wide heavy tracked cargo hauler robot, thick plated armor, open cargo bed, rugged and sturdy, matte mid grey and charcoal armor, game asset, single object"
+      },
+      "artifacts": {
+        "original_glb": {
+          "artifactId": "original_glb",
+          "role": "canonical_model",
+          "format": "glb",
+          "contentType": "model/gltf-binary",
+          "filename": "chassis-hauler.glb",
+          "localPath": "public/assets/tripo/chassis-hauler.glb",
+          "loaderHint": "gltf",
+          "byteSize": 1089876
+        }
+      },
+      "transform": {
+        "position": [
+          0,
+          -0.03,
+          0
+        ],
+        "rotation": [
+          0,
+          -1.5707963267948966,
+          0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    "chassis.raider": {
+      "source": {
+        "manifestVersion": 1,
+        "kind": "tripo-model",
+        "assetType": "model",
+        "assetId": "5a92e8d9-ec3d-407e-bc9a-37662fef099f",
+        "generator": "Tripo P1-20260311",
+        "prompt": "Aggressive angular raider rover robot, wedge-shaped front with a heavy steel ram plate, spiked bumper, chunky wheels, matte dark grey and gunmetal armor, game asset, single object"
+      },
+      "artifacts": {
+        "original_glb": {
+          "artifactId": "original_glb",
+          "role": "canonical_model",
+          "format": "glb",
+          "contentType": "model/gltf-binary",
+          "filename": "chassis-raider.glb",
+          "localPath": "public/assets/tripo/chassis-raider.glb",
+          "loaderHint": "gltf",
+          "byteSize": 1290508
+        }
+      },
+      "transform": {
+        "position": [
+          0,
+          -0.04,
+          0
+        ],
+        "rotation": [
+          0,
+          -1.5707963267948966,
+          0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
         ]
       }
     }
