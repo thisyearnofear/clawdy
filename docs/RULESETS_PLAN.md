@@ -1,6 +1,6 @@
 # Rulesets plan: Season 0 as the training ground, richer rulesets after it
 
-Status: proposal, not built. Written after the first chassis results ([CHASSIS_RESULTS.md](CHASSIS_RESULTS.md)).
+Status (Oct 6): broader rulesets remain a proposal; a limited Skirmish preview is implemented locally. Trained Skirmish brains, a pinned evaluation and production availability remain unverified. Written after the first chassis results ([CHASSIS_RESULTS.md](CHASSIS_RESULTS.md)).
 
 ## Why
 
@@ -86,9 +86,9 @@ Each can start once the ruleset record and the per-entrant parameters exist.
 | --- | --- |
 | Sim (A) | Ruleset record, `rulesetId`, traits, three rule changes, parity tests, house bots. |
 | Training (A, server) | Skirmish held-out variants, `--ruleset` flag, multi-seed training and eval, results doc. |
-| UI (B) | Ruleset picker, build screen copy for the new rules, Training Grounds skip. |
+| UI (B) | Implemented locally: ruleset picker, build perk copy, Training Grounds skip, basic publish unlock and ruleset-scoped league drawer. |
 | League (C) | Per-ruleset ladder and rounds, `rulesetId` on stored rows, rating per ruleset. |
-| Journey (U2, U3) | Guided first loop on the Training Grounds, Skirmish unlock and skip, ruleset name and rules on the spectator view. |
+| Journey (U2, U3) | Guided first loop on the Training Grounds, publish ceremony and broader disclosure flow, ruleset name and rules on the spectator view. Basic unlock and skip are implemented by B. |
 | Assets (D) | Chassis bodies that show the rule (a bigger load bed on the Hauler, a ram on the Raider, a mast on the Scout). |
 
 ## Status

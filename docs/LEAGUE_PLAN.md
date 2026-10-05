@@ -76,7 +76,7 @@ Acceptance:
 Owner: front-end developer.
 
 - Build screen in the Coach panel: chassis picker, stat budget sliders with diminishing returns, module slots, and a plain-language pre-match readout ("slow but hardy: expect to lose races, win collisions").
-- Training controls: generations, population size, mutation, hub prior, and scenario mix. These feed `TrainingConfig` into the existing trainer.
+- Training controls: generations, population size, mutation, hub prior, and scenario mix. These persist `TrainingConfig` for the evolution-strategy builder. They do not change the browser Coach Train optimizer.
 - Bring-your-own-harness path: the Teacher contract accepts a `Build` and a `TrainingConfig`, so scripted sweeps use the same budget as the UI.
 - Document the harness path in `docs/` with a worked example.
 
@@ -85,7 +85,9 @@ Acceptance:
 - Over-budget builds are blocked in the UI.
 - Mobile and desktop harness runs show zero failures.
 
-Status (Oct 5): build screen, budget curve and `TrainingControls` are landed. `services/trainingConfig.ts` parses/serialises/validates the knobs, `ArenaScene` persists the config in localStorage and passes it into the panel, and `policyTrainer`/`policyModel` consume `TrainingConfig` so the sliders affect the real trainer — not the frozen 60/0.008/decay pin, which stays unchanged. `chassis.ts` caps `travelSpeed` at `MAX_TRAVEL_SPEED` (1.33) so every chassis stays inside the physics controller's 2.4 m/s headroom.
+Status (Oct 6): build screen, budget curve and `TrainingControls` are implemented. `services/trainingConfig.ts` parses, serialises and validates the knobs; `ArenaScene` persists them in localStorage. `toEsConfig` supplies the evolution-strategy builder configuration through the harness path in [BUILD_HARNESS.md](BUILD_HARNESS.md). The browser Coach Train optimizer retains its pinned 60-epoch/0.008/decay settings. `chassis.ts` caps `travelSpeed` at `MAX_TRAVEL_SPEED` (1.33) so every chassis stays inside the physics controller's 2.4 m/s headroom.
+
+Stream B's ruleset UI is also implemented locally: Training Grounds/Skirmish picker, returning-player or own-brain skip, persistent publish unlock, perk explanations, capacity-aware readouts, and an unranked Skirmish preview. The league drawer selects ruleset-scoped boards and pools and publishes separate identities per ruleset. TypeScript, targeted lint, 620 tests and the production build pass. Browser checks confirm ruleset switching, Scout build persistence and a 390px layout without horizontal overflow. Screenshot capture times out; a full visual harness pass and authenticated production publish/challenge checks remain unverified. This does not establish production availability. Guided first loop, publish ceremony, heartbeat and replay library remain U2/U3 work.
 
 ## Stream C — PvP, ladder and replays (backend)
 
