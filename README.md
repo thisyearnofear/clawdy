@@ -29,7 +29,7 @@ Both paths produce the same checkpoint artifact and run under the same match rul
 
 ## Live
 
-**Play:** [https://clawdy-nine.vercel.app/](https://clawdy-nine.vercel.app/) — Practice → Call → Replay → Coach → Train → Match. No wallet. Checkpoints sync to Convex under a browser guest key when configured; `localStorage` + JSON export always work offline.
+**Play:** [https://clawdy.trustfall.xyz/](https://clawdy.trustfall.xyz/) — Practice → Call → Replay → Coach → Train → Match. No wallet. Checkpoints sync to Convex under a browser guest key when configured; `localStorage` + JSON export always work offline.
 
 ### Saving your progress
 

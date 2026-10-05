@@ -66,7 +66,7 @@ The [canonical plan](HACKATHON.md) defines the accepted direction. The following
 
 ## Demo and Submission
 - [x] Practice / Match modes and scored coaching lock are reachable in the web UI.
-- [x] Live app URL documented: [https://clawdy-nine.vercel.app/](https://clawdy-nine.vercel.app/) (commit on `main`; confirm SHA at submit time).
+- [x] Live app URL documented: [https://clawdy.trustfall.xyz/](https://clawdy.trustfall.xyz/) (commit on `main`; confirm SHA at submit time).
 - [ ] The full [two-minute demo](DEMO_SCRIPT.md) works through one reliable interaction path on the presentation device.
 - [ ] A real fallback recording and its checkpoint/training evidence are saved.
 - [ ] Prepared checkpoints, recorded training, and replayed matches are explicitly labeled.

@@ -4,7 +4,7 @@
 
 Season 0 keeps the spine: **Play → Replay → Coach → Train → Match**, with real weight updates and held-out evaluation. Everything below extends that spine; it does not replace it with prompt-chat or wallet clutter.
 
-Live exhibition: [https://clawdy-nine.vercel.app/](https://clawdy-nine.vercel.app/).
+Live exhibition: [https://clawdy.trustfall.xyz/](https://clawdy.trustfall.xyz/).
 
 ---
 

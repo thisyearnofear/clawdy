@@ -1,6 +1,6 @@
 # Clawdy — Two-Minute Learning Demo
 
-**Target script for the shipped Season 0 build** ([plan](HACKATHON.md), [roadmap](ROADMAP.md)). Only present steps that are implemented. Live: [https://clawdy-nine.vercel.app/](https://clawdy-nine.vercel.app/).
+**Target script for the shipped Season 0 build** ([plan](HACKATHON.md), [roadmap](ROADMAP.md)). Only present steps that are implemented. Live: [https://clawdy.trustfall.xyz/](https://clawdy.trustfall.xyz/).
 
 ## One-Sentence Pitch
 
@@ -50,7 +50,7 @@ Keep the learned policy distinct from the language-model coach, authored navigat
 ## Reliable Presentation Path
 
 1. Pin the world, collider, route graph, rules version, baseline, and evaluated checkpoint.
-2. Preload on the presentation device; hard-refresh [clawdy-nine.vercel.app](https://clawdy-nine.vercel.app/) or local `npm run dev`.
+2. Preload on the presentation device; hard-refresh [clawdy.trustfall.xyz](https://clawdy.trustfall.xyz/) or local `npm run dev`.
 3. Keep one known practice example set and Match mode ready; optional prepared checkpoint labeled as prepared.
 4. Save a fallback recording of a real complete run, including training provenance and results.
 5. If training is too slow live, label the prepared checkpoint and recorded training explicitly. Do not fake a progress bar.

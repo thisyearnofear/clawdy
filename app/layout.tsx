@@ -9,7 +9,7 @@ const title = 'Clawdy — Train Your Champion'
 const description = 'An agent-training league in a generated world. Explore the physical baseline build: autonomous rovers, changing routes, and inspectable recorded decisions.'
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://clawdy-nine.vercel.app'),
+  metadataBase: new URL('https://clawdy.trustfall.xyz'),
   title,
   description,
   keywords: ['world labs', 'spark', 'agent training', 'autonomous agents', 'three.js', 'spatial intelligence'],
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     title,
     description,
     type: 'website',
-    url: 'https://clawdy-nine.vercel.app',
+    url: 'https://clawdy.trustfall.xyz',
     images: [{ url: '/og-image.svg', width: 1200, height: 630, alt: title }],
   },
   twitter: { card: 'summary_large_image', title, description, images: ['/og-image.svg'] },

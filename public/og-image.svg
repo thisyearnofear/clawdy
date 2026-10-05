@@ -69,7 +69,7 @@
   <text x="740" y="483" font-family="system-ui, sans-serif" font-size="16" fill="#10b981" text-anchor="middle" font-weight="700">Reference</text>
 
   <!-- URL -->
-  <text x="600" y="570" font-family="system-ui, sans-serif" font-size="18" fill="#475569" text-anchor="middle">clawdy-nine.vercel.app</text>
+  <text x="600" y="570" font-family="system-ui, sans-serif" font-size="18" fill="#475569" text-anchor="middle">clawdy.trustfall.xyz</text>
 
   <!-- Bottom accent -->
   <rect x="0" y="627" width="1200" height="3" fill="url(#glow)"/>
