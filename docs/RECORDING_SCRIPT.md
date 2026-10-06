@@ -23,4 +23,4 @@ Before you start: open https://clawdy.trustfall.xyz in a fresh window, sign in w
 - Do one phone pass at 375x812 for the last 15 seconds if time allows: Play, then the result panel.
 - Don't narrate numbers you can't see on screen.
 - Known limit to mention if asked: the ladder has had little live use.
-- Skirmish is deployed with a bundled house brain per chassis (picker unlocks after a first run or skip). It is unbalanced (Hauler leads) and has not been played end to end in the production browser by us; check it once before showing it. If it misbehaves, drop it from the walkthrough and keep the claim to the repo and results.
+- Skirmish is deployed with a bundled house brain per chassis (picker unlocks after a first run or skip). It is unbalanced (Hauler leads) and was smoke-tested once in the production browser (Hauler build, match ran); check Scout and Raider once before showing them. If it misbehaves, drop it from the walkthrough and keep the claim to the repo and results.
