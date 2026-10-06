@@ -1,26 +1,33 @@
-# Walkthrough recording script (2:30 target)
+# Walkthrough recording script (about 3:00)
 
-Record on a real GPU at 1080p, one take per section, browser at 100% zoom. This is a walkthrough, not a trailer: show it working, including the loss to `weather`.
+A walkthrough of the world, not a trailer. The event requires a screen recording of the world itself. Show it working, including the loss to `weather`.
 
-Before you start: open https://clawdy.trustfall.xyz in a fresh window, sign in with GitHub once, and keep a spare checkpoint ready. Turn sound on if you want the rover audio.
+**Record:** 1080p, browser at 100% zoom, a real GPU, one take per section (sections are independent, so redo only the one that went wrong). Keep the proverb toggle in Help **off** unless you want it. Open https://clawdy.trustfall.xyz in a fresh window and sign in with GitHub once beforehand. Dismiss the first-run hint before you start.
+
+**Reference files**
+- `docs/SUBMISSION_COPY.md`: the exact claims you can say, and the "Known limits" to say out loud.
+- `docs/assets/asset-board.png`: end the video on this (evidence chart and tool list).
+- `docs/CHASSIS_RESULTS.md`: numbers for Skirmish if you mention them.
+- `docs/PRINT_KIT.md` and `public/prints/*.stl`: only if you show the print file; say "print-ready, not printed".
 
 | Time | Do | Say |
 |---|---|---|
-| 0:00 | Landing view, canvas loaded | "This is Clawdy. You never drive. You coach a rover, train it, and then you're not allowed to help." |
-| 0:12 | Press **Play** in Practice. Let it run about 15 seconds. | "Two rovers race for energy cores in a flooding desert. The orange hauler is the house rival, generated with Tripo. The cores are Tripo too." |
-| 0:30 | When the **Call the next route** card appears, pick a route | "At a junction I can call a route. It saves a lesson. It doesn't steer this race, so I can't cheat a scored result." |
-| 0:45 | Let the round finish, click **Watch replay**, scrub to a bad turn | "The replay is the receipt. I scrub to the moment it went wrong." |
-| 1:00 | Open **Coach**, approve an example, click **Train** | "I approve what it should learn. Training is a real gradient update on real weights." |
-| 1:20 | Show the "what your brain changed" card | "It tells me how many decisions moved and which routes swapped, not just a score." |
-| 1:35 | Switch to **Match**, press Play | "Now the held-out layout. Coaching is locked. This is the part I care about." |
-| 1:55 | Switch to **Rush**, press Play. Point at a core spawn and a bump effect | "Rush adds scheduled core drops and contact. The Spark splat bursts on every bank are World Labs' renderer." |
-| 2:10 | Open **Ladder** and submit | "Signed in with GitHub, I can submit this brain to a ladder. The server replays it on hidden layouts, so scores can't be faked from the browser." |
-| 2:25 | Show the asset board or the evidence chart | "Trained champion beats `safe` 77-3, but loses to `weather` 35-45. I'm leaving that on the board." |
-| 2:35 | End on the result panel with **Print your champion** visible | "And you can print the rover. Heygears print kit. Thanks." |
+| 0:00 | Landing view, canvas loaded | "I was the kid who kept losing and wished someone would teach instead of taking over the controls. Clawdy is the gift I'd give that kid: you never drive. You coach." |
+| 0:15 | **Practice**, press **Play**, let it run about 15 s | "Two rovers race for energy cores in a flooding desert. The cores, the rival and the chassis bodies are Tripo-generated." |
+| 0:35 | When **Call the next route** appears, pick a route | "At a junction I call a route. It's saved as a lesson. It doesn't steer this race." |
+| 0:50 | Round ends, click **Watch replay**, scrub to a bad turn | "The replay is the receipt. I scrub to the moment it went wrong." |
+| 1:05 | Open **Lessons**, approve, **Train** | "Each approval is a real gradient update on a small neural policy, not a saved prompt." |
+| 1:25 | Show the "what your brain changed" card | "It tells me how many decisions moved, not just a score." |
+| 1:40 | Switch to **Match**, press Play. Pause on the banner | "Controls off. It walks through alone. This is the part I care about." |
+| 2:00 | Match result and replay line | "The replay shows whether my teaching held." |
+| 2:10 | Open **Help**, tick the proverb toggle only if you want it, or skip | (optional) "There's an optional line of proverbs for anyone who wants the teacher-and-student feel." |
+| 2:15 | Open the build screen, pick **Raider** or **Scout**, then pick the **Skirmish** ruleset and press Play | "Teach to the student: pick a chassis. Skirmish gives each chassis a signature rule. It's unbalanced, the Hauler leads, and I'm saying so." |
+| 2:35 | Open **Ladder** and submit | "Signed in with GitHub, I submit a brain. The server replays it on hidden layouts, so scores can't be faked from the browser." |
+| 2:50 | Show `asset-board.png` or the evidence chart | "My champion beats `safe` 77-3 but loses to `weather` 35-45. I'm leaving that on the board." |
 
 ## Tips
-- If a section goes wrong, cut and redo only that section; the sections are independent.
-- Do one phone pass at 375x812 for the last 15 seconds if time allows: Play, then the result panel.
-- Don't narrate numbers you can't see on screen.
-- Known limit to mention if asked: the ladder has had little live use.
-- Skirmish is deployed with a bundled house brain per chassis (picker unlocks after a first run or skip). It is unbalanced (Hauler leads) and was smoke-tested once in the production browser (Hauler build, match ran); check Scout and Raider once before showing them. If it misbehaves, drop it from the walkthrough and keep the claim to the repo and results.
+- Say only numbers you can see on screen or on the board.
+- Known limit to say if asked: the ladder and league have had little live use, and no human has run a challenge on production yet.
+- If Skirmish with Scout or Raider misbehaves, record the Hauler (verified once) or skip that section.
+- Optional phone pass at 375x812 for the last 10 seconds: Play, then the result panel.
+- Skip the Rush and "Print your champion" sections unless time allows; neither is needed to show the loop.
