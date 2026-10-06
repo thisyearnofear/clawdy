@@ -27,9 +27,11 @@ const BUNDLED_STARTER_IDS = new Set<string>([
 ])
 BUNDLED_STARTER_IDS.add(starter.id)
 
+const SKIRMISH_HOUSE_IDS = new Set<string>(['es-g23-1942e2', 'es-g239-e242fd', 'es-g225-5f42f2']) // starter/skirmish-<chassis>.json
+
 /** True for any shipped starter artifact, current or superseded. */
 export function isBundledStarterId(id: string): boolean {
-  return BUNDLED_STARTER_IDS.has(id)
+  return BUNDLED_STARTER_IDS.has(id) || SKIRMISH_HOUSE_IDS.has(id)
 }
 
 export function isBundledStarter(checkpoint: { id: string }): boolean {

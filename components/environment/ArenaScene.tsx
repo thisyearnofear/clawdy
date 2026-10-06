@@ -13,6 +13,7 @@ import { MOMENT_LABELS, MOMENT_LEAD_TICKS, nextMomentAfter, type MatchMoment } f
 import { createTournament, runTournament, type ArenaTournament, type TournamentEntrant, type TournamentMatch } from '../../services/arenaTournament'
 import { type PolicyCheckpoint, SEASON_0_BASE_CHECKPOINT } from '../../services/policyModel'
 import { isBundledStarter, SEASON_0_STARTER_CHECKPOINT } from '../../services/starterCheckpoint'
+import { brainForRuleset } from '../../services/skirmishBrains'
 import { proposeCorrection, summarizeCoachFocus } from '../../services/coachingEngine'
 import { rankCoachingCandidates, type CoachingCandidate } from '../../services/coachingCandidates'
 import { draftRecordedCorrection, recordedCoachContext } from '../../services/coachingReview'
@@ -1116,6 +1117,18 @@ function Workbench({
         setTrainMessage(`That file didn't import: ${err instanceof Error ? err.message : 'Invalid checkpoint file'}. Double-check it's a Clawdy checkpoint export.`)
       })
   }
+
+  // House brains follow the ruleset and chassis; a player's own brain is never swapped.
+  useEffect(() => {
+    if (view.phase !== 'ready') return
+    const wanted = brainForRuleset(activeCheckpoint, build.chassis, rulesetId)
+    if (wanted.id === activeCheckpoint.id) return
+    useArenaStore.getState().setActiveCheckpoint(wanted)
+    try {
+      session.setCheckpoint(wanted)
+      session.selectPolicy('champion', 'learned', wanted)
+    } catch { /* locked mid-run; the next ready phase retries */ }
+  }, [rulesetId, build.chassis, view.phase, activeCheckpoint, session])
 
   const handleBuildChange = (next: Build) => {
     if (isTraining || coachingLocked || view.phase === 'running' || (rulesetId === 'skirmish' && view.phase !== 'ready')) return
