@@ -952,6 +952,18 @@ a.secondaryButton { text-decoration: none; }
 .replayHead > span { color: var(--muted); flex: 1; }
 .replayStatus { font-size: 9px; color: var(--muted); margin-left: auto; }
 .replayPanel input[type='range'] { width: 100%; accent-color: #537c52; }
+/* Replay story: a caption for the moment that just happened, and a list of moments that jump the scrubber. */
+.replayCaption { margin: 8px 0 0; padding: 6px 8px; font-size: 11px; line-height: 1.4; border-left: 3px solid var(--line); border-radius: 3px; background: #fbfdf7; color: var(--ink); }
+.caption_good { border-left-color: #4f8a4a; }
+.caption_bad { border-left-color: #c0553a; }
+.caption_neutral { border-left-color: #b8c4a8; }
+.momentsBox { margin-top: 8px; font-size: 10px; }
+.momentsBox summary { cursor: pointer; font: 10px var(--font-geist-mono), monospace; color: var(--muted); }
+.momentList { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 3px; }
+.momentButton { width: 100%; display: flex; gap: 8px; align-items: baseline; text-align: left; padding: 4px 6px; font-size: 10px; line-height: 1.4; color: var(--ink); background: transparent; border: 0; border-left: 3px solid var(--line); border-radius: 3px; cursor: pointer; }
+.momentButton:hover, .momentButton:focus-visible { background: #e9f0df; }
+.momentButton[aria-current='true'] { background: #e1ebd3; font-weight: 600; }
+.momentTime { flex: none; min-width: 32px; font: 9px var(--font-geist-mono), monospace; color: var(--muted); }
 .replayButtons .secondaryButton { min-height: 30px; padding: 0 10px; font-size: 10px; }
 .correctionBox { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #cbdbbf; }
 .correctionSituation { margin: 0 0 8px; font-size: 10px; color: var(--muted); line-height: 1.5; }

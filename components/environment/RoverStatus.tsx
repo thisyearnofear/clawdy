@@ -4,7 +4,8 @@
  * Turns silent episode state into readable world visuals:
  *   - recharging: parked + energy below cap → pulsing charge ring
  *   - staggered: staggeredUntilTick > tick → amber sparks + chassis wobble
- *   - cargo: carried cores stacked visibly on the chassis
+ *   - cargo: carried cores stacked visibly on the chassis; under a ruleset
+ *     perk the empty slots show too, so a bigger load bed reads at a glance
  *   - struggling: blockedTicks climbing → jitter (recovery is real now)
  *
  * All driven from the live episode snapshot each frame — purely cosmetic.
@@ -15,8 +16,7 @@ import * as THREE from 'three'
 
 import type { ArenaSession } from '../../services/arenaSession'
 import { ARENA_RULES } from '../../services/arenaEpisode'
-
-const MAX_CARGO_SHOWN = 4
+import { cargoSlots, slotOffset } from '../../services/ruleLegibility'
 
 function ChargeRing({ color }: { color: string }) {
   const mesh = useRef<THREE.Mesh>(null)
@@ -61,16 +61,28 @@ function StaggerSparks() {
   )
 }
 
-/** Carried cores stacked on the chassis — the bank-run tension made visible. */
-function CargoStack({ count }: { count: number }) {
+/**
+ * Carried cores stacked on the chassis — the bank-run tension made visible.
+ * `drawn` slots are rendered; the first `filled` hold a core and the rest are
+ * wireframe outlines (only drawn when the rover has a ruleset perk).
+ */
+function CargoStack({ filled, drawn }: { filled: number; drawn: number }) {
   return (
     <group position={[0, 0.42, 0]}>
-      {Array.from({ length: Math.min(count, MAX_CARGO_SHOWN) }, (_, i) => (
-        <mesh key={i} position={[((i % 2) - 0.5) * 0.16, Math.floor(i / 2) * 0.13, 0]}>
-          <octahedronGeometry args={[0.07]} />
-          <meshStandardMaterial color="#ffe08a" emissive="#ff9b3a" emissiveIntensity={0.5} metalness={0.4} roughness={0.3} />
-        </mesh>
-      ))}
+      {Array.from({ length: drawn }, (_, i) => {
+        const [x, y] = slotOffset(i)
+        return i < filled ? (
+          <mesh key={i} position={[x, y, 0]}>
+            <octahedronGeometry args={[0.07]} />
+            <meshStandardMaterial color="#ffe08a" emissive="#ff9b3a" emissiveIntensity={0.5} metalness={0.4} roughness={0.3} />
+          </mesh>
+        ) : (
+          <mesh key={i} position={[x, y, 0]}>
+            <octahedronGeometry args={[0.07]} />
+            <meshBasicMaterial color="#ffe08a" wireframe transparent opacity={0.4} depthWrite={false} />
+          </mesh>
+        )
+      })}
     </group>
   )
 }
@@ -78,7 +90,7 @@ function CargoStack({ count }: { count: number }) {
 export function RoverStatus({ session, id, tint }: { session: ArenaSession; id: string; tint: string }) {
   const group = useRef<THREE.Group>(null)
   const wobble = useRef<THREE.Group>(null)
-  const [flags, setFlags] = useState({ charging: false, staggered: false, struggling: false, cargo: 0 })
+  const [flags, setFlags] = useState({ charging: false, staggered: false, struggling: false, filled: 0, drawn: 0 })
 
   useFrame((state3f) => {
     if (!group.current) return
@@ -91,11 +103,12 @@ export function RoverStatus({ session, id, tint }: { session: ArenaSession; id: 
     const charging = !agent.transit && agent.energy < ARENA_RULES.initialEnergy - 0.6
     const staggered = agent.staggeredUntilTick > ep.tick
     const struggling = agent.blockedTicks > 8
+    const slots = cargoSlots(agent)
     setFlags(prev =>
       prev.charging === charging && prev.staggered === staggered &&
-      prev.struggling === struggling && prev.cargo === agent.cargo
+      prev.struggling === struggling && prev.filled === slots.filled && prev.drawn === slots.drawn
         ? prev
-        : { charging, staggered, struggling, cargo: agent.cargo })
+        : { charging, staggered, struggling, filled: slots.filled, drawn: slots.drawn })
 
     // Stagger/struggle wobble — sell the physical penalty on the chassis.
     if (wobble.current) {
@@ -115,7 +128,7 @@ export function RoverStatus({ session, id, tint }: { session: ArenaSession; id: 
       <group ref={wobble}>
         {flags.charging && <ChargeRing color={tint} />}
         {flags.staggered && <StaggerSparks />}
-        <CargoStack count={flags.cargo} />
+        <CargoStack filled={flags.filled} drawn={flags.drawn} />
       </group>
     </group>
   )

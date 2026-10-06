@@ -857,7 +857,7 @@ function upcomingRushWaves(scenario: ArenaScenario, state: ArenaSnapshot): NonNu
   return upcoming.sort((a, b) => a.windowStart - b.windowStart)
 }
 
-function visibleNodeSet(scenario: ArenaScenario, agent: { nodeId: string; traits?: EntrantTraits }): Set<string> {
+export function visibleNodeSet(scenario: ArenaScenario, agent: { nodeId: string; traits?: EntrantTraits }): Set<string> {
   const visible = new Set<string>([agent.nodeId])
   for (let hop = 0; hop < (agent.traits?.visionHops ?? 1); hop++) {
     const frontier = [...visible]

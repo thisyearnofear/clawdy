@@ -18,6 +18,7 @@ import { FloodTelegraph } from './FloodTelegraph'
 import { WorldFX, type FxCue } from './WorldFX'
 import { RushEventFX } from './RushEventFX'
 import { RoverStatus } from './RoverStatus'
+import { VisionRing } from './VisionRing'
 import { RoverGeometry, RivalRoverGeometry } from './RoverGeometry'
 import { RoverFX } from './RoverFX'
 import { ArenaEnvironment } from './ArenaEnvironment'
@@ -913,6 +914,7 @@ function World({
             </mesh>
             <Rover session={session} id={entrant.id} color={color} chassis={chassisByEntrant?.[entrant.id]} forged={entrant.id === 'champion' ? forgedLook : null} />
             <RoverStatus session={session} id={entrant.id} tint={color} />
+            <VisionRing session={session} scenario={course.scenario} id={entrant.id} tint={color} />
             <RoverFX session={session} id={entrant.id} />
           </group>
         )

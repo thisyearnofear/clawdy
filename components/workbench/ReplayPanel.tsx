@@ -4,6 +4,7 @@ import { Play } from 'lucide-react'
 import { ARENA_RULES, type ArenaAction } from '../../services/arenaEpisode'
 import type { CoachingCandidate } from '../../services/coachingCandidates'
 import type { RecordedCoachContext } from '../../services/coachingReview'
+import type { StoryMoment } from '../../services/replayStory'
 import styles from '../environment/ArenaScene.module.css'
 import { actionLabel, friendlyActionLabel, routeLabel } from './readouts'
 
@@ -26,6 +27,8 @@ export function ReplayPanel({
   coachContext,
   selectedAction,
   frameAdvice,
+  moments,
+  captionNow,
   onSeek,
   onToggleCinematic,
   onSelectAction,
@@ -42,6 +45,10 @@ export function ReplayPanel({
   coachContext: RecordedCoachContext | null
   selectedAction: ArenaAction | null
   frameAdvice: ReplayFrameAdvice | null
+  /** What decided the run, in plain language; each one jumps the scrubber. */
+  moments?: StoryMoment[]
+  /** The moment that just happened at the current frame, if any. */
+  captionNow?: StoryMoment | null
   onSeek: (frame: number) => void
   onToggleCinematic: () => void
   onSelectAction: (action: ArenaAction) => void
@@ -76,6 +83,31 @@ export function ReplayPanel({
       <p className={styles.replayStatus}>
         Station <strong>{championNodeId}</strong> · Cargo: <strong>{championCargo}</strong> · Weather: <strong>{flooded ? 'Flooded' : 'Clear'}</strong>
       </p>
+      {captionNow && (
+        <p className={`${styles.replayCaption} ${styles[`caption_${captionNow.tone}`]}`} role="status" aria-live="polite">
+          {captionNow.text}
+        </p>
+      )}
+      {moments && moments.length > 0 && (
+        <details className={styles.momentsBox} open>
+          <summary>What happened ({moments.length})</summary>
+          <ol className={styles.momentList}>
+            {moments.map(moment => (
+              <li key={`${moment.tick}-${moment.kind}-${moment.text}`}>
+                <button
+                  type="button"
+                  className={`${styles.momentButton} ${styles[`caption_${moment.tone}`]}`}
+                  aria-current={moment.frame === replayIndex ? 'true' : undefined}
+                  onClick={() => onSeek(moment.frame)}
+                >
+                  <span className={styles.momentTime}>{(moment.tick * ARENA_RULES.stepMs / 1000).toFixed(1)}s</span>
+                  {moment.text}
+                </button>
+              </li>
+            ))}
+          </ol>
+        </details>
+      )}
       {coachContext ? (
         <div className={styles.correctionBox}>
           <p className={styles.correctionSituation}>

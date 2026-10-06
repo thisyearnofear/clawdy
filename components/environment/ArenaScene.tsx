@@ -59,6 +59,7 @@ import {
 import { useConvexClient } from '../ConvexClientProvider'
 import { api } from '../../convex/_generated/api'
 import type { ReplayMarker } from '../../services/replayMarkers'
+import { buildReplayStory, captionAt } from '../../services/replayStory'
 import {
   deleteExampleRecord,
   queueCheckpointSync,
@@ -1332,6 +1333,26 @@ function Workbench({
     }
   })()
 
+  // What decided the run, told from the coach's side (or by name in a shared
+  // replay, where nobody is "you"). Cached per recording, so scrubbing is free.
+  const replayStory = (() => {
+    if (!reviewRecording) return []
+    try {
+      if (sharedReplayActive && sharedReplay) {
+        const champion = sharedReplay.championIndex[sharedReplay.index] ?? 0
+        return buildReplayStory(reviewRecording, {
+          names: {
+            champion: sharedReplay.participants[champion]?.name ?? 'Champion',
+            rival: sharedReplay.participants[1 - champion]?.name ?? 'Rival',
+          },
+        })
+      }
+      return buildReplayStory(reviewRecording, { you: 'champion', names: { champion: 'Your champion', rival: 'Rival' } })
+    } catch {
+      return []
+    }
+  })()
+
   const selectedCoachAction = coachSelection && coachContext && reviewRecording
     && coachSelection.recording === reviewRecording
     && coachSelection.replayIndex === view.replayIndex
@@ -1988,6 +2009,8 @@ function Workbench({
               coachContext={coachContext}
               selectedAction={selectedCoachAction}
               frameAdvice={frameAdvice}
+              moments={replayStory}
+              captionNow={captionAt(replayStory, view.episode.tick)}
               onSeek={frame => { setCinematic(false); session.seek(frame) }}
               onToggleCinematic={() => setCinematic(on => !on)}
               onSelectAction={handleCoachSelect}
