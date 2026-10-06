@@ -178,7 +178,7 @@ function Workbench({
   const [liveCall, setLiveCall] = useState<LiveCallContext | null>(null)
   const liveCallUsedRef = useRef(false)
   const [trainFocusLine, setTrainFocusLine] = useState<string | null>(null)
-  const [modeBanner, setModeBanner] = useState<WorkbenchPlayMode | null>(null)
+  const [modeBanner, setModeBanner] = useState<{ mode: WorkbenchPlayMode; handoff?: boolean } | null>(null)
   const [runTip, setRunTip] = useState<string | null>(null)
   const [sharedReplay, setSharedReplay] = useState<SharedReplay | null>(null)
   const floodWarnedRef = useRef<number | null>(null)
@@ -912,10 +912,18 @@ function Workbench({
     if (view.phase === 'error') { onRetry(); return }
     if (view.phase === 'review') { setCinematic(false); session.returnToRun(); return }
     if (view.phase === 'running') { session.pause(); return }
+    const resuming = view.phase === 'paused'
     if (view.phase === 'finished') session.reset()
     setHintOpen(false)
     if (follow === 'overview') setFollow('champion')
     recordFunnelEvent('run.start', `mode=${playMode} from=${view.phase}`)
+    // Compete handoff ("Controls off…") only when the held-out match begins —
+    // not on idle Match toggle, and not when merely resuming a pause.
+    if (playMode === 'compete' && !resuming) {
+      setModeBanner({ mode: 'compete', handoff: true })
+      if (modeBannerTimer.current) window.clearTimeout(modeBannerTimer.current)
+      modeBannerTimer.current = window.setTimeout(() => setModeBanner(null), 1100)
+    }
     session.start()
   }
   const startMatchRef = useRef(primaryAction)
@@ -990,7 +998,9 @@ function Workbench({
     setComparison(null)
     setComparisonWatched(false)
     setComparisonReviewing(null)
-    setModeBanner(mode)
+    // Neutral flash on idle mode select — compete must NOT claim "controls off"
+    // until Play actually starts the held-out match.
+    setModeBanner({ mode })
     if (modeBannerTimer.current) window.clearTimeout(modeBannerTimer.current)
     modeBannerTimer.current = window.setTimeout(() => setModeBanner(null), 1100)
   }
@@ -1823,9 +1833,17 @@ function Workbench({
             )}
           </div>
           {modeBanner && (
-            <div className={styles.modeFlash} key={modeBanner} role="status">
-              <span>{modeBanner === 'compete' ? 'MATCH' : modeBanner === 'rush' ? 'RUSH' : 'PRACTICE'}</span>
-              <p>{modeBanner === 'compete' ? withProverb('Held-out layout. Controls off. It walks through alone.', PROVERBS.handoff, flavourZh) : modeBanner === 'rush' ? 'Unranked race. Chase the mother cores and watch for bumps.' : 'Teach freely. Same world, practice floods.'}</p>
+            <div className={styles.modeFlash} key={`${modeBanner.mode}-${modeBanner.handoff ? 'handoff' : 'select'}`} role="status">
+              <span>{modeBanner.mode === 'compete' ? 'MATCH' : modeBanner.mode === 'rush' ? 'RUSH' : 'PRACTICE'}</span>
+              <p>{
+                modeBanner.mode === 'compete'
+                  ? (modeBanner.handoff
+                    ? withProverb('Held-out layout. Controls off. It walks through alone.', PROVERBS.handoff, flavourZh)
+                    : 'Held-out layout. Press Play when ready.')
+                  : modeBanner.mode === 'rush'
+                    ? 'Unranked race. Chase the mother cores and watch for bumps.'
+                    : 'Teach freely. Same world, practice floods.'
+              }</p>
             </div>
           )}
           <ViewportHud
@@ -1978,7 +1996,7 @@ function Workbench({
           {rulesetId === 'skirmish' ? (
             <p className={`${styles.buildReadout} ${styles.rulesetModeNote}`}>Skirmish preview is unranked. Choose Training Grounds above for the original Practice, Rush and Match modes.</p>
           ) : (
-          <div className={styles.modeToggle} role="group" aria-label="Match type" data-flash={modeBanner ?? undefined}>
+          <div className={styles.modeToggle} role="group" aria-label="Match type" data-flash={modeBanner?.mode ?? undefined}>
             <button type="button" aria-pressed={playMode === 'practice'} disabled={view.phase !== 'ready' || isTraining} onClick={() => switchPlayMode('practice')}>Practice</button>
             <button type="button" aria-pressed={playMode === 'rush'} disabled={view.phase !== 'ready' || isTraining} onClick={() => switchPlayMode('rush')}>Rush · unranked</button>
             <button type="button" aria-pressed={playMode === 'compete'} disabled={view.phase !== 'ready' || isTraining} onClick={() => switchPlayMode('compete')}>Match</button>

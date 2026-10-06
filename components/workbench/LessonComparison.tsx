@@ -48,8 +48,11 @@ export function LessonComparison({
     <section className={styles.lessonCard} aria-label="Practice comparison" role="status">
       <div className={styles.trainingResultHeader}>
         <GitCompareArrows size={14} />
-        <strong>Lesson comparison · {comparison.scenarioId}</strong>
+        <strong>Fresh re-run · Parent vs Trained</strong>
       </div>
+      <p className={styles.correctionNote}>
+        These scores are from a <strong>fresh matched re-run</strong> of both brains on this practice board — not the race you just coached or watched.
+      </p>
       <p className={styles.behaviourLine}>
         <strong>What your brain changed</strong>
         {describeBehaviourChange(behaviour)}
@@ -58,23 +61,23 @@ export function LessonComparison({
         <div>
           <span>Parent</span>
           <strong>{comparison.baseline.banked}</strong>
-          <small>{comparison.baseline.checkpointName} · banked</small>
+          <small>{comparison.baseline.checkpointName} · banked on re-run</small>
         </div>
         <div>
           <span>Trained</span>
           <strong>{comparison.trained.banked}</strong>
-          <small>{comparison.trained.checkpointName} · banked</small>
+          <small>{comparison.trained.checkpointName} · banked on re-run</small>
         </div>
         <div>
           <span>Score change</span>
           <strong className={delta > 0 ? styles.improvementPositive : ''}>
             {delta >= 0 ? '+' : ''}{delta}
           </strong>
-          <small>banked on this practice run</small>
+          <small>delta on the fresh re-run</small>
         </div>
       </div>
       <p className={styles.correctionNote}>
-        Matched physical practice, not held-out or ranked. Rival banked {comparison.baseline.rivalBanked} vs {comparison.trained.rivalBanked}; winner: {comparison.trained.winner ?? 'draw'}.
+        Matched physical practice (not held-out or ranked). On this re-run, rival banked {comparison.baseline.rivalBanked} against Parent and {comparison.trained.rivalBanked} against Trained; trained-run winner: {comparison.trained.winner ?? 'draw'}.
       </p>
       {delta < 0 && (
         <p className={styles.correctionNote}>
@@ -89,7 +92,7 @@ export function LessonComparison({
           </button>
         </p>
       ) : (
-        <p className={styles.correctionNote}>No different accepted decisions on this practice run.</p>
+        <p className={styles.correctionNote}>No different accepted decisions on this fresh re-run.</p>
       )}
       {routeSwaps.length > 0 && (
         <details className={styles.referenceDetails}>
@@ -114,7 +117,7 @@ export function LessonComparison({
           <Play size={13} /> Parent replay
         </button>
         {onRecompare && (
-          <button type="button" className={styles.frameCoachButton} onClick={onRecompare} disabled={recompareBusy} title="Re-run both brains on this practice board">
+          <button type="button" className={styles.frameCoachButton} onClick={onRecompare} disabled={recompareBusy} title="Run another fresh matched comparison of both brains on this practice board">
             <RotateCcw size={13} /> {recompareBusy ? 'Re-running…' : 'Compare again'}
           </button>
         )}

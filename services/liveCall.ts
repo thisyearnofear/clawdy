@@ -1,4 +1,5 @@
 import type { ArenaAction, ArenaObservation } from './arenaEpisode'
+import { disambiguateRouteLabels, routeLabel } from './routeLabels'
 
 /**
  * The mid-race coaching verb: "call the next route".
@@ -59,12 +60,22 @@ export function liveCallContext(options: {
   for (const action of options.observation.availableActions) {
     if (action.type === 'move') legalMoves.add((action as { edgeId: string }).edgeId)
   }
-  const routeOptions = options.observation.edges
-    .filter(edge => legalMoves.has(edge.id))
-    .filter(edge => edge.id !== plannedMove)
-    .sort((a, b) => a.currentTravelTicks - b.currentTravelTicks)
-    .slice(0, 3)
-    .map(edge => ({ edgeId: edge.id, label: edge.id, travelTicks: edge.currentTravelTicks }))
+  const at = options.observation.self.nodeId
+  const routeOptions = disambiguateRouteLabels(
+    options.observation.edges
+      .filter(edge => legalMoves.has(edge.id))
+      .filter(edge => edge.id !== plannedMove)
+      .sort((a, b) => a.currentTravelTicks - b.currentTravelTicks)
+      .slice(0, 3)
+      .map(edge => {
+        const destination = edge.from === at ? edge.to : edge.from
+        return {
+          edgeId: edge.id,
+          label: routeLabel(edge.id, destination),
+          travelTicks: edge.currentTravelTicks,
+        }
+      }),
+  )
 
   // One alternative is not a decision.
   if (routeOptions.length < MIN_ROUTE_OPTIONS) return null
