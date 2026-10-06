@@ -4,7 +4,11 @@ Live demo: https://clawdy.trustfall.xyz · Repo: https://github.com/thisyearnofe
 
 ## Entry tracks
 - Direction: **Game**
-- Tool tracks: **Tripo**, **World Labs**, **Heygears**
+- Confirmed tool-use basis: **Tripo**.
+- Additional candidate: **World Labs**, based on live Spark rendering and historical Marble use; Spark-only eligibility is not explicitly confirmed by the public rules.
+- Do not select **Heygears** without evidence of actual Heygears software or hardware use. STL exports and suggested print settings alone do not establish that use.
+
+Track names match the [official event page](https://developers.tripo3d.ai/en/events/tripothon-s1): Best Use of Tripo, Best Use of World Labs and Best Use of Heygears. The page requires actual use of the named tool and disqualifies entries that do not use it. It does not specify a mandatory physical print or explicitly confirm Spark eligibility. Tripo is the lowest-risk selection supported by the current evidence; no selection guarantees eligibility.
 
 ## Title
 Clawdy: Train Your Champion
@@ -28,7 +32,7 @@ The theme, "a world as a gift for the kid I used to be": the kid who could never
 ## Tool use
 - **Tripo**: the house rival hauler rover and the amber energy core were generated with Tripo P1 text-to-model (`scripts/tripo-generate.mjs`, task IDs in `mint-assets.json`). Both are on screen in every run. Three chassis bodies (scout, hauler, raider) were generated the same way, and **Forge your champion** lets a signed-in player have Tripo build a custom rover body server-side with a per-account limit and a global credit cap. Verified: the Forge ran end to end against the real Tripo API on a local Convex deployment, its backend is deployed to prod, and on the live app the "Forge your champion" panel renders in the Coach panel and the champion loads its chassis body (`chassis-hauler.glb` requested and rendered, checked Oct 5). Not yet verified: a real player forging on prod — that needs a signed-in GitHub account.
 - **World Labs**: the Spark renderer draws the Gaussian-splat bursts on every bank and collect. (Marble generated the first arena; that world was retired in favour of a Blender terrain with an exact collider, and lives in git history.)
-- **Heygears**: "Print your champion" downloads an STL of the rover with a print profile (`docs/PRINT_KIT.md`).
+- **Print-ready output (not verified Heygears use)**: "Print your champion" downloads an STL of the rover with suggested print settings (`docs/PRINT_KIT.md`); champion and chassis STLs are in `public/prints/`. Nothing has been test-printed, and no actual Heygears AI Box or printer use is documented.
 - Also: Mint (champion rover), Blender (terrain and textured visual twin, pinned Docker build), Convex (sync, auth, ladder), Vercel.
 
 ## Known limits (say them before a judge finds them)
@@ -57,8 +61,12 @@ Clawdy is a league now. Publish your trained brain with its chassis build, chall
 **Post 6 (Tripo chassis + Forge)**
 Three Tripo chassis bodies — scout, hauler, raider — now render in the arena, and your pick actually changes the sim (speed, battery, bump strength). Forge goes further: a signed-in player can have Tripo build a one-of-a-kind rover body server-side, credits reserved atomically and refunded on any failure. Verified end to end against the real API — including the day a scheduled poll died silently and stranded a forge. (Convex doesn't retry failed scheduled actions; now a 2-minute sweep rescues them.) #Tripothon @TripoAI
 
-**Post 8 (roadmap, post only as roadmap)**
+**Post 8 (Skirmish, live but unbalanced)**
 Clawdy has a second ruleset, Skirmish, where each chassis gets a signature rule instead of just a stat tweak: Hauler carries more, Raider steals a whole load on a bump, Scout sees two hops. Each chassis has a trained house brain and the league keeps separate ladders per ruleset. It is not balanced yet: brain vs brain the Hauler beats Scout 58-21. Bench and results are in the repo. #Tripothon
 
 **Post 7 (balance honesty)**
 Trained chassis vs chassis on 80 hidden Rush variants: scout beat hauler 71–9 before a retune. Speed was overtuned — an inert-stat handicap wasn't enough to slow it down. We're iterating on the coefficient in public and the bench script is in the repo. #Tripothon
+
+**Post 9 (bug story: the sunken rover)**
+Players kept asking why our rovers looked half-buried in the desert. They were. Generated 3D bodies are centred on their bounds, so each sat 0.4 to 0.5 m into the terrain. Our first fix assumed the wrong coordinate frame and made a different mistake; a second reviewer caught it, and the fix now has a test that loads all five real models and checks their lowest point rests on the ground. Honest build logs include the wrong turns. #Tripothon @TripoAI
+

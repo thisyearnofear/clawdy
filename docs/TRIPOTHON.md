@@ -5,7 +5,7 @@
 > **Submission window:** Sep 15 – Oct 5, 2026 (online; closes AoE / UTC-12).
 > **Demo Days:** Oct 5–20, 2026 across seven cities. Winner announcement Oct 25, 2026.
 > **Theme:** Build a world as a Gift — for the kid I used to be.
-> **Status:** submission prep (Oct 5). Entering Game direction track plus Tripo, World Labs and Heygears tool tracks. Owner is the project lead.
+> **Status:** submission prep; tool-track evidence reviewed Oct 6. Game direction, Tripo supported by direct use, World Labs a candidate pending eligibility confirmation, Heygears excluded until actual tool use is evidenced. Owner is the project lead.
 
 ## Why Clawdy fits
 
@@ -35,9 +35,12 @@ Submission copy, build log drafts and the asset board live in [SUBMISSION_COPY.m
 | Direction 03 — VR / XR / AR | No | No VR build. |
 | Direction 04 — App | Optional secondary | The Coach panel is a creative-tool web surface, but Game is the better home for the entry. |
 | Direction 05 — Physical Design | No | Nothing is being printed. |
-| **Best Use of World Labs** tool track | **Yes, with an honest claim** | Marble generated the first arena (retired Sep 26, in git history). What is on screen now is World Labs' Spark renderer drawing the Gaussian-splat bank and collect bursts. We say exactly that; judges decide whether it qualifies. |
+| **Best Use of World Labs** tool track | **Candidate; eligibility unconfirmed** | Marble generated the first arena (retired Sep 26, in git history). What is on screen now is World Labs' Spark renderer drawing the Gaussian-splat bank and collect bursts. We say exactly that; judges decide whether it qualifies. |
 | Tripo tool track | **Yes (Oct 5)** | The house rival rover and the energy core are Tripo P1 text-to-model assets, on screen in every run (`public/assets/tripo/`, registry entries `rivalRover` and `energyCore` in `mint-assets.json`). Generation script and task IDs are in the repo (`scripts/tripo-generate.mjs`). Added Oct 5: three Tripo chassis bodies (`chassis.scout|hauler|raider`, verified live on prod — each selection fetches its GLB and the champion swaps bodies) and **Forge your champion**, where a signed-in player has Tripo build a custom rover body server-side (fixed chassis and paint menus, per-account limit, global credit cap). The Forge backend is deployed, `TRIPO_API_KEY` is set on prod, and the flow was run end to end against the real Tripo API on a local Convex deployment; the Forge panel is live in the Coach panel on prod, but no player has forged on prod yet. Claim only what is on screen when recording. |
-| PICO / Heygears / Jupiter tool tracks | No | Not used. |
+| **Best Use of Heygears** tool track | No, unless actual tool use is evidenced | Champion and chassis STLs and suggested print settings exist. None were test-printed; no Heygears AI Box or printer use is documented. |
+| PICO / Jupiter tool tracks | No | Not used. |
+
+The [official rules](https://developers.tripo3d.ai/en/events/tripothon-s1) allow one direction and 0–3 tool tracks. Tool entries must actually use the named tool or are disqualified from that track. No public rule specifies a mandatory Heygears physical print or explicitly confirms Spark-only World Labs eligibility. A photographed print made using Heygears equipment, or documented actual AI Box use, would add direct Heygears evidence; a print from another vendor alone would not.
 
 ## Theme fit — "Build a world as a Gift"
 
@@ -58,7 +61,7 @@ Visible in entry assets: keep the voice that already lives in the splash copy an
 | Visual asset board | Yes | Splat stills + HQ mesh stills + collider overlay + Mint rover turnarounds + trained-vs-baseline score chart. |
 | Public build log | Optional but amplified by judges | Devlog posts on X / Discord tagged `#Tripothon` and `@TripoAI`. |
 
-Judges weight inventive use of the named tool (35%) and tool synergy (25%) for tool-track entries, so the screen recording and the asset board should make the World Labs origin visible on screen, not only in code or README.
+Judges weight inventive use of the named tool (35%) and tool synergy (25%) for tool-track entries, so the screen recording and asset board should show the actual Spark effects and disclose that Marble generated a retired arena. Do not label the active Blender terrain as a World Labs-generated world.
 
 ## Tier 1 sponsor integration picks
 
@@ -86,7 +89,7 @@ Tripothon runs each tool track independently and judges each on its own merits. 
 | - | - | - | - |
 | **World Labs** | Marble world generator + Spark splat renderer | Primary sponsor bet. Marble generated the project's first arena (retired September 26, 2026; git history holds it), and Spark (a World Labs product) is our live splat renderer. The coach-trail overlay (Pick 3) and the gift-card capture (Pick 4) both lean on Spark at demo time. | High. Already shipped. Picks 3 and 4 strengthen the synergy score. |
 | **Mint** | AI 3D model generation via Mint MCP | Active source for the rival rover (Pick 1) and the energy core (Pick 2). Continues to be the source for the champion rover. The `mint-threejs-skills` skill stays wired. | High. Tooling already wired, just new prompts and registry entries. |
-| **Heygears** | 3D printing hardware (UltraCraft, Reflex series) + AI design software ("AI Box") | **Shipped (Sep 24).** `public/prints/champion-rover.stl` (4,745 tris, exported from the in-game Mint champion GLB via `npm run print:stl`), profile in `docs/PRINT_KIT.md`, "Print your champion" download button on the match-complete UI next to the share button. The "world as a gift" theme lands literally: judges can print the rover. | Done. AI Box auto-repair pass is the judges' step, documented as such. |
+| **Heygears** | 3D printing hardware (UltraCraft, Reflex series) + AI design software ("AI Box") | **Shipped (Sep 24).** `public/prints/champion-rover.stl` (4,745 tris, exported from the in-game Mint champion GLB via `npm run print:stl`), profile in `docs/PRINT_KIT.md`, "Print your champion" download button on the match-complete UI next to the share button. The download supplies a printable digital artifact, not evidence of a physical print or Heygears use. | STL/profile shipped; no test print, actual AI Box use or Heygears printer use is documented. |
 | **PICO** | WebXR browser on PICO 4 / PICO 4 Ultra headsets (`developer.picoxr.com`) | Stretch only. WebXR with R3F is well-trodden via `@react-three/xr`, but the splat world plus Rapier physics step at stereo framerates is a real blocker. A PICO build would need aggressive splat LOD and a simplified physics step. | Low in 19 days (perf + stereo + on-headset validation, all of which eat days). Documented as a stretch goal for the next iteration. |
 | **Jupiter** | Solana DeFi / onchain swap aggregator (`jup.ag`) | **Explicitly out of scope.** Clawdy's binding direction (per `AGENT.md`) retired all wallet / chain / financial-provider integrations. Trying to enter the Jupiter tool track would directly contradict the project's onchain-retirement directive. | Not pursued. Documented here so the choice is on the record. |
 | TapNow, Monolith, VitalBridge, ZhenFund | Sponsors without an obvious tool track per the prize breakdown | Not in scope. They appear under the sponsor banner but no separate tool-track prize is listed. | Not pursued. |
@@ -100,7 +103,7 @@ Tripothon runs each tool track independently and judges each on its own merits. 
 **Why we are deliberate about PICO and Heygears**
 
 - PICO's WebXR stack is feasible, but framerate budgeting for in-headset splats + physics is the kind of perf work that takes days to debug with no shipped guarantee. We list it as a stretch goal so the door is open for an offline Demo Day pitch instead.
-- Heygears is honest-effort cheap. STL export plus printer-profile notes is a one-evening job and aligns with the tripothon theme as a tangible physical artifact. It is a credible entry into the Best Use of Heygears tool track and a real "physical gift" deliverable. Worth shipping if Day 11-17 polish time opens up.
+- STL export and profile notes support a future physical gift, but they do not establish actual Heygears use. Keep Heygears out of the entry unless software or hardware use is documented. The public rules do not say that a physical print is mandatory.
 
 ## 19-day timeline
 
