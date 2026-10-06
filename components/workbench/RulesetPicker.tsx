@@ -38,7 +38,7 @@ export function RulesetPicker({
       </div>
       <p id={descriptionId} className={styles.buildReadout}>
         {rulesetId === 'skirmish'
-          ? "Hauler carries 4 cargo. Raider steals a whole load when it wins a bump, up to its free space. Scout sees two route hops. Existing brains can play; Skirmish is not balanced (the Hauler leads), and trained Skirmish brains are not verified here."
+          ? "Hauler carries 4 cargo. Raider steals a whole load when it wins a bump, up to its free space. Scout sees two route hops. Existing brains can play; Skirmish is not balanced (the Hauler leads). House brains for each chassis are bundled."
           : 'Collect cores, bank at base and survive the flood. All chassis carry 3 cargo and see one route hop here.'}
       </p>
       {!unlocked && canSkip && (

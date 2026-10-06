@@ -128,7 +128,7 @@ export function LadderDrawer({ open, onClose }: { open: boolean; onClose: () => 
         </label>
         <p className={styles.helpFooterNote}>
           {rulesetName} board and challenge pool. Ratings stay separate across rulesets.
-          {rulesetId && ' Skirmish server support must be deployed before submitting. Skirmish is not balanced (the Hauler leads) and trained brains are not verified here.'}
+          {rulesetId && ' Skirmish is not balanced (the Hauler leads).'}
         </p>
         <p className={styles.helpFooterNote}>
           The server replays your brain on fresh hidden layouts against every house bot. Scores come from that replay, never from your browser.

@@ -38,7 +38,7 @@ describe('ruleset panels', () => {
     expect(html).toContain('Hauler carries 4 cargo')
     expect(html).toContain('up to its free space')
     expect(html).toContain('Scout sees two route hops')
-    expect(html).toContain('not verified here')
+    expect(html).toContain('not balanced')
     expect(html).toContain('Unranked preview')
   })
 
