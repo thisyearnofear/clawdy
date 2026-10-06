@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import type { MintAssetTransform } from '../../services/mintAssets'
+import { restShift } from '../../services/modelGrounding'
 
 // Shared Draco decoder for all Mint-generated GLBs. The decoder is lazy-loaded
 // from the Mint CDN the first time a Draco-compressed model is encountered.
@@ -17,7 +18,7 @@ type MintModelProps = {
   /**
    * Local y at which the model's lowest point should rest. Generated models are
    * centred on their bounds, so without this the body sits half its height
-   * below the physics ride height and the wheels sink into the terrain.
+   * below the ground-level pose and the wheels sink into the terrain.
    */
   restY?: number
 }
@@ -38,7 +39,7 @@ export function MintModel({ url, transform, tint, restY }: MintModelProps) {
     if (restY !== undefined) {
       cloned.updateMatrixWorld(true)
       const box = new THREE.Box3().setFromObject(cloned)
-      if (Number.isFinite(box.min.y)) cloned.position.y += restY - box.min.y
+      cloned.position.y += restShift(box.min.y, restY)
     }
     if (tint) {
       const tintColor = new THREE.Color(tint)

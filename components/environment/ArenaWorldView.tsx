@@ -12,7 +12,7 @@ import { createTerrainDetailTextures } from './terrainDetail'
 import { createRouteRibbonGeometry, advancePoseHistory, samplePoseHistory, type PoseHistory } from '../../services/arenaPresentation'
 import { planCinematicShots, shotAt, type CinematicShot } from '../../services/arenaCinematic'
 import { MintModel } from './MintModel'
-import { ROVER_PHYSICS } from '../../services/arenaPhysics'
+import { ROVER_REST_LOCAL_Y } from '../../services/modelGrounding'
 import { BankBursts } from './BankBursts'
 import { FloodWater } from './FloodWater'
 import { FloodTelegraph } from './FloodTelegraph'
@@ -346,8 +346,7 @@ function RoverShadow({ session, id }: { session: ArenaSession; id: string }) {
   useFrame((state) => {
     if (!meshRef.current) return
     if (!sampleInterpolatedPose(session, id, state.clock.elapsedTime, pos.current, rot.current)) return
-    // pos is the body centre, groundFollowHeight above the terrain.
-    meshRef.current.position.set(pos.current.x, pos.current.y - ROVER_PHYSICS.groundFollowHeight + 0.02, pos.current.z)
+    meshRef.current.position.set(pos.current.x, pos.current.y + 0.02, pos.current.z)
   })
   return (
     <mesh ref={meshRef} rotation={[-Math.PI / 2, 0, 0]}>
@@ -359,10 +358,7 @@ function RoverShadow({ session, id }: { session: ArenaSession; id: string }) {
   )
 }
 
-// The authority places the body centre groundFollowHeight above the terrain; the
-// visual body is scaled by ROVER_BODY_SCALE, so its lowest point rests here in local units.
 const ROVER_BODY_SCALE = 1.35
-const ROVER_REST_Y = -ROVER_PHYSICS.groundFollowHeight / ROVER_BODY_SCALE
 
 function Rover({ session, id, color, chassis, forged }: { session: ArenaSession; id: string; color: string; chassis?: ChassisId; forged?: { url: string; chassis: string } | null }) {
   const group = useRef<THREE.Group>(null)
@@ -412,7 +408,7 @@ function Rover({ session, id, color, chassis, forged }: { session: ArenaSession;
 
   const standardBody = modelUrl ? (
     <Suspense fallback={<ProceduralGeometry color={color} wheelRefs={wheelRefs} />}>
-      <MintModel url={modelUrl} transform={transform} tint={color} restY={ROVER_REST_Y} />
+      <MintModel url={modelUrl} transform={transform} tint={color} restY={ROVER_REST_LOCAL_Y} />
     </Suspense>
   ) : (
     <ProceduralGeometry color={color} wheelRefs={wheelRefs} />
@@ -427,7 +423,7 @@ function Rover({ session, id, color, chassis, forged }: { session: ArenaSession;
             // Forged models keep their own paint (no accent tint). Any load failure shows the standard rover.
             <ModelBoundary key={forgedSource.url} fallback={standardBody}>
               <Suspense fallback={standardBody}>
-                <MintModel url={forgedSource.url} transform={forgedSource.transform} restY={ROVER_REST_Y} />
+                <MintModel url={forgedSource.url} transform={forgedSource.transform} restY={ROVER_REST_LOCAL_Y} />
               </Suspense>
             </ModelBoundary>
           ) : standardBody}
