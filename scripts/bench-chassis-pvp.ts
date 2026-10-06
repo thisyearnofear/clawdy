@@ -3,18 +3,20 @@
  * other on unseen hidden Rush variants, both sides, each with its own build.
  * Route-only (server-style). Nothing here involves the house bots.
  *
- *   npx tsx scripts/bench-chassis-pvp.ts [variants=40] [--write]
+ *   npx tsx scripts/bench-chassis-pvp.ts [variants=40] [--ruleset skirmish] [--write]
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { buildRushCourse } from '../services/arenaCourse'
 import { ArenaPhysics } from '../services/arenaPhysics'
 import { ArenaRunner } from '../services/arenaPolicy'
-import { CHASSIS_IDS, baseBuild, buildToTraits, type ChassisId } from '../services/chassis'
+import { CHASSIS_IDS, baseBuild, buildToTraits, type ChassisId, type RulesetId } from '../services/chassis'
 import { rushVariant, swapSides } from '../services/rushVariants'
 import type { PolicyCheckpoint } from '../services/policyModel'
 import { loadGroundedWorld } from './eval-lib'
 
+const RULESET: RulesetId | undefined = process.argv.includes('--ruleset') ? 'skirmish' : undefined
+const PREFIX = RULESET ? 'skirmish' : 'chassis'
 const VARIANTS = Number(process.argv.find(arg => /^\d+$/.test(arg)) ?? 40)
 
 async function main() {
@@ -23,7 +25,7 @@ async function main() {
   const probe = new ArenaPhysics(world.collider)
   const base = buildRushCourse(probe).scenario
   probe.dispose()
-  const brains = Object.fromEntries(CHASSIS_IDS.map(id => [id, JSON.parse(readFileSync(resolve(root, `starter/chassis-${id}.json`), 'utf-8')) as PolicyCheckpoint])) as Record<ChassisId, PolicyCheckpoint>
+  const brains = Object.fromEntries(CHASSIS_IDS.map(id => [id, JSON.parse(readFileSync(resolve(root, `starter/${PREFIX}-${id}.json`), 'utf-8')) as PolicyCheckpoint])) as Record<ChassisId, PolicyCheckpoint>
 
   const result: Record<string, { wins: number; losses: number; draws: number; banked: number; foe: number }> = {}
   for (const row of CHASSIS_IDS) {
@@ -32,8 +34,8 @@ async function main() {
       for (let seed = 9001; seed < 9001 + VARIANTS; seed++) {
         const variant = rushVariant(base, 'hidden', seed)
         for (const played of [variant, swapSides(variant)]) {
-          const traits = { champion: buildToTraits(baseBuild(row)), rival: buildToTraits(baseBuild(col)) }
-          const scenario = { ...played, entrants: played.entrants.map(entrant => ({ ...entrant, traits: traits[entrant.id as 'champion' | 'rival'] })) }
+          const traits = { champion: buildToTraits(baseBuild(row), RULESET), rival: buildToTraits(baseBuild(col), RULESET) }
+          const scenario = { ...played, ...(RULESET ? { rulesetId: RULESET } : {}), entrants: played.entrants.map(entrant => ({ ...entrant, traits: traits[entrant.id as 'champion' | 'rival'] })) }
           const runner = new ArenaRunner(scenario, {
             champion: { strategy: 'learned', checkpoint: brains[row] },
             rival: { strategy: 'learned', checkpoint: brains[col] },
@@ -70,8 +72,8 @@ async function main() {
     })].join(' '))
   }
   if (process.argv.includes('--write')) {
-    writeFileSync(resolve(root, 'docs', 'eval-chassis-pvp.json'), JSON.stringify({ variants: VARIANTS, brains: Object.fromEntries(CHASSIS_IDS.map(id => [id, brains[id].id])), result }, null, 2) + '\n', 'utf-8')
-    console.log('\nwrote docs/eval-chassis-pvp.json')
+    writeFileSync(resolve(root, 'docs', RULESET ? 'eval-skirmish-pvp.json' : 'eval-chassis-pvp.json'), JSON.stringify({ variants: VARIANTS, brains: Object.fromEntries(CHASSIS_IDS.map(id => [id, brains[id].id])), result }, null, 2) + '\n', 'utf-8')
+    console.log('\nwrote docs/' + (RULESET ? 'eval-skirmish-pvp.json' : 'eval-chassis-pvp.json') + '')
   }
 }
 

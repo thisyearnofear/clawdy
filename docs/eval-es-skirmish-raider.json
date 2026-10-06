@@ -1,0 +1,105 @@
+{
+  "checkpointId": "es-g225-5f42f2",
+  "weightsHash": "96ce0b5f42f2",
+  "variants": 25,
+  "seeds": [
+    9001,
+    9025
+  ],
+  "starter": {
+    "safe": {
+      "fitness": -4.94,
+      "margin": -3.44,
+      "ownBanked": 4.3,
+      "foeBanked": 7.74,
+      "wins": 0,
+      "losses": 50,
+      "matches": 50
+    },
+    "greedy": {
+      "fitness": -5.2,
+      "margin": -3.7,
+      "ownBanked": 4.4,
+      "foeBanked": 8.1,
+      "wins": 0,
+      "losses": 50,
+      "matches": 50
+    },
+    "weather": {
+      "fitness": -6.42,
+      "margin": -4.92,
+      "ownBanked": 3.1,
+      "foeBanked": 8.02,
+      "wins": 0,
+      "losses": 50,
+      "matches": 50
+    },
+    "poach": {
+      "fitness": 4.75,
+      "margin": 3.4,
+      "ownBanked": 3.76,
+      "foeBanked": 0.36,
+      "wins": 45,
+      "losses": 0,
+      "matches": 50
+    },
+    "starter": {
+      "fitness": 0,
+      "margin": 0,
+      "ownBanked": 3,
+      "foeBanked": 3,
+      "wins": 0,
+      "losses": 0,
+      "matches": 50
+    }
+  },
+  "trained": {
+    "safe": {
+      "fitness": 1.08,
+      "margin": 0.24,
+      "ownBanked": 8,
+      "foeBanked": 7.76,
+      "wins": 39,
+      "losses": 11,
+      "matches": 50
+    },
+    "greedy": {
+      "fitness": 0.74,
+      "margin": 0.14,
+      "ownBanked": 8.12,
+      "foeBanked": 7.98,
+      "wins": 35,
+      "losses": 15,
+      "matches": 50
+    },
+    "weather": {
+      "fitness": 0.24,
+      "margin": -0.12,
+      "ownBanked": 7.9,
+      "foeBanked": 8.02,
+      "wins": 31,
+      "losses": 19,
+      "matches": 50
+    },
+    "poach": {
+      "fitness": 6.29,
+      "margin": 4.88,
+      "ownBanked": 6.2,
+      "foeBanked": 1.32,
+      "wins": 48,
+      "losses": 1,
+      "matches": 50
+    },
+    "starter": {
+      "fitness": 0.81,
+      "margin": 0.54,
+      "ownBanked": 4.64,
+      "foeBanked": 4.1,
+      "wins": 17,
+      "losses": 8,
+      "matches": 50
+    }
+  },
+  "chassis": "raider",
+  "ruleset": "skirmish"
+}

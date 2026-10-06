@@ -1,0 +1,105 @@
+{
+  "checkpointId": "es-g239-e242fd",
+  "weightsHash": "b2d9bbe242fd",
+  "variants": 25,
+  "seeds": [
+    9001,
+    9025
+  ],
+  "starter": {
+    "safe": {
+      "fitness": -6.2,
+      "margin": -4.7,
+      "ownBanked": 3,
+      "foeBanked": 7.7,
+      "wins": 0,
+      "losses": 50,
+      "matches": 50
+    },
+    "greedy": {
+      "fitness": -6.5,
+      "margin": -5,
+      "ownBanked": 3,
+      "foeBanked": 8,
+      "wins": 0,
+      "losses": 50,
+      "matches": 50
+    },
+    "weather": {
+      "fitness": -6.5,
+      "margin": -5,
+      "ownBanked": 3,
+      "foeBanked": 8,
+      "wins": 0,
+      "losses": 50,
+      "matches": 50
+    },
+    "poach": {
+      "fitness": 3.19,
+      "margin": 2.2,
+      "ownBanked": 3.42,
+      "foeBanked": 1.22,
+      "wins": 37,
+      "losses": 4,
+      "matches": 50
+    },
+    "starter": {
+      "fitness": 2.75,
+      "margin": 2,
+      "ownBanked": 5,
+      "foeBanked": 3,
+      "wins": 25,
+      "losses": 0,
+      "matches": 50
+    }
+  },
+  "trained": {
+    "safe": {
+      "fitness": 4.17,
+      "margin": 2.76,
+      "ownBanked": 9.78,
+      "foeBanked": 7.02,
+      "wins": 48,
+      "losses": 1,
+      "matches": 50
+    },
+    "greedy": {
+      "fitness": 3.48,
+      "margin": 2.04,
+      "ownBanked": 9.44,
+      "foeBanked": 7.4,
+      "wins": 49,
+      "losses": 1,
+      "matches": 50
+    },
+    "weather": {
+      "fitness": 1.19,
+      "margin": 0.32,
+      "ownBanked": 8.12,
+      "foeBanked": 7.8,
+      "wins": 39,
+      "losses": 10,
+      "matches": 50
+    },
+    "poach": {
+      "fitness": 5.99,
+      "margin": 4.88,
+      "ownBanked": 6.88,
+      "foeBanked": 2,
+      "wins": 40,
+      "losses": 3,
+      "matches": 50
+    },
+    "starter": {
+      "fitness": 8.6,
+      "margin": 7.1,
+      "ownBanked": 10.86,
+      "foeBanked": 3.76,
+      "wins": 50,
+      "losses": 0,
+      "matches": 50
+    }
+  },
+  "chassis": "hauler",
+  "ruleset": "skirmish"
+}

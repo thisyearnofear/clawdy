@@ -65,3 +65,29 @@ What this shows:
 - These are scores against house bots, not brain-vs-brain. The PvP bench has not been run for Skirmish, so no claim about chassis vs chassis.
 
 Next: lower Hauler capacity to 4 or make the extra slot cost speed, run the Skirmish PvP bench, give the encoder a far-resource feature for Scout. Brains: `starter/skirmish-<chassis>.json` (seed 11); both seeds in `docs/skirmish-v1/`.
+
+### Skirmish v2: Hauler capacity 4
+
+Capacity 5 was dominant, so the Hauler perk is now capacity 4 (`SKIRMISH_PERKS` in `services/chassis.ts`). The Hauler was retrained on two seeds; Scout and Raider are unchanged because the house bots they trained against did not change. The v1 table above is kept for the record.
+
+Hauler capacity 4, seeds 11 / 12, wins-losses-draws out of 50:
+
+| vs safe | vs greedy | vs weather | vs poach |
+| --- | --- | --- | --- |
+| 48-1-1 / 48-1-1 | 49-1-0 / 50-0-0 | 39-10-1 / 36-12-2 | 40-3-7 / 44-2-4 |
+
+Brain vs brain (`scripts/bench-chassis-pvp.ts 40 --ruleset skirmish --write`, 80 matches per cell, seed-11 brains, each side with its own build; record `docs/eval-skirmish-pvp.json`):
+
+| Row beats column | scout | hauler | raider |
+| --- | --- | --- | --- |
+| scout | - | 21-58-1 | 52-28-0 |
+| hauler | 58-21-1 | - | 43-33-4 |
+| raider | 28-52-0 | 33-43-4 | - |
+
+Reading it:
+- **Still not balanced.** The order is Hauler > Scout > Raider, a straight ranking, not a rock-paper-scissors loop. The Hauler beats both others.
+- Capacity 4 cut the Hauler's edge against the house bots a little (safe and greedy about the same, weather down from 49-0 to 36-39 wins of 50), so it can beat `weather` here. That is against an unmodified bot while the Hauler carries 4 instead of 3, not evidence that the weather problem is solved in Training Grounds.
+- Single brain per chassis in the PvP table, so treat gaps under about 10 matches as noise. Hauler over Scout (58-21) is well outside that.
+- Next levers: a speed or energy cost on the Hauler's extra slot, a Raider buff, a far-resource encoder input for Scout.
+
+Records: `docs/eval-es-skirmish-<chassis>.json` (seed 11), `docs/eval-skirmish-pvp.json`. Brains: `starter/skirmish-<chassis>.json`; both seeds in `docs/skirmish-v1/` (`sk4-hauler-*` is capacity 4).
