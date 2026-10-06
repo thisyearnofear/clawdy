@@ -9,6 +9,7 @@ import { useArenaStore } from '../../services/arenaStore'
 import { exportCheckpointJson } from '../../services/checkpointStorage'
 import { BUILD_STORAGE_KEY, parseBuild } from '../../services/buildBudget'
 import { leagueBrainId, unlockSkirmish } from '../../services/workbenchRuleset'
+import { brainMatchesRuleset, replayShareHref, requestOpenReplay } from '../../services/sharedReplayNav'
 import type { RulesetId } from '../../services/chassis'
 import styles from '../environment/ArenaScene.module.css'
 
@@ -24,6 +25,11 @@ const MESSAGES: Record<string, string> = {
   'ruleset-mismatch': 'Brains can only race within the same ruleset. Publish a separate entry for this ruleset.',
   'build-required': 'Skirmish needs a saved chassis build. Open Lessons and build your rover first.',
   'unknown-ruleset': 'This deployment does not support that ruleset yet.',
+  'wrong-season': 'That brain belongs to a past season and cannot race now.',
+  'brain-cap': 'You already have the maximum number of published brains. Remove one first.',
+  'brain-gone': 'One of the brains in that match is no longer available.',
+  'share-id-collision': 'Could not save that replay link. Try the challenge again.',
+  'invalid-brain-id': 'That brain id is not valid. Use letters, numbers, dots, dashes or underscores.',
 }
 
 function describeError(error: unknown): string {
@@ -31,8 +37,9 @@ function describeError(error: unknown): string {
   return 'Request failed. Try again.'
 }
 
-function replayHref(shareId: string): string {
-  return `${window.location.origin}${window.location.pathname}?replay=${encodeURIComponent(shareId)}`
+function openReplay(shareId: string, onClose: () => void) {
+  requestOpenReplay(shareId)
+  onClose()
 }
 
 export function LadderDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -53,6 +60,7 @@ export function LadderDrawer({ open, onClose }: { open: boolean; onClose: () => 
   const setListed = useMutation(api.league.setListed)
   const [status, setStatus] = useState<{ kind: 'idle' | 'running' | 'done' | 'error'; text?: string }>({ kind: 'idle' })
   const [busy, setBusy] = useState<string | null>(null)
+  const [lastShareId, setLastShareId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -96,10 +104,12 @@ export function LadderDrawer({ open, onClose }: { open: boolean; onClose: () => 
 
   const runChallenge = async (defenderBrain: Id<'brains'>, brainId: string) => {
     setBusy(defenderBrain)
+    setLastShareId(null)
     try {
       const result = await challenge({ brainId, defenderBrain })
       const outcome = result.winnerSide === null ? 'draw' : result.winnerSide === 'challenger' ? 'you win' : 'you lose'
-      setStatus({ kind: 'done', text: `Challenge complete — ${outcome} (${result.banked.join('–')} banked). Replay: ${replayHref(result.shareId)}` })
+      setLastShareId(result.shareId)
+      setStatus({ kind: 'done', text: `Challenge complete — ${outcome} (${result.banked.join('–')} banked).` })
     } catch (error) {
       setStatus({ kind: 'error', text: describeError(error) })
     } finally {
@@ -107,8 +117,8 @@ export function LadderDrawer({ open, onClose }: { open: boolean; onClose: () => 
     }
   }
 
-  const rulesetBrains = brains?.filter(brain => brain.rulesetId === rulesetId)
-  const rulesetHistory = history?.filter(row => row.rulesetId === rulesetId)
+  const rulesetBrains = brains?.filter(brain => brainMatchesRuleset(brain.rulesetId, rulesetId))
+  const rulesetHistory = history?.filter(row => brainMatchesRuleset(row.rulesetId, rulesetId))
   const challenger = rulesetBrains?.find(brain => brain.brainId === leagueBrainId(checkpoint.id, rulesetId)) ?? rulesetBrains?.[0]
 
   return (
@@ -121,7 +131,7 @@ export function LadderDrawer({ open, onClose }: { open: boolean; onClose: () => 
         <label className={styles.policyLabel}>
           <span>League ruleset</span>
           <select aria-label="League ruleset" value={rulesetId ?? ''} disabled={busy !== null || status.kind === 'running'}
-            onChange={event => { setRulesetId(event.target.value === 'skirmish' ? 'skirmish' : undefined); setStatus({ kind: 'idle' }) }}>
+            onChange={event => { setRulesetId(event.target.value === 'skirmish' ? 'skirmish' : undefined); setStatus({ kind: 'idle' }); setLastShareId(null) }}>
             <option value="">Training Grounds</option>
             <option value="skirmish">Skirmish</option>
           </select>
@@ -131,7 +141,8 @@ export function LadderDrawer({ open, onClose }: { open: boolean; onClose: () => 
           {rulesetId && ' Skirmish is not balanced (the Hauler leads).'}
         </p>
         <p className={styles.helpFooterNote}>
-          The server replays your brain on fresh hidden layouts against every house bot. Scores come from that replay, never from your browser.
+          <strong>Submit</strong> verifies a score on the ladder board (server vs house bots).
+          {' '}<strong>Publish</strong> lists your brain in the challenge pool so other players can race it — it does not add a ladder entry.
         </p>
         <div className={styles.helpFooter}>
           <button type="button" className={styles.helpClose} onClick={() => void run()} disabled={status.kind === 'running' || busy !== null}>
@@ -141,6 +152,23 @@ export function LadderDrawer({ open, onClose }: { open: boolean; onClose: () => 
             {busy === 'publish' ? 'Publishing…' : 'Publish to league'}
           </button>
           {status.text && <span className={styles.helpFooterNote} role="status">{status.text}</span>}
+          {lastShareId && status.kind === 'done' && (
+            <span className={styles.helpFooterNote} role="status">
+              {' '}
+              <a
+                href={replayShareHref(lastShareId)}
+                onClick={event => {
+                  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return
+                  event.preventDefault()
+                  openReplay(lastShareId, onClose)
+                }}
+              >
+                Open replay
+              </a>
+              {' · '}
+              <a href={replayShareHref(lastShareId)} target="_blank" rel="noreferrer">Share link</a>
+            </span>
+          )}
         </div>
         {mine && (
           <p className={styles.helpFooterNote}>Your best: {mine.score.toFixed(1)} · {mine.submissions} verified run{mine.submissions === 1 ? '' : 's'}</p>
@@ -215,7 +243,21 @@ export function LadderDrawer({ open, onClose }: { open: boolean; onClose: () => 
               {rulesetHistory.map(row => (
                 <li key={row._id}>
                   {row.challengerName} vs {row.defenderName} · {row.status === 'failed' ? 'failed' : row.winnerSide === null ? 'draw' : row.winnerSide === row.side ? 'won' : 'lost'} · banked {row.banked.join('–')}
-                  {row.shareId && <> · <a href={replayHref(row.shareId)}>replay</a></>}
+                  {row.shareId && (
+                    <>
+                      {' · '}
+                      <a
+                        href={replayShareHref(row.shareId)}
+                        onClick={event => {
+                          if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return
+                          event.preventDefault()
+                          openReplay(row.shareId!, onClose)
+                        }}
+                      >
+                        replay
+                      </a>
+                    </>
+                  )}
                 </li>
               ))}
             </ol>

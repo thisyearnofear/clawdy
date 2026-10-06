@@ -12,8 +12,10 @@ import {
   marginalCost,
   STAT_AXES,
   STAT_BUDGET,
+  STAT_HINTS,
   STAT_LABELS,
   maxAffordableLevel,
+  MODULE_HINTS,
   MODULE_IDS,
   MODULE_LABELS,
   MODULE_SLOTS,
@@ -44,7 +46,7 @@ import styles from '../environment/ArenaScene.module.css'
  *
  * Accessibility follows the research: a native `input[type=range]` already
  * exposes value/min/max to assistive tech, and `aria-valuetext` carries the
- * meaning a bare number cannot ("Speed 4, next point costs 2"). The readout is
+ * meaning a bare number cannot ("Battery 4, next point costs 2"). The readout is
  * an `aria-live` region so the consequence of a change is announced, not just
  * drawn.
  */
@@ -90,7 +92,7 @@ export function BuildScreen({
             >
               <strong>{CHASSIS_LABELS[id]}</strong>
               <span>
-                {CHASSIS_BASE[id].speed} speed · {CHASSIS_BASE[id].hardiness} hardiness
+                {CHASSIS_BASE[id].speed} speed · {CHASSIS_BASE[id].hardiness} battery
               </span>
               <span>{chassisRuleSummary(id, rulesetId)}</span>
             </button>
@@ -131,7 +133,7 @@ export function BuildScreen({
                 onChange={e => onChange(setAxisLevel(build, axis, Number(e.target.value)))}
               />
               <span id={`build-axis-${axis}-cost`} className={styles.buildStatCost}>
-                {level} · next costs {nextCost}
+                {level} · next costs {nextCost} · {STAT_HINTS[axis]}
               </span>
             </div>
           )
@@ -148,6 +150,7 @@ export function BuildScreen({
               className={styles.buildModuleChip}
               data-active={active}
               aria-pressed={active}
+              title={MODULE_HINTS[id]}
               disabled={disabled || (!active && build.modules.length >= MODULE_SLOTS)}
               onClick={() => onChange(toggleModule(build, id))}
             >

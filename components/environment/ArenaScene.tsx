@@ -62,6 +62,7 @@ import { useConvexClient } from '../ConvexClientProvider'
 import { api } from '../../convex/_generated/api'
 import type { ReplayMarker } from '../../services/replayMarkers'
 import { buildReplayStory, captionAt } from '../../services/replayStory'
+import { subscribeOpenReplay } from '../../services/sharedReplayNav'
 import {
   deleteExampleRecord,
   queueCheckpointSync,
@@ -335,42 +336,58 @@ function Workbench({
   // ?replay=<shareId> boots straight into review of a published league match.
   // The slug is the capability, so this path does not need sign-in. Recordings
   // arrive as storage URLs; the session validates the schema before presenting
-  // them, and user ids never cross the wire.
+  // them, and user ids never cross the wire. Same-tab "replay" clicks from the
+  // ladder dispatch OPEN_REPLAY_EVENT so we do not depend on a remount.
   useEffect(() => {
-    const shareId = new URLSearchParams(window.location.search).get('replay')
-    if (!shareId) return
-    if (!convex) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot boot read; the notice is the offline failure surface
-      setTrainMessage('Shared replays need a live Convex connection.')
-      return
-    }
     let cancelled = false
-    void convex.query(api.league.viewReplay, { shareId }).then(async doc => {
-      if (cancelled) return
-      if (!doc) { setTrainMessage('That replay link does not point at a saved match.'); return }
-      const recordings = await Promise.all(doc.urls.map(async url => {
-        const parsed = JSON.parse(await (await fetch(url)).text()) as ArenaRecording
-        if (parsed?.schemaVersion !== 'arena-recording-v1' || !Array.isArray(parsed.checkpoints) || parsed.checkpoints.length === 0) {
-          throw new Error('recording-schema-mismatch')
+
+    const loadShare = async (shareId: string, consumeUrl: boolean) => {
+      if (!convex) {
+        setTrainMessage('Shared replays need a live Convex connection.')
+        return
+      }
+      try {
+        const doc = await convex.query(api.league.viewReplay, { shareId })
+        if (cancelled) return
+        if (!doc) { setTrainMessage('That replay link does not point at a saved match.'); return }
+        if (doc.urls.length === 0) {
+          setTrainMessage('That replay link has no playable recording yet.')
+          return
         }
-        return parsed
-      }))
-      if (cancelled || recordings.length === 0) return
-      setSharedReplay({
-        shareId,
-        kind: doc.kind,
-        participants: doc.participants,
-        championIndex: doc.championIndex,
-        recordings,
-        index: 0,
-        markers: doc.markers,
-      })
-      setCinematic(true)
-      session.reviewFrom(recordings[0])
-      // Consume the share link so leaving review and reloading doesn't reopen it.
-      window.history.replaceState(null, '', window.location.pathname)
-    }).catch(() => { if (!cancelled) setTrainMessage('Could not load that replay link.') })
-    return () => { cancelled = true }
+        const recordings = await Promise.all(doc.urls.map(async url => {
+          const parsed = JSON.parse(await (await fetch(url)).text()) as ArenaRecording
+          if (parsed?.schemaVersion !== 'arena-recording-v1' || !Array.isArray(parsed.checkpoints) || parsed.checkpoints.length === 0) {
+            throw new Error('recording-schema-mismatch')
+          }
+          return parsed
+        }))
+        if (cancelled) return
+        if (recordings.length === 0) {
+          setTrainMessage('That replay link has no playable recording yet.')
+          return
+        }
+        setSharedReplay({
+          shareId,
+          kind: doc.kind,
+          participants: doc.participants,
+          championIndex: doc.championIndex,
+          recordings,
+          index: 0,
+          markers: doc.markers,
+        })
+        setCinematic(true)
+        session.reviewFrom(recordings[0])
+        if (consumeUrl) window.history.replaceState(null, '', window.location.pathname)
+      } catch {
+        if (!cancelled) setTrainMessage('Could not load that replay link.')
+      }
+    }
+
+    const bootShareId = new URLSearchParams(window.location.search).get('replay')
+    if (bootShareId) void loadShare(bootShareId, true)
+
+    const stop = subscribeOpenReplay(shareId => { void loadShare(shareId, false) })
+    return () => { cancelled = true; stop() }
   }, [convex, session])
 
   const selectSharedSide = (index: number) => {
