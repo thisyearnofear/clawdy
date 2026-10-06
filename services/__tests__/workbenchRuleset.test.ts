@@ -43,7 +43,8 @@ describe('workbench rulesets', () => {
     expect(capacityOf(champion)).toBe(chassis === 'hauler' ? 4 : 3)
     expect(champion.traits?.stealAll).toBe(chassis === 'raider' ? true : undefined)
     expect(champion.traits?.visionHops).toBe(chassis === 'scout' ? 2 : undefined)
-    expect(capacityOf(rival)).toBe(4)
+    expect(capacityOf(rival)).toBe(3)
+    expect(rival.traits?.stealAll).toBeUndefined()
     expect(course).toEqual(before)
   })
 

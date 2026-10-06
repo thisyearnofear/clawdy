@@ -47,7 +47,8 @@ export function courseForRuleset(course: ArenaCourse, build: Build, rulesetId?: 
   next.scenario.rulesetId = rulesetId
   next.scenario.entrants = next.scenario.entrants.map(entrant => ({
     ...entrant,
-    traits: buildToTraits(entrant.id === 'champion' ? build : baseBuild('hauler'), rulesetId),
+    // The house rival stays unperked: Skirmish brains were trained and evaluated against unmodified bots.
+    traits: entrant.id === 'champion' ? buildToTraits(build, rulesetId) : buildToTraits(baseBuild('hauler')),
   }))
   return next
 }
