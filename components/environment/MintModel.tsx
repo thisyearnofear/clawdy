@@ -14,6 +14,12 @@ type MintModelProps = {
   url: string
   transform?: MintAssetTransform
   tint?: string
+  /**
+   * Local y at which the model's lowest point should rest. Generated models are
+   * centred on their bounds, so without this the body sits half its height
+   * below the physics ride height and the wheels sink into the terrain.
+   */
+  restY?: number
 }
 
 function applyTransform(scene: THREE.Group, transform: MintAssetTransform) {
@@ -22,13 +28,18 @@ function applyTransform(scene: THREE.Group, transform: MintAssetTransform) {
   scene.scale.set(...transform.scale)
 }
 
-export function MintModel({ url, transform, tint }: MintModelProps) {
+export function MintModel({ url, transform, tint, restY }: MintModelProps) {
   const gltf = useLoader(GLTFLoader, url, (loader: GLTFLoader) => {
     loader.setDRACOLoader(dracoLoader)
   })
   const scene = useMemo(() => {
     const cloned = gltf.scene.clone(true)
     if (transform) applyTransform(cloned, transform)
+    if (restY !== undefined) {
+      cloned.updateMatrixWorld(true)
+      const box = new THREE.Box3().setFromObject(cloned)
+      if (Number.isFinite(box.min.y)) cloned.position.y += restY - box.min.y
+    }
     if (tint) {
       const tintColor = new THREE.Color(tint)
       cloned.traverse((obj) => {
@@ -45,6 +56,6 @@ export function MintModel({ url, transform, tint }: MintModelProps) {
       })
     }
     return cloned
-  }, [gltf, tint, transform])
+  }, [gltf, tint, transform, restY])
   return <primitive object={scene} />
 }
