@@ -52,4 +52,18 @@ describe('skirmish perks', () => {
     expect(buildToTraits(baseBuild('raider'), 'skirmish').stealAll).toBe(true)
     expect(buildToTraits(baseBuild('scout'), 'skirmish').visionHops).toBe(2)
   })
+
+  it('slows the Hauler for capacity 4 and buffs Raider travel in Skirmish', async () => {
+    const { buildToTraits, baseBuild } = await import('../chassis')
+    const haulerTg = buildToTraits(baseBuild('hauler'))
+    const haulerSk = buildToTraits(baseBuild('hauler'), 'skirmish')
+    expect(haulerSk.capacity).toBe(4)
+    expect(haulerSk.travelSpeed).toBeCloseTo(haulerTg.travelSpeed - 0.08, 5)
+    const raiderTg = buildToTraits(baseBuild('raider'))
+    const raiderSk = buildToTraits(baseBuild('raider'), 'skirmish')
+    expect(raiderSk.travelSpeed).toBeCloseTo(raiderTg.travelSpeed + 0.04, 5)
+    // Training Grounds untouched.
+    expect(buildToTraits(baseBuild('hauler')).travelSpeed).toBe(haulerTg.travelSpeed)
+    expect(buildToTraits(baseBuild('raider')).travelSpeed).toBe(raiderTg.travelSpeed)
+  })
 })

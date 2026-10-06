@@ -1,4 +1,7 @@
 import starterJson from '../starter/champion-checkpoint.json'
+import skirmishScoutJson from '../starter/skirmish-scout.json'
+import skirmishHaulerJson from '../starter/skirmish-hauler.json'
+import skirmishRaiderJson from '../starter/skirmish-raider.json'
 import { validateCheckpoint, type PolicyCheckpoint } from './policyModel'
 
 /**
@@ -27,7 +30,13 @@ const BUNDLED_STARTER_IDS = new Set<string>([
 ])
 BUNDLED_STARTER_IDS.add(starter.id)
 
-const SKIRMISH_HOUSE_IDS = new Set<string>(['es-g23-1942e2', 'es-g239-e242fd', 'es-g225-5f42f2']) // starter/skirmish-<chassis>.json
+// Historical ids stay so a stored older house brain is still treated as house (never user-owned).
+const SKIRMISH_HOUSE_IDS = new Set<string>([
+  'es-g23-1942e2', 'es-g239-e242fd', 'es-g225-5f42f2', // capacity-4 / pre travel-lead
+])
+for (const brain of [skirmishScoutJson, skirmishHaulerJson, skirmishRaiderJson] as { id: string }[]) {
+  SKIRMISH_HOUSE_IDS.add(brain.id)
+}
 
 /** True for any shipped starter artifact, current or superseded. */
 export function isBundledStarterId(id: string): boolean {

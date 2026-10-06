@@ -2,8 +2,8 @@
   "variants": 40,
   "brains": {
     "scout": "es-g23-1942e2",
-    "hauler": "es-g239-e242fd",
-    "raider": "es-g225-5f42f2"
+    "hauler": "es-g77-d042f6",
+    "raider": "es-g146-ee42ed"
   },
   "result": {
     "scout-vs-scout": {
@@ -14,60 +14,60 @@
       "foe": 406
     },
     "scout-vs-hauler": {
-      "wins": 21,
-      "losses": 58,
-      "draws": 1,
-      "banked": 561,
-      "foe": 698
+      "wins": 4,
+      "losses": 66,
+      "draws": 10,
+      "banked": 439,
+      "foe": 651
     },
     "scout-vs-raider": {
-      "wins": 52,
-      "losses": 28,
-      "draws": 0,
-      "banked": 521,
-      "foe": 500
+      "wins": 63,
+      "losses": 15,
+      "draws": 2,
+      "banked": 569,
+      "foe": 432
     },
     "hauler-vs-scout": {
-      "wins": 58,
-      "losses": 21,
-      "draws": 1,
-      "banked": 698,
-      "foe": 561
+      "wins": 66,
+      "losses": 4,
+      "draws": 10,
+      "banked": 651,
+      "foe": 439
     },
     "hauler-vs-hauler": {
       "wins": 40,
       "losses": 40,
       "draws": 0,
-      "banked": 551,
-      "foe": 551
+      "banked": 578,
+      "foe": 578
     },
     "hauler-vs-raider": {
-      "wins": 43,
-      "losses": 33,
-      "draws": 4,
-      "banked": 672,
-      "foe": 542
+      "wins": 47,
+      "losses": 21,
+      "draws": 12,
+      "banked": 645,
+      "foe": 454
     },
     "raider-vs-scout": {
-      "wins": 28,
-      "losses": 52,
-      "draws": 0,
-      "banked": 500,
-      "foe": 521
+      "wins": 15,
+      "losses": 63,
+      "draws": 2,
+      "banked": 432,
+      "foe": 569
     },
     "raider-vs-hauler": {
-      "wins": 33,
-      "losses": 43,
-      "draws": 4,
-      "banked": 542,
-      "foe": 672
+      "wins": 21,
+      "losses": 47,
+      "draws": 12,
+      "banked": 454,
+      "foe": 645
     },
     "raider-vs-raider": {
       "wins": 40,
       "losses": 40,
       "draws": 0,
-      "banked": 588,
-      "foe": 588
+      "banked": 605,
+      "foe": 605
     }
   }
 }

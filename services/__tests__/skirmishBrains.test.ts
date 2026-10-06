@@ -27,4 +27,11 @@ describe('skirmish house brains', () => {
       expect(runner.snapshot().status).toBe('finished')
     }
   })
+
+  it('bundled starter ids include current house brains so swaps stay house-owned', () => {
+    for (const id of CHASSIS_IDS) {
+      expect(isBundledStarter(SKIRMISH_HOUSE_BRAINS[id])).toBe(true)
+    }
+  })
+
 })

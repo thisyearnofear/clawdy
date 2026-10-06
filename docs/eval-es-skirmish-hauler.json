@@ -1,6 +1,6 @@
 {
-  "checkpointId": "es-g239-e242fd",
-  "weightsHash": "b2d9bbe242fd",
+  "checkpointId": "es-g77-d042f6",
+  "weightsHash": "0b82acd042f6",
   "variants": 25,
   "seeds": [
     9001,
@@ -35,12 +35,12 @@
       "matches": 50
     },
     "poach": {
-      "fitness": 3.19,
-      "margin": 2.2,
-      "ownBanked": 3.42,
-      "foeBanked": 1.22,
-      "wins": 37,
-      "losses": 4,
+      "fitness": 3.24,
+      "margin": 2.28,
+      "ownBanked": 3.48,
+      "foeBanked": 1.2,
+      "wins": 38,
+      "losses": 6,
       "matches": 50
     },
     "starter": {
@@ -55,46 +55,46 @@
   },
   "trained": {
     "safe": {
-      "fitness": 4.17,
-      "margin": 2.76,
-      "ownBanked": 9.78,
-      "foeBanked": 7.02,
-      "wins": 48,
-      "losses": 1,
+      "fitness": 2.22,
+      "margin": 1.32,
+      "ownBanked": 8.2,
+      "foeBanked": 6.88,
+      "wins": 39,
+      "losses": 9,
       "matches": 50
     },
     "greedy": {
-      "fitness": 3.48,
-      "margin": 2.04,
-      "ownBanked": 9.44,
-      "foeBanked": 7.4,
-      "wins": 49,
-      "losses": 1,
+      "fitness": 1.86,
+      "margin": 1.02,
+      "ownBanked": 8.52,
+      "foeBanked": 7.5,
+      "wins": 39,
+      "losses": 11,
       "matches": 50
     },
     "weather": {
-      "fitness": 1.19,
-      "margin": 0.32,
-      "ownBanked": 8.12,
-      "foeBanked": 7.8,
-      "wins": 39,
-      "losses": 10,
+      "fitness": 0.02,
+      "margin": -0.46,
+      "ownBanked": 7.06,
+      "foeBanked": 7.52,
+      "wins": 33,
+      "losses": 17,
       "matches": 50
     },
     "poach": {
-      "fitness": 5.99,
-      "margin": 4.88,
-      "ownBanked": 6.88,
-      "foeBanked": 2,
-      "wins": 40,
+      "fitness": 6.65,
+      "margin": 5.48,
+      "ownBanked": 7.24,
+      "foeBanked": 1.76,
+      "wins": 42,
       "losses": 3,
       "matches": 50
     },
     "starter": {
-      "fitness": 8.6,
-      "margin": 7.1,
-      "ownBanked": 10.86,
-      "foeBanked": 3.76,
+      "fitness": 7.62,
+      "margin": 6.12,
+      "ownBanked": 10.46,
+      "foeBanked": 4.34,
       "wins": 50,
       "losses": 0,
       "matches": 50
