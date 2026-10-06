@@ -14,6 +14,7 @@ import { createTournament, runTournament, type ArenaTournament, type TournamentE
 import { type PolicyCheckpoint, SEASON_0_BASE_CHECKPOINT } from '../../services/policyModel'
 import { isBundledStarter, SEASON_0_STARTER_CHECKPOINT } from '../../services/starterCheckpoint'
 import { brainForRuleset } from '../../services/skirmishBrains'
+import { PROVERBS, useFlavourZh, withProverb } from '../../services/flavour'
 import { proposeCorrection, summarizeCoachFocus } from '../../services/coachingEngine'
 import { rankCoachingCandidates, type CoachingCandidate } from '../../services/coachingCandidates'
 import { draftRecordedCorrection, recordedCoachContext } from '../../services/coachingReview'
@@ -142,6 +143,7 @@ function Workbench({
   const [tournamentRunning, setTournamentRunning] = useState(false)
   const [playMode, setPlayMode] = useState<WorkbenchPlayMode>('practice')
   const [activeCourse, setActiveCourse] = useState(course)
+  const flavourZh = useFlavourZh()
   const [rulesetId, setRulesetId] = useState<RulesetId | undefined>(undefined)
   const skirmishUnlocked = useSyncExternalStore(subscribeSkirmishUnlock, isSkirmishUnlocked, () => false)
   const [studioOpen, setStudioOpen] = useState(false)
@@ -1823,7 +1825,7 @@ function Workbench({
           {modeBanner && (
             <div className={styles.modeFlash} key={modeBanner} role="status">
               <span>{modeBanner === 'compete' ? 'MATCH' : modeBanner === 'rush' ? 'RUSH' : 'PRACTICE'}</span>
-              <p>{modeBanner === 'compete' ? 'Held-out layout. Coaching locked.' : modeBanner === 'rush' ? 'Unranked race. Chase the mother cores and watch for bumps.' : 'Teach freely. Same world, practice floods.'}</p>
+              <p>{modeBanner === 'compete' ? withProverb('Held-out layout. Controls off. It walks through alone.', PROVERBS.handoff, flavourZh) : modeBanner === 'rush' ? 'Unranked race. Chase the mother cores and watch for bumps.' : 'Teach freely. Same world, practice floods.'}</p>
             </div>
           )}
           <ViewportHud
@@ -1904,6 +1906,8 @@ function Workbench({
               <span>{playMode === 'compete' ? 'MATCH COMPLETE' : 'ROUND COMPLETE'}</span>
               <h2>{view.episode.winner === 'champion' ? 'Your champion takes it.' : view.episode.winner === 'rival' ? 'The house rival wins.' : 'An even contest.'}</h2>
               <p>{coachingLocked ? 'This was a scored match. Coaching stays off — try Practice if you want to teach it.' : 'Watch the replay, then coach the moment it went wrong.'}</p>
+              <p>{withProverb('The replay is the receipt: what did your teaching change?', PROVERBS.receipt, flavourZh)}</p>
+              {view.episode.winner === 'rival' && <p>{withProverb('Not yet. The student passes the master when the teaching holds.', PROVERBS.surpass, flavourZh)}</p>}
               {!coachingLocked && (
                 <div className={styles.replayButtons}>
                   <button

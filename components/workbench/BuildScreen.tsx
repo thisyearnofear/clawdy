@@ -24,6 +24,7 @@ import {
   type Build,
 } from '../../services/buildBudget'
 import type { RulesetId } from '../../services/chassis'
+import { PROVERBS, useFlavourZh, withProverb } from '../../services/flavour'
 import { chassisRuleSummary } from '../../services/workbenchRuleset'
 import styles from '../environment/ArenaScene.module.css'
 
@@ -59,6 +60,7 @@ export function BuildScreen({
   rulesetId?: RulesetId
 }) {
   const headingId = useId()
+  const flavourZh = useFlavourZh()
   const errors = useMemo(() => budgetErrors(build), [build])
   const remaining = remainingBudget(build)
   const blocked = errors.length > 0
@@ -66,6 +68,7 @@ export function BuildScreen({
   return (
     <section className={styles.buildScreen} aria-labelledby={headingId}>
       <h3 id={headingId}>Build for {rulesetId === 'skirmish' ? 'Skirmish' : 'Training Grounds'}</h3>
+      <p className={styles.buildReadout}>{withProverb('Teach to the student: pick the chassis that fits how you want to coach.', PROVERBS.student, flavourZh)}</p>
       <p className={styles.buildReadout}>
         {rulesetId === 'skirmish'
           ? 'Your build applies to this unranked preview. The house rival uses a base Hauler.'

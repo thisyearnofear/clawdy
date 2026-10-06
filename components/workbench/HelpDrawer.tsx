@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { formatFunnelLog, getFunnelEvents } from '../../services/funnelLog'
+import { setFlavourZh, useFlavourZh } from '../../services/flavour'
 import styles from '../environment/ArenaScene.module.css'
 
 const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
@@ -9,6 +10,7 @@ const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabi
 export function HelpDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const panelRef = useRef<HTMLElement>(null)
   const [copied, setCopied] = useState(false)
+  const flavourZh = useFlavourZh()
 
   const copySessionLog = () => {
     const log = formatFunnelLog()
@@ -92,6 +94,10 @@ export function HelpDrawer({ open, onClose }: { open: boolean; onClose: () => vo
             <dd>Export JSON under Lessons → “Brains, storage &amp; sync”, or Save run for the recording. Cloud sync uses a guest key when Convex is on.</dd>
           </div>
         </dl>
+        <label className={styles.helpFooterNote} style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '8px 0' }}>
+          <input type="checkbox" checked={flavourZh} onChange={event => setFlavourZh(event.target.checked)} />
+          Show Chinese proverbs beside some lines (off by default)
+        </label>
         <div className={styles.helpFooter}>
           <button type="button" className={styles.helpClose} onClick={copySessionLog}>
             {copied ? 'Copied!' : 'Copy session log'}
