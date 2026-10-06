@@ -3,7 +3,7 @@ import type { ArenaPosition } from './arenaEpisode'
 import type { SurfaceSample } from './worldSurface'
 
 export const ROVER_PHYSICS = Object.freeze({
-  version: 'rapier-kinematic-terrain-0.19.2.v3',
+  version: 'rapier-kinematic-terrain-0.19.2.v4',
   // Chassis
   chassisHalfExtents: { x: 0.28, y: 0.12, z: 0.42 },
   // Motion
@@ -48,6 +48,10 @@ interface KinematicAgent {
   body: RAPIER.RigidBody
   yaw: number
   speed: number
+  /** World-space offset from contact point to body center (normal * ride height). */
+  rideOffset: { x: number; y: number; z: number }
+  /** True when the last step's ground ray hit. */
+  grounded: boolean
 }
 
 export class ArenaPhysics implements ArenaMotion {
@@ -110,7 +114,7 @@ export class ArenaPhysics implements ArenaMotion {
       ROVER_PHYSICS.chassisHalfExtents.z,
     )
     this.#world.createCollider(colliderDesc, body)
-    return { body, yaw: 0, speed: 0 }
+    return { body, yaw: 0, speed: 0, rideOffset: { x: 0, y: ROVER_PHYSICS.groundFollowHeight, z: 0 }, grounded: true }
   }
 
   reset(agents: readonly ArenaMotionTarget[]) {
@@ -201,25 +205,38 @@ export class ArenaPhysics implements ArenaMotion {
         }
       }
 
-      // Sample ground height at the new position for terrain following
+      // Sample ground at the new XZ for terrain following. v4 plants the
+      // chassis along the surface normal (ride height) and derives pitch/roll
+      // in the yaw-local frame so facing-uphill tilts nose-up regardless of
+      // compass heading. Flat ground (normal ≈ +Y) keeps the v3 XZ path and
+      // reported Y bit-stable.
       const groundRay = new RAPIER.Ray({ x: finalX, y: current.y + 0.5, z: finalZ }, { x: 0, y: -1, z: 0 })
       const groundHit = this.#world.castRayAndGetNormal(groundRay, ROVER_PHYSICS.groundFollowRayDistance, true, RAPIER.QueryFilterFlags.EXCLUDE_KINEMATIC)
-      const groundY = groundHit ? (current.y + 0.5) - groundHit.timeOfImpact + ROVER_PHYSICS.groundFollowHeight : current.y
-
-      // Compute pitch and roll from the surface normal
-      let pitch = 0
-      let roll = 0
+      let bodyX = finalX
+      let bodyY = current.y
+      let bodyZ = finalZ
+      let quat: RAPIER.Rotation = { x: 0, y: Math.sin(agent.yaw * 0.5), z: 0, w: Math.cos(agent.yaw * 0.5) }
       if (groundHit) {
-        const normal = groundHit.normal
-        // Pitch: rotation around X axis (forward tilt)
-        pitch = Math.atan2(normal.z, normal.y)
-        // Roll: rotation around Z axis (sideways tilt)
-        roll = -Math.atan2(normal.x, normal.y)
+        let nx = groundHit.normal.x
+        let ny = groundHit.normal.y
+        let nz = groundHit.normal.z
+        if (ny < 0) { nx = -nx; ny = -ny; nz = -nz }
+        const hitY = (current.y + 0.5) - groundHit.timeOfImpact
+        const h = ROVER_PHYSICS.groundFollowHeight
+        bodyX = finalX + nx * h
+        bodyY = hitY + ny * h
+        bodyZ = finalZ + nz * h
+        agent.rideOffset = { x: nx * h, y: ny * h, z: nz * h }
+        // Yaw-relative plant: keep committed yaw's forward, tilt so body up
+        // matches the surface normal (equivalent to yaw-local pitch/roll).
+        quat = this.#rotationFromYawAndNormal(agent.yaw, nx, ny, nz)
+        agent.grounded = true
+      } else {
+        agent.rideOffset = { x: 0, y: ROVER_PHYSICS.groundFollowHeight, z: 0 }
+        agent.grounded = false
       }
 
-      // Build the quaternion from yaw, pitch, roll (ZYX order)
-      const quat = this.#eulerToQuaternion(pitch, agent.yaw, roll)
-      body.setNextKinematicTranslation({ x: finalX, y: groundY, z: finalZ })
+      body.setNextKinematicTranslation({ x: bodyX, y: bodyY, z: bodyZ })
       body.setNextKinematicRotation(quat)
     }
     this.#world.step()
@@ -228,34 +245,78 @@ export class ArenaPhysics implements ArenaMotion {
       const agent = this.#agents.get(target.id)!
       const position = agent.body.translation()
       const rotation = agent.body.rotation()
-      // Check if the rover is near the ground
-      const grounded = this.#isGrounded(position)
       return {
         id: target.id,
-        position: [position.x, position.y - ROVER_PHYSICS.groundFollowHeight, position.z] as ArenaPosition,
-        grounded,
+        position: [
+          position.x - agent.rideOffset.x,
+          position.y - agent.rideOffset.y,
+          position.z - agent.rideOffset.z,
+        ] as ArenaPosition,
+        grounded: agent.grounded,
         rotation: [rotation.x, rotation.y, rotation.z, rotation.w] as [number, number, number, number],
       }
     })
   }
 
-  #isGrounded(position: { x: number; y: number; z: number }) {
-    const ray = new RAPIER.Ray({ x: position.x, y: position.y, z: position.z }, { x: 0, y: -1, z: 0 })
-    const hit = this.#world.castRay(ray, ROVER_PHYSICS.groundFollowHeight + 0.1, true, RAPIER.QueryFilterFlags.EXCLUDE_KINEMATIC)
-    return hit !== null
+  /**
+   * Build a chassis rotation whose up axis matches the surface normal while the
+   * horizontal facing follows committed yaw. This is yaw-relative pitch/roll:
+   * projecting yaw-forward onto the tangent plane, then right = up × forward.
+   */
+  #rotationFromYawAndNormal(yaw: number, nx: number, ny: number, nz: number): RAPIER.Rotation {
+    const yx = Math.sin(yaw), yz = Math.cos(yaw)
+    const dot = yx * nx + yz * nz
+    let fx = yx - nx * dot
+    let fy = -ny * dot
+    let fz = yz - nz * dot
+    const fl = Math.hypot(fx, fy, fz)
+    if (fl < 1e-6) {
+      // Yaw-forward parallel to normal — pick a tangent perpendicular to up.
+      fx = ny > 0.5 ? 1 : 0
+      fy = 0
+      fz = ny > 0.5 ? 0 : 1
+      const d2 = fx * nx + fz * nz
+      fx -= nx * d2
+      fy -= ny * d2
+      fz -= nz * d2
+      const fl2 = Math.hypot(fx, fy, fz) || 1
+      fx /= fl2; fy /= fl2; fz /= fl2
+    } else {
+      fx /= fl; fy /= fl; fz /= fl
+    }
+    // right = up × forward (Y-up, Z-forward → +X)
+    let rx = ny * fz - nz * fy
+    let ry = nz * fx - nx * fz
+    let rz = nx * fy - ny * fx
+    const rl = Math.hypot(rx, ry, rz) || 1
+    rx /= rl; ry /= rl; rz /= rl
+    // Re-orthogonalize forward = right × up? forward should be right × up for RH:
+    // Actually we have up and forward; right = up × forward keeps forward.
+    // Rotation matrix columns (Rapier/Three local axes): X=right, Y=up, Z=forward.
+    return this.#quatFromAxes(rx, ry, rz, nx, ny, nz, fx, fy, fz)
   }
 
-  #eulerToQuaternion(pitch: number, yaw: number, roll: number): RAPIER.Rotation {
-    // ZYX composition: q = qz * qy * qx
-    const cy = Math.cos(yaw * 0.5), sy = Math.sin(yaw * 0.5)
-    const cp = Math.cos(pitch * 0.5), sp = Math.sin(pitch * 0.5)
-    const cr = Math.cos(roll * 0.5), sr = Math.sin(roll * 0.5)
-    return {
-      x: sp * cy * cr - cp * sy * sr,
-      y: cp * sy * cr + sp * cy * sr,
-      z: cp * cy * sr - sp * sy * cr,
-      w: cp * cy * cr + sp * sy * sr,
+  #quatFromAxes(
+    rx: number, ry: number, rz: number,
+    ux: number, uy: number, uz: number,
+    fx: number, fy: number, fz: number,
+  ): RAPIER.Rotation {
+    // Convert rotation matrix (columns = right, up, forward) to quaternion.
+    const tr = rx + uy + fz
+    if (tr > 0) {
+      const s = Math.sqrt(tr + 1) * 2
+      return { w: 0.25 * s, x: (uz - fy) / s, y: (fx - rz) / s, z: (ry - ux) / s }
     }
+    if (rx > uy && rx > fz) {
+      const s = Math.sqrt(1 + rx - uy - fz) * 2
+      return { w: (uz - fy) / s, x: 0.25 * s, y: (ry + ux) / s, z: (fx + rz) / s }
+    }
+    if (uy > fz) {
+      const s = Math.sqrt(1 + uy - rx - fz) * 2
+      return { w: (fx - rz) / s, x: (ry + ux) / s, y: 0.25 * s, z: (uz + fy) / s }
+    }
+    const s = Math.sqrt(1 + fz - rx - uy) * 2
+    return { w: (ry - ux) / s, x: (fx + rz) / s, y: (uz + fy) / s, z: 0.25 * s }
   }
 
   recover(id: string, position: ArenaPosition) {
@@ -267,6 +328,8 @@ export class ArenaPhysics implements ArenaMotion {
     agent.body.setRotation({ x: 0, y: 0, z: 0, w: 1 }, true)
     agent.yaw = 0
     agent.speed = 0
+    agent.rideOffset = { x: 0, y: ROVER_PHYSICS.groundFollowHeight, z: 0 }
+    agent.grounded = true
     this.#world.propagateModifiedBodyPositionsToColliders()
   }
 

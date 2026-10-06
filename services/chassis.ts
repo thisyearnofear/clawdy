@@ -132,6 +132,12 @@ export function buildToTraits(build: Build, rulesetId?: RulesetId): EntrantTrait
     if (id === 'armour') { contactStrength += 1; travelSpeed -= 0.05 }
     if (id === 'ram-plate') { contactStrength += 1; maxEnergy -= 1 }
   }
+  // Skirmish data-only lead/buff: Hauler's capacity-4 slot costs speed;
+  // Raider gets a small travel bump so steal-all is not the only edge.
+  if (rulesetId === 'skirmish') {
+    if (build.chassis === 'hauler') travelSpeed -= 0.08
+    if (build.chassis === 'raider') travelSpeed += 0.04
+  }
   return {
     travelSpeed: round(clamp(travelSpeed, 0.8, MAX_TRAVEL_SPEED)),
     maxEnergy: round(clamp(maxEnergy, 6, 14)),

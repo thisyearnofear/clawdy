@@ -191,22 +191,28 @@ export function proposeCorrection(
   const available = observation.availableActions
 
   // 1. Weather / Flood avoidance coaching
+  // Drain chip: propose drain only during flooded transit. If the frame is
+  // not a legal drain moment (e.g. parked at a station), fall through so
+  // ridge/flood coaching can still fire — never hard-return null here.
   if (lower.includes('drain')) {
     const drain = available.find(action => action.type === 'drain')
-    if (!drain || !observation.weather.flooded || !observation.self.transit) return null
-    return {
-      id: `ex-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
-      sourceEpisodeId: episodeId,
-      tick: observation.tick,
-      observation,
-      originalAction: currentAction,
-      preferredAction: drain,
-      rationale: 'Coach prefers draining during flooded transit. It spends energy and clears the valley for both rovers; improvement is not guaranteed.',
-      approved: false,
-      source: 'draft' as TrainingExampleSource,
+    if (drain && observation.weather.flooded && observation.self.transit) {
+      return {
+        id: `ex-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+        sourceEpisodeId: episodeId,
+        tick: observation.tick,
+        observation,
+        originalAction: currentAction,
+        preferredAction: drain,
+        rationale: 'Coach prefers draining during flooded transit. It spends energy and clears the valley for both rovers; improvement is not guaranteed.',
+        approved: false,
+        source: 'draft' as TrainingExampleSource,
+      }
     }
   }
-  if (lower.includes('flood') || lower.includes('high') || lower.includes('ridge') || lower.includes('water')) {
+  // Ridge / flood coaching. Also matches drain prompts that fell through so
+  // the energy-drain chip can still suggest the high path at a flooded station.
+  if (lower.includes('flood') || lower.includes('high') || lower.includes('ridge') || lower.includes('water') || lower.includes('drain')) {
     if (observation.weather.flooded) {
       // Find a legal non-floodable ridge move
       const ridgeMove = available.find(a => {
@@ -224,13 +230,14 @@ export function proposeCorrection(
           preferredAction: ridgeMove,
           rationale: 'Flooding is active; taking the non-floodable high ridge route avoids a 4x movement delay.',
           approved: false,
-        source: 'draft' as TrainingExampleSource,
+          source: 'draft' as TrainingExampleSource,
         }
       }
 
-      // Or if carrying energy and in transit, drain!
+      // Drain fallback: transit-only. Proposing drain at a station fights the
+      // weather teacher's restraint arm (routing/collect beats a 2-energy spend).
       const drainAction = available.find(a => a.type === 'drain')
-      if (drainAction) {
+      if (drainAction && observation.self.transit) {
         return {
           id: `ex-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
           sourceEpisodeId: episodeId,
@@ -240,7 +247,7 @@ export function proposeCorrection(
           preferredAction: drainAction,
           rationale: 'Flooding is active; activating drain ability opens the low route for safe passage.',
           approved: false,
-        source: 'draft' as TrainingExampleSource,
+          source: 'draft' as TrainingExampleSource,
         }
       }
     }
@@ -305,4 +312,34 @@ export function proposeCorrection(
 
   // 4. Unsupported guidance needs an explicit choice, never an arbitrary move.
   return null
+}
+
+/**
+ * Per-example importance for the browser coach-train path. Weather and energy
+ * (drain) notes weigh more so flood timing moves the weights harder than
+ * routine routing — mirrors consequence weighting on the distill path.
+ */
+export function coachingSampleWeights(
+  examples: ReadonlyArray<{ rationale: string; preferredAction: { type: string }; approved?: boolean }>,
+): number[] {
+  return examples
+    .filter(example => example.approved !== false)
+    .map(example => {
+      const focus = classifyExampleFocus(example)
+      return focus === 'weather' || focus === 'energy' ? 2 : 1
+    })
+}
+
+/**
+ * When the approved batch is weather-led (ridge/flood or drain), compare the
+ * new brain against the weather house bot — not the live session rival
+ * (default poach). Contest/bank/collect batches keep the session rival.
+ */
+export function comparisonRivalForCoaching<R>(
+  examples: ReadonlyArray<{ rationale: string; preferredAction: { type: string }; approved?: boolean }>,
+  sessionRival: R,
+): R | 'weather' {
+  const vector = focusVectorFromExamples(examples)
+  if (vector.weather + vector.energy >= 0.5) return 'weather'
+  return sessionRival
 }

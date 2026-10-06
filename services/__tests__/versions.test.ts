@@ -41,11 +41,10 @@ describe('v1 compatibility inventory', () => {
     expect(CHECKPOINT_SCHEMA_V2).toBe('season-0.checkpoint.v2')
     expect(ENCODER_VERSION).toBe('season-0.encoder.v2')
     expect(OBSERVATION_SCHEMA_VERSION).toBe('arena-observation-v2')
-    // v3: proportional speed replaces the binary {0, maxSpeed} quanta — the
-    // body lands on the episode's advancing target instead of lurch-stop
-    // oscillating. Positions differ from v1/v2, so older-controller
-    // recordings are a hard controller-mismatch (no rotation equivalence).
-    expect(ROVER_PHYSICS.version).toBe('rapier-kinematic-terrain-0.19.2.v3')
+    // v4: normal-aligned ride height + yaw-relative pitch/roll; grounded from
+    // the follow ray. Flat XZ/reported Y match v3 (rotation-equivalent replay);
+    // v1/v2 remain a hard controller-mismatch (proportional-speed break).
+    expect(ROVER_PHYSICS.version).toBe('rapier-kinematic-terrain-0.19.2.v4')
     expect(ARENA_WORLD.version).toBe('sandstone-basin-course-2')
     expect(ARENA_WORLD.id).toBe('sandstone-basin')
     expect(ARENA_WORLD.colliderSha256).toBe('7633067b2624fb476f36adfb14e1a13b1325c71143fbd4d5087cfaf209c993af')

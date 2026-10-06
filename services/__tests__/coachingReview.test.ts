@@ -3,7 +3,7 @@ import { ArenaRunner } from '../arenaPolicy'
 import { draftRecordedCorrection, recordedCoachContext } from '../coachingReview'
 import { applyControllerRules } from '../arenaControllerRules'
 import { type ArenaScenario } from '../arenaEpisode'
-import { proposeCorrection } from '../coachingEngine'
+import { coachingSampleWeights, comparisonRivalForCoaching, proposeCorrection } from '../coachingEngine'
 
 const scenario: ArenaScenario = {
   id: 'coaching-review-practice', worldVersion: 'review-fixture-v1', split: 'practice', seed: 1, durationTicks: 100,
@@ -72,6 +72,44 @@ describe('recorded correction provenance', () => {
     expect(proposeCorrection('drain when low route is urgent', observation, { type: 'wait' })?.preferredAction).toEqual({ type: 'drain' })
     observation.self.transit = null
     expect(proposeCorrection('drain when low route is urgent', observation, { type: 'wait' })).toBeNull()
+  })
+
+
+  it('falls through a drain prompt at a flooded station to ridge coaching', () => {
+    const context = recordedCoachContext(recording(), 0)!
+    const observation = structuredClone(context.observation)
+    observation.weather.flooded = true
+    observation.self.transit = null
+    observation.availableActions = [{ type: 'wait' }, { type: 'drain' }, { type: 'move', edgeId: 'ac' }]
+    // Both fixture edges are non-floodable; drain is illegal at a station so
+    // the energy-drain chip must fall through and prefer the high path.
+    expect(proposeCorrection('drain when low route is urgent', observation, { type: 'wait' })?.preferredAction)
+      .toEqual({ type: 'move', edgeId: 'ac' })
+  })
+
+  it('never proposes station drain from flood-branch fallback (weather restraint)', () => {
+    const context = recordedCoachContext(recording(), 0)!
+    const observation = structuredClone(context.observation)
+    observation.weather.flooded = true
+    observation.self.transit = null
+    observation.availableActions = [{ type: 'wait' }, { type: 'drain' }]
+    expect(proposeCorrection('take the ridge route during flood', observation, { type: 'wait' })).toBeNull()
+  })
+
+  it('picks the weather rival for weather-led coaching batches', () => {
+    const weatherBatch = [
+      { rationale: 'Flooding is active; take the ridge', preferredAction: { type: 'move' }, approved: true },
+      { rationale: 'Flooding is active; take the ridge', preferredAction: { type: 'move' }, approved: true },
+      { rationale: 'Coach prefers draining during flooded transit', preferredAction: { type: 'drain' }, approved: true },
+    ]
+    expect(comparisonRivalForCoaching(weatherBatch, 'poach')).toBe('weather')
+    expect(coachingSampleWeights(weatherBatch)).toEqual([2, 2, 2])
+    const contestBatch = [
+      { rationale: 'Beat the rival to the core', preferredAction: { type: 'collect' }, approved: true },
+      { rationale: 'Contest the station before the rival', preferredAction: { type: 'move' }, approved: true },
+    ]
+    expect(comparisonRivalForCoaching(contestBatch, 'poach')).toBe('poach')
+    expect(coachingSampleWeights(contestBatch)).toEqual([1, 1])
   })
 
   it('never offers strategic overrides that the shared controller replaces', () => {

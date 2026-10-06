@@ -10,6 +10,10 @@ import type { ArenaMotion } from './arenaPhysics'
  */
 const ROTATION_EQUIVALENT_CONTROLLERS: Record<string, readonly string[]> = {
   'rapier-kinematic-terrain-0.19.2.v2': ['rapier-kinematic-terrain-0.19.2.v1'],
+  // v4 changes pitch/roll (yaw-relative) and ride-height alignment along the
+  // surface normal. Flat XZ/reported Y match v3; rotation (and soft slope XZ)
+  // may differ, so v3 recordings replay under v4 with rotation stripped.
+  'rapier-kinematic-terrain-0.19.2.v4': ['rapier-kinematic-terrain-0.19.2.v3'],
 }
 
 function withoutRotation(state: ArenaSnapshot): ArenaSnapshot {
