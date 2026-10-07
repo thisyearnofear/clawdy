@@ -11,6 +11,8 @@ export function RulesetPicker({
   disabled = false,
   onChange,
   onSkip,
+  onProve,
+  proveSelected = false,
 }: {
   rulesetId?: RulesetId
   unlocked: boolean
@@ -18,28 +20,35 @@ export function RulesetPicker({
   disabled?: boolean
   onChange: (next: RulesetId | undefined) => void
   onSkip: () => void
+  /** Optional Prove door — held-out Match. When set, replaces the Season-0 radio. */
+  onProve?: () => void
+  proveSelected?: boolean
 }) {
   const descriptionId = useId()
+  const clashSelected = !proveSelected && rulesetId === 'skirmish'
+  const otherSelected = !proveSelected && rulesetId === undefined
   return (
     <section aria-label="Ruleset" className={`${styles.buildScreen} ${styles.rulesetPicker}`}>
-      <div role="radiogroup" aria-label="Ruleset" aria-describedby={descriptionId} className={styles.buildChassisRow}>
-        <button type="button" role="radio" aria-checked={rulesetId === undefined}
-          className={styles.chassisPicker} data-selected={rulesetId === undefined}
-          disabled={disabled} onClick={() => onChange(undefined)}>
-          <strong>Tutor</strong>
-          <span>Optional depth. Coaching loop when you want it.</span>
-        </button>
-        <button type="button" role="radio" aria-checked={rulesetId === 'skirmish'}
-          className={styles.chassisPicker} data-selected={rulesetId === 'skirmish'}
+      <div role="radiogroup" aria-label="Play door" aria-describedby={descriptionId} className={styles.buildChassisRow}>
+        <button type="button" role="radio" aria-checked={clashSelected}
+          className={styles.chassisPicker} data-selected={clashSelected}
           disabled={disabled || !unlocked} onClick={() => onChange('skirmish')}>
           <strong>Clash</strong>
           <span>Unranked race. Each chassis has a signature perk.</span>
         </button>
+        <button type="button" role="radio" aria-checked={proveSelected || (!onProve && otherSelected)}
+          className={styles.chassisPicker} data-selected={proveSelected || (!onProve && otherSelected)}
+          disabled={disabled} onClick={() => (onProve ? onProve() : onChange(undefined))}>
+          <strong>Prove</strong>
+          <span>{onProve ? 'Held-out Match. Coaching locked.' : 'Season 0 board — coaching depth when you want it.'}</span>
+        </button>
       </div>
       <p id={descriptionId} className={styles.buildReadout}>
-        {rulesetId === 'skirmish'
+        {proveSelected
+          ? 'Prove uses a held-out layout and freezes coaching. Switch to Clash for an unranked race with chassis perks.'
+          : rulesetId === 'skirmish'
           ? "Hauler carries 4 cargo. Raider steals a whole load when it wins a bump, up to its free space. Scout sees two route hops. Existing brains can play; Clash is not balanced (the Hauler leads). House brains for each chassis are bundled."
-          : 'Collect cores, bank at base and survive the flood. All chassis carry 3 cargo and see one route hop here.'}
+          : 'Clash is the game. Collect cores, bank at base and survive the flood. Open Clash for chassis perks.'}
       </p>
       {!unlocked && canSkip && (
         <button type="button" className={styles.primaryButton} disabled={disabled} onClick={onSkip}>
@@ -47,8 +56,8 @@ export function RulesetPicker({
         </button>
       )}
       <p className={styles.buildReadout}>
-        {disabled ? 'Reset to a fresh setup to change rulesets.' : unlocked || canSkip
-          ? 'Tutor stays available whenever you want the coaching depth.'
+        {disabled ? 'Reset to a fresh setup to change doors.' : unlocked || canSkip
+          ? 'Player doors are Clash vs Prove only.'
           : 'Publish your first brain to unlock Clash permanently.'}
       </p>
     </section>

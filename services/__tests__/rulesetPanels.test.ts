@@ -18,7 +18,7 @@ describe('ruleset panels', () => {
     const html = picker({ canSkip: true })
     expect(html).toContain('aria-checked="true"')
     expect(html).toContain('Skip to Clash — race first')
-    expect(html).toContain('Tutor stays available')
+    expect(html).toContain('Clash vs Prove')
   })
 
   it('still hides the skip button when the caller has not granted canSkip', () => {
@@ -26,11 +26,12 @@ describe('ruleset panels', () => {
     expect(picker()).not.toContain('Skip to Clash')
   })
 
-  it('keeps the unlock available when returning to Tutor', () => {
+  it('keeps the unlock available when returning from Clash', () => {
     const html = picker({ unlocked: true })
     expect(html).not.toContain('Skip to Clash')
     expect(html).not.toContain('disabled')
-    expect(html).toContain('Tutor')
+    expect(html).toContain('Clash')
+    expect(html).toContain('Prove')
   })
 
   it('explains Skirmish without promising balance or stronger brains', () => {
@@ -55,7 +56,7 @@ describe('ruleset panels', () => {
     expect(render('skirmish')).toContain('whole load')
     expect(render('skirmish')).toContain('two route hops')
     expect(render('skirmish')).toContain('speed, battery, and bump')
-    expect(render()).toContain('No signature perk in Tutor')
+    expect(render()).toContain('No signature perk off Clash')
     expect(render()).toContain('look-only')
     expect(render()).toContain('Switch to Clash')
     expect(render()).not.toContain('4 cargo')
@@ -73,6 +74,6 @@ describe('ruleset panels', () => {
       drained: false, floodEndsIn: null, nextFloodIn: null, runTip: null, feed: [], error: null, onRetry: noop,
     }))
     expect(hud).toContain(`2/${capacity ?? 3}`)
-    expect(hud).toContain(capacity ? 'Clash' : 'Tutor')
+    expect(hud).toContain('Clash')
   })
 })

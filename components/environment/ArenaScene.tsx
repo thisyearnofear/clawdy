@@ -102,7 +102,7 @@ import { ViewportHud, type HudFeedEvent } from '../workbench/ViewportHud'
 import { RulesetPicker } from '../workbench/RulesetPicker'
 import type { RulesetId } from '../../services/chassis'
 import { SKIRMISH_PERK_TELEGRAPH } from '../../services/chassis'
-import { formatDecisionCaption, playerDoorLabel, PLAYER_DOOR_COPY } from '../../services/decisionCaption'
+import { formatDecisionCaption, perkTelegraphMoment, playerDoorLabel, PLAYER_DOOR_COPY } from '../../services/decisionCaption'
 import { courseForRuleset, isSkirmishUnlocked, skirmishDisclosure, subscribeSkirmishUnlock, unlockSkirmish } from '../../services/workbenchRuleset'
 import { actionsEqual, COACH_ANYTIME_KEY, COACH_MISTAKE_KEY, COACH_NUDGE_KEY, friendlyActionLabel, isExecutableCheckpoint, PLAY_HINT_KEY, readHintDismissed, routeLabel, stationLabel } from '../workbench/readouts'
 import styles from './ArenaScene.module.css'
@@ -196,6 +196,11 @@ function Workbench({
   const [trainFocusLine, setTrainFocusLine] = useState<string | null>(null)
   const [modeBanner, setModeBanner] = useState<{ mode: WorkbenchPlayMode; handoff?: boolean } | null>(null)
   const [runTip, setRunTip] = useState<string | null>(null)
+  // Forge CTA stays closed until the first Clash minute has telegraphed perks.
+  const [perkTelegraphDone, setPerkTelegraphDone] = useState(() => {
+    if (typeof window === 'undefined') return false
+    try { return window.sessionStorage.getItem('clawdy_skirmish_perk_tip_v1') === '1' } catch { return false }
+  })
   const [sharedReplay, setSharedReplay] = useState<SharedReplay | null>(null)
   const floodWarnedRef = useRef<number | null>(null)
   const lastEncounterTickRef = useRef<number | null>(null)
@@ -315,6 +320,7 @@ function Workbench({
   const lastFeedBanked = useRef<Record<string, number>>({})
   const lastFeedFlooded = useRef(false)
   const lastFeedDrained = useRef(false)
+  const lastFeedBumpTick = useRef(-1)
   const recorderRef = useRef<MediaRecorder | null>(null)
   const recordStreamRef = useRef<MediaStream | null>(null)
   const recordChunksRef = useRef<Blob[]>([])
@@ -504,28 +510,46 @@ function Workbench({
     } catch { /* ignore */ }
     recordFunnelEvent('tip.midrun')
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot ambient tip, same lifecycle contract as the flood warning above
-    setRunTip('Practice lets you coach mid-run — call a route while it races, or Pause and open Replay.')
+    setRunTip('Unranked Clash lets you coach mid-run — Call a route while it races, or Pause and open Replay.')
     if (runTipTimer.current) window.clearTimeout(runTipTimer.current)
     runTipTimer.current = window.setTimeout(() => setRunTip(null), 5200)
   }, [view.phase, view.episode.tick, playMode, runTip])
 
-  // First Skirmish minute: telegraph chassis perks before Forge push.
-  // 20 ticks/s × 60s = 1200; fire once early (~2s) while runTip is free.
+  // First Clash minute: strong HUD + feed telegraph for chassis perks before Forge.
+  // 20 ticks/s × 60s = 1200; fire once early (~2s). On-world cues (cargo slots /
+  // vision rings / bump sparks) are already live — this names them with teeth.
   useEffect(() => {
-    if (view.phase !== 'running' || rulesetId !== 'skirmish') return
+    if (rulesetId !== 'skirmish') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- marking the telegraph settled when Clash perks aren't in play
+      if (!perkTelegraphDone) setPerkTelegraphDone(true)
+      return
+    }
+    if (view.phase !== 'running') return
     if (view.episode.tick < 40 || view.episode.tick > 1200) return
     if (runTip) return
     try {
-      if (window.sessionStorage.getItem('clawdy_skirmish_perk_tip_v1') === '1') return
+      if (window.sessionStorage.getItem('clawdy_skirmish_perk_tip_v1') === '1') {
+        if (!perkTelegraphDone) setPerkTelegraphDone(true)
+        return
+      }
       window.sessionStorage.setItem('clawdy_skirmish_perk_tip_v1', '1')
     } catch { /* ignore */ }
-    const chassisTip = SKIRMISH_PERK_TELEGRAPH[build.chassis] ?? SKIRMISH_PERK_TELEGRAPH.all
+    const moment = perkTelegraphMoment(build.chassis)
     recordFunnelEvent('tip.skirmish-perk', build.chassis)
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot Clash perk telegraph before Forge CTA
-    setRunTip(`${SKIRMISH_PERK_TELEGRAPH.all} — ${chassisTip}`)
+    setRunTip(`${SKIRMISH_PERK_TELEGRAPH.all} — ${moment.tip}`)
+    const stamped = [
+      { text: moment.feed, tone: moment.tone as 'bank' | 'flood' | 'info', id: ++feedId.current },
+      { text: SKIRMISH_PERK_TELEGRAPH[build.chassis] ?? SKIRMISH_PERK_TELEGRAPH.all, tone: 'info' as const, id: ++feedId.current },
+    ]
+    setFeed(prev => [...prev, ...stamped].slice(-3))
+    window.setTimeout(() => {
+      const ids = new Set(stamped.map(event => event.id))
+      setFeed(prev => prev.filter(event => !ids.has(event.id)))
+    }, 5500)
+    setPerkTelegraphDone(true)
     if (runTipTimer.current) window.clearTimeout(runTipTimer.current)
-    runTipTimer.current = window.setTimeout(() => setRunTip(null), 7000)
-  }, [view.phase, view.episode.tick, rulesetId, runTip, build.chassis])
+    runTipTimer.current = window.setTimeout(() => setRunTip(null), 8000)
+  }, [view.phase, view.episode.tick, rulesetId, runTip, build.chassis, perkTelegraphDone])
 
   // First-mistake trigger: the first *visible* champion error in Practice —
   // a rescue, a non-cadence rejection, or a flood-caught transit — surfaces
@@ -926,6 +950,25 @@ function Workbench({
         ]
       }
       lastFeedBanked.current[agent.id] = agent.banked
+    }
+    const events = view.episode.events
+    if (events) {
+      for (let i = events.length - 1; i >= 0; i--) {
+        const event = events[i]
+        if (event.type !== 'bump') continue
+        if (event.tick <= lastFeedBumpTick.current) break
+        if (event.stolen > 0) {
+          const youWon = event.winnerId === 'champion'
+          items = [...items, {
+            text: youWon
+              ? `You steal +${event.stolen} on bump`
+              : `Rival steals +${event.stolen} on bump`,
+            tone: 'info',
+          }]
+        }
+        lastFeedBumpTick.current = Math.max(lastFeedBumpTick.current, event.tick)
+        break
+      }
     }
     const floodedNow = view.episode.weather.flooded
     if (floodedNow !== lastFeedFlooded.current) {
@@ -1807,7 +1850,13 @@ function Workbench({
     }
   }
   const decisionCaption = champion
-    ? formatDecisionCaption({ agent: champion, observation: championObservation, flooded })
+    ? formatDecisionCaption({
+      agent: champion,
+      observation: championObservation,
+      flooded,
+      events: view.episode.events,
+      tick: view.episode.tick,
+    })
     : null
   const championIntent = decisionCaption?.line
     ?? (!champion
@@ -1858,7 +1907,7 @@ function Workbench({
           <h1>Watch it play. Then teach it.</h1>
           <p className={styles.lede}>
             {heroLedeMode(engagement) === 'loop-only'
-              ? <>Clash first: <strong>Skip to Clash</strong> for an unranked race, or Press <strong>Play</strong>. Tutor is optional depth — Prove locks coaching on Match.</>
+              ? <>Clash first: <strong>Skip to Clash</strong> for an unranked race, or Press <strong>Play</strong>. Prove locks coaching on a held-out Match.</>
               : <>A trained rover races for cores on its own — and Orbis broadcasts the match live as generated video. Hit <strong>Watch it broadcast live</strong>, or Play to replay a mistake, approve a fix and train a new brain.</>}
           </p>
         </div>
@@ -2035,15 +2084,13 @@ function Workbench({
           </div>
           {modeBanner && (
             <div className={styles.modeFlash} key={`${modeBanner.mode}-${modeBanner.handoff ? 'handoff' : 'select'}`} role="status">
-              <span>{modeBanner.mode === 'compete' ? 'MATCH' : modeBanner.mode === 'rush' ? 'RUSH' : 'PRACTICE'}</span>
+              <span>{modeBanner.mode === 'compete' ? 'PROVE' : 'CLASH'}</span>
               <p>{
                 modeBanner.mode === 'compete'
                   ? (modeBanner.handoff
                     ? withProverb('Held-out layout. Controls off. It walks through alone.', PROVERBS.handoff, flavourZh)
-                    : 'Held-out layout. Press Play when ready.')
-                  : modeBanner.mode === 'rush'
-                    ? 'Unranked race. Chase the mother cores and watch for bumps.'
-                    : 'Teach freely. Same world, practice floods.'
+                    : 'Prove — held-out layout. Coaching stays locked when you press Play.')
+                  : 'Clash — unranked race. Chassis perks live; Call steers this run.'
               }</p>
             </div>
           )}
@@ -2193,17 +2240,29 @@ function Workbench({
               disabled={view.phase !== 'ready' || isTraining || tournamentRunning || !!sharedReplay}
               onChange={next => switchRuleset(next)}
               onSkip={skipToSkirmish}
+              onProve={() => switchPlayMode('compete')}
+              proveSelected={playMode === 'compete'}
             />
           )}
-          {rulesetId === 'skirmish' ? (
-            <p className={`${styles.buildReadout} ${styles.rulesetModeNote}`}>Clash is the unranked race. Switch to Tutor above for coaching depth, Rush, or Prove (Match).</p>
-          ) : (
           <div className={styles.modeToggle} role="group" aria-label="Play door" data-flash={modeBanner?.mode ?? undefined}>
-            <button type="button" aria-pressed={playMode === 'practice'} disabled={view.phase !== 'ready' || isTraining} onClick={() => switchPlayMode('practice')}>Tutor</button>
-            <button type="button" aria-pressed={playMode === 'rush'} disabled={view.phase !== 'ready' || isTraining} onClick={() => switchPlayMode('rush')}>Rush</button>
-            <button type="button" aria-pressed={playMode === 'compete'} disabled={view.phase !== 'ready' || isTraining} onClick={() => switchPlayMode('compete')}>Prove</button>
+            <button
+              type="button"
+              aria-pressed={playMode !== 'compete'}
+              disabled={view.phase !== 'ready' || isTraining || (playMode !== 'compete' && (rulesetId === 'skirmish' || playMode === 'rush'))}
+              onClick={() => skipToSkirmish()}
+            >Clash</button>
+            <button
+              type="button"
+              aria-pressed={playMode === 'compete'}
+              disabled={view.phase !== 'ready' || isTraining || playMode === 'compete'}
+              onClick={() => switchPlayMode('compete')}
+            >Prove</button>
           </div>
-          )}
+          <p className={`${styles.buildReadout} ${styles.rulesetModeNote}`}>
+            {playMode === 'compete'
+              ? 'Prove locks coaching on a held-out Match. Switch to Clash for an unranked race with chassis perks.'
+              : 'Clash is the game — unranked race with chassis perks. Prove is the held-out test.'}
+          </p>
           {view.phase === 'review' && sharedReplayActive && sharedReplay && (
             <section className={styles.replayPanel} aria-label="Shared league replay">
               <div className={styles.replayHead}>
@@ -2291,11 +2350,11 @@ function Workbench({
           )}
           {engagement.showBroadcastPanel && <BroadcastPanel session={session} request={broadcastRequest} onFeedReady={() => startMatchRef.current()} />}
           <div className={styles.ruleCard}>
-            <strong>{playMode === 'compete' ? 'Scored match. No coaching.' : playMode === 'rush' ? 'Rush · unranked. Race for the mother cores.' : 'Collect. Bank. Survive the flood.'}</strong>
+            <strong>{playMode === 'compete' ? 'Prove — scored Match. No coaching.' : rulesetId === 'skirmish' || playMode === 'rush' ? 'Clash — unranked. Race for the mother cores.' : 'Clash — Collect. Bank. Survive the flood.'}</strong>
             {/* The paragraph is a second instruction competing with the lede on
                 arrival; the one-line rule and the legend carry the same idea. */}
             {engagement.showRulesDetail && (
-              <p>{playMode === 'compete' ? 'Same world, different flood and core layout. Weights stay frozen until you reset to Practice.' : playMode === 'rush' ? 'A full-load core spawns at the centre each wave. First rover there takes it; close encounters can steal cargo. Bank at your base before time runs out.' : `Grab cores and bank them at base. Floods slow the valley; a drain costs ${ARENA_RULES.drainCost} energy and helps both rovers.`}</p>
+              <p>{playMode === 'compete' ? 'Same world, different flood and core layout. Weights stay frozen until you reset to Clash.' : rulesetId === 'skirmish' || playMode === 'rush' ? 'A full-load core spawns at the centre each wave. First rover there takes it; close encounters can steal cargo. Bank at your base before time runs out.' : `Grab cores and bank them at base. Floods slow the valley; a drain costs ${ARENA_RULES.drainCost} energy and helps both rovers.`}</p>
             )}
             <div className={styles.legend}><span><i />High route</span><span><i />Floodable route</span></div>
           </div>
@@ -2328,7 +2387,7 @@ function Workbench({
               rulesetId={rulesetId}
               trainingConfig={trainingConfig}
               onTrainingConfigChange={handleTrainingConfigChange}
-              onForgedLookChange={setForgedLook}
+              onForgedLookChange={perkTelegraphDone ? setForgedLook : undefined}
             />
           </div>
         )}
