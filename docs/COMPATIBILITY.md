@@ -15,7 +15,7 @@ across a year of future work.
 | Simulation rules | `ARENA_RULES.version` | `season-0.reference.3` | `services/arenaEpisode.ts` |
 | Observation schema | observation `schemaVersion` | `arena-observation-v2` (v1 data still valid) | `services/arenaEpisode.ts` |
 | Recording schema | recording `schemaVersion` | `arena-recording-v1` | `services/arenaEpisode.ts` |
-| Motion controller | `ROVER_PHYSICS.version` / route fallback | `rapier-kinematic-terrain-0.19.2.v3` / `route-reference-v2` | `services/arenaPhysics.ts`, `services/arenaEpisode.ts` |
+| Motion controller | `ROVER_PHYSICS.version` / route fallback | `rapier-kinematic-terrain-0.19.2.v4` / `route-reference-v2` | `services/arenaPhysics.ts`, `services/arenaEpisode.ts` |
 | Checkpoint | `POLICY_SCHEMA_VERSION` | `season-0.checkpoint.v3` (v1/v2 metadata-readable) | `services/policyModel.ts` |
 | Encoder | `ENCODER_VERSION` / `OBSERVATION_FEATURE_DIM` | `season-0.encoder.v2` / 36 | `services/policyModel.ts` |
 | World | `ARENA_WORLD.version` + `colliderSha256` | `sandstone-basin-course-2` + `7633067b2624fb476f36adfb14e1a13b1325c71143fbd4d5087cfaf209c993af` | `services/arenaCourse.ts` |

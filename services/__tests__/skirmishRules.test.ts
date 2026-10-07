@@ -92,3 +92,4 @@ describe('skirmish contact radius bonus', () => {
     expect(() => new ArenaEpisode(withTraits([T({ contactRadiusBonus: 2 }), undefined]))).toThrow()
   })
 })
+

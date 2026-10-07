@@ -12,7 +12,7 @@ import {
   evaluatePolicyCheckpoint,
   type ArenaTrainingExample,
 } from '../policyTrainer'
-import { proposeCorrection, COACHING_RULES } from '../coachingEngine'
+import { coachingSampleWeights, comparisonRivalForCoaching, proposeCorrection, COACHING_RULES } from '../coachingEngine'
 import { ARENA_RULES, type ArenaObservation, type ArenaScenario } from '../arenaEpisode'
 
 function mockObservation(overrides: Partial<ArenaObservation> = {}): ArenaObservation {
@@ -262,5 +262,42 @@ describe('Browser coach-train stability (few-shot)', () => {
     // Deterministic: same inputs -> same artifact.
     const again = trainPolicyCheckpoint(SEASON_0_BASE_CHECKPOINT, examples, BROWSER_TRAINING_CONFIG)
     expect(again.weightsHash).toBe(trained.weightsHash)
+  })
+})
+
+describe('Weather-led coaching train', () => {
+  const BROWSER_TRAINING_CONFIG = {
+    epochs: 60,
+    learningRate: 0.008,
+    learningRateDecay: { atEpoch: 30, factor: 0.5 },
+  }
+
+  it('weights weather notes, compares vs weather, and prefers ridge after train', () => {
+    const obsFlooded = mockObservation({
+      weather: { flooded: true, drainedUntilTick: 0 },
+    })
+    const examples: ArenaTrainingExample[] = []
+    for (let i = 0; i < 10; i++) {
+      examples.push({
+        id: `wx-ridge-${i}`,
+        sourceEpisodeId: 'practice-board',
+        tick: 100 + i,
+        observation: obsFlooded,
+        originalAction: { type: 'move', edgeId: 'valley-road' },
+        preferredAction: { type: 'move', edgeId: 'ridge-road' },
+        rationale: 'Flooding is active; taking the non-floodable high ridge route avoids a 4x movement delay.',
+        approved: true,
+        source: 'approved',
+      })
+    }
+    expect(comparisonRivalForCoaching(examples, 'poach')).toBe('weather')
+    const sampleWeights = coachingSampleWeights(examples)
+    expect(sampleWeights).toEqual(Array(10).fill(2))
+    const trained = trainPolicyCheckpoint(SEASON_0_BASE_CHECKPOINT, examples, {
+      ...BROWSER_TRAINING_CONFIG,
+      sampleWeights,
+    })
+    const policy = createLearnedPolicy(trained)
+    expect(policy(obsFlooded)).toEqual({ type: 'move', edgeId: 'ridge-road' })
   })
 })

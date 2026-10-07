@@ -15,7 +15,7 @@ import { type PolicyCheckpoint, SEASON_0_BASE_CHECKPOINT } from '../../services/
 import { isBundledStarter, SEASON_0_STARTER_CHECKPOINT } from '../../services/starterCheckpoint'
 import { brainForRuleset } from '../../services/skirmishBrains'
 import { PROVERBS, useFlavourZh, withProverb } from '../../services/flavour'
-import { proposeCorrection, summarizeCoachFocus } from '../../services/coachingEngine'
+import { coachingSampleWeights, comparisonRivalForCoaching, proposeCorrection, summarizeCoachFocus } from '../../services/coachingEngine'
 import { rankCoachingCandidates, type CoachingCandidate } from '../../services/coachingCandidates'
 import { draftRecordedCorrection, recordedCoachContext } from '../../services/coachingReview'
 import { comparisonFrameAt, divergenceFrameIndex, type PracticeComparison } from '../../services/practiceComparison'
@@ -1368,9 +1368,10 @@ function Workbench({
     const parent = structuredClone(activeCheckpoint)
     const approved = structuredClone(examples.filter(e => e.approved))
     const practiceScenario = structuredClone(activeCourse.scenario)
-    const rivalOption: EntrantPolicyOption = view.policies.rival === 'learned'
+    const sessionRival: EntrantPolicyOption = view.policies.rival === 'learned'
       ? { strategy: 'learned', checkpoint: parent }
       : view.policies.rival
+    const rivalOption = comparisonRivalForCoaching(approved, sessionRival)
     const controllerVersion = view.episode.controllerVersion
     const abort = new AbortController()
     trainAbortRef.current?.abort()
@@ -1402,6 +1403,7 @@ function Workbench({
       learningRate: 0.008,
       learningRateDecay: { atEpoch: 30, factor: 0.5 },
       name: `${championIdentity.name} v${checkpoints.length} (+${approved.length})`,
+      sampleWeights: coachingSampleWeights(approved),
     }
     queueTrainingJobSync({
       jobId,
