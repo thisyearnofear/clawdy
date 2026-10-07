@@ -120,3 +120,39 @@ Reading it (vs v2 capacity-4 PvP: Scout–Hauler 21-58, Scout–Raider 52-28, Ha
 - No retrain this slice — honesty of house brains vs the new tax is "rules changed under them"; retrain later if a claimed eval needs brains that play the tax optimally.
 
 Records: `docs/eval-skirmish-pvp.json` (v4). Brains unchanged: `starter/skirmish-<chassis>.json`.
+
+
+### Skirmish v5: Raider contact-radius steal lever
+
+PR #7 / v4 left Raider trailing Scout **7–73** (Hauler↔Scout near-parity **40–38** kept). Lever sweep:
+
+- **Contact strength** alone saturates (no PvP move with the house Raider brain).
+- **Travel chase** vs Scout either stays weak or collapses Raider vs Hauler; removing Scout's +0.02 travel equalizes Raider↔Scout but undoes Hauler↔Scout parity (tax alone cannot replace that lead).
+- **House-bot retrain** under the tax/leads (`runs/sk-raider-v5-s11.json`) improved vs Scout slightly then went **0–72** vs Hauler — not shipped.
+- **`contactRadiusBonus`** (Raider-only, wider bump reach for steal-all) moves both matchups without touching Scout/Hauler leads.
+
+Shipped (Skirmish-only): Raider `contactRadiusBonus: 0.75`, contact lead **+1.50** (was +1.25), travel lead **+0.06** (unchanged). Scout travel +0.02 and Hauler capacity 4 / `cargoTravelTax: 0.22` unchanged. Brains: existing `starter/skirmish-*.json` (no retrain).
+
+Reproduce:
+
+```
+npx tsx scripts/bench-chassis-pvp.ts 40 --ruleset skirmish --write
+```
+
+Brain vs brain (80 matches per cell):
+
+| Row beats column | scout | hauler | raider |
+| --- | --- | --- | --- |
+| scout | - | 38-40-2 | 50-30-0 |
+| hauler | 40-38-2 | - | 44-34-2 |
+| raider | 30-50-0 | 34-44-2 | - |
+
+Mean banked scout:hauler ≈ 7.91:8.07 (unchanged). scout:raider ≈ 6.75:6.51; hauler:raider ≈ 7.72:6.79.
+
+Reading it (vs v4: Scout–Raider 73-7, Hauler–Raider 49-28):
+- **Hauler↔Scout near-parity held** (38-40).
+- **Raider is viable vs Scout** (30-50; mean banked within ~0.25) and **more competitive vs Hauler** (34-44). Still not a claimed RPS loop — Scout leads Raider, Hauler leads Raider, Scout≈Hauler.
+- Chassis fantasy stays distinct: Scout vision, Hauler capacity+tax, Raider steal-all + wider ram.
+- Residual: Raider still trails both; a steal-seeking retrain (or PvP-aware training) remains open if a claimed eval needs it.
+
+Records: `docs/eval-skirmish-pvp.json` (v5). Brains unchanged: `starter/skirmish-<chassis>.json`.

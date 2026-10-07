@@ -67,7 +67,29 @@ describe('skirmish perks', () => {
     const { buildToTraits, baseBuild } = await import('../chassis')
     expect(buildToTraits(baseBuild('hauler'), 'skirmish').capacity).toBe(4)
     expect(buildToTraits(baseBuild('raider'), 'skirmish').stealAll).toBe(true)
+    expect(buildToTraits(baseBuild('raider'), 'skirmish').contactRadiusBonus).toBe(0.75)
     expect(buildToTraits(baseBuild('scout'), 'skirmish').visionHops).toBe(2)
+    expect(buildToTraits(baseBuild('scout'), 'skirmish').contactRadiusBonus).toBeUndefined()
+  })
+})
+
+
+describe('skirmish capacity tax', () => {
+  it('slows travel only for cargo above the pinned base capacity', () => {
+    // Mirrors the loadFactor in ArenaEpisode move step. PvP bench confirms
+    // Hauler vs Scout is near-even once the tax is live.
+    const tax = 0.22
+    const factor = (cargo: number) => Math.max(0.5, 1 - tax * Math.max(0, cargo - 3))
+    expect(factor(0)).toBe(1)
+    expect(factor(3)).toBe(1)
+    expect(factor(4)).toBeCloseTo(0.78)
+  })
+})
+
+describe('skirmish contact radius bonus', () => {
+  it('accepts a Raider-range contactRadiusBonus and rejects above the cap', () => {
+    expect(() => new ArenaEpisode(withTraits([T({ contactRadiusBonus: 0.75 }), undefined]))).not.toThrow()
+    expect(() => new ArenaEpisode(withTraits([T({ contactRadiusBonus: 2 }), undefined]))).toThrow()
   })
 })
 

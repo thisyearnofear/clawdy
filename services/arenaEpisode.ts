@@ -52,6 +52,12 @@ export type EntrantTraits = {
    * is slower. Absent = 0 (Season 0 unchanged).
    */
   cargoTravelTax?: number
+  /**
+   * Extra metres added to the scenario contact radius when either rover has it.
+   * Raider steal fantasy: wider bump reach without a travel lead that races Scout.
+   * Absent = 0.
+   */
+  contactRadiusBonus?: number
 }
 export function capacityOf(agent: { traits?: EntrantTraits }): number {
   return agent.traits?.capacity ?? ARENA_RULES.capacity
@@ -260,7 +266,8 @@ function validateScenario(scenario: ArenaScenario) {
     Number.isFinite(traits.contactStrength) && Math.abs(traits.contactStrength) <= 5 &&
     (traits.capacity === undefined || (Number.isInteger(traits.capacity) && traits.capacity >= 1 && traits.capacity <= 8)) &&
     (traits.visionHops === undefined || (Number.isInteger(traits.visionHops) && traits.visionHops >= 1 && traits.visionHops <= 3)) &&
-    (traits.cargoTravelTax === undefined || (Number.isFinite(traits.cargoTravelTax) && traits.cargoTravelTax >= 0 && traits.cargoTravelTax <= 0.5)))), 'entrant traits')
+    (traits.cargoTravelTax === undefined || (Number.isFinite(traits.cargoTravelTax) && traits.cargoTravelTax >= 0 && traits.cargoTravelTax <= 0.5)) &&
+    (traits.contactRadiusBonus === undefined || (Number.isFinite(traits.contactRadiusBonus) && traits.contactRadiusBonus >= 0 && traits.contactRadiusBonus <= 1.5)))), 'entrant traits')
   assert(scenario.resources.every(resource => nodes.has(resource.nodeId) &&
     integer(resource.value, 1, 8) &&
     (resource.spawnTick === undefined || integer(resource.spawnTick, 0, scenario.durationTicks - 1))), 'resources')
@@ -713,7 +720,8 @@ export class ArenaEpisode {
     const [a, b] = state.agents
     const pa = desired.find(item => item.id === a.id)!.position
     const pb = desired.find(item => item.id === b.id)!.position
-    if (Math.hypot(pa[0] - pb[0], pa[2] - pb[2]) > rules.contactRadiusM) return
+    const radius = rules.contactRadiusM + Math.max(a.traits?.contactRadiusBonus ?? 0, b.traits?.contactRadiusBonus ?? 0)
+    if (Math.hypot(pa[0] - pb[0], pa[2] - pb[2]) > radius) return
     // Cooldown is derived from the event log, so restored snapshots and
     // replays behave exactly like the live run.
     // Event ticks are the tick at which the resulting state is published
