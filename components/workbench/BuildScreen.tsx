@@ -69,12 +69,12 @@ export function BuildScreen({
 
   return (
     <section className={styles.buildScreen} aria-labelledby={headingId}>
-      <h3 id={headingId}>Build for {rulesetId === 'skirmish' ? 'Skirmish' : 'Training Grounds'}</h3>
+      <h3 id={headingId}>Build for {rulesetId === 'skirmish' ? 'Clash' : 'Tutor'}</h3>
       <p className={styles.buildReadout}>{withProverb('Teach to the student: pick the chassis that fits how you want to coach.', PROVERBS.student, flavourZh)}</p>
       <p className={styles.buildReadout}>
         {rulesetId === 'skirmish'
-          ? 'Scout, Hauler, Raider and your speed, battery, and bump budget change how this unranked preview drives. Signature perks apply. The house rival uses a base Hauler.'
-          : 'Training Grounds keeps Season 0 rules — chassis is look-only here. Switch to Skirmish for Scout/Hauler/Raider perks and for speed, battery, and bump from your build.'}
+          ? 'Scout, Hauler, Raider and your speed, battery, and bump budget change how this Clash drives. Signature perks apply. The house rival uses a base Hauler.'
+          : 'Tutor keeps Season 0 rules — chassis is look-only here. Switch to Clash for Scout/Hauler/Raider perks and for speed, battery, and bump from your build.'}
       </p>
       <div className={styles.buildChassisRow} role="radiogroup" aria-labelledby={headingId}>
         {CHASSIS_IDS.map(id => {

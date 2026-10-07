@@ -17,20 +17,20 @@ describe('ruleset panels', () => {
   it('offers every locked player an explicit Skip-to-Skirmish CTA (arena-first)', () => {
     const html = picker({ canSkip: true })
     expect(html).toContain('aria-checked="true"')
-    expect(html).toContain('Skip to Skirmish — clash first')
-    expect(html).toContain('Training Grounds stays available')
+    expect(html).toContain('Skip to Clash — race first')
+    expect(html).toContain('Tutor stays available')
   })
 
   it('still hides the skip button when the caller has not granted canSkip', () => {
     // Disclosure decides canSkip; the picker only renders what it is told.
-    expect(picker()).not.toContain('Skip to Skirmish')
+    expect(picker()).not.toContain('Skip to Clash')
   })
 
-  it('keeps the unlock available when returning to Training Grounds', () => {
+  it('keeps the unlock available when returning to Tutor', () => {
     const html = picker({ unlocked: true })
-    expect(html).not.toContain('Skip to Skirmish')
+    expect(html).not.toContain('Skip to Clash')
     expect(html).not.toContain('disabled')
-    expect(html).toContain('Training Grounds')
+    expect(html).toContain('Tutor')
   })
 
   it('explains Skirmish without promising balance or stronger brains', () => {
@@ -39,7 +39,7 @@ describe('ruleset panels', () => {
     expect(html).toContain('up to its free space')
     expect(html).toContain('Scout sees two route hops')
     expect(html).toContain('not balanced')
-    expect(html).toContain('Unranked clash')
+    expect(html).toContain('Unranked race')
   })
 
   it('locks the picker during a run', () => {
@@ -55,9 +55,9 @@ describe('ruleset panels', () => {
     expect(render('skirmish')).toContain('whole load')
     expect(render('skirmish')).toContain('two route hops')
     expect(render('skirmish')).toContain('speed, battery, and bump')
-    expect(render()).toContain('No signature perk in Training Grounds')
+    expect(render()).toContain('No signature perk in Tutor')
     expect(render()).toContain('look-only')
-    expect(render()).toContain('Switch to Skirmish')
+    expect(render()).toContain('Switch to Clash')
     expect(render()).not.toContain('4 cargo')
   })
 
@@ -73,6 +73,6 @@ describe('ruleset panels', () => {
       drained: false, floodEndsIn: null, nextFloodIn: null, runTip: null, feed: [], error: null, onRetry: noop,
     }))
     expect(hud).toContain(`2/${capacity ?? 3}`)
-    expect(hud).toContain(capacity ? 'Skirmish' : 'Training Grounds')
+    expect(hud).toContain(capacity ? 'Clash' : 'Tutor')
   })
 })

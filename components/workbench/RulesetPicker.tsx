@@ -26,30 +26,30 @@ export function RulesetPicker({
         <button type="button" role="radio" aria-checked={rulesetId === undefined}
           className={styles.chassisPicker} data-selected={rulesetId === undefined}
           disabled={disabled} onClick={() => onChange(undefined)}>
-          <strong>Training Grounds</strong>
-          <span>Optional tutor. Learn the coaching loop when you want depth.</span>
+          <strong>Tutor</strong>
+          <span>Optional depth. Coaching loop when you want it.</span>
         </button>
         <button type="button" role="radio" aria-checked={rulesetId === 'skirmish'}
           className={styles.chassisPicker} data-selected={rulesetId === 'skirmish'}
           disabled={disabled || !unlocked} onClick={() => onChange('skirmish')}>
-          <strong>Skirmish</strong>
-          <span>Unranked clash. Each chassis has a signature perk.</span>
+          <strong>Clash</strong>
+          <span>Unranked race. Each chassis has a signature perk.</span>
         </button>
       </div>
       <p id={descriptionId} className={styles.buildReadout}>
         {rulesetId === 'skirmish'
-          ? "Hauler carries 4 cargo. Raider steals a whole load when it wins a bump, up to its free space. Scout sees two route hops. Existing brains can play; Skirmish is not balanced (the Hauler leads). House brains for each chassis are bundled."
+          ? "Hauler carries 4 cargo. Raider steals a whole load when it wins a bump, up to its free space. Scout sees two route hops. Existing brains can play; Clash is not balanced (the Hauler leads). House brains for each chassis are bundled."
           : 'Collect cores, bank at base and survive the flood. All chassis carry 3 cargo and see one route hop here.'}
       </p>
       {!unlocked && canSkip && (
         <button type="button" className={styles.primaryButton} disabled={disabled} onClick={onSkip}>
-          Skip to Skirmish — clash first
+          Skip to Clash — race first
         </button>
       )}
       <p className={styles.buildReadout}>
         {disabled ? 'Reset to a fresh setup to change rulesets.' : unlocked || canSkip
-          ? 'Training Grounds stays available whenever you want the tutor.'
-          : 'Publish your first brain to unlock Skirmish permanently.'}
+          ? 'Tutor stays available whenever you want the coaching depth.'
+          : 'Publish your first brain to unlock Clash permanently.'}
       </p>
     </section>
   )

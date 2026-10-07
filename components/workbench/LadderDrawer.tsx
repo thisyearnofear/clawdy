@@ -23,7 +23,7 @@ const MESSAGES: Record<string, string> = {
   'opponent-not-listed': 'That brain is not accepting challenges.',
   'mode-mismatch': 'Brains can only race within the same mode.',
   'ruleset-mismatch': 'Brains can only race within the same ruleset. Publish a separate entry for this ruleset.',
-  'build-required': 'Skirmish needs a saved chassis build. Open Lessons and build your rover first.',
+  'build-required': 'Clash needs a saved chassis build. Open Lessons and build your rover first.',
   'unknown-ruleset': 'This deployment does not support that ruleset yet.',
   'wrong-season': 'That brain belongs to a past season and cannot race now.',
   'brain-cap': 'You already have the maximum number of published brains. Remove one first.',
@@ -47,7 +47,7 @@ export function LadderDrawer({ open, onClose }: { open: boolean; onClose: () => 
   const checkpoint = useArenaStore(state => state.activeCheckpoint)
   const [rulesetId, setRulesetId] = useState<RulesetId | undefined>(undefined)
   const rulesetArgs = rulesetId ? { rulesetId } : {}
-  const rulesetName = rulesetId ? 'Skirmish' : 'Training Grounds'
+  const rulesetName = rulesetId ? 'Clash' : 'Tutor'
   const board = useQuery(api.ladder.top, open ? { limit: 10, ...rulesetArgs } : 'skip')
   const mine = useQuery(api.ladder.mine, open ? rulesetArgs : 'skip')
   const chassisBoard = useQuery(api.league.topByChassis, open ? rulesetArgs : 'skip')
@@ -132,13 +132,13 @@ export function LadderDrawer({ open, onClose }: { open: boolean; onClose: () => 
           <span>League ruleset</span>
           <select aria-label="League ruleset" value={rulesetId ?? ''} disabled={busy !== null || status.kind === 'running'}
             onChange={event => { setRulesetId(event.target.value === 'skirmish' ? 'skirmish' : undefined); setStatus({ kind: 'idle' }); setLastShareId(null) }}>
-            <option value="">Training Grounds</option>
-            <option value="skirmish">Skirmish</option>
+            <option value="">Tutor</option>
+            <option value="skirmish">Clash</option>
           </select>
         </label>
         <p className={styles.helpFooterNote}>
           {rulesetName} board and challenge pool. Ratings stay separate across rulesets.
-          {rulesetId && ' Skirmish is not balanced (the Hauler leads).'}
+          {rulesetId && ' Clash is not balanced (the Hauler leads).'}
         </p>
         <p className={styles.helpFooterNote}>
           <strong>Submit</strong> verifies a score on the ladder board (server vs house bots).
