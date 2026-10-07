@@ -50,6 +50,7 @@ describe('chassis-aware policy input', () => {
     for (const row of chassisAware.weights.hidden1.weights.slice(TIMETABLE_FEATURE_DIM)) expect(row.every(v => v === 0)).toBe(true)
     expect(chassisAware.parentCheckpointId).toBe(timetable.id)
     expect(extendCheckpointForChassis(chassisAware)).toBe(chassisAware)
+    expect(extendCheckpointForTimetable(chassisAware)).toBe(chassisAware)
   })
 
   it('refuses to skip the timetable step', () => {

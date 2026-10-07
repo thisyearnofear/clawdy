@@ -3,7 +3,7 @@
   "brains": {
     "scout": "es-g23-1942e2",
     "hauler": "es-g239-e242fd",
-    "raider": "es-g225-5f42f2"
+    "raider": "es-g53-df4305"
   },
   "result": {
     "scout-vs-scout": {
@@ -21,11 +21,11 @@
       "foe": 646
     },
     "scout-vs-raider": {
-      "wins": 50,
-      "losses": 30,
+      "wins": 51,
+      "losses": 29,
       "draws": 0,
-      "banked": 540,
-      "foe": 521
+      "banked": 560,
+      "foe": 548
     },
     "hauler-vs-scout": {
       "wins": 40,
@@ -42,32 +42,32 @@
       "foe": 528
     },
     "hauler-vs-raider": {
-      "wins": 44,
-      "losses": 34,
+      "wins": 41,
+      "losses": 37,
       "draws": 2,
-      "banked": 618,
-      "foe": 543
+      "banked": 677,
+      "foe": 630
     },
     "raider-vs-scout": {
-      "wins": 30,
-      "losses": 50,
+      "wins": 29,
+      "losses": 51,
       "draws": 0,
-      "banked": 521,
-      "foe": 540
+      "banked": 548,
+      "foe": 560
     },
     "raider-vs-hauler": {
-      "wins": 34,
-      "losses": 44,
+      "wins": 37,
+      "losses": 41,
       "draws": 2,
-      "banked": 543,
-      "foe": 618
+      "banked": 630,
+      "foe": 677
     },
     "raider-vs-raider": {
       "wins": 40,
       "losses": 40,
       "draws": 0,
-      "banked": 614,
-      "foe": 614
+      "banked": 650,
+      "foe": 650
     }
   }
 }

@@ -133,6 +133,17 @@ describe('ES training loop', () => {
     expect(score.wins + score.losses).toBeLessThanOrEqual(2)
   })
 
+  it('applies optional rival traits for PvP / steal-seek sparring', () => {
+    const withRival: EsContext = {
+      rushBase: tinyRush(),
+      opponents: ['safe'],
+      traits: { travelSpeed: 1.1, maxEnergy: 10, contactStrength: 2.5, stealAll: true, contactRadiusBonus: 0.75 },
+      opponentTraits: [{ travelSpeed: 1.1, maxEnergy: 9, contactStrength: -0.5, visionHops: 2 }],
+    }
+    const score = scoreCheckpoint(SEASON_0_STARTER_CHECKPOINT, [{ kind: 'train', seed: 1, opponent: 0 }], withRival)
+    expect(score.matches).toBe(2)
+  })
+
   it('is deterministic for a seed and never reports a regression as best', async () => {
     const run = async () => {
       const frames = []
