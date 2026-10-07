@@ -35,7 +35,7 @@ describe('computeNextStep — golden branch order (mirrors the pre-extraction Ar
       run: 'play',
     })
     expect(step({ phase: 'ready', playMode: 'rush' })).toEqual({
-      label: 'Press Play to start Rush (unranked)',
+      label: 'Press Play to start Skirmish',
       run: 'play',
     })
   })
@@ -68,7 +68,7 @@ describe('computeNextStep — golden branch order (mirrors the pre-extraction Ar
       run: null,
     })
     expect(step({ phase: 'review', coachingLocked: true })).toEqual({
-      label: 'Play → Replay → Coach → Train → Match',
+      label: 'Clash → Coach → Train → Match',
       run: null,
     })
   })
@@ -93,7 +93,7 @@ describe('computeNextStep — golden branch order (mirrors the pre-extraction Ar
 
   it('fallback line covers review+studio+locked combos', () => {
     expect(step({ phase: 'review', studioOpen: true, coachingLocked: true, approvedCount: 3 })).toEqual({
-      label: 'Play → Replay → Coach → Train → Match',
+      label: 'Clash → Coach → Train → Match',
       run: null,
     })
   })
@@ -214,5 +214,38 @@ describe('detectMistakeSignal — visible-error trigger for the first-mistake ca
       sinceTick: 198,
       lastOutcome: { tick: 195, accepted: false, reason: 'movement-blocked' },
     })).toBeNull()
+  })
+})
+
+describe('computeNextStep — arena-first Skirmish CTA', () => {
+  it('offers Skip to Skirmish on a ready Training Grounds session when allowed', () => {
+    expect(step({ canSkipToSkirmish: true })).toEqual({
+      label: 'Skip to Skirmish — clash first',
+      run: 'skip-skirmish',
+    })
+  })
+
+  it('keeps Play on Skirmish/Rush instead of re-offering skip', () => {
+    expect(step({ phase: 'ready', playMode: 'rush', rulesetId: 'skirmish', canSkipToSkirmish: false })).toEqual({
+      label: 'Press Play to start Skirmish',
+      run: 'play',
+    })
+  })
+
+  it('softens the post-round prompt for early sessions toward Clash again', () => {
+    expect(step({ phase: 'finished', engagementStage: 'first-visit' })).toEqual({
+      label: 'Clash again, or open Replay to coach',
+      run: 'play',
+    })
+    expect(step({ phase: 'finished', engagementStage: 'played' }).run).toBe('play')
+    expect(step({ phase: 'finished', engagementStage: 'trained' })).toEqual({
+      label: 'Open Replay, then Coach the miss',
+      run: 'review-coach',
+    })
+  })
+
+  it('still lets comparison and error outrank the Skirmish skip', () => {
+    expect(step({ canSkipToSkirmish: true, hasUnwatchedComparison: true }).run).toBe('watch-lesson')
+    expect(step({ canSkipToSkirmish: true, phase: 'error' }).run).toBe('retry')
   })
 })

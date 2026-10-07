@@ -10,6 +10,7 @@ export type NextStepAction =
   | 'coach'
   | 'train'
   | 'watch-lesson'
+  | 'skip-skirmish'
   | null
 
 export interface NextStepInput {
@@ -25,6 +26,15 @@ export interface NextStepInput {
    * changed its behaviour" becomes visible — so it outranks every other prompt.
    */
   hasUnwatchedComparison?: boolean
+  /**
+   * Arena-first: when true on a ready Training Grounds session, the next-step
+   * bar offers Skip-to-Skirmish ahead of the Practice curriculum.
+   */
+  canSkipToSkirmish?: boolean
+  /** Current ruleset — Skirmish sessions keep the clash-first ready label. */
+  rulesetId?: 'skirmish'
+  /** Soften Tutor rail copy for early sessions (Clash before Coach→Train→Match). */
+  engagementStage?: 'first-visit' | 'played' | 'trained'
 }
 
 /**
@@ -43,14 +53,31 @@ export function computeNextStep(state: NextStepInput): { label: string; run: Nex
   if (state.hasUnwatchedComparison) {
     return { label: 'Watch the lesson — see what your teaching changed', run: 'watch-lesson' }
   }
+  // Arena-first: before the Practice curriculum, offer Clash (Skirmish) as the
+  // primary CTA when the player can still skip. Tutor/Practice stay reachable.
+  if (
+    phase === 'ready'
+    && state.canSkipToSkirmish
+    && state.rulesetId !== 'skirmish'
+    && playMode !== 'compete'
+    && playMode !== 'rush'
+  ) {
+    return { label: 'Skip to Skirmish — clash first', run: 'skip-skirmish' }
+  }
   if (phase === 'ready' && playMode === 'compete') {
     return { label: 'Press Play — Match (coaching locked)', run: 'play' }
   }
-  if (phase === 'ready' && playMode === 'rush') return { label: 'Press Play to start Rush (unranked)', run: 'play' }
+  if (phase === 'ready' && (playMode === 'rush' || state.rulesetId === 'skirmish')) {
+    return { label: 'Press Play to start Skirmish', run: 'play' }
+  }
   if (phase === 'ready') return { label: 'Press Play to start Practice', run: 'play' }
   if (phase === 'running') return { label: 'Watch the race — Pause anytime', run: null }
   if (phase === 'paused') return { label: 'Resume, or open Replay', run: 'review' }
   if (phase === 'finished' && !coachingLocked) {
+    // Early sessions: Clash stays ahead of the Tutor depth path.
+    if (state.engagementStage === 'first-visit' || state.engagementStage === 'played') {
+      return { label: 'Clash again, or open Replay to coach', run: 'play' }
+    }
     return { label: 'Open Replay, then Coach the miss', run: 'review-coach' }
   }
   if (phase === 'finished' && coachingLocked) {
@@ -65,7 +92,8 @@ export function computeNextStep(state: NextStepInput): { label: string; run: Nex
   if (studioOpen && !coachingLocked && approvedCount > 0) {
     return { label: `Train from ${approvedCount} approved note${approvedCount === 1 ? '' : 's'}`, run: 'train' }
   }
-  return { label: 'Play → Replay → Coach → Train → Match', run: null }
+  // Softened rail: Clash before the Tutor depth chain.
+  return { label: 'Clash → Coach → Train → Match', run: null }
 }
 
 export interface MistakeSignal {

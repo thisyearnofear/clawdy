@@ -473,11 +473,11 @@ function Workbench({
     }, 15000)
   }, [view.phase, view.episode, playMode, mistakeMoment, flooded, activeCourse.scenario.edges, applySpeed])
 
-  // The mid-race verb: once per Practice run, offer to call the champion's next
-  // route while it is live. Scoped to practice — a scored Match locks coaching,
-  // so this can never touch a result.
+  // The mid-race verb: once per unranked run, offer to call the champion's next
+  // route while it is live. Scored Match locks coaching, so this can never
+  // touch a result; Practice and Rush/Skirmish both get the strong apply.
   useEffect(() => {
-    if (view.phase !== 'running' || playMode !== 'practice') return
+    if (view.phase !== 'running' || playMode === 'compete') return
     if (liveCall || liveCallUsedRef.current || isTraining) return
     let observation
     try {
@@ -571,6 +571,13 @@ function Workbench({
       setTrainMessage('That route is not available right now — the champion keeps its own plan for this run.')
       return
     }
+    // Strong apply: divert the live rover for the rest of this run. Still save
+    // the lesson for Train — Call-with-teeth, not suggestion-only.
+    try {
+      session.applyLiveCall('champion', edgeId)
+    } catch {
+      setTrainMessage("Couldn't steer this race — the lesson will still save for Train.")
+    }
     try {
       exampleCounter.current += 1
       // Recorded as an approved example directly: the player chose it live, in
@@ -592,9 +599,8 @@ function Workbench({
       // Deliberately does NOT open the Coach column. A call happens mid-race,
       // and expanding to a third column while the player is watching a flood
       // countdown is exactly the overstimulation this prompt caused. The
-      // lesson is saved and the status line confirms it; the player opens
-      // Coach when they choose, which is also where Approve and Train live.
-      setTrainMessage(`Live call saved — teach it ${routeLabel(edgeId)}. Finish the race, then open Lessons to approve and train.`)
+      // diversion is live; the lesson is saved for Train after the whistle.
+      setTrainMessage(`Route called — it's taking ${routeLabel(edgeId)} for this race. Lesson saved for Train.`)
     } catch {
       setTrainMessage("Couldn't save that call — pause and use Coach instead.")
     }
@@ -915,6 +921,11 @@ function Workbench({
     if (view.phase === 'finished') session.reset()
     setHintOpen(false)
     if (follow === 'overview') setFollow('champion')
+    // Light Tutor compress: first Play runs at 2× so the opening race feels
+    // snappier; beats still pull back to 1×. Returning players keep their last speed.
+    if (!hasCompletedRun && speedRef.current === 1 && (view.phase === 'ready' || view.phase === 'finished')) {
+      applySpeed(2)
+    }
     recordFunnelEvent('run.start', `mode=${playMode} from=${view.phase}`)
     session.start()
   }
@@ -1629,6 +1640,9 @@ function Workbench({
     studioOpen,
     approvedCount,
     hasUnwatchedComparison: comparison !== null && !comparisonWatched,
+    canSkipToSkirmish: skirmishDisclosure({ unlocked: skirmishUnlocked, hasCompletedRun, hasOwnBrain }).canSkip,
+    rulesetId,
+    engagementStage: engagement.stage,
   })
 
   const runNextStep = (action: string | null) => {
@@ -1642,6 +1656,7 @@ function Workbench({
       case 'coach': setStudioOpen(true); break
       case 'train': handleTrain(); break
       case 'watch-lesson': reviewComparisonRun('trained'); setComparisonWatched(true); break
+      case 'skip-skirmish': skipToSkirmish(); break
     }
   }
 
@@ -1653,7 +1668,7 @@ function Workbench({
           <h1>Watch it play. Then teach it.</h1>
           <p className={styles.lede}>
             {heroLedeMode(engagement) === 'loop-only'
-              ? <>Press <strong>Play</strong> and watch your rover race for cores on its own. Then coach it into your own.</>
+              ? <>Clash first: <strong>Skip to Skirmish</strong> for an unranked race, or Press <strong>Play</strong> on Training Grounds. Tutor stays ready when you want depth.</>
               : <>A trained rover races for cores on its own — and Orbis broadcasts the match live as generated video. Hit <strong>Watch it broadcast live</strong>, or Play to replay a mistake, approve a fix and train a new brain.</>}
           </p>
         </div>

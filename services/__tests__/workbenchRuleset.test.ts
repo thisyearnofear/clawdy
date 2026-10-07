@@ -14,8 +14,9 @@ const course: ArenaCourse = {
 }
 
 describe('workbench rulesets', () => {
-  it('offers skip only after a run or with a personal brain, and never removes unlocked access', () => {
-    expect(skirmishDisclosure({ unlocked: false, hasCompletedRun: false, hasOwnBrain: false })).toEqual({ canSelect: false, canSkip: false })
+  it('offers skip to every locked player (arena-first) and never removes unlocked access', () => {
+    // First visit is no longer gated behind finishing a lesson.
+    expect(skirmishDisclosure({ unlocked: false, hasCompletedRun: false, hasOwnBrain: false })).toEqual({ canSelect: false, canSkip: true })
     expect(skirmishDisclosure({ unlocked: false, hasCompletedRun: true, hasOwnBrain: false }).canSkip).toBe(true)
     expect(skirmishDisclosure({ unlocked: false, hasCompletedRun: false, hasOwnBrain: true }).canSkip).toBe(true)
     expect(skirmishDisclosure({ unlocked: true, hasCompletedRun: false, hasOwnBrain: false })).toEqual({ canSelect: true, canSkip: false })

@@ -14,16 +14,16 @@ const picker = (props: Partial<Parameters<typeof RulesetPicker>[0]> = {}) =>
   renderToStaticMarkup(createElement(RulesetPicker, { unlocked: false, onChange: noop, onSkip: noop, ...props }))
 
 describe('ruleset panels', () => {
-  it('offers returning players an explicit optional skip', () => {
+  it('offers every locked player an explicit Skip-to-Skirmish CTA (arena-first)', () => {
     const html = picker({ canSkip: true })
     expect(html).toContain('aria-checked="true"')
-    expect(html).toContain('Skip to Skirmish')
-    expect(html).toContain('Training Grounds is optional')
+    expect(html).toContain('Skip to Skirmish — clash first')
+    expect(html).toContain('Training Grounds stays available')
   })
 
-  it('keeps a new player on Training Grounds until publish or return', () => {
+  it('still hides the skip button when the caller has not granted canSkip', () => {
+    // Disclosure decides canSkip; the picker only renders what it is told.
     expect(picker()).not.toContain('Skip to Skirmish')
-    expect(picker()).toContain('Publish your first brain')
   })
 
   it('keeps the unlock available when returning to Training Grounds', () => {
@@ -39,7 +39,7 @@ describe('ruleset panels', () => {
     expect(html).toContain('up to its free space')
     expect(html).toContain('Scout sees two route hops')
     expect(html).toContain('not balanced')
-    expect(html).toContain('Unranked preview')
+    expect(html).toContain('Unranked clash')
   })
 
   it('locks the picker during a run', () => {

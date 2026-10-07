@@ -41,7 +41,7 @@ export function BootScreen({ error, onRetry }: { error: string | null; onRetry: 
           </ol>
         </div>
       )}
-      <small>Play → Replay → Coach — your coaching becomes real weights · No wallet · Practice first</small>
+      <small>Clash → Coach → Train — your coaching becomes real weights · No wallet · Skirmish first</small>
     </section>
   )
 }

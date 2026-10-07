@@ -27,13 +27,13 @@ export function RulesetPicker({
           className={styles.chassisPicker} data-selected={rulesetId === undefined}
           disabled={disabled} onClick={() => onChange(undefined)}>
           <strong>Training Grounds</strong>
-          <span>Learn the coaching loop. Original Season 0 rules.</span>
+          <span>Optional tutor. Learn the coaching loop when you want depth.</span>
         </button>
         <button type="button" role="radio" aria-checked={rulesetId === 'skirmish'}
           className={styles.chassisPicker} data-selected={rulesetId === 'skirmish'}
           disabled={disabled || !unlocked} onClick={() => onChange('skirmish')}>
           <strong>Skirmish</strong>
-          <span>Unranked preview. Each chassis has a signature perk.</span>
+          <span>Unranked clash. Each chassis has a signature perk.</span>
         </button>
       </div>
       <p id={descriptionId} className={styles.buildReadout}>
@@ -42,14 +42,14 @@ export function RulesetPicker({
           : 'Collect cores, bank at base and survive the flood. All chassis carry 3 cargo and see one route hop here.'}
       </p>
       {!unlocked && canSkip && (
-        <button type="button" className={styles.secondaryButton} disabled={disabled} onClick={onSkip}>
-          Skip to Skirmish
+        <button type="button" className={styles.primaryButton} disabled={disabled} onClick={onSkip}>
+          Skip to Skirmish — clash first
         </button>
       )}
       <p className={styles.buildReadout}>
         {disabled ? 'Reset to a fresh setup to change rulesets.' : unlocked || canSkip
-          ? 'Training Grounds is optional and stays available after you skip.'
-          : 'Publish your first brain to unlock Skirmish. Returning players and players with their own brain can skip.'}
+          ? 'Training Grounds stays available whenever you want the tutor.'
+          : 'Publish your first brain to unlock Skirmish permanently.'}
       </p>
     </section>
   )

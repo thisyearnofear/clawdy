@@ -258,6 +258,23 @@ export class ArenaSession {
     })
   }
 
+
+  /**
+   * Strong-apply a mid-race Live Call: divert the entrant toward `edgeId` for
+   * the rest of this run. Practice/Rush only — scored Matches refuse it.
+   */
+  applyLiveCall(agentId: string, edgeId: string) {
+    this.#assertActive()
+    this.#assertNotScored('apply a live call')
+    if (this.#view.phase !== 'running' && this.#view.phase !== 'paused') {
+      throw new Error('Live calls only apply during a live run')
+    }
+    if (!this.#course.scenario.entrants.some(entrant => entrant.id === agentId)) {
+      throw new Error('Unknown entrant')
+    }
+    this.#runner.forceRoutePreference(agentId, edgeId)
+  }
+
   pause() {
     this.#assertActive()
     if (this.#view.phase === 'running') {
