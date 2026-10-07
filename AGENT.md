@@ -103,7 +103,7 @@ The new reference modules are:
 - `services/matchTimeline.ts`: deterministic forecast of presentation beats (contested ground, floods, banks, rescues, finish) used by the director and BeatTimeline; advisory only, never scoring input.
 - `services/practiceComparison.ts`: frozen parent/child practice evidence (`comparePracticeCheckpoints` re-runs both checkpoints headlessly on the same practice scenario and rival through isolated instances of the live controller/physics; `comparisonFrameAt` samples sparse/nonuniform recordings by actual checkpoint ticks).
 - `services/behaviourDelta.ts`: pure reduction of two champion decision traces into what actually changed — decisions moved, action-class shifts, and rejection deltas (`summarizeBehaviourChange`, `describeBehaviourChange`). Makes the trained checkpoint legible in the lesson card instead of leaving the player with a loss number. Derived from comparison evidence already collected; never touches the sim.
-- `services/liveCall.ts`: the mid-race coaching verb. `liveCallContext` decides when an unranked run offers "call the next route" and which alternatives are legal, reading `observation.availableActions` as the authoritative legal set (running candidates through `applyControllerRules` instead would collapse every proposal to `wait` off a decision tick and silently yield zero options). Choosing a route strongly applies via `wrapPolicyWithLiveCall` / `ArenaSession.applyLiveCall` for the rest of that race and still saves a training example. Scored Matches keep the coaching lock so a call cannot influence a result.
+- `services/liveCall.ts`: the mid-race coaching verb. `liveCallContext` decides when an unranked run offers "call the next route" and which alternatives are legal, reading `observation.availableActions` as the authoritative legal set (running candidates through `applyControllerRules` instead would collapse every proposal to `wait` off a decision tick and silently yield zero options). Choosing a route strongly applies for the rest of that run via destination-sticky preference (`resolveLiveCallPreference` + `wrapPolicyWithLiveCall`) and still saves a Train lesson; scored Matches stay locked.
 - `services/trainingProtocol.ts` + `services/trainingWorker.ts` + `components/utils/useCoachingWorker.ts`: the off-thread coach path. Training (60 epochs), both practice comparison matches, and the beat forecast run in a worker so the canvas never stalls at the payoff moment. The worker rebuilds its own Rapier world from the pinned terrain GLB (hash-verified) and caches it across jobs rather than structured-cloning collider arrays per run. Worker CPU output must stay bit-identical to the main-thread path — the eval gate is what proves it.
 - `services/arenaSound.ts`: quiet native Web Audio cues (no assets) that stay muted until an explicit gesture, dedupe by match/tick/action, and stay silent in review/training/headless phases.
 - `services/checkpointStorage.ts`: browser `localStorage` persistence, JSON import/export, and validation.
@@ -135,9 +135,10 @@ access to something they have already unlocked.
   front of the player it collapses behind a one-line hint. Also decides whether sync
   trouble is loud or quiet — a cloud problem is never the player's mistake and must not
   outrank the Approve/Train buttons above it.
-- `services/workbenchFlow.ts`: the next-step label/action machine, including
-  `hasUnwatchedComparison`, which outranks every prompt except settling and error because
-  watching the lesson is the payoff the whole product exists to deliver.
+- `services/workbenchFlow.ts`: the next-step label/action machine. After Train,
+  `hasUnwatchedComparison` attaches an optional "See what changed" CTA beside the
+  primary next-step (Play / Clash again) — comparison stays available but never
+  forces another watch as the sole next action.
 
 `services/engagementProgress.ts` persists the two engagement signals to localStorage.
 Deliberately not synced: a shared browser unlocking the advanced surface is harmless, and

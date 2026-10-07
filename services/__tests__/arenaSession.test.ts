@@ -3,6 +3,7 @@ import { ArenaSession } from '../arenaSession'
 import { ArenaRunner } from '../arenaPolicy'
 import type { ArenaCourse } from '../arenaCourse'
 import type { ArenaMotion } from '../arenaPhysics'
+import type { LiveCallPreference } from '../liveCall'
 
 function setup() {
   const course: ArenaCourse = {
@@ -354,5 +355,26 @@ describe('application episode session', () => {
     expect(skippedSnap.agents.map(a => a.banked)).toEqual(watchedSnap.agents.map(a => a.banked))
     watched.session.dispose()
     skipped.session.dispose()
+  })
+})
+
+describe('ArenaSession.applyLiveCall — sticky divert for unranked runs', () => {
+  it('applies a destination preference during a live run', () => {
+    const { session } = setup()
+    const preference: LiveCallPreference = { calledEdgeId: 'road', preferredNodeId: 'b' }
+    expect(() => session.applyLiveCall('champion', preference)).toThrow(/live run/)
+    session.start()
+    expect(() => session.applyLiveCall('champion', preference)).not.toThrow()
+    expect(() => session.applyLiveCall('nobody', preference)).toThrow(/Unknown entrant/)
+    session.dispose()
+  })
+
+  it('refuses live calls on scored matches', () => {
+    const { session } = setup()
+    session.setScored(true)
+    session.start()
+    const preference: LiveCallPreference = { calledEdgeId: 'road', preferredNodeId: 'b' }
+    expect(() => session.applyLiveCall('champion', preference)).toThrow(/scored match/)
+    session.dispose()
   })
 })

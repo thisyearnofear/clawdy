@@ -3,6 +3,7 @@ import type { ArenaMotion } from './arenaPhysics'
 import type { SurfaceSample } from './worldSurface'
 import { type ArenaObservation, type ArenaRecording, type ArenaSnapshot, observeSnapshot } from './arenaEpisode'
 import { ArenaRunner, type CollectorStrategy, type EntrantPolicyOption } from './arenaPolicy'
+import type { LiveCallPreference } from './liveCall'
 import { type PolicyCheckpoint, SEASON_0_BASE_CHECKPOINT } from './policyModel'
 import { type ArenaEvent, type ArenaEventListener, type ArenaPhase } from './arenaProtocol'
 
@@ -258,12 +259,13 @@ export class ArenaSession {
     })
   }
 
-
   /**
-   * Strong-apply a mid-race Live Call: divert the entrant toward `edgeId` for
-   * the rest of this run. Practice/Rush only — scored Matches refuse it.
+   * Strong-apply a mid-race Live Call: divert the entrant toward the called
+   * destination for the rest of this run. Practice/Rush only — scored Matches
+   * refuse it. Preference remembers destination node so sticky divert still
+   * fires after the rover leaves the call-time junction.
    */
-  applyLiveCall(agentId: string, edgeId: string) {
+  applyLiveCall(agentId: string, preference: LiveCallPreference) {
     this.#assertActive()
     this.#assertNotScored('apply a live call')
     if (this.#view.phase !== 'running' && this.#view.phase !== 'paused') {
@@ -272,7 +274,7 @@ export class ArenaSession {
     if (!this.#course.scenario.entrants.some(entrant => entrant.id === agentId)) {
       throw new Error('Unknown entrant')
     }
-    this.#runner.forceRoutePreference(agentId, edgeId)
+    this.#runner.forceRoutePreference(agentId, preference)
   }
 
   pause() {

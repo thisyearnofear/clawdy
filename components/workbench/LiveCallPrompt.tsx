@@ -6,9 +6,10 @@ import styles from '../environment/ArenaScene.module.css'
 import { friendlyActionLabel, routeLabel } from './readouts'
 
 /**
- * The mid-race coaching verb. Appears once per Practice/Rush run at a decision
- * tick and offers the legal alternative routes. Picking one diverts the rover
- * for the rest of this race and records a human-approved training note.
+ * The mid-race coaching verb. Appears once per unranked run at a decision tick
+ * and offers the legal alternative routes. Picking one diverts the rover toward
+ * that destination for the rest of this race and records a human-approved
+ * training note for Train.
  */
 export function LiveCallPrompt({
   context,
@@ -29,7 +30,7 @@ export function LiveCallPrompt({
         </button>
       </div>
       <p className={styles.liveCallHint}>
-        It&rsquo;s driving <em>{friendlyActionLabel(context.plannedAction!)}</em>. Pick a different route — it takes that path for the rest of this race, and the note trains after.
+        It&rsquo;s driving <em>{friendlyActionLabel(context.plannedAction!)}</em>. Pick a different route — it heads that way for the rest of this race, and the note trains after.
       </p>
       <div className={styles.liveCallOptions}>
         {context.routeOptions.map(option => (

@@ -1,16 +1,28 @@
 import { describe, expect, it } from 'vitest'
 import type { ArenaAction, ArenaObservation } from '../arenaEpisode'
-import { applyLiveCallToAction, liveCallContext, wrapPolicyWithLiveCall } from '../liveCall'
+import {
+  applyLiveCallToAction,
+  edgeDestinationNode,
+  liveCallContext,
+  resolveLiveCallPreference,
+  wrapPolicyWithLiveCall,
+  type LiveCallPreference,
+} from '../liveCall'
 
-function observation(edgeIds: string[]): ArenaObservation {
+function observation(opts: {
+  nodeId: string
+  edges: { id: string; from: string; to: string; travelTicks?: number }[]
+  legalEdgeIds: string[]
+}): ArenaObservation {
   return {
-    availableActions: edgeIds.map(edgeId => ({ type: 'move', edgeId })),
-    edges: edgeIds.map((id, i) => ({
-      id,
-      from: 'a',
-      to: 'b',
+    self: { nodeId: opts.nodeId },
+    availableActions: opts.legalEdgeIds.map(edgeId => ({ type: 'move', edgeId })),
+    edges: opts.edges.map((edge, i) => ({
+      id: edge.id,
+      from: edge.from,
+      to: edge.to,
       length: 1,
-      currentTravelTicks: 10 + i,
+      currentTravelTicks: edge.travelTicks ?? 10 + i,
       floodable: false,
     })),
   } as unknown as ArenaObservation
@@ -18,7 +30,15 @@ function observation(edgeIds: string[]): ArenaObservation {
 
 describe('liveCallContext', () => {
   it('offers legal alternatives once the race is far enough along', () => {
-    const obs = observation(['ridge', 'valley', 'short'])
+    const obs = observation({
+      nodeId: 'a',
+      edges: [
+        { id: 'ridge', from: 'a', to: 'b' },
+        { id: 'valley', from: 'a', to: 'c' },
+        { id: 'short', from: 'a', to: 'd' },
+      ],
+      legalEdgeIds: ['ridge', 'valley', 'short'],
+    })
     const ctx = liveCallContext({
       tick: 150,
       durationTicks: 600,
@@ -31,47 +51,138 @@ describe('liveCallContext', () => {
   })
 
   it('stays quiet after a call or when only one alternative exists', () => {
+    const obs = observation({
+      nodeId: 'a',
+      edges: [
+        { id: 'ridge', from: 'a', to: 'b' },
+        { id: 'valley', from: 'a', to: 'c' },
+      ],
+      legalEdgeIds: ['ridge', 'valley'],
+    })
     expect(liveCallContext({
       tick: 150,
       durationTicks: 600,
-      observation: observation(['ridge', 'valley']),
+      observation: obs,
       plannedAction: { type: 'move', edgeId: 'ridge' },
       alreadyCalled: true,
     })).toBeNull()
     expect(liveCallContext({
       tick: 150,
       durationTicks: 600,
-      observation: observation(['ridge', 'valley']),
+      observation: obs,
       plannedAction: { type: 'move', edgeId: 'ridge' },
       alreadyCalled: false,
     })).toBeNull()
   })
 })
 
-describe('applyLiveCallToAction — strong apply for the current run', () => {
+describe('resolveLiveCallPreference — destination sticky', () => {
+  it('remembers the destination node from the call-time junction', () => {
+    const obs = observation({
+      nodeId: 'junction',
+      edges: [{ id: 'valley', from: 'junction', to: 'core-spot' }],
+      legalEdgeIds: ['valley'],
+    })
+    expect(resolveLiveCallPreference(obs, 'valley')).toEqual({
+      calledEdgeId: 'valley',
+      preferredNodeId: 'core-spot',
+    })
+    expect(edgeDestinationNode({ from: 'core-spot', to: 'junction' }, 'junction')).toBe('core-spot')
+  })
+
+  it('returns null for an unknown edge', () => {
+    const obs = observation({ nodeId: 'a', edges: [], legalEdgeIds: [] })
+    expect(resolveLiveCallPreference(obs, 'missing')).toBeNull()
+  })
+})
+
+describe('applyLiveCallToAction — strong sticky apply', () => {
+  const preference: LiveCallPreference = { calledEdgeId: 'valley', preferredNodeId: 'core-spot' }
+
   it('takes the called edge when it is legal', () => {
-    const obs = observation(['ridge', 'valley', 'short'])
+    const obs = observation({
+      nodeId: 'junction',
+      edges: [
+        { id: 'ridge', from: 'junction', to: 'ridge-end' },
+        { id: 'valley', from: 'junction', to: 'core-spot' },
+      ],
+      legalEdgeIds: ['ridge', 'valley'],
+    })
     const base: ArenaAction = { type: 'move', edgeId: 'ridge' }
-    expect(applyLiveCallToAction({ observation: obs, calledEdgeId: 'valley', baseAction: base })).toEqual({
-      type: 'move',
-      edgeId: 'valley',
+    expect(applyLiveCallToAction({ observation: obs, preference, baseAction: base })).toEqual({
+      action: { type: 'move', edgeId: 'valley' },
+      status: 'applied',
     })
   })
 
-  it('falls through to the base action when the called edge is not legal', () => {
-    const obs = observation(['ridge', 'short'])
+  it('prefers any legal move toward the destination when the exact edge is gone', () => {
+    // Rover is elsewhere; a different edge also reaches core-spot.
+    const obs = observation({
+      nodeId: 'side',
+      edges: [
+        { id: 'ridge', from: 'side', to: 'ridge-end' },
+        { id: 'alt-to-core', from: 'side', to: 'core-spot' },
+      ],
+      legalEdgeIds: ['ridge', 'alt-to-core'],
+    })
+    const base: ArenaAction = { type: 'move', edgeId: 'ridge' }
+    expect(applyLiveCallToAction({ observation: obs, preference, baseAction: base })).toEqual({
+      action: { type: 'move', edgeId: 'alt-to-core' },
+      status: 'applied',
+    })
+  })
+
+  it('defers to the base action until a legal junction can honor the call', () => {
+    const obs = observation({
+      nodeId: 'elsewhere',
+      edges: [
+        { id: 'ridge', from: 'elsewhere', to: 'ridge-end' },
+        { id: 'short', from: 'elsewhere', to: 'short-end' },
+      ],
+      legalEdgeIds: ['ridge', 'short'],
+    })
     const base: ArenaAction = { type: 'wait' }
-    expect(applyLiveCallToAction({ observation: obs, calledEdgeId: 'valley', baseAction: base })).toEqual(base)
+    expect(applyLiveCallToAction({ observation: obs, preference, baseAction: base })).toEqual({
+      action: base,
+      status: 'deferred',
+    })
   })
 })
 
 describe('wrapPolicyWithLiveCall — divert for the rest of the run', () => {
-  it('prefers the called edge on later ticks whenever it is legal', () => {
+  it('re-applies at the next legal junction via destination sticky', () => {
+    const preference: LiveCallPreference = { calledEdgeId: 'valley', preferredNodeId: 'core-spot' }
     const base = () => ({ type: 'move', edgeId: 'ridge' }) as ArenaAction
-    const wrapped = wrapPolicyWithLiveCall(base, 'valley')
-    expect(wrapped(observation(['ridge', 'valley']))).toEqual({ type: 'move', edgeId: 'valley' })
-    // In transit / wrong junction: fall through until the edge returns.
-    expect(wrapped(observation(['ridge', 'short']))).toEqual({ type: 'move', edgeId: 'ridge' })
-    expect(wrapped(observation(['valley', 'short']))).toEqual({ type: 'move', edgeId: 'valley' })
+    const wrapped = wrapPolicyWithLiveCall(base, preference)
+
+    // Exact edge legal.
+    expect(wrapped(observation({
+      nodeId: 'junction',
+      edges: [
+        { id: 'ridge', from: 'junction', to: 'r' },
+        { id: 'valley', from: 'junction', to: 'core-spot' },
+      ],
+      legalEdgeIds: ['ridge', 'valley'],
+    }))).toEqual({ type: 'move', edgeId: 'valley' })
+
+    // Wrong junction: fall through until destination is reachable.
+    expect(wrapped(observation({
+      nodeId: 'elsewhere',
+      edges: [
+        { id: 'ridge', from: 'elsewhere', to: 'r' },
+        { id: 'short', from: 'elsewhere', to: 's' },
+      ],
+      legalEdgeIds: ['ridge', 'short'],
+    }))).toEqual({ type: 'move', edgeId: 'ridge' })
+
+    // Later junction: different edge to the same destination still honors the call.
+    expect(wrapped(observation({
+      nodeId: 'side',
+      edges: [
+        { id: 'ridge', from: 'side', to: 'r' },
+        { id: 'alt-to-core', from: 'side', to: 'core-spot' },
+      ],
+      legalEdgeIds: ['ridge', 'alt-to-core'],
+    }))).toEqual({ type: 'move', edgeId: 'alt-to-core' })
   })
 })
