@@ -71,8 +71,8 @@ export function BuildScreen({
       <p className={styles.buildReadout}>{withProverb('Teach to the student: pick the chassis that fits how you want to coach.', PROVERBS.student, flavourZh)}</p>
       <p className={styles.buildReadout}>
         {rulesetId === 'skirmish'
-          ? 'Your build applies to this unranked preview. The house rival uses a base Hauler.'
-          : 'This course keeps the original rules. Your chassis changes its look here; build stats apply in build-enabled matches.'}
+          ? 'Scout, Hauler, Raider and your speed, battery, and bump budget change how this unranked preview drives. Signature perks apply. The house rival uses a base Hauler.'
+          : 'Training Grounds keeps Season 0 rules — chassis is look-only here. Switch to Skirmish for Scout/Hauler/Raider perks and for speed, battery, and bump from your build.'}
       </p>
       <div className={styles.buildChassisRow} role="radiogroup" aria-labelledby={headingId}>
         {CHASSIS_IDS.map(id => {

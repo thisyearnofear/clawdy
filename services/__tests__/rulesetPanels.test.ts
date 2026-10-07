@@ -54,7 +54,10 @@ describe('ruleset panels', () => {
     expect(render('skirmish')).toContain('4 cargo')
     expect(render('skirmish')).toContain('whole load')
     expect(render('skirmish')).toContain('two route hops')
+    expect(render('skirmish')).toContain('speed, battery, and bump')
     expect(render()).toContain('No signature perk in Training Grounds')
+    expect(render()).toContain('look-only')
+    expect(render()).toContain('Switch to Skirmish')
     expect(render()).not.toContain('4 cargo')
   })
 

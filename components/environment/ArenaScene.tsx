@@ -80,7 +80,7 @@ import { BeatTimeline } from '../workbench/BeatTimeline'
 import { BootScreen } from '../workbench/BootScreen'
 import { BrandHeader } from '../workbench/BrandHeader'
 import { CoachPanel } from '../workbench/CoachPanel'
-import type { ForgedLook } from '../../services/forgeView'
+import { alignBuildToForgedLook, type ForgedLook } from '../../services/forgeView'
 import { LessonComparison } from '../workbench/LessonComparison'
 import { LiveCallPrompt } from '../workbench/LiveCallPrompt'
 import { HelpDrawer } from '../workbench/HelpDrawer'
@@ -160,6 +160,8 @@ function Workbench({
       return baseBuild(DEFAULT_BUILD.chassis)
     }
   })
+  const buildRef = useRef(build)
+  useEffect(() => { buildRef.current = build })
   const [coachNudgeOpen, setCoachNudgeOpen] = useState(false)
   // Stream B training controls. These configure the evolution-strategy builder
   // (`services/trainingConfig.ts`), NOT the pinned browser trainer below — the
@@ -1162,6 +1164,19 @@ function Workbench({
       setTrainMessage(`Build applied, but it wouldn't save to this browser: ${err instanceof Error ? err.message : 'storage unavailable'}.`)
     }
   }
+
+  // Forge-with-teeth: adopting a forged body sets Build chassis so Skirmish
+  // traits match the look. Budget points stay when the chassis already matches.
+  // Depend only on the look identity so a later Build chassis change is not forced back.
+  const forgedLookKey = forgedLook ? `${forgedLook.forgeId}|${forgedLook.chassis}` : ''
+  useEffect(() => {
+    if (!forgedLook) return
+    const aligned = alignBuildToForgedLook(buildRef.current, forgedLook)
+    if (aligned.chassis === buildRef.current.chassis) return
+    handleBuildChange(aligned)
+    // forgedLookKey captures forgeId+chassis; handleBuildChange reads live gates.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forgedLookKey])
 
   const handleTrainingConfigChange = (next: TrainingConfig) => {
     if (!isValidTrainingConfig(next)) {

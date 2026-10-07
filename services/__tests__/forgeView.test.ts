@@ -8,11 +8,14 @@ import {
   latestFailure,
   parseLookChoice,
   pendingForge,
+  alignBuildToForgedLook,
   pickForgedLook,
   readyForges,
   type ForgeRow,
 } from '../forgeView'
 import { resolveForgedModel } from '../chassisAssets'
+import { baseBuild } from '../chassis'
+import { setAxisLevel } from '../buildBudget'
 
 function row(id: string, createdAt: number, status: ForgeRow['status'], extra: Partial<ForgeRow> = {}): ForgeRow {
   return { id, chassis: 'raider', paint: 'ember', status, createdAt, url: status === 'ready' ? `https://files.example/${id}` : null, error: null, ...extra }
@@ -85,5 +88,28 @@ describe('resolveForgedModel', () => {
 
   it('uses an identity transform for an unknown chassis rather than throwing', () => {
     expect(resolveForgedModel('tank', 'https://files.example/t').transform).toEqual({ position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] })
+  })
+})
+
+describe('alignBuildToForgedLook', () => {
+  it('leaves the build alone for the standard look or an unknown chassis', () => {
+    const build = baseBuild('hauler')
+    expect(alignBuildToForgedLook(build, null)).toBe(build)
+    expect(alignBuildToForgedLook(build, { forgeId: 'x', chassis: 'tank', url: 'https://x' })).toBe(build)
+  })
+
+  it('keeps budget points when the forged chassis already matches', () => {
+    const tuned = setAxisLevel(baseBuild('scout'), 'speed', 6)
+    const look = { forgeId: 's', chassis: 'scout', url: 'https://s' }
+    expect(alignBuildToForgedLook(tuned, look)).toBe(tuned)
+    expect(alignBuildToForgedLook(tuned, look).points.speed).toBe(6)
+  })
+
+  it('switches to the forged chassis base when the look differs from the build', () => {
+    const tuned = setAxisLevel(baseBuild('hauler'), 'hardiness', 6)
+    const look = { forgeId: 'r', chassis: 'raider', url: 'https://r' }
+    const aligned = alignBuildToForgedLook(tuned, look)
+    expect(aligned).toEqual(baseBuild('raider'))
+    expect(aligned.points.hardiness).toBe(baseBuild('raider').points.hardiness)
   })
 })

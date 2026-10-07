@@ -1,5 +1,6 @@
 import { ConvexError } from 'convex/values'
 import { FORGE_MESSAGES, type ForgeErrorCode } from './forge'
+import { baseBuild, CHASSIS_IDS, type Build, type ChassisId } from './chassis'
 
 /**
  * What the Forge panel shows and which forged rover is the champion's look.
@@ -22,6 +23,20 @@ export interface ForgedLook {
   chassis: string
   url: string
 }
+
+/**
+ * Using a forged body should set drive identity to that chassis. When the look's
+ * chassis already matches the build, keep the player's budget points. When it
+ * differs, switch to that chassis base (same as picking it on the Build screen).
+ * Standard look (null) leaves the build alone.
+ */
+export function alignBuildToForgedLook(build: Build, look: ForgedLook | null): Build {
+  if (!look) return build
+  if (!(CHASSIS_IDS as readonly string[]).includes(look.chassis)) return build
+  if (build.chassis === look.chassis) return build
+  return baseBuild(look.chassis as ChassisId)
+}
+
 
 /** localStorage key holding the player's look choice. Absent or 'auto' means the newest ready forge. */
 export const FORGED_LOOK_KEY = 'clawdy.forgedLook'
