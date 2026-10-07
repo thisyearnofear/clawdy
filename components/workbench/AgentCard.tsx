@@ -18,6 +18,7 @@ export function AgentCard({
   focusVector,
   focusNote,
   compact = false,
+  decisionLine,
 }: {
   agent: ArenaAgentState
   policy: CollectorStrategy
@@ -34,6 +35,8 @@ export function AgentCard({
    * landing view hard to parse.
    */
   compact?: boolean
+  /** Shared mid-run caption from real decision data (planned · alt · reason). */
+  decisionLine?: string | null
 }) {
   const champion = agent.id === 'champion'
   const look = championIdentity ? getChampionLook(championIdentity.lookId) : null
@@ -123,7 +126,7 @@ export function AgentCard({
           <div><dt>Recovery</dt><dd>{agent.recoveries}</dd></div>
         </dl>
       )}
-      <p className={styles.decision}>{describeArenaDecision(agent)}</p>
+      <p className={styles.decision}>{decisionLine ?? describeArenaDecision(agent)}</p>
     </section>
   )
 }

@@ -2,7 +2,7 @@
 
 **Coach an agent. Train its policy. Unleash it in the arena. Watch it adapt — or fail.**
 
-Clawdy is an agent-training league inside a physical world. You coach a rover through practice, approve training examples, run real backpropagation to produce a versioned policy checkpoint, and then unleash that checkpoint in a held-out scenario where the coaching controls go dark. The arena throws variables your bot was never trained on — flooding, resource scarcity, rival adaptation, terrain costs — and you find out whether your coaching held.
+Clawdy is a **Clash-first** agent league inside a physical world: Clash is the game; Tutor is optional depth. Race an unranked Clash, Call a route that steers the run and queues a lesson, then coach through Tutor when you want weight updates. Prove on a held-out Match where coaching goes dark. The arena throws flooding, scarcity, rivals, and terrain costs — and you find out whether your coaching held.
 
 > The payoff is watching your agent use something you taught it when you are no longer allowed to help — and finding out whether your coaching held when the arena throws something it has never seen.
 
@@ -13,7 +13,7 @@ Clawdy is an agent-training league inside a physical world. You coach a rover th
 **Play → Call → Replay → Coach → Train → Match.**
 
 1. Press **Play** and watch two autonomous rovers race for cores (highlighted amber routes are flood-sensitive).
-2. **Call the next route** — once per Practice run, at a junction, pick the route your champion should take. It records an approved lesson without steering the current race, so nothing you call can touch a scored result.
+2. **Call the next route** — once per unranked run (Clash / Practice / Rush), at a junction, pick the route your champion should take. Call **steers this race** for the rest of the run via a sticky route preference, and queues an approved Train lesson. Scored Prove (Match) stays locked — nothing you call can touch a scored result.
 3. Open **Replay** — watch it back as an event-driven cinematic, or scrub a mistake and queue a fix; the review frame ranks the top-3 outcome-measured alternatives beside the coach's keyword match.
 4. Open **Coach**, approve examples, and train a real checkpoint.
 5. Switch to **Match** for a scored held-out layout with coaching locked.
@@ -22,14 +22,14 @@ After training, the lesson card leads with **what your brain actually changed** 
 
 ## Two Entry Paths, One Entrant Format
 
-- **Player path** — web app. Practice/Match modes, replay scrub + cinematic reel, seeded tournament brackets vs the house field, Coach panel, browser `localStorage` checkpoints, JSON import/export.
+- **Player path** — web app. Clash / Tutor / Prove doors, replay scrub + cinematic reel, seeded tournament brackets vs the house field, Coach panel, browser `localStorage` checkpoints, JSON import/export.
 - **Builder path** — `npm run starter:train`. Headless train/eval, export `starter/champion-checkpoint.json`, import in the web app.
 
 Both paths produce the same checkpoint artifact and run under the same match rules.
 
 ## Live
 
-**Play:** [https://clawdy.trustfall.xyz/](https://clawdy.trustfall.xyz/) — Practice → Call → Replay → Coach → Train → Match. No wallet. Checkpoints sync to Convex under a browser guest key when configured; `localStorage` + JSON export always work offline.
+**Play:** [https://clawdy.trustfall.xyz/](https://clawdy.trustfall.xyz/) — Clash → Call → (Tutor) Replay → Coach → Train → Prove. No wallet. Checkpoints sync to Convex under a browser guest key when configured; `localStorage` + JSON export always work offline.
 
 ### Saving your progress
 

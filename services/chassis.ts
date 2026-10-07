@@ -115,6 +115,14 @@ export const MAX_TRAVEL_SPEED = 1.33
 /** Rulesets that give each chassis a signature rule. Absent = Training Grounds (Season 0). */
 export type RulesetId = 'skirmish'
 
+/** First-minute Skirmish callouts — chassis identity before Forge. */
+export const SKIRMISH_PERK_TELEGRAPH = Object.freeze({
+  all: 'Perks live: Hauler carries 4 · Raider steals a whole load on bump · Scout sees 2 hops',
+  scout: 'Your Scout sees two route hops — look past the next junction before you commit.',
+  hauler: 'Your Hauler carries 4 cargo — a full bed is slower, so bank big or bank often.',
+  raider: 'Your Raider steals a whole load when it wins a bump, up to free cargo space.',
+} as const)
+
 export const SKIRMISH_PERKS: Record<ChassisId, Pick<EntrantTraits, 'capacity' | 'stealAll' | 'visionHops' | 'cargoTravelTax' | 'contactRadiusBonus'>> = {
   // Scout: two-hop vision (encoder already sees visible far cores).
   scout: { visionHops: 2 },

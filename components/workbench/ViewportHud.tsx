@@ -22,6 +22,8 @@ interface ViewportHudProps {
   score: { you: number; foe: number; cargo: number } | null
   agent?: Pick<ArenaAgentState, 'traits'>
   rulesetId?: string
+  /** Player-facing door: Clash / Tutor / Prove / Rush. */
+  door?: string
   intent?: string | null
   clock: string
   flooded: boolean
@@ -34,13 +36,13 @@ interface ViewportHudProps {
   onRetry: () => void
 }
 
-export function ViewportHud({ phase, isMatch, sideHint, score, agent, rulesetId, intent, clock, flooded, drained, floodEndsIn, nextFloodIn, runTip, feed, error, onRetry }: ViewportHudProps) {
+export function ViewportHud({ phase, isMatch, sideHint, score, agent, rulesetId, door, intent, clock, flooded, drained, floodEndsIn, nextFloodIn, runTip, feed, error, onRetry }: ViewportHudProps) {
   return (
     <>
       <div className={styles.worldTopline}>
         <div>
           <span className={styles.liveDot} data-active={phase === 'running'} />
-          {PHASE_LABELS[phase]}{rulesetId === 'skirmish' ? ' · Skirmish' : ' · Training Grounds'}{isMatch ? ' · Match' : rulesetId === 'skirmish' ? ' · Unranked preview' : ' · Practice'}
+          {PHASE_LABELS[phase]}{door ? ` · ${door}` : rulesetId === 'skirmish' ? ' · Clash' : isMatch ? ' · Prove' : ' · Tutor'}
           {score && (
             <span className={styles.scorebug} aria-label={`Score: you ${score.you}, rival ${score.foe}`}>
               {' · '}<strong className={styles.you}>{score.you}</strong>

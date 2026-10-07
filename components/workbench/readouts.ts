@@ -1,4 +1,5 @@
-import type { ArenaAction, ArenaAgentState } from '../../services/arenaEpisode'
+import type { ArenaAction, ArenaAgentState, ArenaObservation } from '../../services/arenaEpisode'
+import { formatDecisionCaption } from '../../services/decisionCaption'
 import type { CollectorStrategy } from '../../services/arenaPolicy'
 import { POLICY_SCHEMA_VERSION, type PolicyCheckpoint } from '../../services/policyModel'
 import { routeLabel, stationLabel } from '../../services/routeLabels'
@@ -77,14 +78,22 @@ export function friendlyActionLabel(action: ArenaAction): string {
   return 'wait'
 }
 
-export function describeArenaDecision(agent: ArenaAgentState): string {
-  if (agent.recoveries > 0 && agent.lastOutcome?.reason === 'movement-blocked') return 'Blocked route. Recovered to the last safe station.'
+export function describeArenaDecision(
+  agent: ArenaAgentState,
+  options?: { observation?: ArenaObservation | null; flooded?: boolean },
+): string {
+  if (agent.recoveries > 0 && agent.lastOutcome?.reason === 'movement-blocked') {
+    return 'Blocked route. Recovered to the last safe station.'
+  }
+  const caption = formatDecisionCaption({
+    agent,
+    observation: options?.observation,
+    flooded: options?.flooded,
+  })
+  if (caption) return caption.line
   const outcome = agent.lastOutcome
   if (!outcome) return 'Waiting for the first observation.'
   if (!outcome.accepted) return `Action rejected: ${outcome.reason?.replaceAll('-', ' ')}.`
-  if (agent.transit) {
-    return `Heading to ${stationLabel(agent.transit.to)} via ${routeLabel(agent.transit.edgeId, agent.transit.to)}.`
-  }
   if (outcome.action?.type === 'bank') return 'Delivered cargo to base.'
   if (outcome.action?.type === 'collect') return 'Collected an energy core.'
   if (outcome.action?.type === 'drain') return 'Spent energy to clear the low routes.'

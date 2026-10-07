@@ -62,11 +62,11 @@ export function HelpDrawer({ open, onClose }: { open: boolean; onClose: () => vo
           <button type="button" className={styles.helpClose} onClick={onClose} aria-label="Close help">Close</button>
         </div>
         <ol className={styles.helpSteps}>
-          <li><strong>Watch</strong> a Practice round — your rover races the house rival.</li>
-          <li><strong>Call the next route</strong> once per Practice run: at a junction, pick the route it should take. Your call is saved as an approved lesson — it does not steer the current race.</li>
-          <li><strong>Teach</strong> in Replay: scrub to a decision, prefer a different legal route or action, draft the correction.</li>
+          <li><strong>Clash</strong> first — Skip to Clash (Skirmish) for an unranked race, or Press Play. Tutor stays optional for depth.</li>
+          <li><strong>Call the next route</strong> once per unranked run: at a junction, pick the route it should take. Call <em>steers this race</em> for the rest of the run and queues an approved Train lesson. Scored Prove (Match) stays locked.</li>
+          <li><strong>Teach</strong> in Replay (Tutor depth): scrub to a decision, prefer a different legal route or action, draft the correction.</li>
           <li><strong>Open Lessons</strong> to approve what you taught, then <strong>Train</strong> a new brain and compare the two recorded runs.</li>
-          <li>Switch to <strong>Match</strong> to test it with coaching locked.</li>
+          <li>Switch to <strong>Prove</strong> (Match) to test it with coaching locked.</li>
         </ol>
         <dl className={styles.helpFaq}>
           <div>
@@ -74,8 +74,8 @@ export function HelpDrawer({ open, onClose }: { open: boolean; onClose: () => vo
             <dd>Navigation, legal actions, pickup and full-cargo return are shared controller rules. Coaching changes route preferences, target choices and supported interventions — nothing else.</dd>
           </div>
           <div>
-            <dt>Practice vs Match?</dt>
-            <dd>Practice is for teaching. Match uses a held-out layout and freezes coaching.</dd>
+            <dt>Clash vs Tutor vs Prove?</dt>
+            <dd>Clash (Skirmish) is the unranked race. Tutor is optional coaching depth. Prove (Match) uses a held-out layout and freezes coaching.</dd>
           </div>
           <div>
             <dt>How do I train?</dt>
@@ -87,7 +87,7 @@ export function HelpDrawer({ open, onClose }: { open: boolean; onClose: () => vo
           </div>
           <div>
             <dt>Name & look?</dt>
-            <dd>Open “Champion setup” on your card while Practice is Ready. Saved in this browser.</dd>
+            <dd>Open “Champion setup” on your card while Ready. Saved in this browser.</dd>
           </div>
           <div>
             <dt>How do I save?</dt>
