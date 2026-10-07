@@ -236,7 +236,7 @@ describe('Rush arena on the grounded basin', () => {
       expect(physical.snapshot().status).toBe('finished')
       for (const snap of [routeOnly.snapshot(), physical.snapshot()]) {
         expect(snap.agents.every(agent => Number.isFinite(agent.banked))).toBe(true)
-        expect(snap.events.length).toBeGreaterThan(0)
+        expect(snap.events?.length ?? 0).toBeGreaterThan(0)
       }
     } finally {
       motion.dispose()
