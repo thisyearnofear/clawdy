@@ -590,6 +590,27 @@ the collider's. The renderer multiplies a procedural, tileable grain/bump textur
 - `CHASSIS_FEATURE_DIM` (41 = timetable 38 + speed, battery, bump strength) is a third input shape. Like the timetable shape it opts in through layer size only, via `extendCheckpointForChassis` (zero rows, same edge head as the timetable shape). 36- and 38-input checkpoints keep their exact behavior.
 - Build legality is `validateBuild` in `services/chassis.ts` (escalating cost). It is not part of any pin.
 
+### Normal-aligned slope plant (controller v4)
+
+- **What (physics, controller v4):** ride height is aligned to the terrain
+  surface normal and the yaw-relative plant is computed from the follow
+  ray, so a rover on a slope sits flush instead of floating level. `grounded`
+  now derives from the successful ground follow hit. XZ translation on
+  slopes shifts slightly, so physics-backed legs (grounded + family, and
+  physics-aware rollout labels in the distill) diverge from the v3 pin;
+  abstract legs are unchanged.
+- **Migration:** `ROVER_PHYSICS.version` → `rapier-kinematic-terrain-0.19.2.v4`.
+  v3 recordings replay under v4 with rotation stripped (rotation-equivalent);
+  sloped courses may soft-diverge on position. `rules-mismatch` for
+  `ARENA_RULES.version` is untouched — rules stay `season-0.reference.3`.
+- **Artifacts:** gate pin re-pinned via `eval:gate -- --update` →
+  distill `53f3d95c3d9b` (claims: abstract 8/8 within 1, wins 3=3, physics
+  12/12, frames 24/24). Grounded flipped to trained 28 vs safe 27; family
+  trails 56 vs 68. The shipped starter checkpoint is unchanged at
+  `525eba353d75` — `build-starter`'s guard refused the v4 distill because
+  it banked less on the grounded practice course (artifact quality is
+  gated separately from gate reproduction).
+
 ## 6. Non-goals
 - No cross-version *execution*: a v1 checkpoint is never run under v2 rules "to see
   what happens". Cross-version comparison happens in the eval harness on matched

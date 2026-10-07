@@ -203,14 +203,12 @@ function Workbench({
   const prevRecoveriesRef = useRef(0)
   const prevObservedTickRef = useRef(0)
   const [playbackPref, setPlaybackPref] = useState(() => loadPlaybackPreference())
-  const [speed, setSpeedState] = useState<SessionSpeed>(() => {
-    const pref = loadPlaybackPreference()
-    return pref.playerChoseSpeed && pref.lastSpeed ? pref.lastSpeed : 1
-  })
-  const speedRef = useRef<SessionSpeed>(1)
+  const [speed, setSpeedState] = useState<SessionSpeed>(() =>
+    playbackPref.playerChoseSpeed && playbackPref.lastSpeed ? playbackPref.lastSpeed : 1)
+  const speedRef = useRef<SessionSpeed>(speed)
   const preferredSpeedRef = useRef<SessionSpeed>(FIRST_RUN_PLAY_SPEED)
   const playbackPrefRef = useRef(playbackPref)
-  playbackPrefRef.current = playbackPref
+  useEffect(() => { playbackPrefRef.current = playbackPref }, [playbackPref])
   const beatRealtimeTimer = useRef<number | null>(null)
   // Director's track: a headless clone of this run computes where the beats
   // will land. Keyed by matchId so a reset/mode switch can't serve stale
@@ -227,17 +225,18 @@ function Workbench({
     session.setSpeed(next)
     setSpeedState(next)
   }, [session])
-  // Mirror stored preference into refs once on mount (SSR-safe defaults above).
+  // Mirror stored preference into refs and the external session once on mount
+  // (React state already hydrated via the SSR-safe initializers above).
   useEffect(() => {
     const pref = loadPlaybackPreference()
     if (pref.playerChoseSpeed && pref.lastSpeed) {
       preferredSpeedRef.current = pref.lastSpeed
-      applySpeed(pref.lastSpeed)
+      speedRef.current = pref.lastSpeed
+      session.setSpeed(pref.lastSpeed)
     } else {
       preferredSpeedRef.current = FIRST_RUN_PLAY_SPEED
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot boot hydrate from localStorage
-  }, [session, applySpeed])
+  }, [session])
   // Watchable beats pull FF to 1×; schedule restore of the snappy preferred
   // speed unless the player has chosen their own multiplier.
   const pullToWatchableRealtime = useCallback(() => {
