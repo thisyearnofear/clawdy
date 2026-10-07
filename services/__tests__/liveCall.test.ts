@@ -186,3 +186,30 @@ describe('wrapPolicyWithLiveCall — divert for the rest of the run', () => {
     }))).toEqual({ type: 'move', edgeId: 'alt-to-core' })
   })
 })
+
+describe('liveCallContext route labels', () => {
+  it('gives distinct readable labels when two valley edges are legal', () => {
+    const obs = observation({
+      nodeId: 'champion-base',
+      edges: [
+        { id: 'valley-cb-n1', from: 'champion-base', to: 'valley-n1', travelTicks: 10 },
+        { id: 'valley-cb-vc', from: 'champion-base', to: 'valley-center', travelTicks: 12 },
+        { id: 'base-cb-rn', from: 'champion-base', to: 'ridge-north', travelTicks: 14 },
+      ],
+      legalEdgeIds: ['valley-cb-n1', 'valley-cb-vc', 'base-cb-rn'],
+    })
+    const context = liveCallContext({
+      tick: 200,
+      durationTicks: 1200,
+      observation: obs,
+      plannedAction: { type: 'move', edgeId: 'base-cb-rn' },
+      alreadyCalled: false,
+    })
+    expect(context).not.toBeNull()
+    const labels = context!.routeOptions.map(option => option.label)
+    expect(labels).toContain('the valley → valley n1')
+    expect(labels).toContain('the valley → valley center')
+    expect(new Set(labels).size).toBe(labels.length)
+    expect(labels.every(label => !label.startsWith('valley-'))).toBe(true)
+  })
+})

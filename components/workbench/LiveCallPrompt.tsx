@@ -3,7 +3,7 @@
 import { Compass, X } from 'lucide-react'
 import type { LiveCallContext } from '../../services/liveCall'
 import styles from '../environment/ArenaScene.module.css'
-import { friendlyActionLabel, routeLabel } from './readouts'
+import { friendlyActionLabel } from './readouts'
 
 /**
  * The mid-race coaching verb. Appears once per unranked run at a decision tick
@@ -40,7 +40,7 @@ export function LiveCallPrompt({
             className={styles.liveCallOption}
             onClick={() => onCall(option.edgeId)}
           >
-            <span>{routeLabel(option.edgeId)}</span>
+            <span>{option.label}</span>
             <small>{option.travelTicks}t</small>
           </button>
         ))}

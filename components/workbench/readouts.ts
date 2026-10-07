@@ -1,6 +1,9 @@
 import type { ArenaAction, ArenaAgentState } from '../../services/arenaEpisode'
 import type { CollectorStrategy } from '../../services/arenaPolicy'
 import { POLICY_SCHEMA_VERSION, type PolicyCheckpoint } from '../../services/policyModel'
+import { routeLabel, stationLabel } from '../../services/routeLabels'
+
+export { disambiguateRouteLabels, routeLabel, stationLabel } from '../../services/routeLabels'
 
 /**
  * v1 checkpoints remain metadata-readable (lineage, export) but must never
@@ -66,14 +69,6 @@ export function actionLabel(action: ArenaAction): string {
   return action.type
 }
 
-export function routeLabel(edgeId: string): string {
-  if (edgeId.includes('ridge')) return 'the ridge'
-  if (edgeId.includes('valley')) return 'the valley'
-  if (edgeId.includes('shortcut') || edgeId.includes('diag')) return 'the shortcut'
-  if (edgeId.includes('cross')) return 'the cross trail'
-  return edgeId
-}
-
 export function friendlyActionLabel(action: ArenaAction): string {
   if (action.type === 'move') return `take ${routeLabel(action.edgeId)}`
   if (action.type === 'collect') return 'collect the core'
@@ -88,7 +83,7 @@ export function describeArenaDecision(agent: ArenaAgentState): string {
   if (!outcome) return 'Waiting for the first observation.'
   if (!outcome.accepted) return `Action rejected: ${outcome.reason?.replaceAll('-', ' ')}.`
   if (agent.transit) {
-    return `Heading to ${agent.transit.to} via ${routeLabel(agent.transit.edgeId)}.`
+    return `Heading to ${stationLabel(agent.transit.to)} via ${routeLabel(agent.transit.edgeId, agent.transit.to)}.`
   }
   if (outcome.action?.type === 'bank') return 'Delivered cargo to base.'
   if (outcome.action?.type === 'collect') return 'Collected an energy core.'

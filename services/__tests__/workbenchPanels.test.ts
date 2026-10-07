@@ -134,10 +134,13 @@ describe('LessonComparison presentation', () => {
       onWatch: noop,
       onJumpToDivergence: noop,
     }))
+    expect(html).toContain('Fresh re-run · Parent vs Trained')
     expect(html).toContain('Score change')
     expect(html).toContain('-2')
-    expect(html).toContain('No different accepted decisions on this practice run.')
-    expect(html).toContain('Matched physical practice, not held-out or ranked')
+    expect(html).toContain('No different accepted decisions on this fresh re-run.')
+    expect(html).toContain('fresh matched re-run')
+    expect(html).toContain('not the race you just coached')
+    expect(html).toContain('Matched physical practice (not held-out or ranked)')
     expect(html).not.toContain('Improvement')
   })
 
