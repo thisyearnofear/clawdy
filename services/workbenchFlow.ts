@@ -27,14 +27,13 @@ export interface NextStepInput {
    */
   hasUnwatchedComparison?: boolean
   /**
-   * Arena-first: when true on a ready Training Grounds session, the next-step
-   * bar offers Skip-to-Skirmish ahead of the Practice curriculum.
+   * True when the player can enter Skirmish now (unlocked, or skip-eligible
+   * after a completed run / own brain). Used so "Clash again" after Practice
+   * does not require they already skipped. Supersedes #5 canSkipToSkirmish.
    */
-  canSkipToSkirmish?: boolean
-  /** Current ruleset — Skirmish sessions keep the clash-first ready label. */
+  canEnterSkirmish?: boolean
+  /** Current ruleset — Skirmish sessions keep clash-again on Play. */
   rulesetId?: 'skirmish'
-  /** Soften Tutor rail copy for early sessions (Clash before Coach→Train→Match). */
-  engagementStage?: 'first-visit' | 'played' | 'trained'
 }
 
 /**
@@ -53,16 +52,14 @@ export function computeNextStep(state: NextStepInput): { label: string; run: Nex
   if (state.hasUnwatchedComparison) {
     return { label: 'Watch the lesson — see what your teaching changed', run: 'watch-lesson' }
   }
-  // Arena-first: before the Practice curriculum, offer Clash (Skirmish) as the
-  // primary CTA when the player can still skip. Tutor/Practice stay reachable.
   if (
     phase === 'ready'
-    && state.canSkipToSkirmish
+    && state.canEnterSkirmish
     && state.rulesetId !== 'skirmish'
     && playMode !== 'compete'
     && playMode !== 'rush'
   ) {
-    return { label: 'Skip to Skirmish — clash first', run: 'skip-skirmish' }
+    return { label: 'Clash in Skirmish — or Press Play to practice', run: 'skip-skirmish' }
   }
   if (phase === 'ready' && playMode === 'compete') {
     return { label: 'Press Play — Match (coaching locked)', run: 'play' }
@@ -74,8 +71,11 @@ export function computeNextStep(state: NextStepInput): { label: string; run: Nex
   if (phase === 'running') return { label: 'Watch the race — Pause anytime', run: null }
   if (phase === 'paused') return { label: 'Resume, or open Replay', run: 'review' }
   if (phase === 'finished' && !coachingLocked) {
-    // Early sessions: Clash stays ahead of the Tutor depth path.
-    if (state.engagementStage === 'first-visit' || state.engagementStage === 'played') {
+    // Fun-first (#7): after Practice finish, route into Skirmish when enterable.
+    if (state.rulesetId !== 'skirmish' && state.canEnterSkirmish) {
+      return { label: 'Clash in Skirmish — unranked race', run: 'skip-skirmish' }
+    }
+    if (state.rulesetId === 'skirmish') {
       return { label: 'Clash again, or open Replay to coach', run: 'play' }
     }
     return { label: 'Open Replay, then Coach the miss', run: 'review-coach' }
@@ -92,7 +92,7 @@ export function computeNextStep(state: NextStepInput): { label: string; run: Nex
   if (studioOpen && !coachingLocked && approvedCount > 0) {
     return { label: `Train from ${approvedCount} approved note${approvedCount === 1 ? '' : 's'}`, run: 'train' }
   }
-  // Softened rail: Clash before the Tutor depth chain.
+  // Softened rail from #5 arena-first: Clash before the Tutor depth chain.
   return { label: 'Clash → Coach → Train → Match', run: null }
 }
 

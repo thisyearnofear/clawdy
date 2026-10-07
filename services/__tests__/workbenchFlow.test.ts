@@ -38,6 +38,10 @@ describe('computeNextStep — golden branch order (mirrors the pre-extraction Ar
       label: 'Press Play to start Skirmish',
       run: 'play',
     })
+    expect(step({ phase: 'ready', playMode: 'practice', rulesetId: 'skirmish' })).toEqual({
+      label: 'Press Play to start Skirmish',
+      run: 'play',
+    })
   })
 
   it('running has no action', () => {
@@ -217,35 +221,66 @@ describe('detectMistakeSignal — visible-error trigger for the first-mistake ca
   })
 })
 
-describe('computeNextStep — arena-first Skirmish CTA', () => {
-  it('offers Skip to Skirmish on a ready Training Grounds session when allowed', () => {
-    expect(step({ canSkipToSkirmish: true })).toEqual({
-      label: 'Skip to Skirmish — clash first',
+describe('computeNextStep — Clash into Skirmish after Practice', () => {
+  it('routes finished Practice into Skirmish when the player can enter', () => {
+    expect(step({
+      phase: 'finished',
+      playMode: 'practice',
+      canEnterSkirmish: true,
+    })).toEqual({
+      label: 'Clash in Skirmish — unranked race',
       run: 'skip-skirmish',
     })
   })
 
-  it('keeps Play on Skirmish/Rush instead of re-offering skip', () => {
-    expect(step({ phase: 'ready', playMode: 'rush', rulesetId: 'skirmish', canSkipToSkirmish: false })).toEqual({
-      label: 'Press Play to start Skirmish',
+  it('does not require they already skipped — canEnter alone is enough', () => {
+    // Residual: replaying Practice when they never skipped.
+    const result = step({
+      phase: 'finished',
+      playMode: 'practice',
+      canEnterSkirmish: true,
+      rulesetId: undefined,
+    })
+    expect(result.run).toBe('skip-skirmish')
+    expect(result.run).not.toBe('play')
+  })
+
+  it('on Skirmish finish, Clash again replays Skirmish', () => {
+    expect(step({
+      phase: 'finished',
+      playMode: 'rush',
+      rulesetId: 'skirmish',
+      canEnterSkirmish: true,
+    })).toEqual({
+      label: 'Clash again, or open Replay to coach',
       run: 'play',
     })
   })
 
-  it('softens the post-round prompt for early sessions toward Clash again', () => {
-    expect(step({ phase: 'finished', engagementStage: 'first-visit' })).toEqual({
-      label: 'Clash again, or open Replay to coach',
-      run: 'play',
-    })
-    expect(step({ phase: 'finished', engagementStage: 'played' }).run).toBe('play')
-    expect(step({ phase: 'finished', engagementStage: 'trained' })).toEqual({
+  it('falls back to coach when Skirmish is not yet enterable', () => {
+    expect(step({
+      phase: 'finished',
+      playMode: 'practice',
+      canEnterSkirmish: false,
+    })).toEqual({
       label: 'Open Replay, then Coach the miss',
       run: 'review-coach',
     })
   })
 
-  it('still lets comparison and error outrank the Skirmish skip', () => {
-    expect(step({ canSkipToSkirmish: true, hasUnwatchedComparison: true }).run).toBe('watch-lesson')
-    expect(step({ canSkipToSkirmish: true, phase: 'error' }).run).toBe('retry')
+  it('ready Training Grounds offers Clash when enterable', () => {
+    expect(step({
+      phase: 'ready',
+      playMode: 'practice',
+      canEnterSkirmish: true,
+    }).run).toBe('skip-skirmish')
+  })
+
+  it('comparison still outranks Clash', () => {
+    expect(step({
+      phase: 'finished',
+      canEnterSkirmish: true,
+      hasUnwatchedComparison: true,
+    }).run).toBe('watch-lesson')
   })
 })
