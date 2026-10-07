@@ -160,7 +160,7 @@ describe('LessonComparison presentation', () => {
     expect(html).toContain('take the valley')
     expect(html).toContain('take the ridge')
     expect(html).toContain('Jump to first different decision')
-    expect(html).toContain('Watch the lesson')
+    expect(html).toContain('See what changed')
     expect(html).toContain('Parent replay')
   })
 })
