@@ -115,3 +115,15 @@ Behavior worth knowing:
 - **Session end** — if the live session ends on its own (5-minute grant cap, network drop), the panel continues as a prompt storyboard rather than leaving a dead video.
 
 Setup: set `REACTOR_API_KEY` in the server env (server-only, never `NEXT_PUBLIC_`). Verified: the token broker mints a real token locally and in production. Not yet verified: a full live video run against a real session.
+
+## Steal-highlight spike (Raider full-load steal)
+
+MVP presentation path for Skirmish Clash: when a bump steals **≥ 2 cargo** (Raider steal-all vs Season 0's single unit), the workbench builds a short storyboard from the recorded bump facts and shows a PIP overlay. Optional clip upgrade via `POST /api/steal-highlight`:
+
+| Path | When | Behavior |
+| --- | --- | --- |
+| Stub poster | `FAL_KEY` unset, fal late, or fal failed | SVG poster + storyboard beats — works offline |
+| fal clip | `FAL_KEY` present and gen returns in time | Non-blocking swap into the same PIP |
+
+Rules from this doc still hold: sim remains source of truth (score untouched), prompts/storyboard rebuilt from recorded facts only, generation never on the match critical path. Modules: `services/stealHighlight.ts`, `services/stealHighlightClip.ts`, `components/workbench/StealHighlightPip.tsx`, `app/api/steal-highlight/route.ts`.
+

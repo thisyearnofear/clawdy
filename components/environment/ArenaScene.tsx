@@ -102,6 +102,8 @@ import { ViewportHud, type HudFeedEvent } from '../workbench/ViewportHud'
 import { RulesetPicker } from '../workbench/RulesetPicker'
 import type { RulesetId } from '../../services/chassis'
 import { SKIRMISH_PERK_TELEGRAPH } from '../../services/chassis'
+import { buildStealStoryboard, detectFullLoadSteal, type StealStoryboard } from '../../services/stealHighlight'
+import { requestStealClip, stubStealClip, type StealClipResult } from '../../services/stealHighlightClip'
 import { formatDecisionCaption, perkTelegraphMoment, playerDoorLabel, PLAYER_DOOR_COPY } from '../../services/decisionCaption'
 import { courseForRuleset, isSkirmishUnlocked, skirmishDisclosure, subscribeSkirmishUnlock, unlockSkirmish } from '../../services/workbenchRuleset'
 import { actionsEqual, COACH_ANYTIME_KEY, COACH_MISTAKE_KEY, COACH_NUDGE_KEY, friendlyActionLabel, isExecutableCheckpoint, PLAY_HINT_KEY, readHintDismissed, routeLabel, stationLabel } from '../workbench/readouts'
@@ -110,6 +112,10 @@ import styles from './ArenaScene.module.css'
 const WorldView = dynamic(() => import('./ArenaWorldView'), { ssr: false })
 // WebRTC SDK is browser-only; keep it out of the SSR/initial bundle.
 const BroadcastPanel = dynamic(() => import('../workbench/BroadcastPanel'), { ssr: false })
+const StealHighlightPip = dynamic(
+  () => import('../workbench/StealHighlightPip').then(mod => mod.StealHighlightPip),
+  { ssr: false },
+)
 const viewOnlyCheckpointMessage = (checkpoint: PolicyCheckpoint) =>
   `"${checkpoint.name}" is from an older format, so it's view-only for now — re-train its examples to bring it up to date and make it playable again.`
 const CAMERA_LABELS: Record<ArenaCamera, string> = {
@@ -303,6 +309,12 @@ function Workbench({
   const [feed, setFeed] = useState<HudFeedEvent[]>([])
   const [clipUrl, setClipUrl] = useState<string | null>(null)
   const [clipArmed, setClipArmed] = useState(false)
+  const [stealHighlight, setStealHighlight] = useState<{
+    storyboard: StealStoryboard
+    clip: StealClipResult
+  } | null>(null)
+  const lastStealHighlightTick = useRef(-1)
+  const stealClipAbortRef = useRef<AbortController | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const exampleCounter = useRef(0)
   const trainAbortRef = useRef<AbortController | null>(null)
@@ -987,6 +999,40 @@ function Workbench({
     lastFeedPhase.current = phase
     pushFeed(items)
   }, [view, pushFeed])
+
+  // Raider full-load steal highlight (Skirmish Clash only). Storyboard from
+  // recorded bump facts; optional fal/stub clip is non-blocking. Never touches score.
+  useEffect(() => {
+    if (rulesetId !== 'skirmish') return
+    if (view.phase !== 'running' && view.phase !== 'paused') return
+    const facts = detectFullLoadSteal(view.episode.events, lastStealHighlightTick.current)
+    if (!facts) return
+    lastStealHighlightTick.current = facts.tick
+    const storyboard = buildStealStoryboard(facts)
+    const stub = stubStealClip(storyboard)
+    setStealHighlight({ storyboard, clip: stub })
+    stealClipAbortRef.current?.abort()
+    const controller = new AbortController()
+    stealClipAbortRef.current = controller
+    const timer = window.setTimeout(() => controller.abort(), 9000)
+    void requestStealClip(storyboard, { signal: controller.signal }).then(clip => {
+      if (controller.signal.aborted) return
+      setStealHighlight(current => {
+        if (!current || current.storyboard.id !== storyboard.id) return current
+        return { storyboard, clip }
+      })
+    }).finally(() => window.clearTimeout(timer))
+  }, [rulesetId, view.phase, view.episode.events, view.episode.tick])
+
+  // Reset steal-highlight cursor when a new Clash run starts.
+  useEffect(() => {
+    if (view.phase === 'ready') {
+      lastStealHighlightTick.current = -1
+      stealClipAbortRef.current?.abort()
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clearing the finished highlight is exactly what a new-run reset is for
+      setStealHighlight(null)
+    }
+  }, [view.phase])
 
   // Souvenir clip: optional low-cost WebM encode. Auto-record used to hitch the
   // GPU (captureStream + VP9 + preserveDrawingBuffer). Opt-in keeps Play smooth;
@@ -2113,6 +2159,13 @@ function Workbench({
             error={view.error}
             onRetry={onRetry}
           />
+          {stealHighlight && (view.phase === 'running' || view.phase === 'paused') && (
+            <StealHighlightPip
+              storyboard={stealHighlight.storyboard}
+              clip={stealHighlight.clip}
+              onDismiss={() => setStealHighlight(null)}
+            />
+          )}
           {engagement.showPlayHint && visualReady && hintOpen && view.phase === 'ready' && !modeBanner && (
             <div className={`${styles.playHint} ${styles.hintEnter}`} role="status">
               <p><strong>Press Play.</strong> First unranked races run at <strong>4×</strong> so the clash feels snappy — use <strong>Speed</strong> or <strong>Skip</strong> anytime. Follow your champion until you coach it into your own.</p>
