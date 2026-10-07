@@ -46,6 +46,18 @@ export type EntrantTraits = {
   stealAll?: boolean
   /** Fog radius in graph hops (1 = pinned rules). */
   visionHops?: number
+  /**
+   * Skirmish capacity tax: each cargo unit above the pinned base capacity (3)
+   * multiplies travel by (1 - tax). The extra Hauler slot is real; a full bed
+   * is slower. Absent = 0 (Season 0 unchanged).
+   */
+  cargoTravelTax?: number
+  /**
+   * Extra metres added to the scenario contact radius when either rover has it.
+   * Raider steal fantasy: wider bump reach without a travel lead that races Scout.
+   * Absent = 0.
+   */
+  contactRadiusBonus?: number
 }
 export function capacityOf(agent: { traits?: EntrantTraits }): number {
   return agent.traits?.capacity ?? ARENA_RULES.capacity
@@ -253,7 +265,9 @@ function validateScenario(scenario: ArenaScenario) {
     Number.isFinite(traits.maxEnergy) && traits.maxEnergy >= 4 && traits.maxEnergy <= 24 &&
     Number.isFinite(traits.contactStrength) && Math.abs(traits.contactStrength) <= 5 &&
     (traits.capacity === undefined || (Number.isInteger(traits.capacity) && traits.capacity >= 1 && traits.capacity <= 8)) &&
-    (traits.visionHops === undefined || (Number.isInteger(traits.visionHops) && traits.visionHops >= 1 && traits.visionHops <= 3)))), 'entrant traits')
+    (traits.visionHops === undefined || (Number.isInteger(traits.visionHops) && traits.visionHops >= 1 && traits.visionHops <= 3)) &&
+    (traits.cargoTravelTax === undefined || (Number.isFinite(traits.cargoTravelTax) && traits.cargoTravelTax >= 0 && traits.cargoTravelTax <= 0.5)) &&
+    (traits.contactRadiusBonus === undefined || (Number.isFinite(traits.contactRadiusBonus) && traits.contactRadiusBonus >= 0 && traits.contactRadiusBonus <= 1.5)))), 'entrant traits')
   assert(scenario.resources.every(resource => nodes.has(resource.nodeId) &&
     integer(resource.value, 1, 8) &&
     (resource.spawnTick === undefined || integer(resource.spawnTick, 0, scenario.durationTicks - 1))), 'resources')
@@ -642,7 +656,10 @@ export class ArenaEpisode {
       if (!transit) return { id: agent.id, position: [...this.#nodes.get(agent.nodeId)!.position] as ArenaPosition, progressUnits: 0 }
       const edge = this.#edges.get(transit.edgeId)!
       const flooded = edge.floodable && this.#state.weather.flooded
-      const step = (flooded ? 1 : ARENA_RULES.floodTravelMultiplier) * (agent.traits?.travelSpeed ?? 1)
+      const tax = agent.traits?.cargoTravelTax ?? 0
+      const overloaded = Math.max(0, agent.cargo - ARENA_RULES.capacity)
+      const loadFactor = Math.max(0.5, 1 - tax * overloaded)
+      const step = (flooded ? 1 : ARENA_RULES.floodTravelMultiplier) * (agent.traits?.travelSpeed ?? 1) * loadFactor
       const progressUnits = Math.min(transit.requiredUnits, transit.progressUnits + step)
       const progress = progressUnits / transit.requiredUnits
       return { id: agent.id, position: this.#pathPoint(edge, transit.from === edge.from ? progress : 1 - progress), progressUnits }
@@ -703,7 +720,8 @@ export class ArenaEpisode {
     const [a, b] = state.agents
     const pa = desired.find(item => item.id === a.id)!.position
     const pb = desired.find(item => item.id === b.id)!.position
-    if (Math.hypot(pa[0] - pb[0], pa[2] - pb[2]) > rules.contactRadiusM) return
+    const radius = rules.contactRadiusM + Math.max(a.traits?.contactRadiusBonus ?? 0, b.traits?.contactRadiusBonus ?? 0)
+    if (Math.hypot(pa[0] - pb[0], pa[2] - pb[2]) > radius) return
     // Cooldown is derived from the event log, so restored snapshots and
     // replays behave exactly like the live run.
     // Event ticks are the tick at which the resulting state is published
