@@ -995,7 +995,10 @@ function Workbench({
     modeBannerTimer.current = window.setTimeout(() => setModeBanner(null), 1100)
   }
   const switchRuleset = (nextRuleset: RulesetId | undefined, unlock = false) => {
-    if (view.phase !== 'ready' || isTraining || tournamentRunning || sharedReplay) return
+    if (isTraining || tournamentRunning || sharedReplay) return
+    // Clash-again after a finished Practice: reset into ready, then switch.
+    if (view.phase === 'finished' || view.phase === 'paused') session.reset()
+    if (view.phase !== 'ready' && view.phase !== 'finished' && view.phase !== 'paused') return
     if (nextRuleset === 'skirmish' && !skirmishUnlocked && !unlock) return
     if (unlock) {
       if (!skirmishDisclosure({ unlocked: skirmishUnlocked, hasCompletedRun, hasOwnBrain }).canSkip) return
@@ -1022,7 +1025,12 @@ function Workbench({
     lastSightingTickRef.current = null
     sightingCountRef.current = 0
   }
-  const skipToSkirmish = () => switchRuleset('skirmish', true)
+  const skipToSkirmish = () => {
+    // Already unlocked: select Skirmish without the skip gate (canSkip is false
+    // once unlocked). Still unlocking: require skip eligibility.
+    if (skirmishUnlocked) switchRuleset('skirmish', false)
+    else switchRuleset('skirmish', true)
+  }
   const download = () => {
     const url = URL.createObjectURL(new Blob([JSON.stringify(session.recording())], { type: 'application/json' }))
     const anchor = document.createElement('a')
@@ -1621,6 +1629,7 @@ function Workbench({
   // nextStep stays pure render data (label + action key); the ref-touching
   // work happens in the click handler below, where it belongs. The machine
   // itself lives in services/workbenchFlow.ts with golden tests.
+  const disclosure = skirmishDisclosure({ unlocked: skirmishUnlocked, hasCompletedRun, hasOwnBrain })
   const nextStep = computeNextStep({
     visualReady,
     phase: view.phase,
@@ -1629,6 +1638,8 @@ function Workbench({
     studioOpen,
     approvedCount,
     hasUnwatchedComparison: comparison !== null && !comparisonWatched,
+    canEnterSkirmish: disclosure.canSelect || disclosure.canSkip,
+    rulesetId,
   })
 
   const runNextStep = (action: string | null) => {
@@ -1642,6 +1653,7 @@ function Workbench({
       case 'coach': setStudioOpen(true); break
       case 'train': handleTrain(); break
       case 'watch-lesson': reviewComparisonRun('trained'); setComparisonWatched(true); break
+      case 'skip-skirmish': skipToSkirmish(); break
     }
   }
 

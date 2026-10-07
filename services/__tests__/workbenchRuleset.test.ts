@@ -60,6 +60,7 @@ describe('workbench rulesets', () => {
 
   it('derives honest perk labels from the engine traits', () => {
     expect(chassisRuleSummary('hauler', 'skirmish')).toContain('4 cargo')
+    expect(chassisRuleSummary('hauler', 'skirmish')).toContain('Loads above 3')
     expect(chassisRuleSummary('raider', 'skirmish')).toContain('limited by free cargo space')
     expect(chassisRuleSummary('scout', 'skirmish')).toContain('two route hops')
     for (const chassis of ['hauler', 'raider', 'scout'] as const) {

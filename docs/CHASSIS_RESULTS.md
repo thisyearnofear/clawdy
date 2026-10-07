@@ -91,3 +91,32 @@ Reading it:
 - Next levers: a speed or energy cost on the Hauler's extra slot, a Raider buff, a far-resource encoder input for Scout.
 
 Records: `docs/eval-es-skirmish-<chassis>.json` (seed 11), `docs/eval-skirmish-pvp.json`. Brains: `starter/skirmish-<chassis>.json`; both seeds in `docs/skirmish-v1/` (`sk4-hauler-*` is capacity 4).
+
+
+### Skirmish v4: Hauler capacity tax + Scout/Raider leads (capacity 4 kept)
+
+Hauler still led PvP after capacity 4 (v2) and after the travel-lead retrain attempt (v3 / PR #4, Hauler vs Scout ~66-4). This slice keeps capacity 4 for fantasy and adds a **cargo travel tax** on units above the pinned base of 3 (`cargoTravelTax` on Hauler), plus data-only Scout travel (+0.02) and Raider contact (+1.25) / travel (+0.06) leads in `buildToTraits` when `rulesetId === 'skirmish'`. Existing Skirmish house brains were **not** retrained: the tax punishes fill-to-4 behaviour the current Hauler brain already learned; PR #4 showed retrain can widen the Hauler lead.
+
+Reproduce:
+
+```
+npx tsx scripts/bench-chassis-pvp.ts 40 --ruleset skirmish --write
+```
+
+Brain vs brain (80 matches per cell, seed-11 brains in `starter/skirmish-*.json`):
+
+| Row beats column | scout | hauler | raider |
+| --- | --- | --- | --- |
+| scout | - | 38-40-2 | 73-7-0 |
+| hauler | 40-38-2 | - | 49-28-3 |
+| raider | 7-73-0 | 28-49-3 | - |
+
+Mean banked scout:hauler ≈ 7.91:8.07 (was 7.01:8.73 on v2 / 561:698).
+
+Reading it (vs v2 capacity-4 PvP: Scout–Hauler 21-58, Scout–Raider 52-28, Hauler–Raider 43-33):
+- **Hauler vs Scout is nearly even** (40-38). Matches are no longer decided by chassis alone between those two; banked totals are within ~0.2.
+- **Raider still trails**, especially vs Scout (7-73). Steal-all + contact lead is not enough with the current Raider brain; a Raider retrain (and/or vision encoder payoff for Scout) remains open. Do not claim RPS balance.
+- Season 0 / Training Grounds traits are unchanged (tax and leads are Skirmish-only).
+- No retrain this slice — honesty of house brains vs the new tax is "rules changed under them"; retrain later if a claimed eval needs brains that play the tax optimally.
+
+Records: `docs/eval-skirmish-pvp.json` (v4). Brains unchanged: `starter/skirmish-<chassis>.json`.

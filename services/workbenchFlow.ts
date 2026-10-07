@@ -10,6 +10,7 @@ export type NextStepAction =
   | 'coach'
   | 'train'
   | 'watch-lesson'
+  | 'skip-skirmish'
   | null
 
 export interface NextStepInput {
@@ -25,6 +26,14 @@ export interface NextStepInput {
    * changed its behaviour" becomes visible — so it outranks every other prompt.
    */
   hasUnwatchedComparison?: boolean
+  /**
+   * True when the player can enter Skirmish now (unlocked, or skip-eligible
+   * after a completed run / own brain). Used so "Clash again" after Practice
+   * does not require they already skipped.
+   */
+  canEnterSkirmish?: boolean
+  /** Current ruleset — Skirmish sessions keep clash-again on Play. */
+  rulesetId?: 'skirmish'
 }
 
 /**
@@ -43,14 +52,34 @@ export function computeNextStep(state: NextStepInput): { label: string; run: Nex
   if (state.hasUnwatchedComparison) {
     return { label: 'Watch the lesson — see what your teaching changed', run: 'watch-lesson' }
   }
+  if (
+    phase === 'ready'
+    && state.canEnterSkirmish
+    && state.rulesetId !== 'skirmish'
+    && playMode !== 'compete'
+    && playMode !== 'rush'
+  ) {
+    return { label: 'Clash in Skirmish — or Press Play to practice', run: 'skip-skirmish' }
+  }
   if (phase === 'ready' && playMode === 'compete') {
     return { label: 'Press Play — Match (coaching locked)', run: 'play' }
   }
-  if (phase === 'ready' && playMode === 'rush') return { label: 'Press Play to start Rush (unranked)', run: 'play' }
+  if (phase === 'ready' && (playMode === 'rush' || state.rulesetId === 'skirmish')) {
+    return { label: 'Press Play to start Skirmish', run: 'play' }
+  }
   if (phase === 'ready') return { label: 'Press Play to start Practice', run: 'play' }
   if (phase === 'running') return { label: 'Watch the race — Pause anytime', run: null }
   if (phase === 'paused') return { label: 'Resume, or open Replay', run: 'review' }
   if (phase === 'finished' && !coachingLocked) {
+    // Fun-first: after Practice (or any non-Skirmish) finish, route into
+    // Skirmish. "Clash again" must not replay Training Grounds when they
+    // never skipped — that was the residual.
+    if (state.rulesetId !== 'skirmish' && state.canEnterSkirmish) {
+      return { label: 'Clash in Skirmish — unranked race', run: 'skip-skirmish' }
+    }
+    if (state.rulesetId === 'skirmish') {
+      return { label: 'Clash again, or open Replay to coach', run: 'play' }
+    }
     return { label: 'Open Replay, then Coach the miss', run: 'review-coach' }
   }
   if (phase === 'finished' && coachingLocked) {

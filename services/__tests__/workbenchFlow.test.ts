@@ -35,7 +35,11 @@ describe('computeNextStep — golden branch order (mirrors the pre-extraction Ar
       run: 'play',
     })
     expect(step({ phase: 'ready', playMode: 'rush' })).toEqual({
-      label: 'Press Play to start Rush (unranked)',
+      label: 'Press Play to start Skirmish',
+      run: 'play',
+    })
+    expect(step({ phase: 'ready', playMode: 'practice', rulesetId: 'skirmish' })).toEqual({
+      label: 'Press Play to start Skirmish',
       run: 'play',
     })
   })
@@ -214,5 +218,69 @@ describe('detectMistakeSignal — visible-error trigger for the first-mistake ca
       sinceTick: 198,
       lastOutcome: { tick: 195, accepted: false, reason: 'movement-blocked' },
     })).toBeNull()
+  })
+})
+
+describe('computeNextStep — Clash into Skirmish after Practice', () => {
+  it('routes finished Practice into Skirmish when the player can enter', () => {
+    expect(step({
+      phase: 'finished',
+      playMode: 'practice',
+      canEnterSkirmish: true,
+    })).toEqual({
+      label: 'Clash in Skirmish — unranked race',
+      run: 'skip-skirmish',
+    })
+  })
+
+  it('does not require they already skipped — canEnter alone is enough', () => {
+    // Residual: replaying Practice when they never skipped.
+    const result = step({
+      phase: 'finished',
+      playMode: 'practice',
+      canEnterSkirmish: true,
+      rulesetId: undefined,
+    })
+    expect(result.run).toBe('skip-skirmish')
+    expect(result.run).not.toBe('play')
+  })
+
+  it('on Skirmish finish, Clash again replays Skirmish', () => {
+    expect(step({
+      phase: 'finished',
+      playMode: 'rush',
+      rulesetId: 'skirmish',
+      canEnterSkirmish: true,
+    })).toEqual({
+      label: 'Clash again, or open Replay to coach',
+      run: 'play',
+    })
+  })
+
+  it('falls back to coach when Skirmish is not yet enterable', () => {
+    expect(step({
+      phase: 'finished',
+      playMode: 'practice',
+      canEnterSkirmish: false,
+    })).toEqual({
+      label: 'Open Replay, then Coach the miss',
+      run: 'review-coach',
+    })
+  })
+
+  it('ready Training Grounds offers Clash when enterable', () => {
+    expect(step({
+      phase: 'ready',
+      playMode: 'practice',
+      canEnterSkirmish: true,
+    }).run).toBe('skip-skirmish')
+  })
+
+  it('comparison still outranks Clash', () => {
+    expect(step({
+      phase: 'finished',
+      canEnterSkirmish: true,
+      hasUnwatchedComparison: true,
+    }).run).toBe('watch-lesson')
   })
 })

@@ -115,9 +115,13 @@ export const MAX_TRAVEL_SPEED = 1.33
 /** Rulesets that give each chassis a signature rule. Absent = Training Grounds (Season 0). */
 export type RulesetId = 'skirmish'
 
-export const SKIRMISH_PERKS: Record<ChassisId, Pick<EntrantTraits, 'capacity' | 'stealAll' | 'visionHops'>> = {
+export const SKIRMISH_PERKS: Record<ChassisId, Pick<EntrantTraits, 'capacity' | 'stealAll' | 'visionHops' | 'cargoTravelTax'>> = {
+  // Scout: two-hop vision (encoder already sees visible far cores).
   scout: { visionHops: 2 },
-  hauler: { capacity: 4 },
+  // Hauler: capacity 4 with a travel tax on cargo above the pinned base of 3 —
+  // the extra slot is real, but a full bed is slower (capacity tax).
+  hauler: { capacity: 4, cargoTravelTax: 0.22 },
+  // Raider: steal-all stays the signature; contact buff is applied in buildToTraits.
   raider: { stealAll: true },
 }
 
@@ -131,6 +135,16 @@ export function buildToTraits(build: Build, rulesetId?: RulesetId): EntrantTrait
   for (const id of build.modules) {
     if (id === 'armour') { contactStrength += 1; travelSpeed -= 0.05 }
     if (id === 'ram-plate') { contactStrength += 1; maxEnergy -= 1 }
+  }
+  // Skirmish data-only leads. Hauler capacity tax lives in SKIRMISH_PERKS.
+  // Scout: small travel edge so two-hop vision can contest cores first.
+  // Raider: win bumps more often + slight travel so steal-all contests loads.
+  if (rulesetId === 'skirmish') {
+    if (build.chassis === 'scout') travelSpeed += 0.02
+    if (build.chassis === 'raider') {
+      contactStrength += 1.25
+      travelSpeed += 0.06
+    }
   }
   return {
     travelSpeed: round(clamp(travelSpeed, 0.8, MAX_TRAVEL_SPEED)),

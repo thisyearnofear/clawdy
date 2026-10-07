@@ -46,10 +46,40 @@ describe('skirmish perks', () => {
     }
   })
 
+  it('applies Hauler capacity tax and Raider/Scout skirmish leads', async () => {
+    const { buildToTraits, baseBuild } = await import('../chassis')
+    const hauler = buildToTraits(baseBuild('hauler'), 'skirmish')
+    expect(hauler.capacity).toBe(4)
+    expect(hauler.cargoTravelTax).toBe(0.22)
+    expect(buildToTraits(baseBuild('scout'), 'skirmish').cargoTravelTax).toBeUndefined()
+    expect(buildToTraits(baseBuild('raider'), 'skirmish').contactStrength).toBeGreaterThan(
+      buildToTraits(baseBuild('raider')).contactStrength,
+    )
+    expect(buildToTraits(baseBuild('raider'), 'skirmish').travelSpeed).toBeGreaterThan(
+      buildToTraits(baseBuild('raider')).travelSpeed,
+    )
+    expect(buildToTraits(baseBuild('scout'), 'skirmish').travelSpeed).toBeGreaterThan(
+      buildToTraits(baseBuild('scout')).travelSpeed,
+    )
+  })
+
   it('gives each chassis its signature rule', async () => {
     const { buildToTraits, baseBuild } = await import('../chassis')
     expect(buildToTraits(baseBuild('hauler'), 'skirmish').capacity).toBe(4)
     expect(buildToTraits(baseBuild('raider'), 'skirmish').stealAll).toBe(true)
     expect(buildToTraits(baseBuild('scout'), 'skirmish').visionHops).toBe(2)
+  })
+})
+
+
+describe('skirmish capacity tax', () => {
+  it('slows travel only for cargo above the pinned base capacity', () => {
+    // Mirrors the loadFactor in ArenaEpisode move step. PvP bench confirms
+    // Hauler vs Scout is near-even once the tax is live.
+    const tax = 0.22
+    const factor = (cargo: number) => Math.max(0.5, 1 - tax * Math.max(0, cargo - 3))
+    expect(factor(0)).toBe(1)
+    expect(factor(3)).toBe(1)
+    expect(factor(4)).toBeCloseTo(0.78)
   })
 })
