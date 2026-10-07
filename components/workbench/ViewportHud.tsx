@@ -22,7 +22,7 @@ interface ViewportHudProps {
   score: { you: number; foe: number; cargo: number } | null
   agent?: Pick<ArenaAgentState, 'traits'>
   rulesetId?: string
-  /** Player-facing door: Clash / Tutor / Prove / Rush. */
+  /** Player-facing door: Clash / Prove only. */
   door?: string
   intent?: string | null
   clock: string
@@ -42,7 +42,7 @@ export function ViewportHud({ phase, isMatch, sideHint, score, agent, rulesetId,
       <div className={styles.worldTopline}>
         <div>
           <span className={styles.liveDot} data-active={phase === 'running'} />
-          {PHASE_LABELS[phase]}{door ? ` · ${door}` : rulesetId === 'skirmish' ? ' · Clash' : isMatch ? ' · Prove' : ' · Tutor'}
+          {PHASE_LABELS[phase]}{door ? ` · ${door}` : isMatch ? ' · Prove' : ' · Clash'}
           {score && (
             <span className={styles.scorebug} aria-label={`Score: you ${score.you}, rival ${score.foe}`}>
               {' · '}<strong className={styles.you}>{score.you}</strong>

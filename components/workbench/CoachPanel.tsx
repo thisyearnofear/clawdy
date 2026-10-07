@@ -106,7 +106,7 @@ export function CoachPanel({
         <div className={styles.evaluationNotice} role="alert">
           <AlertTriangle size={14} />
           <strong>Scored match</strong>
-          <span>Coaching and training stay off here. Switch to Practice to keep teaching it.</span>
+          <span>Coaching and training stay off here. Switch to Clash to keep teaching it.</span>
         </div>
       )}
 

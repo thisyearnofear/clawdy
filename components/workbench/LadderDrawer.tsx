@@ -47,7 +47,7 @@ export function LadderDrawer({ open, onClose }: { open: boolean; onClose: () => 
   const checkpoint = useArenaStore(state => state.activeCheckpoint)
   const [rulesetId, setRulesetId] = useState<RulesetId | undefined>(undefined)
   const rulesetArgs = rulesetId ? { rulesetId } : {}
-  const rulesetName = rulesetId ? 'Clash' : 'Tutor'
+  const rulesetName = rulesetId ? 'Clash' : 'Season 0'
   const board = useQuery(api.ladder.top, open ? { limit: 10, ...rulesetArgs } : 'skip')
   const mine = useQuery(api.ladder.mine, open ? rulesetArgs : 'skip')
   const chassisBoard = useQuery(api.league.topByChassis, open ? rulesetArgs : 'skip')
@@ -132,7 +132,7 @@ export function LadderDrawer({ open, onClose }: { open: boolean; onClose: () => 
           <span>League ruleset</span>
           <select aria-label="League ruleset" value={rulesetId ?? ''} disabled={busy !== null || status.kind === 'running'}
             onChange={event => { setRulesetId(event.target.value === 'skirmish' ? 'skirmish' : undefined); setStatus({ kind: 'idle' }); setLastShareId(null) }}>
-            <option value="">Tutor</option>
+            <option value="">Season 0</option>
             <option value="skirmish">Clash</option>
           </select>
         </label>

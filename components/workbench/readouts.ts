@@ -80,7 +80,12 @@ export function friendlyActionLabel(action: ArenaAction): string {
 
 export function describeArenaDecision(
   agent: ArenaAgentState,
-  options?: { observation?: ArenaObservation | null; flooded?: boolean },
+  options?: {
+    observation?: ArenaObservation | null
+    flooded?: boolean
+    events?: Parameters<typeof formatDecisionCaption>[0]['events']
+    tick?: number
+  },
 ): string {
   if (agent.recoveries > 0 && agent.lastOutcome?.reason === 'movement-blocked') {
     return 'Blocked route. Recovered to the last safe station.'
@@ -89,6 +94,8 @@ export function describeArenaDecision(
     agent,
     observation: options?.observation,
     flooded: options?.flooded,
+    events: options?.events,
+    tick: options?.tick,
   })
   if (caption) return caption.line
   const outcome = agent.lastOutcome

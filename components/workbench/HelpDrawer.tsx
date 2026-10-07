@@ -62,11 +62,11 @@ export function HelpDrawer({ open, onClose }: { open: boolean; onClose: () => vo
           <button type="button" className={styles.helpClose} onClick={onClose} aria-label="Close help">Close</button>
         </div>
         <ol className={styles.helpSteps}>
-          <li><strong>Clash</strong> first — Skip to Clash (Skirmish) for an unranked race, or Press Play. Tutor stays optional for depth.</li>
-          <li><strong>Call the next route</strong> once per unranked run: at a junction, pick the route it should take. Call <em>steers this race</em> for the rest of the run and queues an approved Train lesson. Scored Prove (Match) stays locked.</li>
-          <li><strong>Teach</strong> in Replay (Tutor depth): scrub to a decision, prefer a different legal route or action, draft the correction.</li>
+          <li><strong>Clash</strong> first — Skip to Clash for an unranked race with chassis perks, or Press Play. Player doors are Clash vs Prove only.</li>
+          <li><strong>Call the next route</strong> once per unranked Clash: at a junction, pick the route it should take. Call <em>steers this race</em> for the rest of the run and queues an approved Train lesson. Scored Prove stays locked.</li>
+          <li><strong>Teach</strong> in Replay: scrub to a decision, prefer a different legal route or action, draft the correction.</li>
           <li><strong>Open Lessons</strong> to approve what you taught, then <strong>Train</strong> a new brain and compare the two recorded runs.</li>
-          <li>Switch to <strong>Prove</strong> (Match) to test it with coaching locked.</li>
+          <li>Switch to <strong>Prove</strong> to test it on a held-out Match with coaching locked.</li>
         </ol>
         <dl className={styles.helpFaq}>
           <div>
@@ -74,12 +74,12 @@ export function HelpDrawer({ open, onClose }: { open: boolean; onClose: () => vo
             <dd>Navigation, legal actions, pickup and full-cargo return are shared controller rules. Coaching changes route preferences, target choices and supported interventions — nothing else.</dd>
           </div>
           <div>
-            <dt>Clash vs Tutor vs Prove?</dt>
-            <dd>Clash (Skirmish) is the unranked race. Tutor is optional coaching depth. Prove (Match) uses a held-out layout and freezes coaching.</dd>
+            <dt>Clash vs Prove?</dt>
+            <dd>Clash is the unranked race (chassis perks live; Call steers). Prove is the held-out Match where coaching freezes. Practice/Rush taxonomy stays internal.</dd>
           </div>
           <div>
             <dt>How do I train?</dt>
-            <dd>Call a route mid-race, or Replay a decision → Prefer an alternative. Then open Lessons, Approve, and Train. Style “Trained brain” runs the new weights.</dd>
+            <dd>Call a route mid-Clash, or Replay a decision → Prefer an alternative. Then open Lessons, Approve, and Train. Style “Trained brain” runs the new weights.</dd>
           </div>
           <div>
             <dt>Train did nothing?</dt>
