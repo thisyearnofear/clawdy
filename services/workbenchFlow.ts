@@ -20,11 +20,18 @@ export interface NextStepInput {
   studioOpen: boolean
   approvedCount: number
   /**
-   * A trained-vs-parent comparison is loaded and not yet watched. This is the
-   * single most valuable moment in the product — it is where "my teaching
-   * changed its behaviour" becomes visible — so it outranks every other prompt.
+   * A trained-vs-parent comparison is loaded and not yet watched. Available as
+   * an optional CTA ("See what changed") — it must not force another watch as
+   * the only next-step; Play / Clash again stay the primary action.
    */
   hasUnwatchedComparison?: boolean
+}
+
+export interface NextStepResult {
+  label: string
+  run: NextStepAction
+  /** Clear optional CTA when a comparison is waiting; never the sole next-step. */
+  optionalCompare?: { label: string; run: 'watch-lesson' }
 }
 
 /**
@@ -33,39 +40,53 @@ export interface NextStepInput {
  * that touch refs. ArenaScene maps the returned action key back onto its own
  * handlers in the click path.
  */
-export function computeNextStep(state: NextStepInput): { label: string; run: NextStepAction } {
+export function computeNextStep(state: NextStepInput): NextStepResult {
   const { visualReady, phase, playMode, coachingLocked, studioOpen, approvedCount } = state
   if (!visualReady) return { label: 'Settling the world…', run: null }
   if (phase === 'error') return { label: 'Reload the world', run: 'retry' }
-  // Watching the lesson is the payoff, so it wins over every other prompt
-  // whenever a comparison is waiting — including over "Play again", which is
-  // what the guidance machine would otherwise suggest after a round.
-  if (state.hasUnwatchedComparison) {
-    return { label: 'Watch the lesson — see what your teaching changed', run: 'watch-lesson' }
-  }
+
+  const optionalCompare = state.hasUnwatchedComparison
+    ? { label: 'See what changed', run: 'watch-lesson' as const }
+    : undefined
+
+  const withOptional = (step: { label: string; run: NextStepAction }): NextStepResult => (
+    optionalCompare ? { ...step, optionalCompare } : step
+  )
+
   if (phase === 'ready' && playMode === 'compete') {
-    return { label: 'Press Play — Match (coaching locked)', run: 'play' }
+    return withOptional({ label: 'Press Play — Match (coaching locked)', run: 'play' })
   }
-  if (phase === 'ready' && playMode === 'rush') return { label: 'Press Play to start Rush (unranked)', run: 'play' }
-  if (phase === 'ready') return { label: 'Press Play to start Practice', run: 'play' }
-  if (phase === 'running') return { label: 'Watch the race — Pause anytime', run: null }
-  if (phase === 'paused') return { label: 'Resume, or open Replay', run: 'review' }
+  if (phase === 'ready' && playMode === 'rush') {
+    return withOptional({ label: 'Press Play to start Rush (unranked)', run: 'play' })
+  }
+  if (phase === 'ready') {
+    return withOptional({ label: 'Press Play to start Practice', run: 'play' })
+  }
+  if (phase === 'running') {
+    return withOptional({ label: 'Watch the race — Pause anytime', run: null })
+  }
+  if (phase === 'paused') {
+    return withOptional({ label: 'Resume, or open Replay', run: 'review' })
+  }
   if (phase === 'finished' && !coachingLocked) {
-    return { label: 'Open Replay, then Coach the miss', run: 'review-coach' }
+    return withOptional({ label: 'Open Replay, then Coach the miss', run: 'review-coach' })
   }
   if (phase === 'finished' && coachingLocked) {
-    return { label: 'Reset, then switch to Practice to teach', run: 'teach' }
+    return withOptional({ label: 'Reset, then switch to Practice to teach', run: 'teach' })
   }
   if (phase === 'review' && !studioOpen && !coachingLocked) {
-    return { label: 'Open Lessons and pick a focus', run: 'coach' }
+    return withOptional({ label: 'Open Lessons and pick a focus', run: 'coach' })
   }
   if (studioOpen && !coachingLocked && approvedCount === 0) {
-    return { label: 'Pick a focus chip and Approve a fix', run: null }
+    return withOptional({ label: 'Pick a focus chip and Approve a fix', run: null })
   }
   if (studioOpen && !coachingLocked && approvedCount > 0) {
-    return { label: `Train from ${approvedCount} approved note${approvedCount === 1 ? '' : 's'}`, run: 'train' }
+    return withOptional({
+      label: `Train from ${approvedCount} approved note${approvedCount === 1 ? '' : 's'}`,
+      run: 'train',
+    })
   }
-  return { label: 'Play → Replay → Coach → Train → Match', run: null }
+  return withOptional({ label: 'Play → Replay → Coach → Train → Match', run: null })
 }
 
 export interface MistakeSignal {

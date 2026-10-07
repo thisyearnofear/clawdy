@@ -108,7 +108,7 @@ export function LessonComparison({
       )}
       <div className={styles.replayButtons}>
         <button type="button" className={styles.frameCoachButton} onClick={() => onWatch('trained')} aria-pressed={reviewing === 'trained'}>
-          <Play size={13} /> Watch the lesson
+          <Play size={13} /> See what changed
         </button>
         <button type="button" className={styles.frameCoachButton} onClick={() => onWatch('baseline')} aria-pressed={reviewing === 'baseline'}>
           <Play size={13} /> Parent replay

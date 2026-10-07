@@ -20,7 +20,7 @@ import { rankCoachingCandidates, type CoachingCandidate } from '../../services/c
 import { draftRecordedCorrection, recordedCoachContext } from '../../services/coachingReview'
 import { comparisonFrameAt, divergenceFrameIndex, type PracticeComparison } from '../../services/practiceComparison'
 import { useCoachingWorker } from '../utils/useCoachingWorker'
-import { liveCallContext, type LiveCallContext } from '../../services/liveCall'
+import { liveCallContext, resolveLiveCallPreference, type LiveCallContext } from '../../services/liveCall'
 import { engagementView, heroLedeMode } from '../../services/engagement'
 import { loadEngagementProgress, saveEngagementProgress } from '../../services/engagementProgress'
 import { ArenaSound } from '../../services/arenaSound'
@@ -473,11 +473,11 @@ function Workbench({
     }, 15000)
   }, [view.phase, view.episode, playMode, mistakeMoment, flooded, activeCourse.scenario.edges, applySpeed])
 
-  // The mid-race verb: once per Practice run, offer to call the champion's next
-  // route while it is live. Scoped to practice — a scored Match locks coaching,
-  // so this can never touch a result.
+  // The mid-race verb: once per unranked run, offer to call the champion's next
+  // route while it is live. Scored Match locks coaching, so this can never
+  // touch a result; Practice and Rush both get the strong sticky apply.
   useEffect(() => {
-    if (view.phase !== 'running' || playMode !== 'practice') return
+    if (view.phase !== 'running' || playMode === 'compete') return
     if (liveCall || liveCallUsedRef.current || isTraining) return
     let observation
     try {
@@ -571,6 +571,42 @@ function Workbench({
       setTrainMessage('That route is not available right now — the champion keeps its own plan for this run.')
       return
     }
+    const preference = resolveLiveCallPreference(liveCall.observation, edgeId)
+    if (!preference) {
+      setTrainMessage('That route is not available right now — the champion keeps its own plan for this run.')
+      return
+    }
+    // Strong sticky apply: divert toward the called destination for the rest of
+    // this run. Exact edge wins when legal; otherwise any legal move to the
+    // destination node; otherwise wait until the next legal junction.
+    let divertApplied = false
+    try {
+      session.applyLiveCall('champion', preference)
+      divertApplied = true
+    } catch {
+      setTrainMessage("Couldn't steer this race — the lesson will still save for Train.")
+    }
+    // Immediate feedback: if the called edge is not legal *right now* (already
+    // left the junction / in transit), say so clearly — preference still sticks.
+    let deferredNow = false
+    if (divertApplied) {
+      try {
+        const now = session.observe('champion', { forceDecision: true })
+        const legal = now.availableActions.some(
+          action => action.type === 'move' && (action as { edgeId: string }).edgeId === edgeId,
+        )
+        const towardPreferred = now.availableActions.some(action => {
+          if (action.type !== 'move') return false
+          const edge = now.edges.find(candidate => candidate.id === (action as { edgeId: string }).edgeId)
+          if (!edge) return false
+          const dest = edge.from === now.self.nodeId ? edge.to : edge.from
+          return dest === preference.preferredNodeId
+        })
+        deferredNow = !legal && !towardPreferred
+      } catch {
+        deferredNow = false
+      }
+    }
     try {
       exampleCounter.current += 1
       // Recorded as an approved example directly: the player chose it live, in
@@ -591,10 +627,14 @@ function Workbench({
       recordFunnelEvent('example.draft', 'live-call')
       // Deliberately does NOT open the Coach column. A call happens mid-race,
       // and expanding to a third column while the player is watching a flood
-      // countdown is exactly the overstimulation this prompt caused. The
-      // lesson is saved and the status line confirms it; the player opens
-      // Coach when they choose, which is also where Approve and Train live.
-      setTrainMessage(`Live call saved — teach it ${routeLabel(edgeId)}. Finish the race, then open Lessons to approve and train.`)
+      // countdown is exactly the overstimulation this prompt caused.
+      if (!divertApplied) {
+        setTrainMessage("Couldn't steer this race — lesson still saved for Train.")
+      } else if (deferredNow) {
+        setTrainMessage(`Route queued — it'll take ${routeLabel(edgeId)} at the next junction where that path is legal. Lesson saved for Train.`)
+      } else {
+        setTrainMessage(`Route called — it's taking ${routeLabel(edgeId)} for this race. Lesson saved for Train.`)
+      }
     } catch {
       setTrainMessage("Couldn't save that call — pause and use Coach instead.")
     }
@@ -2118,6 +2158,15 @@ function Workbench({
           <button type="button" onClick={() => runNextStep(nextStep.run)}>{nextStep.label}</button>
         ) : (
           <strong>{nextStep.label}</strong>
+        )}
+        {nextStep.optionalCompare && (
+          <button
+            type="button"
+            className={styles.nextStepOptional}
+            onClick={() => runNextStep(nextStep.optionalCompare!.run)}
+          >
+            {nextStep.optionalCompare.label}
+          </button>
         )}
       </div>
 

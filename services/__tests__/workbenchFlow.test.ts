@@ -113,31 +113,34 @@ const mistakeBase: MistakeInput = {
 
 const mistake = (over: Partial<MistakeInput>) => detectMistakeSignal({ ...mistakeBase, ...over })
 
-describe('computeNextStep — the comparison outranks everything else', () => {
-  it('points at the lesson once a comparison is waiting', () => {
-    expect(step({ hasUnwatchedComparison: true })).toEqual({
-      label: 'Watch the lesson — see what your teaching changed',
-      run: 'watch-lesson',
-    })
+describe('computeNextStep — comparison is optional, never forced', () => {
+  it('keeps Play as the primary next-step after Train and offers See what changed', () => {
+    const ready = step({ phase: 'ready', hasUnwatchedComparison: true })
+    expect(ready.run).toBe('play')
+    expect(ready.label).toBe('Press Play to start Practice')
+    expect(ready.optionalCompare).toEqual({ label: 'See what changed', run: 'watch-lesson' })
   })
 
-  it('beats the post-round prompt and the ready-to-play prompt', () => {
-    // After a round the machine would normally say "Open Replay, then Coach
-    // the miss"; watching the lesson is the higher-value action there.
-    expect(step({ phase: 'finished', hasUnwatchedComparison: true }).run).toBe('watch-lesson')
-    // And after training the session resets to ready, where it would say
-    // "Press Play to start Practice".
-    expect(step({ phase: 'ready', hasUnwatchedComparison: true }).run).toBe('watch-lesson')
-    expect(step({ phase: 'ready' }).run).toBe('play')
+  it('keeps Clash/Play-again paths primary after a finished round', () => {
+    const finished = step({ phase: 'finished', hasUnwatchedComparison: true })
+    expect(finished.run).toBe('review-coach')
+    expect(finished.optionalCompare).toEqual({ label: 'See what changed', run: 'watch-lesson' })
+  })
+
+  it('does not attach the optional CTA once the lesson has been watched', () => {
+    expect(step({ hasUnwatchedComparison: false }).optionalCompare).toBeUndefined()
+    expect(step({ hasUnwatchedComparison: false }).run).toBe('play')
   })
 
   it('does not hijack the settling or error states', () => {
-    expect(step({ visualReady: false, hasUnwatchedComparison: true }).run).toBeNull()
-    expect(step({ phase: 'error', hasUnwatchedComparison: true }).run).toBe('retry')
-  })
-
-  it('stops pushing once the lesson has been watched', () => {
-    expect(step({ hasUnwatchedComparison: false }).run).toBe('play')
+    expect(step({ visualReady: false, hasUnwatchedComparison: true })).toEqual({
+      label: 'Settling the world…',
+      run: null,
+    })
+    expect(step({ phase: 'error', hasUnwatchedComparison: true })).toEqual({
+      label: 'Reload the world',
+      run: 'retry',
+    })
   })
 })
 

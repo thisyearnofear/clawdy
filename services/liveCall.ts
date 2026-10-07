@@ -10,11 +10,12 @@ import type { ArenaAction, ArenaObservation } from './arenaEpisode'
  *
  * Two rules keep this honest:
  *
- *  1. It never touches the simulation. A call is recorded as a human-approved
- *     training example and the champion keeps driving its own policy until the
- *     run ends. Scored Matches lock the whole surface (the coaching lock
- *     already exists for exactly this reason), so no call can ever influence a
- *     result.
+ *  1. Choosing a route strongly applies to the current Practice/Rush run: the
+ *     champion prefers that destination (and the called edge when still legal)
+ *     for the rest of the race. The call is also saved as a human-approved
+ *     training example for Train. Scored Matches lock the whole surface (the
+ *     coaching lock already exists for exactly this reason), so no call can
+ *     ever influence a result.
  *  2. It only offers routes the controller lists as legal, so a player can
  *     never queue an impossible lesson.
  */
@@ -27,6 +28,25 @@ export interface LiveCallContext {
   plannedAction: ArenaAction | null
   /** Legal alternative routes, ordered by travel cost (cheapest first). */
   routeOptions: { edgeId: string; label: string; travelTicks: number }[]
+}
+
+/** Sticky preference resolved at call time and held for the rest of the run. */
+export interface LiveCallPreference {
+  /** Exact edge the player tapped — preferred whenever it is still legal. */
+  calledEdgeId: string
+  /**
+   * Destination node of that edge from the call-time junction. When the
+   * exact edge is gone (rover already left / different junction), any legal
+   * move that reaches this node still honors the player's intent.
+   */
+  preferredNodeId: string
+}
+
+export type LiveCallApplyStatus = 'applied' | 'deferred'
+
+export interface LiveCallApplyResult {
+  action: ArenaAction
+  status: LiveCallApplyStatus
 }
 
 const CALL_INTERVAL_TICKS = 150
@@ -69,4 +89,75 @@ export function liveCallContext(options: {
   // One alternative is not a decision.
   if (routeOptions.length < MIN_ROUTE_OPTIONS) return null
   return { tick: options.tick, observation: options.observation, plannedAction: options.plannedAction, routeOptions }
+}
+
+/** Other end of an undirected edge from the rover's current node. */
+export function edgeDestinationNode(
+  edge: { from: string; to: string },
+  fromNodeId: string,
+): string {
+  return edge.from === fromNodeId ? edge.to : edge.from
+}
+
+/**
+ * Resolve the sticky preference at call time: remember both the tapped edge
+ * and the destination node it was aiming for from this junction.
+ */
+export function resolveLiveCallPreference(
+  observation: ArenaObservation,
+  calledEdgeId: string,
+): LiveCallPreference | null {
+  const edge = observation.edges.find(candidate => candidate.id === calledEdgeId)
+  if (!edge) return null
+  return {
+    calledEdgeId,
+    preferredNodeId: edgeDestinationNode(edge, observation.self.nodeId),
+  }
+}
+
+/**
+ * Strong apply for a live call: take the called edge when legal; otherwise any
+ * legal move that reaches the preferred destination node; otherwise fall
+ * through to the base policy. `deferred` means the preference is queued until
+ * the next legal junction — not discarded.
+ */
+export function applyLiveCallToAction(options: {
+  observation: ArenaObservation
+  preference: LiveCallPreference
+  baseAction: ArenaAction
+}): LiveCallApplyResult {
+  const { observation, preference, baseAction } = options
+  const legalMoves: { type: 'move'; edgeId: string }[] = []
+  for (const action of observation.availableActions) {
+    if (action.type === 'move') legalMoves.push(action as { type: 'move'; edgeId: string })
+  }
+
+  const exact = legalMoves.find(action => action.edgeId === preference.calledEdgeId)
+  if (exact) return { action: exact, status: 'applied' }
+
+  const toward = legalMoves.find(action => {
+    const edge = observation.edges.find(candidate => candidate.id === action.edgeId)
+    if (!edge) return false
+    return edgeDestinationNode(edge, observation.self.nodeId) === preference.preferredNodeId
+  })
+  if (toward) return { action: toward, status: 'applied' }
+
+  return { action: baseAction, status: 'deferred' }
+}
+
+/**
+ * Wrap a policy so the called destination wins whenever a legal move can
+ * honor it for the rest of the run. When neither the edge nor a path to the
+ * destination is available (in transit, wrong junction), the base policy
+ * drives until the next legal junction.
+ */
+export function wrapPolicyWithLiveCall(
+  base: (observation: ArenaObservation) => ArenaAction,
+  preference: LiveCallPreference,
+): (observation: ArenaObservation) => ArenaAction {
+  return (observation) => applyLiveCallToAction({
+    observation,
+    preference,
+    baseAction: base(observation),
+  }).action
 }
