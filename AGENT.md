@@ -93,6 +93,7 @@ The new reference modules are:
 - `services/arenaCourse.ts`: authored `Sandstone Basin / Course 01` loader with pinned terrain SHA-256, scenario construction, and a rich route graph (12+ nodes, 25+ edges, multiple resources, multiple flood zones) embedded in the terrain.
 - `services/arenaTerrain.ts`: shared validated loader for the pinned terrain GLB (fetch, size budget, SHA-256, parse, abort disposal) used identically by physics collider extraction and rendering.
 - `services/arenaPresentation.ts`: pure geometry helpers for route ribbons used by the scene and tests.
+- `services/presentationPacing.ts`: first-run playback defaults. Unranked Practice / Rush / Skirmish Plays start at 4× until the player cycles speed (persisted in localStorage); scored Match is never auto-bumped. Presentation only — does not change Season 0 tick budgets or Match evaluation.
 - `services/arenaCinematic.ts`: deterministic storyboard planner that partitions a recording into event-driven shots (establish/flood/collect/bank/recovery/follow/finish) for the review-mode replay-cam; see `docs/SCENES.md`.
 - `services/arenaSession.ts`: application adapter that wires start/pause/reset, policy locking, bounded frame pumping, replay scrubbing, checkpoint selection, external-recording review (`reviewFrom`), and JSON export.
 - `services/arenaTournament.ts`: seeded single-elimination bracket over headless matches; entrants map onto champion/rival slots, each match runs on isolated physics and keeps its own `ArenaRecording` for cinematic review.

@@ -23,6 +23,17 @@ import { useCoachingWorker } from '../utils/useCoachingWorker'
 import { liveCallContext, resolveLiveCallPreference, type LiveCallContext } from '../../services/liveCall'
 import { engagementView, heroLedeMode } from '../../services/engagement'
 import { loadEngagementProgress, saveEngagementProgress } from '../../services/engagementProgress'
+import {
+  FIRST_RUN_PLAY_SPEED,
+  isUnrankedPlayMode,
+  loadPlaybackPreference,
+  playStartSpeed,
+  savePlaybackPreference,
+  skipControlTitle,
+  speedAfterWatchableTip,
+  speedControlLabel,
+  speedControlTitle,
+} from '../../services/presentationPacing'
 import { ArenaSound } from '../../services/arenaSound'
 import {
   encounterDistance,
@@ -190,8 +201,16 @@ function Workbench({
   const mistakeTimer = useRef<number | null>(null)
   const prevRecoveriesRef = useRef(0)
   const prevObservedTickRef = useRef(0)
-  const [speed, setSpeedState] = useState<SessionSpeed>(1)
+  const [playbackPref, setPlaybackPref] = useState(() => loadPlaybackPreference())
+  const [speed, setSpeedState] = useState<SessionSpeed>(() => {
+    const pref = loadPlaybackPreference()
+    return pref.playerChoseSpeed && pref.lastSpeed ? pref.lastSpeed : 1
+  })
   const speedRef = useRef<SessionSpeed>(1)
+  const preferredSpeedRef = useRef<SessionSpeed>(FIRST_RUN_PLAY_SPEED)
+  const playbackPrefRef = useRef(playbackPref)
+  playbackPrefRef.current = playbackPref
+  const beatRealtimeTimer = useRef<number | null>(null)
   // Director's track: a headless clone of this run computes where the beats
   // will land. Keyed by matchId so a reset/mode switch can't serve stale
   // predictions; built once on run start (deferred a task so Play doesn't
@@ -207,6 +226,44 @@ function Workbench({
     session.setSpeed(next)
     setSpeedState(next)
   }, [session])
+  // Mirror stored preference into refs once on mount (SSR-safe defaults above).
+  useEffect(() => {
+    const pref = loadPlaybackPreference()
+    if (pref.playerChoseSpeed && pref.lastSpeed) {
+      preferredSpeedRef.current = pref.lastSpeed
+      applySpeed(pref.lastSpeed)
+    } else {
+      preferredSpeedRef.current = FIRST_RUN_PLAY_SPEED
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot boot hydrate from localStorage
+  }, [session, applySpeed])
+  // Watchable beats pull FF to 1×; schedule restore of the snappy preferred
+  // speed unless the player has chosen their own multiplier.
+  const pullToWatchableRealtime = useCallback(() => {
+    if (speedRef.current > 1) applySpeed(1)
+    if (playbackPrefRef.current.playerChoseSpeed) return
+    if (beatRealtimeTimer.current) window.clearTimeout(beatRealtimeTimer.current)
+    beatRealtimeTimer.current = window.setTimeout(() => {
+      const next = speedAfterWatchableTip({
+        playerChoseSpeed: playbackPrefRef.current.playerChoseSpeed,
+        preferredSpeed: preferredSpeedRef.current,
+        currentSpeed: speedRef.current,
+        phaseRunning: true,
+      })
+      if (next !== null) applySpeed(next)
+    }, 4200)
+  }, [applySpeed])
+  // Tip clear is another restore path (flood / sighting / mid-run coach tips).
+  useEffect(() => {
+    if (runTip !== null) return
+    const next = speedAfterWatchableTip({
+      playerChoseSpeed: playbackPref.playerChoseSpeed,
+      preferredSpeed: preferredSpeedRef.current,
+      currentSpeed: speedRef.current,
+      phaseRunning: view.phase === 'running',
+    })
+    if (next !== null) applySpeed(next)
+  }, [runTip, playbackPref.playerChoseSpeed, view.phase, applySpeed])
   const checkpoints = useArenaStore(state => state.checkpoints)
   // True once the user owns a brain that isn't a bundled built-in (trained
   // or imported) — gates the tournament bracket, which is framed around
@@ -408,11 +465,11 @@ function Workbench({
     floodWarnedRef.current = coming.startTick
     recordFunnelEvent('tip.flood', `in=${nextFloodIn}s`)
     // An approaching flood is a watchable beat — pull FF back to real time.
-    if (speedRef.current > 1) applySpeed(1)
+    pullToWatchableRealtime()
     setRunTip(`Flood in ${nextFloodIn}s — amber valley slows. Take the ridge.`)
     if (runTipTimer.current) window.clearTimeout(runTipTimer.current)
     runTipTimer.current = window.setTimeout(() => setRunTip(null), 5200)
-  }, [view.phase, view.episode.tick, flooded, nextFloodIn, activeCourse.scenario.floods, applySpeed])
+  }, [view.phase, view.episode.tick, flooded, nextFloodIn, activeCourse.scenario.floods, pullToWatchableRealtime])
 
   // Mid-run coaching discoverability: coaching is legal any time in Practice
   // (the lock is compete-only), but nothing told the user that — they watched
@@ -466,14 +523,14 @@ function Workbench({
     try { window.sessionStorage.setItem(COACH_MISTAKE_KEY, '1') } catch { /* ignore */ }
     recordFunnelEvent('mistake.shown', signal.headline)
     // Coachable moments pull the match back to real time.
-    if (speedRef.current > 1) applySpeed(1)
+    pullToWatchableRealtime()
     setMistakeMoment({ tick: view.episode.tick, ...signal })
     if (mistakeTimer.current) window.clearTimeout(mistakeTimer.current)
     mistakeTimer.current = window.setTimeout(() => {
       setMistakeMoment(null)
       recordFunnelEvent('mistake.timeout')
     }, 15000)
-  }, [view.phase, view.episode, playMode, mistakeMoment, flooded, activeCourse.scenario.edges, applySpeed])
+  }, [view.phase, view.episode, playMode, mistakeMoment, flooded, activeCourse.scenario.edges, pullToWatchableRealtime])
 
   // The mid-race verb: once per unranked run, offer to call the champion's next
   // route while it is live. Scored Match locks coaching, so this can never
@@ -744,8 +801,8 @@ function Workbench({
     })
     pushFeed([{ text: 'Contested ground — both rovers are nearby. Routes and pickups decide the score.', tone: 'info' }])
     // A beat worth watching pulls fast-forward back to real time.
-    if (speedRef.current > 1) applySpeed(1)
-  }, [view.phase, view.episode.tick, session, pushFeed, applySpeed])
+    pullToWatchableRealtime()
+  }, [view.phase, view.episode.tick, session, pushFeed, pullToWatchableRealtime])
 
   // Passive "rival sighted" beat: near-range proximity that never pauses the
   // sim — a feed note plus a short HUD tip. On the Sandstone course the lanes
@@ -775,11 +832,11 @@ function Workbench({
     })
     pushFeed([{ text: 'Rival sighted on the same stretch — close enough to contest.', tone: 'info' }])
     // A beat worth watching pulls fast-forward back to real time.
-    if (speedRef.current > 1) applySpeed(1)
+    pullToWatchableRealtime()
     setRunTip('Rival sighted nearby — contested ground is presentation only; routes and pickups decide the score.')
     if (runTipTimer.current) window.clearTimeout(runTipTimer.current)
     runTipTimer.current = window.setTimeout(() => setRunTip(null), 4200)
-  }, [view.phase, view.episode.tick, runTip, session, pushFeed, applySpeed])
+  }, [view.phase, view.episode.tick, runTip, session, pushFeed, pullToWatchableRealtime])
 
   // Director's track: once per match, run a headless clone of this episode
   // (same scenario, same locked policies/checkpoint, same physics adapter)
@@ -957,12 +1014,22 @@ function Workbench({
     if (view.phase === 'finished') session.reset()
     setHintOpen(false)
     if (follow === 'overview') setFollow('champion')
-    // Light Tutor compress: first Play runs at 2× so the opening race feels
-    // snappier; beats still pull back to 1×. Returning players keep their last speed.
-    if (!hasCompletedRun && speedRef.current === 1 && (view.phase === 'ready' || view.phase === 'finished')) {
-      applySpeed(2)
+    // Snappy first-run default: unranked Practice / Rush / Skirmish start at 4×
+    // until the player cycles speed. Presentation only — sim stays deterministic.
+    // Resume-from-pause keeps the current multiplier.
+    if (view.phase === 'ready' || view.phase === 'finished') {
+      const next = playStartSpeed({
+        mode: playMode,
+        playerChoseSpeed: playbackPref.playerChoseSpeed,
+        lastSpeed: playbackPref.lastSpeed,
+        currentSpeed: speedRef.current,
+      })
+      if (next !== speedRef.current) applySpeed(next)
+      preferredSpeedRef.current = playbackPref.playerChoseSpeed
+        ? (playbackPref.lastSpeed ?? next)
+        : FIRST_RUN_PLAY_SPEED
     }
-    recordFunnelEvent('run.start', `mode=${playMode} from=${view.phase}`)
+    recordFunnelEvent('run.start', `mode=${playMode} from=${view.phase} speed=${speedRef.current}x`)
     session.start()
   }
   const startMatchRef = useRef(primaryAction)
@@ -978,8 +1045,13 @@ function Workbench({
   const cycleSpeed = () => {
     const next = SESSION_SPEEDS[(SESSION_SPEEDS.indexOf(speed) + 1) % SESSION_SPEEDS.length]
     recordFunnelEvent('run.speed', `${next}x`)
+    preferredSpeedRef.current = next
+    const nextPref = { playerChoseSpeed: true as const, lastSpeed: next }
+    setPlaybackPref(nextPref)
+    savePlaybackPreference(nextPref)
     applySpeed(next)
   }
+  const autoSnappy = !playbackPref.playerChoseSpeed && isUnrankedPlayMode(playMode)
 
   const liveDirector = director?.matchId === session.matchId ? director : null
   const upcomingMoment = liveDirector ? nextMomentAfter(liveDirector.moments, view.episode.tick) : null
@@ -1790,15 +1862,21 @@ function Workbench({
               <button
                 className={styles.secondaryButton}
                 onClick={cycleSpeed}
-                title="Playback speed — presentation only; the sim stays deterministic"
+                title={speedControlTitle(autoSnappy)}
+                aria-label={`Playback speed ${speed} times${autoSnappy ? ', snappy first-run default' : ''}`}
               >
-                <FastForward size={15} />{speed}×
+                <FastForward size={15} />{speedControlLabel(speed, autoSnappy)}
               </button>
               <button
                 className={styles.secondaryButton}
                 onClick={skipAhead}
                 disabled={!visualReady}
-                title={upcomingMoment && upcomingMoment.kind !== 'finish'
+                title={skipControlTitle(
+                  upcomingMoment && upcomingMoment.kind !== 'finish'
+                    ? MOMENT_LABELS[upcomingMoment.kind]
+                    : null,
+                )}
+                aria-label={upcomingMoment && upcomingMoment.kind !== 'finish'
                   ? `Skip ahead to the next ${MOMENT_LABELS[upcomingMoment.kind]}`
                   : 'Skip to the final whistle'}
               >
@@ -1920,7 +1998,7 @@ function Workbench({
           />
           {engagement.showPlayHint && visualReady && hintOpen && view.phase === 'ready' && !modeBanner && (
             <div className={`${styles.playHint} ${styles.hintEnter}`} role="status">
-              <p><strong>Press Play.</strong> Follow your champion — it runs the house starter brain until you coach it into your own.</p>
+              <p><strong>Press Play.</strong> First unranked races run at <strong>4×</strong> so the clash feels snappy — use <strong>Speed</strong> or <strong>Skip</strong> anytime. Follow your champion until you coach it into your own.</p>
               <button
                 type="button"
                 onClick={() => {
