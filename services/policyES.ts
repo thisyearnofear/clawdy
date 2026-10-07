@@ -93,6 +93,12 @@ export interface EsContext {
   opponents: EntrantPolicyOption[]
   /** Build traits for the scored rover, so worker threads train and score the same chassis. */
   traits?: EntrantTraits
+  /**
+   * Optional rival traits parallel to `opponents`. Used for PvP-aware / steal-seeking
+   * training so Scout/Hauler sparring partners carry their Skirmish builds. Absent or
+   * undefined entries leave the rival on the pinned rover.
+   */
+  opponentTraits?: (EntrantTraits | undefined)[]
 }
 
 export interface EsScore {
@@ -121,7 +127,15 @@ export function scoreCheckpoint(checkpoint: PolicyCheckpoint, tasks: readonly Es
     for (const played of [variant, swapSides(variant)]) {
       // The scored brain is always the champion slot; a build's traits ride
       // with it on both sides. `undefined` runs the pinned rover unchanged.
-      const scenario = traits ? { ...played, entrants: [{ ...played.entrants[0], traits }, played.entrants[1]] } : played
+      // Steal-seeking / PvP sparring can also pin rival traits (Scout/Hauler).
+      const rivalTraits = context.opponentTraits?.[task.opponent]
+      const entrants = (traits || rivalTraits)
+        ? [
+            { ...played.entrants[0], ...(traits ? { traits } : {}) },
+            { ...played.entrants[1], ...(rivalTraits ? { traits: rivalTraits } : {}) },
+          ]
+        : played.entrants
+      const scenario = entrants === played.entrants ? played : { ...played, entrants }
       const runner = new ArenaRunner(scenario, { champion: option, rival: opponent }, undefined, { record: false })
       runner.advanceTicks(scenario.durationTicks)
       const snap = runner.snapshot()

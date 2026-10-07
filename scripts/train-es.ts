@@ -1,7 +1,11 @@
 /**
  * Evolution-strategies training on Rush, with a held-out proof at the end.
  *
- *   npx tsx scripts/train-es.ts [--gens 30] [--pairs 8] [--sigma 0.08] [--lr 1] [--tasks 3] [--seed 7] [--init checkpoint.json] [--out starter/rush-champion.json] [--val 3] [--schedule 0,2,1,0,2,3,4] [--save-every 10] [--timetable [--hub-prior 0]] [--chassis scout|hauler|raider [--ruleset skirmish]]
+ *   npx tsx scripts/train-es.ts [--gens 30] [--pairs 8] [--sigma 0.08] [--lr 1] [--tasks 3] [--seed 7] [--init checkpoint.json] [--out starter/rush-champion.json] [--val 3] [--schedule 0,2,1,0,2,3,4] [--save-every 10] [--timetable [--hub-prior 0]] [--chassis scout|hauler|raider [--ruleset skirmish]] [--steal-seek]
+ *
+ * `--steal-seek` (Skirmish Raider): adds Scout/Hauler house brains as PvP sparring
+ * partners with their Skirmish traits, and defaults the opponent schedule to mix
+ * poach intercepts with those chassis so contact/steal levers get practised.
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import { cpus } from 'node:os'
@@ -13,6 +17,7 @@ import type { EntrantPolicyOption } from '../services/arenaPolicy'
 import { exportCheckpointJson } from '../services/checkpointStorage'
 import { trainES, type EsContext, type EsEvaluator, type EsTask } from '../services/policyES'
 import { baseBuild, buildToTraits, CHASSIS_IDS, type ChassisId, type RulesetId } from '../services/chassis'
+import type { EntrantTraits } from '../services/arenaEpisode'
 import { extendCheckpointForChassis, extendCheckpointForTimetable, type PolicyCheckpoint } from '../services/policyModel'
 import { SEASON_0_STARTER_CHECKPOINT } from '../services/starterCheckpoint'
 import { workerPool } from './es-pool'
@@ -55,13 +60,31 @@ async function main() {
   const ruleset = rulesetIndex === -1 ? undefined : process.argv[rulesetIndex + 1] as RulesetId
   if (ruleset !== undefined && (ruleset as string) !== 'skirmish') throw new Error('--ruleset must be skirmish')
   if (ruleset && !chassis) throw new Error('--ruleset needs --chassis')
-  const context: EsContext = { rushBase, opponents, ...(chassis ? { traits: buildToTraits(baseBuild(chassis), ruleset) } : {}) }
+  const stealSeek = process.argv.includes('--steal-seek')
+  if (stealSeek && (chassis !== 'raider' || ruleset !== 'skirmish')) {
+    throw new Error('--steal-seek needs --chassis raider --ruleset skirmish')
+  }
+  // Steal-seeking: spar vs Scout/Hauler house brains under their Skirmish builds so
+  // contactRadiusBonus / steal-all get PvP pressure (house bots alone under-train bumps).
+  const opponentTraits: (EntrantTraits | undefined)[] = [undefined, undefined, undefined, undefined, undefined]
+  if (stealSeek) {
+    const scoutBrain = JSON.parse(readFileSync(resolve(repoRoot, 'starter/skirmish-scout.json'), 'utf-8')) as PolicyCheckpoint
+    const haulerBrain = JSON.parse(readFileSync(resolve(repoRoot, 'starter/skirmish-hauler.json'), 'utf-8')) as PolicyCheckpoint
+    opponents.push({ strategy: 'learned', checkpoint: scoutBrain }, { strategy: 'learned', checkpoint: haulerBrain })
+    opponentTraits.push(buildToTraits(baseBuild('scout'), 'skirmish'), buildToTraits(baseBuild('hauler'), 'skirmish'))
+  }
+  const context: EsContext = {
+    rushBase,
+    opponents,
+    ...(chassis ? { traits: buildToTraits(baseBuild(chassis), ruleset) } : {}),
+    ...(stealSeek ? { opponentTraits } : {}),
+  }
   const pool = workerPool(context, Math.max(1, cpus().length - 1))
 
   const config = {
     gens: arg('gens', 30), pairs: arg('pairs', 8), sigma: arg('sigma', 0.08), lr: arg('lr', 1), seed: arg('seed', 7),
   }
-  console.log(`ES on Rush: ${JSON.stringify(config)}, workers ${Math.max(1, cpus().length - 1)}`)
+  console.log(`ES on Rush: ${JSON.stringify(config)}, workers ${Math.max(1, cpus().length - 1)}${stealSeek ? ', steal-seek PvP' : ''}`)
   const holdoutSeeds = Array.from({ length: 12 }, (_, index) => 9001 + index)
   await holdout('starter (before)', starter, pool.evaluator, holdoutSeeds)
 
@@ -77,8 +100,10 @@ async function main() {
   const parent = chassis ? extendCheckpointForChassis(timetabled) : timetabled
   let final: PolicyCheckpoint = parent
   // Hard opponents (safe=0, weather=2) twice as often by default; `--schedule 0,0,2` overrides.
+  // Steal-seek default: poach (3) + Scout (5) + Hauler (6) dominate so steals get practised.
   const scheduleIndex = process.argv.indexOf('--schedule')
-  const opponentSchedule = scheduleIndex === -1 ? [0, 2, 1, 0, 2, 3, 4] : process.argv[scheduleIndex + 1].split(',').map(Number)
+  const defaultSchedule = stealSeek ? [3, 5, 6, 3, 5, 6, 0, 2, 1, 3] : [0, 2, 1, 0, 2, 3, 4]
+  const opponentSchedule = scheduleIndex === -1 ? defaultSchedule : process.argv[scheduleIndex + 1].split(',').map(Number)
   const outPath = process.argv.includes('--out') ? process.argv[process.argv.indexOf('--out') + 1] : 'starter/rush-champion.json'
   const saveEvery = arg('save-every', 10)
   for await (const progress of trainES({

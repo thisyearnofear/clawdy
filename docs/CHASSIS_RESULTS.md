@@ -153,6 +153,44 @@ Reading it (vs v4: Scout–Raider 73-7, Hauler–Raider 49-28):
 - **Hauler↔Scout near-parity held** (38-40).
 - **Raider is viable vs Scout** (30-50; mean banked within ~0.25) and **more competitive vs Hauler** (34-44). Still not a claimed RPS loop — Scout leads Raider, Hauler leads Raider, Scout≈Hauler.
 - Chassis fantasy stays distinct: Scout vision, Hauler capacity+tax, Raider steal-all + wider ram.
-- Residual: Raider still trails both; a steal-seeking retrain (or PvP-aware training) remains open if a claimed eval needs it.
+- Residual (addressed in v6): Raider still trails both; steal-seeking / PvP-aware retrain shipped below.
 
 Records: `docs/eval-skirmish-pvp.json` (v5). Brains unchanged: `starter/skirmish-<chassis>.json`.
+
+### Skirmish v6: Raider steal-seeking / PvP-aware retrain
+
+PR #8 / v5 shipped `contactRadiusBonus: 0.75` + contact +1.50 with **existing** house brains. Raider was viable (30–50 vs Scout, 34–44 vs Hauler) but still not steal-seeking under the new levers. A prior house-bot-only retrain under tax/leads went **0–72** vs Hauler and was not shipped.
+
+This slice keeps every v5 lever and **retrains only Raider** with `--steal-seek`: Scout/Hauler Skirmish house brains as PvP sparring partners (with their builds) plus a poach-heavy schedule so contact/steal gets practised. Warm-start from the v5 `starter/skirmish-raider.json`, 150 gens, seed 11 (seed 12 archived). Scout and Hauler brains unchanged so Hauler↔Scout near-parity is preserved.
+
+Reproduce:
+
+```
+npx tsx scripts/train-es.ts --init docs/skirmish-v1/sk5-raider-house.json --chassis raider --ruleset skirmish --steal-seek --gens 150 --pairs 12 --tasks 4 --seed 11 --hub-prior 1.5 --out runs/sk-raider-v6-s11.json
+npx tsx scripts/eval-es.ts runs/sk-raider-v6-s11.json --chassis raider --ruleset skirmish --variants 25 --write
+npx tsx scripts/bench-chassis-pvp.ts 40 --ruleset skirmish --write
+```
+
+Against house bots (seed 11, 50 matches/opponent):
+
+| vs safe | vs greedy | vs weather | vs poach |
+| --- | --- | --- | --- |
+| 35-15-0 | 45-3-2 | 37-11-2 | 46-0-4 |
+
+Brain vs brain (80 matches per cell):
+
+| Row beats column | scout | hauler | raider |
+| --- | --- | --- | --- |
+| scout | - | 38-40-2 | 51-29-0 |
+| hauler | 40-38-2 | - | 41-37-2 |
+| raider | 29-51-0 | 37-41-2 | - |
+
+Mean banked scout:hauler ≈ 7.91:8.07 (unchanged). scout:raider ≈ 7.00:6.85; hauler:raider ≈ 8.46:7.88.
+
+Reading it (vs v5: Scout–Raider 50-30, Hauler–Raider 44-34):
+- **Hauler↔Scout near-parity held** (38-40).
+- **Raider vs Hauler improved** (37-41, was 34-44); vs Scout essentially flat (29-51, was 30-50 — within noise).
+- Mean banked vs Scout tightened (~0.15 gap). Still not a claimed RPS loop — Scout leads Raider, Hauler leads Raider, Scout≈Hauler.
+- Residual: Raider still trails both; further PvP curriculum or encoder contact features remain open if a claimed eval needs a loop.
+
+Records: `docs/eval-es-skirmish-raider.json`, `docs/eval-skirmish-pvp.json` (v6). Brains: `starter/skirmish-raider.json` (`es-g53-df4305`); Scout/Hauler unchanged. Archive: `docs/skirmish-v1/sk6-raider-s11.json` (shipped), `sk6-raider-s12.json` (weaker holdout; not shipped), `sk5-raider-house.json` (pre-retrain warm-start).

@@ -8,7 +8,7 @@ import { SEASON_0_STARTER_CHECKPOINT, isBundledStarter } from './starterCheckpoi
 /**
  * House brains trained under Skirmish, one per chassis (docs/CHASSIS_RESULTS.md,
  * seed 11). They read the chassis traits, so they only make sense with the
- * matching build. Balance is not claimed: the Hauler leads.
+ * matching build. Balance is not claimed; Hauler↔Scout is near-parity under v5+ levers.
  */
 const BRAINS: Record<ChassisId, PolicyCheckpoint> = {
   scout: scoutJson as PolicyCheckpoint,
