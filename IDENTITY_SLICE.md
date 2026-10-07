@@ -1,8 +1,10 @@
 # Clash-first identity slice
 
-Branch: `feat/clash-first-identity` (local only — **do not push from the box**).
+**Status: landed Oct 7, 2026** — merged to `main` as stacked PRs #13 (`feat/clash-first-identity`) → #14 (`feat/clash-legibility-collapse`) → #15 (`feat/clash-steal-highlight`), in that order. Each commit was made lint/typecheck-clean before merge.
 
-North star: **Clash is the game; Tutor is depth.**
+#14 collapsed the door taxonomy further than this note's original design: **player doors are Clash vs Prove only** — Tutor and Rush were removed as player-facing labels and stay internal names (`PlayerDoor = 'clash' | 'prove'` in `services/decisionCaption.ts`). It also added a `steal` decision-reason bucket (from recorded bump events and Raider steal windows) and moved the perk-moment copy into `perkTelegraphMoment`. #15 added the Raider full-load steal highlight PIP (`services/stealHighlight*.ts`, `components/workbench/StealHighlightPip.tsx`, `app/api/steal-highlight`) — presentation only, score untouched; see `docs/SCENES.md` §Steal-highlight spike.
+
+North star: **Clash is the game; Prove is the held-out test.**
 
 ## What landed
 
@@ -10,24 +12,22 @@ North star: **Clash is the game; Tutor is depth.**
 Help / README previously claimed Call “does not steer” / “without steering the current race.” That contradicted `services/liveCall.ts` (sticky destination preference for the rest of the unranked run + Train lesson queue).
 
 - **Truth now:** Call **steers this unranked race** and queues an approved Train lesson. Scored Prove (Match) stays locked.
-- Clash-first framing: Clash first; Tutor optional; Prove locks coaching.
+- Clash-first framing: Clash first; Prove locks coaching.
 
-### 2. Decision language v1
-Shared mid-run caption: **planned · alternative · one plain reason** (`flood` / `rival` / `energy` / `cargo` / `bank`).
+### 2. Decision language
+Shared mid-run caption: **planned · alternative · one plain reason** (`flood` / `rival` / `steal` / `energy` / `cargo` / `bank` — `steal` added in #14 from recorded bump events + Raider steal windows).
 
-- Pure helper: `services/decisionCaption.ts` — uses real `lastOutcome` / transit / `availableActions` / weather / rival visibility only. No invented explainability (missing fields stay absent).
+- Pure helper: `services/decisionCaption.ts` — uses real `lastOutcome` / transit / `availableActions` / weather / rival visibility / sim events only. No invented explainability (missing fields stay absent).
 - Wired into HUD intent (`ViewportHud`) and champion `AgentCard` via `ArenaScene`.
 - `describeArenaDecision` prefers the caption when data exists.
 
 ### 3. Mode collapse (player-facing doors)
-Prefer **Clash vs Prove**; Tutor for coaching depth. Softened Training Grounds / Practice / Match / Skirmish pile-up where cheap:
+**Clash vs Prove only** — Tutor and Rush were dropped as player-facing doors in the #14 legibility collapse (they remain internal play-mode names). Softened Training Grounds / Practice / Match / Skirmish pile-up where cheap:
 
 | Door | Internal | Where |
 | --- | --- | --- |
-| **Clash** | `rulesetId: 'skirmish'` | RulesetPicker, HUD, Build, Ladder, hero |
-| **Tutor** | Season 0 / practice | RulesetPicker, mode toggle, HUD |
+| **Clash** | unranked run (Skirmish or Season-0 ruleset, practice/rush playModes) | RulesetPicker, HUD, Build, Ladder, hero |
 | **Prove** | Match / compete | Mode toggle, HUD, Help |
-| Rush | rush playMode | Softened label on mode toggle |
 
 Season 0 eval ids, scenarios, and `eval:gate` pins are untouched.
 
@@ -76,40 +76,15 @@ npx vitest run \
 
 125 passed.
 
-## How to push / PR from Mac
+## Landing record (supersedes the original push instructions)
 
-User closed Mac and deferred GitHub access — do this on the Mac when ready:
+This slice shipped as a three-PR stack rather than a single PR:
 
-```bash
-cd /path/to/clawdy   # or pull the branch artifact onto the Mac clone
+1. **#13 `feat/clash-first-identity`** — Call steers, decision captions, Clash/Tutor/Prove doors, perk telegraph (original slice above).
+2. **#14 `feat/clash-legibility-collapse`** — richer captions + `steal` reason, perk teeth copy, doors collapsed to Clash/Prove.
+3. **#15 `feat/clash-steal-highlight`** — Raider full-load steal PIP (storyboard + optional fal clip).
 
-# Confirm remote (expected):
-git remote -v
-# origin  https://github.com/thisyearnofear/clawdy.git (fetch)
-# origin  https://github.com/thisyearnofear/clawdy.git (push)
-
-# If this branch only exists on the box, fetch/copy the commit first, then:
-git checkout feat/clash-first-identity
-git push -u origin feat/clash-first-identity
-
-gh pr create \
-  --base main \
-  --head feat/clash-first-identity \
-  --title "feat: Clash-first identity (Call steers, decision captions, doors, perk telegraph)" \
-  --body "$(cat <<'PR'
-## Summary
-Clash-first identity slice: Call copy authority (steers unranked + queues Train), mid-run decision captions from real intent data, Clash/Tutor/Prove door labels, first-minute Skirmish perk telegraph.
-
-## Test plan
-- [ ] Unranked Clash: Call a route → rover follows sticky preference; lesson appears in Lessons
-- [ ] HUD/AgentCard show planned · alt · reason during live run (no fake reasons)
-- [ ] RulesetPicker doors read Clash / Tutor; mode toggle Tutor / Rush / Prove
-- [ ] First Skirmish minute shows Hauler/Raider/Scout perk tip once
-- [ ] npm test (or vitest files listed in IDENTITY_SLICE.md)
-- [ ] Prove (Match) still locks coaching
-PR
-)"
-```
+Historical note kept for provenance only — the original plan called for Clash/Tutor/Prove doors and a Tutor/Rush mode toggle; #14 superseded that.
 
 ## Residual risks
 
