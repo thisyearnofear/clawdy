@@ -172,7 +172,7 @@ describe('BuildScreen', () => {
   it('renders every chassis, axis and module as a labelled control', () => {
     const html = render()
     for (const chassis of ['Scout', 'Hauler', 'Raider']) expect(html).toContain(chassis)
-    for (const axis of ['Navigation', 'Speed', 'Hardiness', 'Defence', 'Attack']) expect(html).toContain(axis)
+    for (const axis of ['Navigation', 'Speed', 'Battery', 'Bump defence', 'Bump attack']) expect(html).toContain(axis)
     for (const label of ['Wide sensor', 'Armour', 'Ram plate', 'Extra cell']) expect(html).toContain(label)
   })
 
@@ -209,6 +209,9 @@ describe('BuildScreen', () => {
   it('gives every slider an accessible value text', () => {
     const html = render()
     expect(html).toMatch(/aria-valuetext="Speed \d+ of \d+"/)
+    expect(html).toContain('Raises route travel rate')
+    expect(html).toContain('Raises battery capacity')
+    expect(html).toContain('Adds to bump strength')
     expect(html).toContain('aria-describedby=')
   })
 

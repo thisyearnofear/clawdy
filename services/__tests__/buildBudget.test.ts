@@ -14,6 +14,7 @@ import {
   isValidBuild,
   marginalCost,
   maxAffordableLevel,
+  MODULE_HINTS,
   MODULE_IDS,
   MODULE_SLOTS,
   parseBuild,
@@ -24,6 +25,8 @@ import {
   setAxisLevel,
   STAT_AXES,
   STAT_BUDGET,
+  STAT_HINTS,
+  STAT_LABELS,
   STAT_MAX,
   toggleModule,
   validateBuild,
@@ -329,5 +332,30 @@ describe('readout honesty (ground rule 4)', () => {
     for (const chassis of CHASSIS_IDS_FOR_TEST) {
       expect(describeBuildSummary(baseBuild(chassis)).trim().length).toBeGreaterThan(0)
     }
+  })
+})
+
+describe('slider copy matches live traits', () => {
+  it('names axes after the sim traits they buy, not abstract combat labels', () => {
+    expect(STAT_LABELS.hardiness).toBe('Battery')
+    expect(STAT_LABELS.defence).toMatch(/bump/i)
+    expect(STAT_LABELS.attack).toMatch(/bump/i)
+    expect(STAT_LABELS.speed).toBe('Speed')
+  })
+
+  it('explains speed, battery and bump in the per-axis hints', () => {
+    expect(STAT_HINTS.speed).toMatch(/travel/i)
+    expect(STAT_HINTS.hardiness).toMatch(/battery|energy/i)
+    expect(STAT_HINTS.defence).toMatch(/bump/i)
+    expect(STAT_HINTS.attack).toMatch(/bump/i)
+    expect(STAT_HINTS.navigation).toMatch(/roadmap|no effect/i)
+  })
+
+  it('documents live module effects for armour and ram plate', () => {
+    expect(MODULE_HINTS.armour).toMatch(/bump/i)
+    expect(MODULE_HINTS.armour).toMatch(/speed/i)
+    expect(MODULE_HINTS['ram-plate']).toMatch(/bump/i)
+    expect(MODULE_HINTS['ram-plate']).toMatch(/battery/i)
+    expect(MODULE_HINTS['wide-sensor']).toMatch(/no simulation effect/i)
   })
 })
