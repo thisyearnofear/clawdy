@@ -15,14 +15,25 @@ import { type PolicyCheckpoint, SEASON_0_BASE_CHECKPOINT } from '../../services/
 import { isBundledStarter, SEASON_0_STARTER_CHECKPOINT } from '../../services/starterCheckpoint'
 import { brainForRuleset } from '../../services/skirmishBrains'
 import { PROVERBS, useFlavourZh, withProverb } from '../../services/flavour'
-import { proposeCorrection, summarizeCoachFocus } from '../../services/coachingEngine'
+import { coachingSampleWeights, comparisonRivalForCoaching, proposeCorrection, summarizeCoachFocus } from '../../services/coachingEngine'
 import { rankCoachingCandidates, type CoachingCandidate } from '../../services/coachingCandidates'
 import { draftRecordedCorrection, recordedCoachContext } from '../../services/coachingReview'
 import { comparisonFrameAt, divergenceFrameIndex, type PracticeComparison } from '../../services/practiceComparison'
 import { useCoachingWorker } from '../utils/useCoachingWorker'
-import { liveCallContext, type LiveCallContext } from '../../services/liveCall'
+import { liveCallContext, resolveLiveCallPreference, type LiveCallContext } from '../../services/liveCall'
 import { engagementView, heroLedeMode } from '../../services/engagement'
 import { loadEngagementProgress, saveEngagementProgress } from '../../services/engagementProgress'
+import {
+  FIRST_RUN_PLAY_SPEED,
+  isUnrankedPlayMode,
+  loadPlaybackPreference,
+  playStartSpeed,
+  savePlaybackPreference,
+  skipControlTitle,
+  speedAfterWatchableTip,
+  speedControlLabel,
+  speedControlTitle,
+} from '../../services/presentationPacing'
 import { ArenaSound } from '../../services/arenaSound'
 import {
   encounterDistance,
@@ -62,6 +73,7 @@ import { useConvexClient } from '../ConvexClientProvider'
 import { api } from '../../convex/_generated/api'
 import type { ReplayMarker } from '../../services/replayMarkers'
 import { buildReplayStory, captionAt } from '../../services/replayStory'
+import { subscribeOpenReplay } from '../../services/sharedReplayNav'
 import {
   deleteExampleRecord,
   queueCheckpointSync,
@@ -80,7 +92,7 @@ import { BeatTimeline } from '../workbench/BeatTimeline'
 import { BootScreen } from '../workbench/BootScreen'
 import { BrandHeader } from '../workbench/BrandHeader'
 import { CoachPanel } from '../workbench/CoachPanel'
-import type { ForgedLook } from '../../services/forgeView'
+import { alignBuildToForgedLook, type ForgedLook } from '../../services/forgeView'
 import { LessonComparison } from '../workbench/LessonComparison'
 import { LiveCallPrompt } from '../workbench/LiveCallPrompt'
 import { HelpDrawer } from '../workbench/HelpDrawer'
@@ -160,6 +172,8 @@ function Workbench({
       return baseBuild(DEFAULT_BUILD.chassis)
     }
   })
+  const buildRef = useRef(build)
+  useEffect(() => { buildRef.current = build })
   const [coachNudgeOpen, setCoachNudgeOpen] = useState(false)
   // Stream B training controls. These configure the evolution-strategy builder
   // (`services/trainingConfig.ts`), NOT the pinned browser trainer below — the
@@ -178,7 +192,7 @@ function Workbench({
   const [liveCall, setLiveCall] = useState<LiveCallContext | null>(null)
   const liveCallUsedRef = useRef(false)
   const [trainFocusLine, setTrainFocusLine] = useState<string | null>(null)
-  const [modeBanner, setModeBanner] = useState<WorkbenchPlayMode | null>(null)
+  const [modeBanner, setModeBanner] = useState<{ mode: WorkbenchPlayMode; handoff?: boolean } | null>(null)
   const [runTip, setRunTip] = useState<string | null>(null)
   const [sharedReplay, setSharedReplay] = useState<SharedReplay | null>(null)
   const floodWarnedRef = useRef<number | null>(null)
@@ -188,8 +202,14 @@ function Workbench({
   const mistakeTimer = useRef<number | null>(null)
   const prevRecoveriesRef = useRef(0)
   const prevObservedTickRef = useRef(0)
-  const [speed, setSpeedState] = useState<SessionSpeed>(1)
-  const speedRef = useRef<SessionSpeed>(1)
+  const [playbackPref, setPlaybackPref] = useState(() => loadPlaybackPreference())
+  const [speed, setSpeedState] = useState<SessionSpeed>(() =>
+    playbackPref.playerChoseSpeed && playbackPref.lastSpeed ? playbackPref.lastSpeed : 1)
+  const speedRef = useRef<SessionSpeed>(speed)
+  const preferredSpeedRef = useRef<SessionSpeed>(FIRST_RUN_PLAY_SPEED)
+  const playbackPrefRef = useRef(playbackPref)
+  useEffect(() => { playbackPrefRef.current = playbackPref }, [playbackPref])
+  const beatRealtimeTimer = useRef<number | null>(null)
   // Director's track: a headless clone of this run computes where the beats
   // will land. Keyed by matchId so a reset/mode switch can't serve stale
   // predictions; built once on run start (deferred a task so Play doesn't
@@ -205,6 +225,45 @@ function Workbench({
     session.setSpeed(next)
     setSpeedState(next)
   }, [session])
+  // Mirror stored preference into refs and the external session once on mount
+  // (React state already hydrated via the SSR-safe initializers above).
+  useEffect(() => {
+    const pref = loadPlaybackPreference()
+    if (pref.playerChoseSpeed && pref.lastSpeed) {
+      preferredSpeedRef.current = pref.lastSpeed
+      speedRef.current = pref.lastSpeed
+      session.setSpeed(pref.lastSpeed)
+    } else {
+      preferredSpeedRef.current = FIRST_RUN_PLAY_SPEED
+    }
+  }, [session])
+  // Watchable beats pull FF to 1×; schedule restore of the snappy preferred
+  // speed unless the player has chosen their own multiplier.
+  const pullToWatchableRealtime = useCallback(() => {
+    if (speedRef.current > 1) applySpeed(1)
+    if (playbackPrefRef.current.playerChoseSpeed) return
+    if (beatRealtimeTimer.current) window.clearTimeout(beatRealtimeTimer.current)
+    beatRealtimeTimer.current = window.setTimeout(() => {
+      const next = speedAfterWatchableTip({
+        playerChoseSpeed: playbackPrefRef.current.playerChoseSpeed,
+        preferredSpeed: preferredSpeedRef.current,
+        currentSpeed: speedRef.current,
+        phaseRunning: true,
+      })
+      if (next !== null) applySpeed(next)
+    }, 4200)
+  }, [applySpeed])
+  // Tip clear is another restore path (flood / sighting / mid-run coach tips).
+  useEffect(() => {
+    if (runTip !== null) return
+    const next = speedAfterWatchableTip({
+      playerChoseSpeed: playbackPref.playerChoseSpeed,
+      preferredSpeed: preferredSpeedRef.current,
+      currentSpeed: speedRef.current,
+      phaseRunning: view.phase === 'running',
+    })
+    if (next !== null) applySpeed(next)
+  }, [runTip, playbackPref.playerChoseSpeed, view.phase, applySpeed])
   const checkpoints = useArenaStore(state => state.checkpoints)
   // True once the user owns a brain that isn't a bundled built-in (trained
   // or imported) — gates the tournament bracket, which is framed around
@@ -335,42 +394,58 @@ function Workbench({
   // ?replay=<shareId> boots straight into review of a published league match.
   // The slug is the capability, so this path does not need sign-in. Recordings
   // arrive as storage URLs; the session validates the schema before presenting
-  // them, and user ids never cross the wire.
+  // them, and user ids never cross the wire. Same-tab "replay" clicks from the
+  // ladder dispatch OPEN_REPLAY_EVENT so we do not depend on a remount.
   useEffect(() => {
-    const shareId = new URLSearchParams(window.location.search).get('replay')
-    if (!shareId) return
-    if (!convex) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot boot read; the notice is the offline failure surface
-      setTrainMessage('Shared replays need a live Convex connection.')
-      return
-    }
     let cancelled = false
-    void convex.query(api.league.viewReplay, { shareId }).then(async doc => {
-      if (cancelled) return
-      if (!doc) { setTrainMessage('That replay link does not point at a saved match.'); return }
-      const recordings = await Promise.all(doc.urls.map(async url => {
-        const parsed = JSON.parse(await (await fetch(url)).text()) as ArenaRecording
-        if (parsed?.schemaVersion !== 'arena-recording-v1' || !Array.isArray(parsed.checkpoints) || parsed.checkpoints.length === 0) {
-          throw new Error('recording-schema-mismatch')
+
+    const loadShare = async (shareId: string, consumeUrl: boolean) => {
+      if (!convex) {
+        setTrainMessage('Shared replays need a live Convex connection.')
+        return
+      }
+      try {
+        const doc = await convex.query(api.league.viewReplay, { shareId })
+        if (cancelled) return
+        if (!doc) { setTrainMessage('That replay link does not point at a saved match.'); return }
+        if (doc.urls.length === 0) {
+          setTrainMessage('That replay link has no playable recording yet.')
+          return
         }
-        return parsed
-      }))
-      if (cancelled || recordings.length === 0) return
-      setSharedReplay({
-        shareId,
-        kind: doc.kind,
-        participants: doc.participants,
-        championIndex: doc.championIndex,
-        recordings,
-        index: 0,
-        markers: doc.markers,
-      })
-      setCinematic(true)
-      session.reviewFrom(recordings[0])
-      // Consume the share link so leaving review and reloading doesn't reopen it.
-      window.history.replaceState(null, '', window.location.pathname)
-    }).catch(() => { if (!cancelled) setTrainMessage('Could not load that replay link.') })
-    return () => { cancelled = true }
+        const recordings = await Promise.all(doc.urls.map(async url => {
+          const parsed = JSON.parse(await (await fetch(url)).text()) as ArenaRecording
+          if (parsed?.schemaVersion !== 'arena-recording-v1' || !Array.isArray(parsed.checkpoints) || parsed.checkpoints.length === 0) {
+            throw new Error('recording-schema-mismatch')
+          }
+          return parsed
+        }))
+        if (cancelled) return
+        if (recordings.length === 0) {
+          setTrainMessage('That replay link has no playable recording yet.')
+          return
+        }
+        setSharedReplay({
+          shareId,
+          kind: doc.kind,
+          participants: doc.participants,
+          championIndex: doc.championIndex,
+          recordings,
+          index: 0,
+          markers: doc.markers,
+        })
+        setCinematic(true)
+        session.reviewFrom(recordings[0])
+        if (consumeUrl) window.history.replaceState(null, '', window.location.pathname)
+      } catch {
+        if (!cancelled) setTrainMessage('Could not load that replay link.')
+      }
+    }
+
+    const bootShareId = new URLSearchParams(window.location.search).get('replay')
+    if (bootShareId) void loadShare(bootShareId, true)
+
+    const stop = subscribeOpenReplay(shareId => { void loadShare(shareId, false) })
+    return () => { cancelled = true; stop() }
   }, [convex, session])
 
   const selectSharedSide = (index: number) => {
@@ -406,11 +481,11 @@ function Workbench({
     floodWarnedRef.current = coming.startTick
     recordFunnelEvent('tip.flood', `in=${nextFloodIn}s`)
     // An approaching flood is a watchable beat — pull FF back to real time.
-    if (speedRef.current > 1) applySpeed(1)
+    pullToWatchableRealtime()
     setRunTip(`Flood in ${nextFloodIn}s — amber valley slows. Take the ridge.`)
     if (runTipTimer.current) window.clearTimeout(runTipTimer.current)
     runTipTimer.current = window.setTimeout(() => setRunTip(null), 5200)
-  }, [view.phase, view.episode.tick, flooded, nextFloodIn, activeCourse.scenario.floods, applySpeed])
+  }, [view.phase, view.episode.tick, flooded, nextFloodIn, activeCourse.scenario.floods, pullToWatchableRealtime])
 
   // Mid-run coaching discoverability: coaching is legal any time in Practice
   // (the lock is compete-only), but nothing told the user that — they watched
@@ -464,20 +539,20 @@ function Workbench({
     try { window.sessionStorage.setItem(COACH_MISTAKE_KEY, '1') } catch { /* ignore */ }
     recordFunnelEvent('mistake.shown', signal.headline)
     // Coachable moments pull the match back to real time.
-    if (speedRef.current > 1) applySpeed(1)
+    pullToWatchableRealtime()
     setMistakeMoment({ tick: view.episode.tick, ...signal })
     if (mistakeTimer.current) window.clearTimeout(mistakeTimer.current)
     mistakeTimer.current = window.setTimeout(() => {
       setMistakeMoment(null)
       recordFunnelEvent('mistake.timeout')
     }, 15000)
-  }, [view.phase, view.episode, playMode, mistakeMoment, flooded, activeCourse.scenario.edges, applySpeed])
+  }, [view.phase, view.episode, playMode, mistakeMoment, flooded, activeCourse.scenario.edges, pullToWatchableRealtime])
 
-  // The mid-race verb: once per Practice run, offer to call the champion's next
-  // route while it is live. Scoped to practice — a scored Match locks coaching,
-  // so this can never touch a result.
+  // The mid-race verb: once per unranked run, offer to call the champion's next
+  // route while it is live. Scored Match locks coaching, so this can never
+  // touch a result; Practice and Rush/Skirmish both get the strong sticky apply.
   useEffect(() => {
-    if (view.phase !== 'running' || playMode !== 'practice') return
+    if (view.phase !== 'running' || playMode === 'compete') return
     if (liveCall || liveCallUsedRef.current || isTraining) return
     let observation
     try {
@@ -571,6 +646,42 @@ function Workbench({
       setTrainMessage('That route is not available right now — the champion keeps its own plan for this run.')
       return
     }
+    const preference = resolveLiveCallPreference(liveCall.observation, edgeId)
+    if (!preference) {
+      setTrainMessage('That route is not available right now — the champion keeps its own plan for this run.')
+      return
+    }
+    // Strong sticky apply: divert toward the called destination for the rest of
+    // this run. Exact edge wins when legal; otherwise any legal move to the
+    // destination node; otherwise wait until the next legal junction.
+    let divertApplied = false
+    try {
+      session.applyLiveCall('champion', preference)
+      divertApplied = true
+    } catch {
+      setTrainMessage("Couldn't steer this race — the lesson will still save for Train.")
+    }
+    // Immediate feedback: if the called edge is not legal *right now* (already
+    // left the junction / in transit), say so clearly — preference still sticks.
+    let deferredNow = false
+    if (divertApplied) {
+      try {
+        const now = session.observe('champion', { forceDecision: true })
+        const legal = now.availableActions.some(
+          action => action.type === 'move' && (action as { edgeId: string }).edgeId === edgeId,
+        )
+        const towardPreferred = now.availableActions.some(action => {
+          if (action.type !== 'move') return false
+          const edge = now.edges.find(candidate => candidate.id === (action as { edgeId: string }).edgeId)
+          if (!edge) return false
+          const dest = edge.from === now.self.nodeId ? edge.to : edge.from
+          return dest === preference.preferredNodeId
+        })
+        deferredNow = !legal && !towardPreferred
+      } catch {
+        deferredNow = false
+      }
+    }
     try {
       exampleCounter.current += 1
       // Recorded as an approved example directly: the player chose it live, in
@@ -591,10 +702,14 @@ function Workbench({
       recordFunnelEvent('example.draft', 'live-call')
       // Deliberately does NOT open the Coach column. A call happens mid-race,
       // and expanding to a third column while the player is watching a flood
-      // countdown is exactly the overstimulation this prompt caused. The
-      // lesson is saved and the status line confirms it; the player opens
-      // Coach when they choose, which is also where Approve and Train live.
-      setTrainMessage(`Live call saved — teach it ${routeLabel(edgeId)}. Finish the race, then open Lessons to approve and train.`)
+      // countdown is exactly the overstimulation this prompt caused.
+      if (!divertApplied) {
+        setTrainMessage("Couldn't steer this race — lesson still saved for Train.")
+      } else if (deferredNow) {
+        setTrainMessage(`Route queued — it'll take ${routeLabel(edgeId)} at the next junction where that path is legal. Lesson saved for Train.`)
+      } else {
+        setTrainMessage(`Route called — it's taking ${routeLabel(edgeId)} for this race. Lesson saved for Train.`)
+      }
     } catch {
       setTrainMessage("Couldn't save that call — pause and use Coach instead.")
     }
@@ -702,8 +817,8 @@ function Workbench({
     })
     pushFeed([{ text: 'Contested ground — both rovers are nearby. Routes and pickups decide the score.', tone: 'info' }])
     // A beat worth watching pulls fast-forward back to real time.
-    if (speedRef.current > 1) applySpeed(1)
-  }, [view.phase, view.episode.tick, session, pushFeed, applySpeed])
+    pullToWatchableRealtime()
+  }, [view.phase, view.episode.tick, session, pushFeed, pullToWatchableRealtime])
 
   // Passive "rival sighted" beat: near-range proximity that never pauses the
   // sim — a feed note plus a short HUD tip. On the Sandstone course the lanes
@@ -733,11 +848,11 @@ function Workbench({
     })
     pushFeed([{ text: 'Rival sighted on the same stretch — close enough to contest.', tone: 'info' }])
     // A beat worth watching pulls fast-forward back to real time.
-    if (speedRef.current > 1) applySpeed(1)
+    pullToWatchableRealtime()
     setRunTip('Rival sighted nearby — contested ground is presentation only; routes and pickups decide the score.')
     if (runTipTimer.current) window.clearTimeout(runTipTimer.current)
     runTipTimer.current = window.setTimeout(() => setRunTip(null), 4200)
-  }, [view.phase, view.episode.tick, runTip, session, pushFeed, applySpeed])
+  }, [view.phase, view.episode.tick, runTip, session, pushFeed, pullToWatchableRealtime])
 
   // Director's track: once per match, run a headless clone of this episode
   // (same scenario, same locked policies/checkpoint, same physics adapter)
@@ -912,10 +1027,33 @@ function Workbench({
     if (view.phase === 'error') { onRetry(); return }
     if (view.phase === 'review') { setCinematic(false); session.returnToRun(); return }
     if (view.phase === 'running') { session.pause(); return }
+    const resuming = view.phase === 'paused'
     if (view.phase === 'finished') session.reset()
     setHintOpen(false)
     if (follow === 'overview') setFollow('champion')
-    recordFunnelEvent('run.start', `mode=${playMode} from=${view.phase}`)
+    // Snappy first-run default: unranked Practice / Rush / Skirmish start at 4×
+    // until the player cycles speed. Presentation only — sim stays deterministic.
+    // Resume-from-pause keeps the current multiplier.
+    if (view.phase === 'ready' || view.phase === 'finished') {
+      const next = playStartSpeed({
+        mode: playMode,
+        playerChoseSpeed: playbackPref.playerChoseSpeed,
+        lastSpeed: playbackPref.lastSpeed,
+        currentSpeed: speedRef.current,
+      })
+      if (next !== speedRef.current) applySpeed(next)
+      preferredSpeedRef.current = playbackPref.playerChoseSpeed
+        ? (playbackPref.lastSpeed ?? next)
+        : FIRST_RUN_PLAY_SPEED
+    }
+    recordFunnelEvent('run.start', `mode=${playMode} from=${view.phase} speed=${speedRef.current}x`)
+    // Compete handoff ("Controls off…") only when the held-out match begins —
+    // not on idle Match toggle, and not when merely resuming a pause.
+    if (playMode === 'compete' && !resuming) {
+      setModeBanner({ mode: 'compete', handoff: true })
+      if (modeBannerTimer.current) window.clearTimeout(modeBannerTimer.current)
+      modeBannerTimer.current = window.setTimeout(() => setModeBanner(null), 1100)
+    }
     session.start()
   }
   const startMatchRef = useRef(primaryAction)
@@ -931,8 +1069,13 @@ function Workbench({
   const cycleSpeed = () => {
     const next = SESSION_SPEEDS[(SESSION_SPEEDS.indexOf(speed) + 1) % SESSION_SPEEDS.length]
     recordFunnelEvent('run.speed', `${next}x`)
+    preferredSpeedRef.current = next
+    const nextPref = { playerChoseSpeed: true as const, lastSpeed: next }
+    setPlaybackPref(nextPref)
+    savePlaybackPreference(nextPref)
     applySpeed(next)
   }
+  const autoSnappy = !playbackPref.playerChoseSpeed && isUnrankedPlayMode(playMode)
 
   const liveDirector = director?.matchId === session.matchId ? director : null
   const upcomingMoment = liveDirector ? nextMomentAfter(liveDirector.moments, view.episode.tick) : null
@@ -990,12 +1133,17 @@ function Workbench({
     setComparison(null)
     setComparisonWatched(false)
     setComparisonReviewing(null)
-    setModeBanner(mode)
+    // Neutral flash on idle mode select — compete must NOT claim "controls off"
+    // until Play actually starts the held-out match.
+    setModeBanner({ mode })
     if (modeBannerTimer.current) window.clearTimeout(modeBannerTimer.current)
     modeBannerTimer.current = window.setTimeout(() => setModeBanner(null), 1100)
   }
   const switchRuleset = (nextRuleset: RulesetId | undefined, unlock = false) => {
-    if (view.phase !== 'ready' || isTraining || tournamentRunning || sharedReplay) return
+    if (isTraining || tournamentRunning || sharedReplay) return
+    // Clash-again after a finished Practice: reset into ready, then switch.
+    if (view.phase === 'finished' || view.phase === 'paused') session.reset()
+    if (view.phase !== 'ready' && view.phase !== 'finished' && view.phase !== 'paused') return
     if (nextRuleset === 'skirmish' && !skirmishUnlocked && !unlock) return
     if (unlock) {
       if (!skirmishDisclosure({ unlocked: skirmishUnlocked, hasCompletedRun, hasOwnBrain }).canSkip) return
@@ -1022,7 +1170,12 @@ function Workbench({
     lastSightingTickRef.current = null
     sightingCountRef.current = 0
   }
-  const skipToSkirmish = () => switchRuleset('skirmish', true)
+  const skipToSkirmish = () => {
+    // Already unlocked: select Skirmish without the skip gate (canSkip is false
+    // once unlocked). Still unlocking: require skip eligibility.
+    if (skirmishUnlocked) switchRuleset('skirmish', false)
+    else switchRuleset('skirmish', true)
+  }
   const download = () => {
     const url = URL.createObjectURL(new Blob([JSON.stringify(session.recording())], { type: 'application/json' }))
     const anchor = document.createElement('a')
@@ -1152,6 +1305,19 @@ function Workbench({
     }
   }
 
+  // Forge-with-teeth: adopting a forged body sets Build chassis so Skirmish
+  // traits match the look. Budget points stay when the chassis already matches.
+  // Depend only on the look identity so a later Build chassis change is not forced back.
+  const forgedLookKey = forgedLook ? `${forgedLook.forgeId}|${forgedLook.chassis}` : ''
+  useEffect(() => {
+    if (!forgedLook) return
+    const aligned = alignBuildToForgedLook(buildRef.current, forgedLook)
+    if (aligned.chassis === buildRef.current.chassis) return
+    handleBuildChange(aligned)
+    // forgedLookKey captures forgeId+chassis; handleBuildChange reads live gates.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forgedLookKey])
+
   const handleTrainingConfigChange = (next: TrainingConfig) => {
     if (!isValidTrainingConfig(next)) {
       setTrainMessage('Those training settings are out of range — the panel will not accept them.')
@@ -1201,9 +1367,10 @@ function Workbench({
     const parent = structuredClone(activeCheckpoint)
     const approved = structuredClone(examples.filter(e => e.approved))
     const practiceScenario = structuredClone(activeCourse.scenario)
-    const rivalOption: EntrantPolicyOption = view.policies.rival === 'learned'
+    const sessionRival: EntrantPolicyOption = view.policies.rival === 'learned'
       ? { strategy: 'learned', checkpoint: parent }
       : view.policies.rival
+    const rivalOption = comparisonRivalForCoaching(approved, sessionRival)
     const controllerVersion = view.episode.controllerVersion
     const abort = new AbortController()
     trainAbortRef.current?.abort()
@@ -1235,6 +1402,7 @@ function Workbench({
       learningRate: 0.008,
       learningRateDecay: { atEpoch: 30, factor: 0.5 },
       name: `${championIdentity.name} v${checkpoints.length} (+${approved.length})`,
+      sampleWeights: coachingSampleWeights(approved),
     }
     queueTrainingJobSync({
       jobId,
@@ -1621,6 +1789,7 @@ function Workbench({
   // nextStep stays pure render data (label + action key); the ref-touching
   // work happens in the click handler below, where it belongs. The machine
   // itself lives in services/workbenchFlow.ts with golden tests.
+  const disclosure = skirmishDisclosure({ unlocked: skirmishUnlocked, hasCompletedRun, hasOwnBrain })
   const nextStep = computeNextStep({
     visualReady,
     phase: view.phase,
@@ -1629,6 +1798,8 @@ function Workbench({
     studioOpen,
     approvedCount,
     hasUnwatchedComparison: comparison !== null && !comparisonWatched,
+    canEnterSkirmish: disclosure.canSelect || disclosure.canSkip,
+    rulesetId,
   })
 
   const runNextStep = (action: string | null) => {
@@ -1642,6 +1813,7 @@ function Workbench({
       case 'coach': setStudioOpen(true); break
       case 'train': handleTrain(); break
       case 'watch-lesson': reviewComparisonRun('trained'); setComparisonWatched(true); break
+      case 'skip-skirmish': skipToSkirmish(); break
     }
   }
 
@@ -1653,7 +1825,7 @@ function Workbench({
           <h1>Watch it play. Then teach it.</h1>
           <p className={styles.lede}>
             {heroLedeMode(engagement) === 'loop-only'
-              ? <>Press <strong>Play</strong> and watch your rover race for cores on its own. Then coach it into your own.</>
+              ? <>Clash first: <strong>Skip to Skirmish</strong> for an unranked race, or Press <strong>Play</strong> on Training Grounds. Tutor stays ready when you want depth.</>
               : <>A trained rover races for cores on its own — and Orbis broadcasts the match live as generated video. Hit <strong>Watch it broadcast live</strong>, or Play to replay a mistake, approve a fix and train a new brain.</>}
           </p>
         </div>
@@ -1718,15 +1890,21 @@ function Workbench({
               <button
                 className={styles.secondaryButton}
                 onClick={cycleSpeed}
-                title="Playback speed — presentation only; the sim stays deterministic"
+                title={speedControlTitle(autoSnappy)}
+                aria-label={`Playback speed ${speed} times${autoSnappy ? ', snappy first-run default' : ''}`}
               >
-                <FastForward size={15} />{speed}×
+                <FastForward size={15} />{speedControlLabel(speed, autoSnappy)}
               </button>
               <button
                 className={styles.secondaryButton}
                 onClick={skipAhead}
                 disabled={!visualReady}
-                title={upcomingMoment && upcomingMoment.kind !== 'finish'
+                title={skipControlTitle(
+                  upcomingMoment && upcomingMoment.kind !== 'finish'
+                    ? MOMENT_LABELS[upcomingMoment.kind]
+                    : null,
+                )}
+                aria-label={upcomingMoment && upcomingMoment.kind !== 'finish'
                   ? `Skip ahead to the next ${MOMENT_LABELS[upcomingMoment.kind]}`
                   : 'Skip to the final whistle'}
               >
@@ -1823,9 +2001,17 @@ function Workbench({
             )}
           </div>
           {modeBanner && (
-            <div className={styles.modeFlash} key={modeBanner} role="status">
-              <span>{modeBanner === 'compete' ? 'MATCH' : modeBanner === 'rush' ? 'RUSH' : 'PRACTICE'}</span>
-              <p>{modeBanner === 'compete' ? withProverb('Held-out layout. Controls off. It walks through alone.', PROVERBS.handoff, flavourZh) : modeBanner === 'rush' ? 'Unranked race. Chase the mother cores and watch for bumps.' : 'Teach freely. Same world, practice floods.'}</p>
+            <div className={styles.modeFlash} key={`${modeBanner.mode}-${modeBanner.handoff ? 'handoff' : 'select'}`} role="status">
+              <span>{modeBanner.mode === 'compete' ? 'MATCH' : modeBanner.mode === 'rush' ? 'RUSH' : 'PRACTICE'}</span>
+              <p>{
+                modeBanner.mode === 'compete'
+                  ? (modeBanner.handoff
+                    ? withProverb('Held-out layout. Controls off. It walks through alone.', PROVERBS.handoff, flavourZh)
+                    : 'Held-out layout. Press Play when ready.')
+                  : modeBanner.mode === 'rush'
+                    ? 'Unranked race. Chase the mother cores and watch for bumps.'
+                    : 'Teach freely. Same world, practice floods.'
+              }</p>
             </div>
           )}
           <ViewportHud
@@ -1848,7 +2034,7 @@ function Workbench({
           />
           {engagement.showPlayHint && visualReady && hintOpen && view.phase === 'ready' && !modeBanner && (
             <div className={`${styles.playHint} ${styles.hintEnter}`} role="status">
-              <p><strong>Press Play.</strong> Follow your champion — it runs the house starter brain until you coach it into your own.</p>
+              <p><strong>Press Play.</strong> First unranked races run at <strong>4×</strong> so the clash feels snappy — use <strong>Speed</strong> or <strong>Skip</strong> anytime. Follow your champion until you coach it into your own.</p>
               <button
                 type="button"
                 onClick={() => {
@@ -1978,7 +2164,7 @@ function Workbench({
           {rulesetId === 'skirmish' ? (
             <p className={`${styles.buildReadout} ${styles.rulesetModeNote}`}>Skirmish preview is unranked. Choose Training Grounds above for the original Practice, Rush and Match modes.</p>
           ) : (
-          <div className={styles.modeToggle} role="group" aria-label="Match type" data-flash={modeBanner ?? undefined}>
+          <div className={styles.modeToggle} role="group" aria-label="Match type" data-flash={modeBanner?.mode ?? undefined}>
             <button type="button" aria-pressed={playMode === 'practice'} disabled={view.phase !== 'ready' || isTraining} onClick={() => switchPlayMode('practice')}>Practice</button>
             <button type="button" aria-pressed={playMode === 'rush'} disabled={view.phase !== 'ready' || isTraining} onClick={() => switchPlayMode('rush')}>Rush · unranked</button>
             <button type="button" aria-pressed={playMode === 'compete'} disabled={view.phase !== 'ready' || isTraining} onClick={() => switchPlayMode('compete')}>Match</button>
@@ -2118,6 +2304,15 @@ function Workbench({
           <button type="button" onClick={() => runNextStep(nextStep.run)}>{nextStep.label}</button>
         ) : (
           <strong>{nextStep.label}</strong>
+        )}
+        {nextStep.optionalCompare && (
+          <button
+            type="button"
+            className={styles.nextStepOptional}
+            onClick={() => runNextStep(nextStep.optionalCompare!.run)}
+          >
+            {nextStep.optionalCompare.label}
+          </button>
         )}
       </div>
 

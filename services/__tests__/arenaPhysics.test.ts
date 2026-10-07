@@ -87,7 +87,7 @@ describe('shared Rapier rover controller', () => {
     }
   })
 
-  it('replays same-version recordings, reports positional divergence, and rejects pre-v3 controllers', () => {
+  it('replays same-version recordings, reports positional divergence, and accepts v3 as rotation-equivalent', () => {
     const { data, scenario } = fixture()
     const physics = new ArenaPhysics(data)
     const replayPhysics = new ArenaPhysics(data)
@@ -105,9 +105,15 @@ describe('shared Rapier rover controller', () => {
       corrupted.checkpoints[2].state.agents[0].position[0] += 0.5
       expect(replayArenaEpisode(corrupted, replayPhysics).divergedAt).toBe(corrupted.checkpoints[2].state.tick)
 
-      // v1/v2 trajectories are not bit-identical under v3's proportional
-      // speed — older-controller recordings are a hard mismatch, never a
-      // silent divergence.
+      // v3 is rotation-equivalent under v4 (flat XZ/reported Y match); replay
+      // must not hard-mismatch — rotation is stripped from the comparison.
+      const v3 = structuredClone(recording)
+      v3.controllerVersion = 'rapier-kinematic-terrain-0.19.2.v3'
+      expect(replayArenaEpisode(v3, replayPhysics).divergedAt).toBeNull()
+
+      // v1/v2 trajectories are not bit-identical under proportional speed —
+      // older-controller recordings are a hard mismatch, never a silent
+      // divergence.
       for (const legacy of ['rapier-kinematic-terrain-0.19.2.v1', 'rapier-kinematic-terrain-0.19.2.v2']) {
         const stale = structuredClone(recording)
         stale.controllerVersion = legacy
@@ -216,4 +222,62 @@ describe('shared Rapier rover controller', () => {
     physics.dispose()
     expect(() => physics.sample([0, 5, 0])).toThrow('disposed')
   })
+
+  it('plants on a slope with normal-aligned ride height and yaw-relative tilt', () => {
+    const root = new THREE.Group()
+    const ramp = new THREE.Mesh(new THREE.PlaneGeometry(20, 20))
+    // Plane is XY with +Z normal; lay flat (normal +Y) then tilt so it rises in +X.
+    ramp.rotation.order = 'ZXY'
+    ramp.rotation.x = -Math.PI / 2
+    ramp.rotation.z = Math.atan(0.5)
+    root.add(ramp)
+    root.updateWorldMatrix(true, true)
+    const surface = createWorldSurface(root)
+    const data = surface.colliderData()
+    surface.dispose()
+    const physics = new ArenaPhysics(data)
+    try {
+      physics.reset([{ id: 'rover', position: [0, 0.5, 0] }])
+      const dt = ARENA_RULES.stepMs / 1000
+      let [pose] = physics.step([{ id: 'rover', position: [1.2, 0.8, 0] }], dt)
+      for (let i = 0; i < 25; i++) {
+        ;[pose] = physics.step([{ id: 'rover', position: [pose.position[0] + 0.1, pose.position[1] + 0.05, 0] }], dt)
+      }
+      expect(pose.grounded).toBe(true)
+      const sample = physics.sample([pose.position[0], pose.position[1] + 2, pose.position[2]], 5)
+      expect(sample).not.toBeNull()
+      // Reported plant is the contact point (normal-aligned ride height undone).
+      expect(Math.abs(pose.position[1] - sample!.point[1])).toBeLessThan(0.2)
+      expect(Math.hypot(pose.position[0] - sample!.point[0], pose.position[2] - sample!.point[2])).toBeLessThan(0.25)
+      // Chassis up aligns with the surface normal (yaw-relative pitch/roll plant).
+      const [x, y, z, w] = pose.rotation
+      const ux = 2 * (x * y - w * z)
+      const uy = 1 - 2 * (x * x + z * z)
+      const uz = 2 * (y * z + w * x)
+      let [nx, ny, nz] = sample!.normal
+      if (ny < 0) { nx = -nx; ny = -ny; nz = -nz }
+      const align = ux * nx + uy * ny + uz * nz
+      expect(align).toBeGreaterThan(0.95)
+      // Not identity — the body is actually tilted on the slope.
+      expect(Math.abs(w)).toBeLessThan(0.999)
+    } finally {
+      physics.dispose()
+    }
+  })
+
+  it('keeps flat-fixture XZ and reported Y stable under v4 ride height', () => {
+    const { data } = fixture()
+    const physics = new ArenaPhysics(data)
+    try {
+      physics.reset([{ id: 'rover', position: [-2, 0, 0] }])
+      const dt = ARENA_RULES.stepMs / 1000
+      const [pose] = physics.step([{ id: 'rover', position: [-1.5, 0, 0] }], dt)
+      expect(pose.position[1]).toBeCloseTo(0, 1)
+      expect(pose.position[2]).toBeCloseTo(0, 5)
+      expect(pose.grounded).toBe(true)
+    } finally {
+      physics.dispose()
+    }
+  })
+
 })

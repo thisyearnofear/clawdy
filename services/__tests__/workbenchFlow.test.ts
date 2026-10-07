@@ -35,7 +35,11 @@ describe('computeNextStep — golden branch order (mirrors the pre-extraction Ar
       run: 'play',
     })
     expect(step({ phase: 'ready', playMode: 'rush' })).toEqual({
-      label: 'Press Play to start Rush (unranked)',
+      label: 'Press Play to start Skirmish',
+      run: 'play',
+    })
+    expect(step({ phase: 'ready', playMode: 'practice', rulesetId: 'skirmish' })).toEqual({
+      label: 'Press Play to start Skirmish',
       run: 'play',
     })
   })
@@ -68,7 +72,7 @@ describe('computeNextStep — golden branch order (mirrors the pre-extraction Ar
       run: null,
     })
     expect(step({ phase: 'review', coachingLocked: true })).toEqual({
-      label: 'Play → Replay → Coach → Train → Match',
+      label: 'Clash → Coach → Train → Match',
       run: null,
     })
   })
@@ -93,7 +97,7 @@ describe('computeNextStep — golden branch order (mirrors the pre-extraction Ar
 
   it('fallback line covers review+studio+locked combos', () => {
     expect(step({ phase: 'review', studioOpen: true, coachingLocked: true, approvedCount: 3 })).toEqual({
-      label: 'Play → Replay → Coach → Train → Match',
+      label: 'Clash → Coach → Train → Match',
       run: null,
     })
   })
@@ -113,31 +117,34 @@ const mistakeBase: MistakeInput = {
 
 const mistake = (over: Partial<MistakeInput>) => detectMistakeSignal({ ...mistakeBase, ...over })
 
-describe('computeNextStep — the comparison outranks everything else', () => {
-  it('points at the lesson once a comparison is waiting', () => {
-    expect(step({ hasUnwatchedComparison: true })).toEqual({
-      label: 'Watch the lesson — see what your teaching changed',
-      run: 'watch-lesson',
-    })
+describe('computeNextStep — comparison is optional, never forced', () => {
+  it('keeps Play as the primary next-step after Train and offers See what changed', () => {
+    const ready = step({ phase: 'ready', hasUnwatchedComparison: true })
+    expect(ready.run).toBe('play')
+    expect(ready.label).toBe('Press Play to start Practice')
+    expect(ready.optionalCompare).toEqual({ label: 'See what changed', run: 'watch-lesson' })
   })
 
-  it('beats the post-round prompt and the ready-to-play prompt', () => {
-    // After a round the machine would normally say "Open Replay, then Coach
-    // the miss"; watching the lesson is the higher-value action there.
-    expect(step({ phase: 'finished', hasUnwatchedComparison: true }).run).toBe('watch-lesson')
-    // And after training the session resets to ready, where it would say
-    // "Press Play to start Practice".
-    expect(step({ phase: 'ready', hasUnwatchedComparison: true }).run).toBe('watch-lesson')
-    expect(step({ phase: 'ready' }).run).toBe('play')
+  it('keeps Clash/Play-again paths primary after a finished round', () => {
+    const finished = step({ phase: 'finished', hasUnwatchedComparison: true })
+    expect(finished.run).toBe('review-coach')
+    expect(finished.optionalCompare).toEqual({ label: 'See what changed', run: 'watch-lesson' })
+  })
+
+  it('does not attach the optional CTA once the lesson has been watched', () => {
+    expect(step({ hasUnwatchedComparison: false }).optionalCompare).toBeUndefined()
+    expect(step({ hasUnwatchedComparison: false }).run).toBe('play')
   })
 
   it('does not hijack the settling or error states', () => {
-    expect(step({ visualReady: false, hasUnwatchedComparison: true }).run).toBeNull()
-    expect(step({ phase: 'error', hasUnwatchedComparison: true }).run).toBe('retry')
-  })
-
-  it('stops pushing once the lesson has been watched', () => {
-    expect(step({ hasUnwatchedComparison: false }).run).toBe('play')
+    expect(step({ visualReady: false, hasUnwatchedComparison: true })).toEqual({
+      label: 'Settling the world…',
+      run: null,
+    })
+    expect(step({ phase: 'error', hasUnwatchedComparison: true })).toEqual({
+      label: 'Reload the world',
+      run: 'retry',
+    })
   })
 })
 
@@ -214,5 +221,71 @@ describe('detectMistakeSignal — visible-error trigger for the first-mistake ca
       sinceTick: 198,
       lastOutcome: { tick: 195, accepted: false, reason: 'movement-blocked' },
     })).toBeNull()
+  })
+})
+
+describe('computeNextStep — Clash into Skirmish after Practice', () => {
+  it('routes finished Practice into Skirmish when the player can enter', () => {
+    expect(step({
+      phase: 'finished',
+      playMode: 'practice',
+      canEnterSkirmish: true,
+    })).toEqual({
+      label: 'Clash in Skirmish — unranked race',
+      run: 'skip-skirmish',
+    })
+  })
+
+  it('does not require they already skipped — canEnter alone is enough', () => {
+    // Residual: replaying Practice when they never skipped.
+    const result = step({
+      phase: 'finished',
+      playMode: 'practice',
+      canEnterSkirmish: true,
+      rulesetId: undefined,
+    })
+    expect(result.run).toBe('skip-skirmish')
+    expect(result.run).not.toBe('play')
+  })
+
+  it('on Skirmish finish, Clash again replays Skirmish', () => {
+    expect(step({
+      phase: 'finished',
+      playMode: 'rush',
+      rulesetId: 'skirmish',
+      canEnterSkirmish: true,
+    })).toEqual({
+      label: 'Clash again, or open Replay to coach',
+      run: 'play',
+    })
+  })
+
+  it('falls back to coach when Skirmish is not yet enterable', () => {
+    expect(step({
+      phase: 'finished',
+      playMode: 'practice',
+      canEnterSkirmish: false,
+    })).toEqual({
+      label: 'Open Replay, then Coach the miss',
+      run: 'review-coach',
+    })
+  })
+
+  it('ready Training Grounds offers Clash when enterable', () => {
+    expect(step({
+      phase: 'ready',
+      playMode: 'practice',
+      canEnterSkirmish: true,
+    }).run).toBe('skip-skirmish')
+  })
+
+  it('comparison stays optional while Clash remains primary', () => {
+    const result = step({
+      phase: 'finished',
+      canEnterSkirmish: true,
+      hasUnwatchedComparison: true,
+    })
+    expect(result.run).toBe('skip-skirmish')
+    expect(result.optionalCompare).toEqual({ label: 'See what changed', run: 'watch-lesson' })
   })
 })

@@ -13,7 +13,7 @@
  * frozen: `services/__tests__/versions.test.ts` pins the literal text
  * `epochs: 60,` / `learningRate: 0.008,` /
  * `learningRateDecay: { atEpoch: 30, factor: 0.5 }` inside
- * `components/environment/ArenaScene.tsx`, and the eval pin `525eba353d75`
+ * `components/environment/ArenaScene.tsx`, and the eval pin `53f3d95c3d9b`
  * reproduces the weights that config produced. Making the sold learning path
  * configurable would break a deliberate pin, so the Train button keeps its
  * pinned config and this panel configures the builder instead.

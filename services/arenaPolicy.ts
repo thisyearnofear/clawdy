@@ -15,6 +15,7 @@ import {
   SEASON_0_BASE_CHECKPOINT,
   createLearnedPolicy,
 } from './policyModel'
+import { wrapPolicyWithLiveCall, type LiveCallPreference } from './liveCall'
 
 export type CollectorStrategy = 'safe' | 'greedy' | 'weather' | 'learned' | 'poach'
 
@@ -303,6 +304,19 @@ export class ArenaRunner {
     })
     this.#episode = new ArenaEpisode({ ...scenario, entrants }, motion, options)
     this.#durationTicks = scenario.durationTicks
+  }
+
+  /**
+   * Divert an entrant for the rest of this run toward the called destination:
+   * prefer the exact edge when legal, else any legal move to the preferred
+   * node; otherwise keep the prior policy until the next legal junction.
+   * Live Call uses this so a mid-race choice actually steers the rover (and
+   * still saves as a training example).
+   */
+  forceRoutePreference(agentId: string, preference: LiveCallPreference) {
+    const base = this.#policies.get(agentId)
+    if (!base) throw new Error(`Unknown entrant ${agentId}`)
+    this.#policies.set(agentId, wrapPolicyWithLiveCall(base, preference))
   }
 
   setDecisionListener(listener: ((event: DecisionLifecycleEvent) => void) | null) {

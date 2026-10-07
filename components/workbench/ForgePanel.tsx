@@ -72,7 +72,7 @@ function ForgePanelInner({ onLookChange }: { onLookChange?: (look: ForgedLook | 
   return (
     <section className={styles.forge} aria-label="Forge your champion">
       <h3 className={styles.heading}>Forge your champion</h3>
-      <p className={styles.lede}>Build a one-of-a-kind body for your champion. It looks different; it does not change how it drives.</p>
+      <p className={styles.lede}>Forge a one-of-a-kind body for your champion. Using it sets your Build chassis so Skirmish drive (perks, speed, battery, bump) matches the look — paint stays cosmetic.</p>
 
       <fieldset className={styles.group}>
         <legend>Chassis</legend>

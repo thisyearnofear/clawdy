@@ -47,7 +47,7 @@
  * reversible.
  *
  * Lowering an axis below its chassis base refunds its points to the budget, so
- * "give up 2 hardiness to buy 2 speed" is expressible. `affordableBuild` is the
+ * "give up 2 battery to buy 2 speed" is expressible. `affordableBuild` is the
  * hard guarantee the UI leans on: anything it produces satisfies `budgetErrors`.
  */
 
@@ -93,13 +93,31 @@ export {
 }
 export type { Build, ChassisId, ModuleId, StatAxis }
 
-/** Player-facing axis names. A raw axis id is never a heading. */
+/**
+ * Player-facing axis names. Labels mirror the live sim traits from
+ * `buildToTraits` (travel speed, battery / maxEnergy, bump / contactStrength)
+ * so the Build screen does not advertise Hardiness / Defence / Attack as if
+ * those were separate combat stats the episode does not have.
+ */
 export const STAT_LABELS: Record<StatAxis, string> = {
   navigation: 'Navigation',
   speed: 'Speed',
-  hardiness: 'Hardiness',
-  defence: 'Defence',
-  attack: 'Attack',
+  hardiness: 'Battery',
+  defence: 'Bump defence',
+  attack: 'Bump attack',
+}
+
+/**
+ * Short help under each slider: what the points actually buy in the sim.
+ * Units are the live traits (travel multiplier, energy capacity, bump strength),
+ * not the 0–6 allocation itself.
+ */
+export const STAT_HINTS: Record<StatAxis, string> = {
+  navigation: 'No effect in this sim yet — roadmap spend',
+  speed: 'Raises route travel rate vs the hauler baseline',
+  hardiness: 'Raises battery capacity (energy before empty)',
+  defence: 'Adds to bump strength (shared with Bump attack)',
+  attack: 'Adds to bump strength (shared with Bump defence)',
 }
 
 export const MODULE_LABELS: Record<ModuleId, string> = {
@@ -107,6 +125,14 @@ export const MODULE_LABELS: Record<ModuleId, string> = {
   armour: 'Armour',
   'ram-plate': 'Ram plate',
   'extra-cell': 'Extra cell',
+}
+
+/** What each module does in `buildToTraits` today — empty means inert. */
+export const MODULE_HINTS: Record<ModuleId, string> = {
+  'wide-sensor': 'No simulation effect yet',
+  armour: '+1 bump strength, −0.05 travel speed',
+  'ram-plate': '+1 bump strength, −1 battery',
+  'extra-cell': 'No simulation effect yet',
 }
 
 export const CHASSIS_LABELS: Record<ChassisId, string> = {

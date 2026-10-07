@@ -10,7 +10,7 @@ describe('consolidated application entrypoint', () => {
     const html = renderToStaticMarkup(createElement(ConvexAppProvider, null, createElement(Home)))
     expect(html).toContain('CLAWDY')
     expect(html).toContain('Preparing the proving ground.')
-    expect(html).toContain('Play → Replay → Coach')
+    expect(html).toContain('Clash → Coach → Train')
     expect(html).toContain('Help')
     // First-run brain is the bundled trained starter, not the untrained base.
     expect(html).toContain('Starter brain')

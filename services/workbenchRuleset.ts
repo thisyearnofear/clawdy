@@ -6,10 +6,16 @@ export const SKIRMISH_UNLOCK_KEY = 'clawdy_skirmish_unlocked_v1'
 const UNLOCK_EVENT = 'clawdy:skirmish-unlocked'
 let sessionUnlocked = false
 
+/**
+ * Arena-first unlock disclosure. Skirmish is never hidden behind "finish a
+ * lesson" — new and returning players always get a clear Skip-to-Skirmish path.
+ * Publishing still permanently unlocks the picker; Training Grounds stays available.
+ */
 export function skirmishDisclosure(progress: { unlocked: boolean; hasCompletedRun: boolean; hasOwnBrain: boolean }) {
   return {
     canSelect: progress.unlocked,
-    canSkip: !progress.unlocked && (progress.hasCompletedRun || progress.hasOwnBrain),
+    // Engagement gate removed: first session can clash immediately.
+    canSkip: !progress.unlocked,
   }
 }
 
@@ -59,5 +65,8 @@ export function chassisRuleSummary(chassis: ChassisId, rulesetId?: RulesetId): s
   if (rulesetId === undefined) return `Carries ${capacity} cargo. Sees one route hop. No signature perk in Training Grounds.`
   if (traits.stealAll) return `Carries ${capacity} cargo. A winning bump steals the rival's whole load, limited by free cargo space.`
   if ((traits.visionHops ?? 1) > 1) return `Carries ${capacity} cargo. Sees two route hops, including cores beyond the next junction.`
+  if ((traits.cargoTravelTax ?? 0) > 0) {
+    return `Carries ${capacity} cargo instead of 3. Loads above 3 slow travel — bank big, or bank often.`
+  }
   return `Carries ${capacity} cargo instead of 3. Bank a bigger load per trip.`
 }

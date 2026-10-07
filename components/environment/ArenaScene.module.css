@@ -226,6 +226,19 @@
   border: 0; background: transparent; color: #2f6b3a; font: inherit; cursor: pointer;
   text-decoration: underline; text-underline-offset: 3px; padding: 0; text-align: left;
 }
+.nextStepOptional {
+  margin-left: auto;
+  color: #5a6b52 !important;
+  text-decoration-style: dotted !important;
+  font-weight: 500;
+}
+.nextStepOptional::before {
+  content: '·';
+  margin-right: 10px;
+  color: var(--muted);
+  text-decoration: none;
+}
+
 .specializeHint { margin: 0 0 10px; font-size: 11px; color: var(--muted); }
 .specializeRow { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
 .specializeChip {

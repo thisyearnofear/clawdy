@@ -134,10 +134,13 @@ describe('LessonComparison presentation', () => {
       onWatch: noop,
       onJumpToDivergence: noop,
     }))
+    expect(html).toContain('Fresh re-run · Parent vs Trained')
     expect(html).toContain('Score change')
     expect(html).toContain('-2')
-    expect(html).toContain('No different accepted decisions on this practice run.')
-    expect(html).toContain('Matched physical practice, not held-out or ranked')
+    expect(html).toContain('No different accepted decisions on this fresh re-run.')
+    expect(html).toContain('fresh matched re-run')
+    expect(html).toContain('not the race you just coached')
+    expect(html).toContain('Matched physical practice (not held-out or ranked)')
     expect(html).not.toContain('Improvement')
   })
 
@@ -160,7 +163,7 @@ describe('LessonComparison presentation', () => {
     expect(html).toContain('take the valley')
     expect(html).toContain('take the ridge')
     expect(html).toContain('Jump to first different decision')
-    expect(html).toContain('Watch the lesson')
+    expect(html).toContain('See what changed')
     expect(html).toContain('Parent replay')
   })
 })
@@ -172,7 +175,7 @@ describe('BuildScreen', () => {
   it('renders every chassis, axis and module as a labelled control', () => {
     const html = render()
     for (const chassis of ['Scout', 'Hauler', 'Raider']) expect(html).toContain(chassis)
-    for (const axis of ['Navigation', 'Speed', 'Hardiness', 'Defence', 'Attack']) expect(html).toContain(axis)
+    for (const axis of ['Navigation', 'Speed', 'Battery', 'Bump defence', 'Bump attack']) expect(html).toContain(axis)
     for (const label of ['Wide sensor', 'Armour', 'Ram plate', 'Extra cell']) expect(html).toContain(label)
   })
 
@@ -209,6 +212,9 @@ describe('BuildScreen', () => {
   it('gives every slider an accessible value text', () => {
     const html = render()
     expect(html).toMatch(/aria-valuetext="Speed \d+ of \d+"/)
+    expect(html).toContain('Raises route travel rate')
+    expect(html).toContain('Raises battery capacity')
+    expect(html).toContain('Adds to bump strength')
     expect(html).toContain('aria-describedby=')
   })
 

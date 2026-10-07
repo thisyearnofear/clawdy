@@ -865,7 +865,8 @@ export function extendCheckpointForTimetable(parent: PolicyCheckpoint, options: 
   if (parent.schemaVersion !== POLICY_SCHEMA_VERSION || !parent.weights.edgeHead) {
     throw new Error('Only v3 checkpoints with an edge head can be extended for the timetable')
   }
-  if (parent.weights.hidden1.weights.length === TIMETABLE_FEATURE_DIM) return parent
+  // Already timetable- or chassis-sized: leave weights alone (idempotent warm-start).
+  if (parent.weights.hidden1.weights.length >= TIMETABLE_FEATURE_DIM) return parent
   const hidden1Width = parent.weights.hidden1.biases.length
   const weights: PolicyWeights = {
     hidden1: {

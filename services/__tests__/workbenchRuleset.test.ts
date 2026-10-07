@@ -3,7 +3,8 @@ import { ArenaEpisode, capacityOf } from '../arenaEpisode'
 import { replayArenaEpisode } from '../arenaReplay'
 import type { ArenaCourse } from '../arenaCourse'
 import { PRACTICE_SCENARIOS } from '../arenaScenarios'
-import { baseBuild } from '../chassis'
+import { baseBuild, buildToTraits } from '../chassis'
+import { setAxisLevel } from '../buildBudget'
 import { chassisRuleSummary, courseForRuleset, leagueBrainId, skirmishDisclosure } from '../workbenchRuleset'
 
 const course: ArenaCourse = {
@@ -14,8 +15,9 @@ const course: ArenaCourse = {
 }
 
 describe('workbench rulesets', () => {
-  it('offers skip only after a run or with a personal brain, and never removes unlocked access', () => {
-    expect(skirmishDisclosure({ unlocked: false, hasCompletedRun: false, hasOwnBrain: false })).toEqual({ canSelect: false, canSkip: false })
+  it('offers skip to every locked player (arena-first) and never removes unlocked access', () => {
+    // First visit is no longer gated behind finishing a lesson.
+    expect(skirmishDisclosure({ unlocked: false, hasCompletedRun: false, hasOwnBrain: false })).toEqual({ canSelect: false, canSkip: true })
     expect(skirmishDisclosure({ unlocked: false, hasCompletedRun: true, hasOwnBrain: false }).canSkip).toBe(true)
     expect(skirmishDisclosure({ unlocked: false, hasCompletedRun: false, hasOwnBrain: true }).canSkip).toBe(true)
     expect(skirmishDisclosure({ unlocked: true, hasCompletedRun: false, hasOwnBrain: false })).toEqual({ canSelect: true, canSkip: false })
@@ -60,6 +62,7 @@ describe('workbench rulesets', () => {
 
   it('derives honest perk labels from the engine traits', () => {
     expect(chassisRuleSummary('hauler', 'skirmish')).toContain('4 cargo')
+    expect(chassisRuleSummary('hauler', 'skirmish')).toContain('Loads above 3')
     expect(chassisRuleSummary('raider', 'skirmish')).toContain('limited by free cargo space')
     expect(chassisRuleSummary('scout', 'skirmish')).toContain('two route hops')
     for (const chassis of ['hauler', 'raider', 'scout'] as const) {
@@ -67,4 +70,42 @@ describe('workbench rulesets', () => {
       expect(chassisRuleSummary(chassis)).toContain('No signature perk')
     }
   })
+
+  it('applies speed, battery and bump from the player budget in Skirmish', () => {
+    const fast = setAxisLevel(baseBuild('scout'), 'speed', 6)
+    const tough = setAxisLevel(baseBuild('hauler'), 'hardiness', 6)
+    const mean = setAxisLevel(baseBuild('raider'), 'attack', 5)
+    const fastCourse = courseForRuleset(course, fast, 'skirmish')
+    const toughCourse = courseForRuleset(course, tough, 'skirmish')
+    const meanCourse = courseForRuleset(course, mean, 'skirmish')
+    const champion = (c: typeof fastCourse) => c.scenario.entrants.find(e => e.id === 'champion')!.traits!
+    expect(champion(fastCourse).travelSpeed).toBe(buildToTraits(fast, 'skirmish').travelSpeed)
+    expect(champion(fastCourse).travelSpeed).toBeGreaterThan(buildToTraits(baseBuild('hauler'), 'skirmish').travelSpeed)
+    expect(champion(toughCourse).maxEnergy).toBe(buildToTraits(tough, 'skirmish').maxEnergy)
+    expect(champion(toughCourse).maxEnergy).toBeGreaterThan(buildToTraits(baseBuild('scout'), 'skirmish').maxEnergy)
+    expect(champion(meanCourse).contactStrength).toBe(buildToTraits(mean, 'skirmish').contactStrength)
+    expect(champion(meanCourse).contactStrength).toBeGreaterThan(buildToTraits(baseBuild('scout'), 'skirmish').contactStrength)
+    expect(champion(fastCourse).visionHops).toBe(2)
+    expect(champion(toughCourse).capacity).toBe(4)
+    expect(champion(meanCourse).stealAll).toBe(true)
+  })
+
+  it('leaves Training Grounds pinned even when the build would change traits', () => {
+    const tuned = setAxisLevel(baseBuild('scout'), 'speed', 6)
+    expect(courseForRuleset(course, tuned)).toBe(course)
+    expect(course.scenario.entrants.every(e => e.traits === undefined)).toBe(true)
+  })
+
+
+  it('starts a Skirmish episode with the build battery and speed traits', () => {
+    const build = setAxisLevel(baseBuild('scout'), 'speed', 6)
+    const next = courseForRuleset(course, build, 'skirmish')
+    const episode = new ArenaEpisode(next.scenario)
+    const champion = episode.snapshot().agents.find(a => a.id === 'champion')!
+    const traits = buildToTraits(build, 'skirmish')
+    expect(champion.energy).toBe(traits.maxEnergy)
+    expect(champion.traits?.travelSpeed).toBe(traits.travelSpeed)
+    expect(champion.traits?.visionHops).toBe(2)
+  })
+
 })

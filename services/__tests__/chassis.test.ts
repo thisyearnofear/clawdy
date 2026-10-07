@@ -146,3 +146,16 @@ describe('entrant traits in the episode', () => {
     expect(() => runArenaEpisode(bad, strat)).toThrow(/entrant traits/)
   })
 })
+
+describe('skirmish travel lead', () => {
+  it('applies Scout/Raider travel leads only under skirmish', () => {
+    const hauler = buildToTraits(baseBuild('hauler'))
+    const raider = buildToTraits(baseBuild('raider'))
+    const scout = buildToTraits(baseBuild('scout'))
+    // Hauler keeps base travel speed — its cost is the cargo tax perk, not a
+    // flat speed cut. Raider +0.06, Scout +0.02 (see buildToTraits skirmish leads).
+    expect(buildToTraits(baseBuild('hauler'), 'skirmish').travelSpeed).toBe(hauler.travelSpeed)
+    expect(buildToTraits(baseBuild('raider'), 'skirmish').travelSpeed).toBeCloseTo(raider.travelSpeed + 0.06, 5)
+    expect(buildToTraits(baseBuild('scout'), 'skirmish').travelSpeed).toBeCloseTo(scout.travelSpeed + 0.02, 5)
+  })
+})
