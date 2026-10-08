@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { Clapperboard, Download, Eye, FastForward, HelpCircle, Pause, Play, Printer, Radio, RotateCcw, SkipForward, Sparkles, Volume2, VolumeX } from 'lucide-react'
+import { Clapperboard, Download, Eye, FastForward, HelpCircle, Pause, Play, Printer, Radio, RotateCcw, Share2, SkipForward, Sparkles, Volume2, VolumeX } from 'lucide-react'
 import { ARENA_RULES, observeSnapshot, type ArenaAction, type ArenaObservation, type ArenaRecording } from '../../services/arenaEpisode'
 import { loadArenaCourse, selectWorkbenchCourse, type ArenaCourse, type WorkbenchPlayMode } from '../../services/arenaCourse'
 import { isEvaluationScenario, rejectEvaluationExamples } from '../../services/arenaScenarios'
@@ -22,7 +22,7 @@ import { comparisonFrameAt, divergenceFrameIndex, type PracticeComparison } from
 import { useCoachingWorker } from '../utils/useCoachingWorker'
 import { liveCallContext, resolveLiveCallPreference, type LiveCallContext } from '../../services/liveCall'
 import { engagementView, heroLedeMode } from '../../services/engagement'
-import { loadEngagementProgress, saveEngagementProgress } from '../../services/engagementProgress'
+import { loadEngagementProgress, returnVisitGapHours, saveEngagementProgress } from '../../services/engagementProgress'
 import {
   FIRST_RUN_PLAY_SPEED,
   isUnrankedPlayMode,
@@ -411,6 +411,19 @@ function Workbench({
     return startArenaSync(convex)
   }, [session, convex])
 
+  // Return-visit funnel stamp. Read-then-write order matters: on a same-session
+  // remount (React strict-mode double effect, HMR) the fresh stamp computes a
+  // ~zero gap, so the event fires once per qualifying gap, not once per mount.
+  // A bounce never counts — the player must already have finished a run.
+  useEffect(() => {
+    const progress = loadEngagementProgress()
+    const gapHours = returnVisitGapHours(progress.lastVisitAt, Date.now())
+    if (progress.hasCompletedRun && gapHours !== null) {
+      recordFunnelEvent('session.return', `gap=${gapHours}h`)
+    }
+    saveEngagementProgress({ ...progress, lastVisitAt: Date.now() })
+  }, [])
+
   // ?replay=<shareId> boots straight into review of a published league match.
   // The slug is the capability, so this path does not need sign-in. Recordings
   // arrive as storage URLs; the session validates the schema before presenting
@@ -422,14 +435,20 @@ function Workbench({
     const loadShare = async (shareId: string, consumeUrl: boolean) => {
       if (!convex) {
         setTrainMessage('Shared replays need a live Convex connection.')
+        recordFunnelEvent('share.open-fail', 'offline')
         return
       }
       try {
         const doc = await convex.query(api.league.viewReplay, { shareId })
         if (cancelled) return
-        if (!doc) { setTrainMessage('That replay link does not point at a saved match.'); return }
+        if (!doc) {
+          setTrainMessage('That replay link does not point at a saved match.')
+          recordFunnelEvent('share.open-fail', 'not-found')
+          return
+        }
         if (doc.urls.length === 0) {
           setTrainMessage('That replay link has no playable recording yet.')
+          recordFunnelEvent('share.open-fail', 'empty')
           return
         }
         const recordings = await Promise.all(doc.urls.map(async url => {
@@ -442,6 +461,7 @@ function Workbench({
         if (cancelled) return
         if (recordings.length === 0) {
           setTrainMessage('That replay link has no playable recording yet.')
+          recordFunnelEvent('share.open-fail', 'empty')
           return
         }
         setSharedReplay({
@@ -455,9 +475,13 @@ function Workbench({
         })
         setCinematic(true)
         session.reviewFrom(recordings[0])
+        recordFunnelEvent('share.open', `kind=${doc.kind}`)
         if (consumeUrl) window.history.replaceState(null, '', window.location.pathname)
       } catch {
-        if (!cancelled) setTrainMessage('Could not load that replay link.')
+        if (!cancelled) {
+          setTrainMessage('Could not load that replay link.')
+          recordFunnelEvent('share.open-fail', 'error')
+        }
       }
     }
 
@@ -1779,7 +1803,32 @@ function Workbench({
     document.body.appendChild(anchor)
     anchor.click()
     document.body.removeChild(anchor)
+    recordFunnelEvent('share.card', `tick=${view.episode.tick}`)
     setTrainMessage(`Saved your share card as "${filename}" — show it off!`)
+  }
+
+  // The every-session shareable unit (audit rung 2): a pasteable result line.
+  // Local runs have no published shareId, so we copy text rather than imply a
+  // replay URL exists; the ladder drawer owns copyable replay links for
+  // published brains.
+  const handleShareResult = () => {
+    if (typeof navigator === 'undefined' || !navigator.clipboard) {
+      setTrainMessage('Clipboard is unavailable here — use “Share your world” for a snapshot instead.')
+      return
+    }
+    const mine = champion?.banked ?? 0
+    const theirs = rival?.banked ?? 0
+    const outcome = view.episode.winner === 'champion' ? 'won' : view.episode.winner === 'rival' ? 'lost' : 'drew'
+    const mode = playMode === 'compete' ? 'a held-out Prove match' : 'a Clash round'
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    const line = `My champion ${outcome} ${mine}–${theirs} in ${mode} on ${activeCourse.config.name} — I trained it myself. ${origin}`
+    navigator.clipboard.writeText(line).then(
+      () => {
+        recordFunnelEvent('share.result', `${outcome} ${mine}-${theirs} mode=${playMode}`)
+        setTrainMessage('Result copied — paste it anywhere.')
+      },
+      () => setTrainMessage('Clipboard was blocked — use “Share your world” for a snapshot instead.'),
+    )
   }
 
   const approvedCount = examples.filter(e => e.approved && !isEvaluationScenario(e.sourceEpisodeId)).length
@@ -2228,8 +2277,8 @@ function Workbench({
               <p>{coachingLocked ? 'This was a scored match. Coaching stays off — try Practice if you want to teach it.' : 'Watch the replay, then coach the moment it went wrong.'}</p>
               <p>{withProverb('The replay is the receipt: what did your teaching change?', PROVERBS.receipt, flavourZh)}</p>
               {view.episode.winner === 'rival' && <p>{withProverb('Not yet. The student passes the master when the teaching holds.', PROVERBS.surpass, flavourZh)}</p>}
-              {!coachingLocked && (
-                <div className={styles.replayButtons}>
+              <div className={styles.replayButtons}>
+                {!coachingLocked && (
                   <button
                     type="button"
                     className={styles.primaryButton}
@@ -2242,32 +2291,39 @@ function Workbench({
                   >
                     <Eye size={16} /> Watch replay
                   </button>
-                  <button
-                    type="button"
-                    className={styles.secondaryButton}
-                    onClick={handleShareCard}
-                  >
-                    <Download size={16} /> Share your world
-                  </button>
+                )}
+                <button
+                  type="button"
+                  className={coachingLocked ? styles.primaryButton : styles.secondaryButton}
+                  onClick={handleShareResult}
+                >
+                  <Share2 size={16} /> Share result
+                </button>
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={handleShareCard}
+                >
+                  <Download size={16} /> Share your world
+                </button>
+                <a
+                  className={styles.secondaryButton}
+                  href="/prints/champion-rover.stl"
+                  download="clawdy-champion-rover.stl"
+                  onClick={() => setTrainMessage("Saved your champion's print kit (clawdy-champion-rover.stl) — print profile in docs/PRINT_KIT.md.")}
+                >
+                  <Printer size={16} /> Print your champion
+                </a>
+                {clipUrl && (
                   <a
                     className={styles.secondaryButton}
-                    href="/prints/champion-rover.stl"
-                    download="clawdy-champion-rover.stl"
-                    onClick={() => setTrainMessage("Saved your champion's print kit (clawdy-champion-rover.stl) — print profile in docs/PRINT_KIT.md.")}
+                    href={clipUrl}
+                    download={`clawdy-${activeCourse.scenario.id.replace(/[^a-z0-9-]/gi, '-')}-${view.episode.tick}.webm`}
                   >
-                    <Printer size={16} /> Print your champion
+                    <Clapperboard size={16} /> Save clip
                   </a>
-                  {clipUrl && (
-                    <a
-                      className={styles.secondaryButton}
-                      href={clipUrl}
-                      download={`clawdy-${activeCourse.scenario.id.replace(/[^a-z0-9-]/gi, '-')}-${view.episode.tick}.webm`}
-                    >
-                      <Clapperboard size={16} /> Save clip
-                    </a>
-                  )}
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
           <div className={styles.worldBottomline}>

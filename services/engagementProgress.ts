@@ -17,6 +17,12 @@ const PROGRESS_STORAGE_KEY = 'clawdy_progress_v1'
 export interface EngagementProgress {
   hasCompletedRun: boolean
   hasSeenRules: boolean
+  /**
+   * Last boot stamp (epoch ms). Optional: records written before the return
+   * funnel existed simply lack it, which `returnVisitGapHours` treats as
+   * "not a return" — we can't claim a day-2 read on a visit we never stamped.
+   */
+  lastVisitAt?: number
 }
 
 function getLocalStorage(): Storage | null {
@@ -38,6 +44,7 @@ export function loadEngagementProgress(): EngagementProgress {
     return {
       hasCompletedRun: parsed.hasCompletedRun === true,
       hasSeenRules: parsed.hasSeenRules === true,
+      lastVisitAt: typeof parsed.lastVisitAt === 'number' && Number.isFinite(parsed.lastVisitAt) ? parsed.lastVisitAt : undefined,
     }
   } catch {
     return { hasCompletedRun: false, hasSeenRules: false }
@@ -52,4 +59,20 @@ export function saveEngagementProgress(progress: EngagementProgress): void {
   } catch {
     // Non-fatal: the view degrades to first-visit disclosure next session.
   }
+}
+
+/**
+ * A return visit is a new boot at least ~a day after the last stamped one —
+ * the smallest honest read on "did anyone come back" the funnel can give
+ * without accounts. Same-day reloads and first boots return null; the funnel
+ * event only fires when the player already completed a run (the caller checks
+ * `hasCompletedRun`) so a bounce never counts as retention.
+ */
+export const RETURN_VISIT_GAP_MS = 20 * 60 * 60 * 1000
+
+export function returnVisitGapHours(lastVisitAt: number | undefined, now: number): number | null {
+  if (lastVisitAt === undefined || !Number.isFinite(lastVisitAt)) return null
+  const gap = now - lastVisitAt
+  if (gap < RETURN_VISIT_GAP_MS) return null
+  return Math.round(gap / 3_600_000)
 }
