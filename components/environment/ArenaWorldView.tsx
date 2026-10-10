@@ -29,6 +29,7 @@ import FrameLimiter from '../utils/FrameLimiter'
 import { getMintAsset, getMintModelArtifact, getMintModelTransform, getMintModelUrl } from '../../services/mintAssets'
 import { resolveForgedModel, resolveRoverModel } from '../../services/chassisAssets'
 import { ModelBoundary } from './ModelBoundary'
+import { ArenaProps } from './ArenaProps'
 import type { ChassisId } from '../../services/chassis'
 
 export type ArenaCamera = 'overview' | 'champion' | 'rival' | 'compare'
@@ -258,12 +259,16 @@ function TerrainMesh({
   url,
   sha256,
   visual,
+  course,
+  lite,
   onReady,
   onError,
 }: {
   url: string
   sha256: string
   visual?: { url: string; sha256: string }
+  course: ArenaCourse
+  lite: boolean
   onReady?: () => void
   onError?: (error: Error) => void
 }) {
@@ -335,7 +340,12 @@ function TerrainMesh({
   }, [scene])
 
   if (!scene) return null
-  return <primitive object={scene} />
+  return (
+    <>
+      <primitive object={scene} />
+      <ArenaProps terrain={scene} course={course} lite={lite} />
+    </>
+  )
 }
 
 function RoverShadow({ session, id }: { session: ArenaSession; id: string }) {
@@ -860,6 +870,8 @@ function World({
         url={course.config.terrain.url}
         sha256={course.config.terrain.sha256}
         visual={course.config.visual}
+        course={course}
+        lite={lite}
         onReady={() => setTerrainReady(true)}
         onError={onError}
       />

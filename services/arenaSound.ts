@@ -13,7 +13,22 @@ const TONES: Record<string, ToneSpec> = {
   'flood-off': { frequency: 300, duration: 0.3, type: 'sine', gain: 0.7 },
   finish: { frequency: 520, duration: 0.5, type: 'triangle', gain: 1 },
   recovery: { frequency: 260, duration: 0.25, type: 'sine', gain: 0.7 },
+  bump: { frequency: 260, duration: 0.25, type: 'sine', gain: 0.7 },
 }
+
+type CueName = 'collect' | 'bank' | 'drain' | 'recovery' | 'bump'
+
+const SAMPLE_BASE = '/assets/kenney/sci-fi-sounds'
+const SAMPLE_CUES: Record<CueName, { url: string; gain: number }> = {
+  collect: { url: `${SAMPLE_BASE}/collect.wav`, gain: 0.6 },
+  bank: { url: `${SAMPLE_BASE}/bank.wav`, gain: 0.6 },
+  drain: { url: `${SAMPLE_BASE}/drain.wav`, gain: 0.6 },
+  recovery: { url: `${SAMPLE_BASE}/impact.wav`, gain: 0.45 },
+  bump: { url: `${SAMPLE_BASE}/impact.wav`, gain: 0.45 },
+}
+const ENGINE_URL = `${SAMPLE_BASE}/engine.wav`
+const MOTOR_GAIN = 0.18
+const MAX_ONESHOTS = 12
 
 type AudioContextCtor = new () => AudioContext
 
@@ -26,7 +41,7 @@ export function isAudioSupported(): boolean {
   return audioContextCtor() !== null
 }
 
-type LiveVoice = { osc: OscillatorNode; gain: GainNode }
+type LiveVoice = { source: AudioScheduledSourceNode; gain: GainNode; oneShot?: boolean }
 
 export class ArenaSound {
   #context: AudioContext | null = null
@@ -42,6 +57,12 @@ export class ArenaSound {
   #enableToken = 0
   #resumePromise: Promise<void> | null = null
   #voices = new Set<LiveVoice>()
+  #buffers = new Map<string, AudioBuffer>()
+  #sampleAbort: AbortController | null = null
+  #motor: LiveVoice | null = null
+  #lastTick = 0
+  #attachMatchId: string | null = null
+  #attachTick = 0
 
   constructor(private readonly onUnavailable?: () => void) {}
 
@@ -72,6 +93,7 @@ export class ArenaSound {
         this.#master = this.#context.createGain()
         this.#master.gain.value = MASTER_GAIN
         this.#master.connect(this.#context.destination)
+        this.#loadSamples(this.#context)
       }
     } catch {
       try { this.#master?.disconnect() } catch { }
@@ -156,13 +178,60 @@ export class ArenaSound {
     try { this.onUnavailable?.() } catch { }
   }
 
-  #stopVoices() {
-    for (const voice of this.#voices) {
-      try { voice.osc.stop() } catch { /* already stopped */ }
-      try { voice.osc.disconnect() } catch { /* detached */ }
-      try { voice.gain.disconnect() } catch { /* detached */ }
+  #loadSamples(context: AudioContext) {
+    if (typeof fetch !== 'function' || typeof context.decodeAudioData !== 'function') return
+    const abort = new AbortController()
+    this.#sampleAbort?.abort()
+    this.#sampleAbort = abort
+    const urls = [...new Set([ENGINE_URL, ...Object.values(SAMPLE_CUES).map(cue => cue.url)])]
+    for (const url of urls) {
+      fetch(url, { signal: abort.signal })
+        .then(response => {
+          if (!response.ok) throw new Error(`sample ${url} ${response.status}`)
+          return response.arrayBuffer()
+        })
+        .then(data => {
+          if (abort.signal.aborted || this.#disposed || this.#context !== context) return null
+          return context.decodeAudioData(data)
+        })
+        .then(buffer => {
+          if (!buffer || abort.signal.aborted || this.#disposed || this.#context !== context) return
+          this.#buffers.set(url, buffer)
+        })
+        .catch(() => { })
     }
+  }
+
+  #stopVoice(voice: LiveVoice) {
+    try { voice.source.stop() } catch { /* already stopped */ }
+    try { voice.source.disconnect() } catch { /* detached */ }
+    try { voice.gain.disconnect() } catch { /* detached */ }
+  }
+
+  #stopVoices() {
+    for (const voice of this.#voices) this.#stopVoice(voice)
     this.#voices.clear()
+    this.#motor = null
+  }
+
+  #addVoice(source: AudioScheduledSourceNode, gain: GainNode, oneShot = false): LiveVoice {
+    if (oneShot) {
+      const oneshots = [...this.#voices].filter(voice => voice.oneShot)
+      if (oneshots.length >= MAX_ONESHOTS) {
+        const oldest = oneshots[0]
+        this.#voices.delete(oldest)
+        this.#stopVoice(oldest)
+      }
+    }
+    const voice: LiveVoice = { source, gain, oneShot }
+    this.#voices.add(voice)
+    source.onended = () => {
+      this.#voices.delete(voice)
+      if (this.#motor === voice) this.#motor = null
+      try { source.disconnect() } catch { /* detached */ }
+      try { gain.disconnect() } catch { /* detached */ }
+    }
+    return voice
   }
 
   #tone(name: keyof typeof TONES) {
@@ -177,21 +246,57 @@ export class ArenaSound {
     gain.gain.linearRampToValueAtTime(spec.gain, now + 0.015)
     gain.gain.exponentialRampToValueAtTime(0.0001, now + spec.duration)
     osc.connect(gain).connect(this.#master)
-    const voice: LiveVoice = { osc, gain }
-    this.#voices.add(voice)
-    osc.onended = () => {
-      this.#voices.delete(voice)
-      try { osc.disconnect() } catch { /* detached */ }
-      try { gain.disconnect() } catch { /* detached */ }
-    }
+    this.#addVoice(osc, gain, true)
     osc.start(now)
     osc.stop(now + spec.duration + 0.05)
   }
 
-  #once(key: string, tone: keyof typeof TONES) {
+  #sample(name: CueName): boolean {
+    if (!this.#enabled || !this.#context || !this.#master || this.#context.state !== 'running') return false
+    const cue = SAMPLE_CUES[name]
+    const buffer = this.#buffers.get(cue.url)
+    if (!buffer) return false
+    const source = this.#context.createBufferSource()
+    const gain = this.#context.createGain()
+    source.buffer = buffer
+    gain.gain.value = cue.gain
+    source.connect(gain).connect(this.#master)
+    this.#addVoice(source, gain, true)
+    source.start()
+    return true
+  }
+
+  #cue(name: CueName | keyof typeof TONES) {
+    if (name in SAMPLE_CUES && this.#sample(name as CueName)) return
+    if (name in TONES) this.#tone(name)
+  }
+
+  #startMotor() {
+    if (this.#motor || !this.#enabled || !this.#context || !this.#master || this.#context.state !== 'running') return
+    const buffer = this.#buffers.get(ENGINE_URL)
+    if (!buffer) return
+    const source = this.#context.createBufferSource()
+    const gain = this.#context.createGain()
+    source.buffer = buffer
+    source.loop = true
+    gain.gain.value = MOTOR_GAIN
+    source.connect(gain).connect(this.#master)
+    this.#motor = this.#addVoice(source, gain)
+    source.start()
+  }
+
+  #stopMotor() {
+    const motor = this.#motor
+    if (!motor) return
+    this.#motor = null
+    this.#voices.delete(motor)
+    this.#stopVoice(motor)
+  }
+
+  #once(key: string, cue: CueName | keyof typeof TONES) {
     if (this.#played.has(key)) return
     this.#played.add(key)
-    this.#tone(tone)
+    this.#cue(cue)
   }
 
   #matchScope(matchId: string) {
@@ -201,9 +306,13 @@ export class ArenaSound {
     this.#played.clear()
     this.#lastFlooded = null
     this.#recoveries.clear()
+    this.#lastTick = matchId === this.#attachMatchId ? this.#attachTick : 0
+    this.#stopMotor()
   }
 
   attach(session: ArenaSession) {
+    this.#attachMatchId = session.matchId ?? null
+    this.#attachTick = session.getSnapshot().episode?.tick ?? 0
     const onAction = (event: {
       matchId: string
       agentId: string
@@ -222,10 +331,24 @@ export class ArenaSound {
     const onTick = (event: {
       matchId: string
       tick: number
-      episode: { weather: { flooded: boolean }; agents: { id: string; recoveries: number }[] }
+      episode: {
+        weather: { flooded: boolean }
+        agents: { id: string; recoveries: number; transit?: unknown; staggeredUntilTick?: number }[]
+        events?: { type: string; tick: number; winnerId?: string; loserId?: string }[]
+      }
     }) => {
       if (session.getSnapshot().phase !== 'running') return
       this.#matchScope(event.matchId)
+      for (const episodeEvent of event.episode.events ?? []) {
+        if (episodeEvent.type !== 'bump') continue
+        if (episodeEvent.tick <= this.#lastTick || episodeEvent.tick > event.tick) continue
+        this.#once(`${event.matchId}:${episodeEvent.tick}:${episodeEvent.winnerId}:${episodeEvent.loserId}:bump`, 'bump')
+      }
+      this.#lastTick = event.tick
+      const champion = event.episode.agents.find(agent => agent.id === 'champion')
+      const moving = Boolean(champion?.transit) && !(typeof champion?.staggeredUntilTick === 'number' && champion.staggeredUntilTick > event.tick)
+      if (moving) this.#startMotor()
+      else this.#stopMotor()
       const flooded = event.episode.weather.flooded
       if (this.#lastFlooded !== null && flooded !== this.#lastFlooded) {
         this.#once(`${event.matchId}:${event.tick}:flood`, flooded ? 'flood-on' : 'flood-off')
@@ -246,10 +369,14 @@ export class ArenaSound {
       this.#matchScope(event.matchId)
       this.#once(`${event.matchId}:finish`, 'finish')
     }
+    const onPhase = (event: { current: string }) => {
+      if (event.current !== 'running') this.#stopVoices()
+    }
     this.#unsubscribes.push(
       session.on('action_result', onAction),
       session.on('tick', onTick),
       session.on('match_end', onEnd),
+      session.on('phase', onPhase),
     )
   }
 
@@ -258,6 +385,9 @@ export class ArenaSound {
     this.#enableToken += 1
     this.#resumePromise = null
     for (const unsubscribe of this.#unsubscribes.splice(0)) unsubscribe()
+    this.#sampleAbort?.abort()
+    this.#sampleAbort = null
+    this.#buffers.clear()
     this.#stopVoices()
     this.#played.clear()
     this.#recoveries.clear()

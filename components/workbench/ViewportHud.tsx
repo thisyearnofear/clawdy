@@ -49,10 +49,10 @@ export function ViewportHud({ phase, isMatch, sideHint, score, agent, rulesetId,
               <span className={styles.sep}>YOU–RIVAL</span>
               <strong className={styles.foe}>{score.foe}</strong>
               {' · '}{clock}
-              {score.cargo > 0 && <span>●{score.cargo}/{capacityOf(agent ?? {})}</span>}
-              {flooded && floodEndsIn !== null && <span className={styles.floodWarn}>FLOOD {floodEndsIn}s</span>}
+              {score.cargo > 0 && <span aria-label={`Cargo ${score.cargo} of ${capacityOf(agent ?? {})}`}><span className={`${styles.hudIcon} ${styles.hudIconCargo}`} aria-hidden="true" />{score.cargo}/{capacityOf(agent ?? {})}</span>}
+              {flooded && floodEndsIn !== null && <span className={styles.floodWarn}><span className={`${styles.hudIcon} ${styles.hudIconFlood}`} aria-hidden="true" />FLOOD {floodEndsIn}s</span>}
               {!flooded && drained && <span className={styles.drained}>DRAINED</span>}
-              {!flooded && !drained && nextFloodIn !== null && nextFloodIn <= 30 && <span className={styles.floodWarn}>FLOOD IN {nextFloodIn}s</span>}
+              {!flooded && !drained && nextFloodIn !== null && nextFloodIn <= 30 && <span className={styles.floodWarn}><span className={`${styles.hudIcon} ${styles.hudIconFlood}`} aria-hidden="true" />FLOOD IN {nextFloodIn}s</span>}
             </span>
           )}
         </div>

@@ -293,3 +293,62 @@ describe('TrainingControls', () => {
     expect(coachPanel()).toContain('Generations')
   })
 })
+
+vi.mock('../../services/flavour', async importOriginal => ({
+  ...(await importOriginal<typeof import('../../services/flavour')>()),
+  useFlavourZh: () => false,
+  setFlavourZh: () => { },
+}))
+vi.mock('../../services/funnelLog', () => ({ formatFunnelLog: () => '', getFunnelEvents: () => [] }))
+
+import { ViewportHud } from '../../components/workbench/ViewportHud'
+import { HelpDrawer } from '../../components/workbench/HelpDrawer'
+
+function hud(overrides: Partial<Parameters<typeof ViewportHud>[0]> = {}) {
+  return renderToStaticMarkup(createElement(ViewportHud, {
+    phase: 'running',
+    isMatch: false,
+    sideHint: 'hint',
+    score: { you: 2, foe: 1, cargo: 1 },
+    clock: '1:00',
+    flooded: true,
+    drained: false,
+    floodEndsIn: 12,
+    nextFloodIn: null,
+    runTip: null,
+    feed: [],
+    error: null,
+    onRetry: noop,
+    ...overrides,
+  }))
+}
+
+describe('ViewportHud icons', () => {
+  it('shows a decorative cargo icon while keeping the count and an accessible label', () => {
+    const html = hud()
+    expect(html).toContain('aria-hidden="true"')
+    expect(html).toContain('aria-label="Cargo 1 of')
+    expect(html).toContain('1/')
+    expect(html).not.toContain('●')
+  })
+
+  it('keeps flood warning text intact beside the decorative tide icon', () => {
+    const html = hud()
+    expect(html).toContain('FLOOD 12s')
+    expect(hud({ flooded: false, floodEndsIn: null, nextFloodIn: 20 })).toContain('FLOOD IN 20s')
+    expect(hud({ flooded: false, floodEndsIn: null, drained: true })).toContain('DRAINED')
+  })
+})
+
+describe('HelpDrawer credits', () => {
+  it('lists the Kenney packs and game-icons attribution', () => {
+    const html = renderToStaticMarkup(createElement(HelpDrawer, { open: true, onClose: noop }))
+    expect(html).toContain('Asset credits')
+    expect(html).toContain('kenney.nl/assets/space-kit')
+    expect(html).toContain('kenney.nl/assets/sci-fi-sounds')
+    expect(html).toContain('game-icons.net/1x1/lorc/crystal-bars.html')
+    expect(html).toContain('game-icons.net/1x1/delapouite/high-tide.html')
+    expect(html).toContain('creativecommons.org/licenses/by/3.0/')
+    expect(renderToStaticMarkup(createElement(HelpDrawer, { open: false, onClose: noop }))).toBe('')
+  })
+})
