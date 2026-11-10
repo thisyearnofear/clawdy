@@ -368,7 +368,8 @@ rather than showing a broken surface.
 | Hosted browser demo | ✅ https://clawdy.trustfall.xyz — must stay up and functional through Nov 25 |
 | Demo video **under 3 minutes** | ☐ **OPEN — the critical path.** Script exists at [DEMO_SCRIPT.md](DEMO_SCRIPT.md); record the plain-language → train → visible behavior-change beat first |
 | Short written description (what you built, problem/opportunity, how AI is used) | ☐ **OPEN.** Draft below; honesty rules from the Tripothon era still apply — claim only what is on screen |
-| Chosen focus category | ☐ **OPEN.** The building-period post does not enumerate the categories — pull the exact list from the registration flow / Terms & Conditions and pick (candidate framing: autonomous agents / AI-generated gameplay systems) |
+| Chosen focus category | ☐ **OPEN.** No public page enumerates the picker (checked T&Cs, both news posts, the closed registration form, Nov 10). Best inference — the named-directions list: prompt-to-world creation, AI-assisted 3D editing, intelligent NPCs or autonomous agents, procedural environments, AI-generated gameplay systems, interactive storytelling, collaborative creation tools, multimodal workflows. Confirm exact names on the submission form |
+| Submission channel | ☐ **OPEN.** Leads: (a) a `kaggle.com/competitions/ai-builder-hackathon-2026` page exists, Victoria VR–hosted, same brief + judges — but lists Close Sep 10, so probably an earlier phase or stale; verify whether submissions route through Kaggle. (b) Most likely a submit form sent to registrants — registration used MS Forms (now closed); check the confirmation email / hackathon Discord (`discord.com/invite/kkhAFAHjNa`) |
 
 ## Draft description beats
 
@@ -390,11 +391,11 @@ rather than showing a broken surface.
 
 | Risk | Mitigation |
 | --- | --- |
-| **All four NL translator routes are dark in prod** — no LLM keys exist in Vercel production (verified Nov 10), so every surface silently 503s to the keyword/preset fallback and a judge sees none of the AI work | Helper 1 sets `COACH_INTENT_API_KEY`, `DOCTRINE_API_KEY`, caster + `WORLD_INTENT_API_KEY` as step zero, before any Track F–I code; Helper 2's smoke matrix must prove each route answers on the LLM path, not the fallback |
+| ~~All four NL translator routes are dark in prod~~ — **RESOLVED Nov 10**: `COACH_INTENT_*` primary + fallback chain pushed to Vercel production; post-deploy smoke shows coach-intent and doctrine answering 200 on the LLM path, arena-intent/caster configured (non-503). `WORLD_INTENT_API_KEY` still needed when Track G's route lands — shares the `COACH_INTENT_*` fallback chain if unset | Helper 2's smoke matrix must still prove each surface fires on the LLM path in a real browser, not just at the route level |
 | **Generated world is new geometry in the render+physics path** — could be unplayable, ugly, or slow, and it lands hours before a freeze | F is certified by the existing `groundPoint` / `checkRouteGrounding` proof before it can display; authored GLB stays the default behind a flag; grid capped at 200×200; retry→fallback ladder; hard prod freeze at +17:30 |
 | **Five people, one repo, ~19h** — merge conflicts and duplicated work are the realistic failure mode, not the code | `WorldSpec` is frozen in this doc before anyone starts; file-ownership map per track; `ArenaScene.tsx` is Dev 3's alone; `eval:gate` runs at every merge, not just at the end |
 | Deadline is the day this plan was written | The product already ships and is live; this is a packaging exercise (video + copy + category), not a build sprint. Cut scope ruthlessly — nothing new in prod before submission |
-| Registered status unconfirmed | Check email from the organizers / hackathon login before anything else |
+| ~~Registered status unconfirmed~~ — confirmed Nov 10 | Remaining auth-dependent unknowns: exact category names + the submission channel link (see packet) |
 | Focus categories unknown from the public post | Read the T&Cs / submission form; choose the closest named direction, do not invent a category |
 | Claiming more NL-magic than exists | The rubric rewards innovation *and* functionality; the verifiable-coaching-loop framing above is fully evidenced in-repo (eval gates, server re-simulation). Keep the honesty discipline from [TRIPOTHON.md](TRIPOTHON.md) |
 | Demo must stay up through judging (Nov 25) | Vercel + Convex prod are already live; note the uptime obligation in [DEPLOY.md](DEPLOY.md) operations |
