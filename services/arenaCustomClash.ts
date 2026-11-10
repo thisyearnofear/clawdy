@@ -48,6 +48,7 @@ function isInteger(value: unknown, min: number, max: number): value is number {
 export function customClashDigest(course: ArenaCourse): string {
   const scenario = course.scenario
   const lines: string[] = []
+  const baseNodeIds = new Set(scenario.entrants.map(entrant => entrant.baseNode))
   lines.push(`Grounded arena: ${course.config.name}. Duration currently ${scenario.durationTicks} ticks (allowed ${CUSTOM_CLASH_BOUNDS.minDuration}–${CUSTOM_CLASH_BOUNDS.maxDuration}).`)
   const floodableNodes = new Set<string>()
   for (const edge of scenario.edges) {
@@ -56,7 +57,8 @@ export function customClashDigest(course: ArenaCourse): string {
       floodableNodes.add(edge.to)
     }
   }
-  lines.push(`Stations (cores may be placed on any): ${scenario.nodes.map(node => node.id).join(', ')}.`)
+  lines.push(`Stations (cores may be placed on any): ${scenario.nodes.filter(node => !baseNodeIds.has(node.id)).map(node => node.id).join(', ')}.`)
+  lines.push(`Base pads (cores are never placed here): ${[...baseNodeIds].join(', ')}.`)
   lines.push(`Valley stations (flood-exposed, risky but short): ${[...floodableNodes].join(', ') || 'none'}; all others stay dry.`)
   lines.push(`Champion base: ${scenario.entrants.find(entrant => entrant.id === 'champion')?.baseNode}; rival base: ${scenario.entrants.find(entrant => entrant.id === 'rival')?.baseNode}.`)
   lines.push(`Core values: 1 (common) to 8 (jackpot), at most ${CUSTOM_CLASH_BOUNDS.maxResources} cores total.`)

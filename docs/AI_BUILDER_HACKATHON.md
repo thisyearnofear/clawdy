@@ -28,6 +28,7 @@ Clawdy's spine is literally natural language → working logic → observable be
 - The NL understanding is now real: four key-gated LLM translators (`/api/arena-intent`, `/api/coach-intent`, `/api/doctrine`, `/api/caster`) with bounded client-side resolvers and deterministic fallbacks. It is still a *bounded* contract — the LLM proposes, resolvers dispose — frame it as "plain language compiles to validated structures," not "prompt-to-anything."
 - The arena *terrain* is authored, not prompt-generated (the Marble-generated first arena was retired Sep 26; see git history). But plain language now **re-parameters the 3D scene live**: Describe this Clash remakes floods, core placement/values, duration and the rival on the pinned world — the "3D scenes" half of the rule is parameterization with a playability proof, not geometry generation. Forge adds a bounded free-text descriptor so words also shape the champion's body.
 - Judge-facing risk (now reduced, not removed): "autonomous agents" + "AI-generated gameplay systems" remain our strongest named directions; lead with them *and* the describe-the-arena beat.
+- Structural gaps identified in the Nov 10 post-Tracks-A–D review — the world is still authored, the entry still reads as a game, and the payoff is too deep — are addressed by **[Winning plan II](#winning-plan-ii--prompt-to-world-certified-nov-10-5-people)** (Tracks F–I), which is the active plan.
 
 **Positioning line:** *an AI-native training league where plain language becomes working logic — you coach a rover in words, its weights actually change, and you watch the 3D arena prove whether your coaching held.*
 
@@ -176,6 +177,189 @@ route shape as `app/api/coach-intent` (`/api/prompt-arena`, `ARENA_PROMPT_API_KE
 503 → fallback to the standard course); same client pattern as
 `resolveCoachIntent` (validate the reply, never trust it).
 
+## Winning plan II — prompt-to-world, certified (Nov 10, 5 people)
+
+Supersedes the envelope-push plan above as the working plan. **Decision: land all of it**
+(F–I plus E). The previous plan made the language surfaces real; it did not make the
+*scene* real, and the headline rule is "plain language into interactive 3D scenes and
+working logic". This plan closes that gap and turns the two structural weaknesses
+(authored world; reads as a game) into the entry's identity.
+
+### The unlock (verified in code, Nov 10)
+
+Terrain is not a hand-made asset — it is an analytic function baked to GLB by Blender:
+
+- `ground_height(x, z)` is ~6 lines of math in `scripts/build-arena-terrain.py:24`
+  (ridge + Gaussian channels + boundary rim), with `is_road(x, z)` for material split and
+  skirt walls.
+- `createWorldSurface(root)` (`services/worldSurface.ts:16`) takes **any** three.js object
+  and yields `colliderData()` (`{vertices, indices}`) plus `checkRouteGrounding()`.
+- `new ArenaPhysics({vertices, indices})` (`services/arenaPhysics.ts:57`) builds the Rapier
+  trimesh from those arrays alone.
+- `buildArenaCourse(physics)` / `buildRushCourse(physics)`
+  (`services/arenaCourse.ts:134`, `:215`) are pure functions *of the surface*: they
+  re-ground `TEMPLATE_STATIONS` by raycast (`groundPoint`, `services/arenaCourse.ts:32`)
+  and throw on any sample with `normal.y < 0.7`.
+
+Therefore a heightfield generated in TypeScript flows through the existing surface,
+physics and course builders unchanged, and **the existing machinery certifies it is
+playable**. Only `loadArenaCourse` (`services/arenaCourse.ts:374`) needs a sibling that
+supplies an in-memory mesh instead of fetching a pinned GLB. Physics, renderer, match
+authority, policy and trainer are untouched.
+
+### Positioning this buys
+
+*Three sentences make the three artifacts.* "A flooded salt flat under a copper sky" →
+geometry. "Hug the low road but panic in floods" → weights. "A scuttling hauler" → a
+Tripo chassis. Prompt-to-world, working logic, and generated 3D assets in one product —
+and unlike every other prompt-to-world entry, **every generated world ships with a
+machine-checked playability certificate**: the world is not just pretty, it is runnable
+and measurable.
+
+### Shared contract — `WorldSpec` (frozen before any dev starts; this is the API between tracks)
+
+The LLM emits parameters only — never coordinates, vertices, edges or geometry. The
+resolver owns every number that reaches the mesh.
+
+```ts
+interface WorldSpec {
+  landform: 'basin' | 'canyon' | 'plateau' | 'dune-field' | 'salt-flat'
+  /** Ridge: corridor x-position and relief it rises to. */
+  ridge: { x: number; height: number }        // x 5.5–8.5, height 0.2–1.6
+  /** Drainage channels carved off the valley route. */
+  channels: { count: number; spacing: number; depth: number } // 0–6, 1.5–4, 0.02–0.2
+  rim: { height: number; steepness: number }   // 0–2.2, 1–4
+  waterlineOffset: number                      // -0.2 – +0.35 over the authored baseline
+  palette: 'sandstone' | 'basalt' | 'slate' | 'oxide' | 'gypsum'
+  rockDensity: number                          // 0–1, drives ArenaProps scatter
+  scenarioName: string                         // sanitized, ≤40 chars
+}
+```
+
+`WorldSpec` lives in `services/arenaWorldgen.ts` and is the only symbol F, G and H share.
+Digest = SHA-256 over the canonical JSON → `worldId: 'generated-' + digest.slice(0, 8)`,
+always `split: 'practice'`.
+
+### Track F — `services/arenaWorldgen.ts`: generate + certify (Dev 1)
+
+Port `ground_height` / `is_road` / skirt walls to TS as a pure function of
+`(x, z, WorldSpec)`. Build a displaced `THREE.BufferGeometry` (grid ≤ 200×200, flat
+shading — low-poly is a deliberate, on-brand aesthetic, not a fallback). Feed
+`createWorldSurface` → `colliderData()` → `new ArenaPhysics` → `buildRushCourse`.
+
+The proof is the deliverable: ground all 19 `TEMPLATE_STATIONS`, run
+`checkRouteGrounding` on every edge, and emit
+`{ stationsGrounded, routesCleared, repairsApplied, worldDigest, msElapsed }`. Failure
+ladder: flatten a pad under the offending station → retry once at reduced relief →
+fall back to the pinned authored course with an honest message (never a broken arena).
+
+Owns: `services/arenaWorldgen.ts`, `services/__tests__/arenaWorldgen.test.ts`.
+Headless + deterministic → must be fully provable with `npm test` before Dev 2 or the
+QA helper ever opens a browser. ~4h.
+
+### Track G — `/api/world-intent` + live wiring (Dev 2)
+
+Route mirrors `app/api/coach-intent/route.ts` exactly: provider fallback chain
+(`services/llmProviders.ts`), `WORLD_INTENT_API_KEY`, unconfigured → 503 → the client
+falls back to the 3-preset world gallery so the surface is never dead. Client-side
+sanitizer/clamps in the `resolveCoachIntent` pattern — validate the reply, never trust
+it. Then `loadGeneratedCourse(spec)` beside `loadArenaCourse`, and a `TerrainMesh` branch
+that accepts an in-memory scene instead of `url`/`sha256` (`ArenaWorldView.tsx:258`).
+Palette also drives `BasinSky`, fog and `createTerrainDetailTextures` colors, so a
+sentence visibly changes the world's identity, not just its heightmap.
+
+Owns: `app/api/world-intent/route.ts`, `services/arenaWorldIntent.ts`,
+`services/arenaCourse.ts` (new export only), `components/environment/ArenaWorldView.tsx`.
+~2.5h. Depends on F's `WorldSpec` type, not its implementation — start against the
+contract above immediately.
+
+### Track H — the front door is a forge + judge on-ramp (Dev 3)
+
+Reposition, per the review's own finding that the arena "reads as a nice little game":
+the first screen is a prompt field over a live wireframe world, not a Play button.
+Typing reshapes it; generating is the act and racing it is act two. Three preset worlds
+give instant impact for a judge who will not type. Closes the still-open Track E item 3:
+a 3-step spotlight — Describe → Coach → Prove — that reaches
+"your words made this world and this brain" inside 60 seconds instead of four panels deep.
+
+Owns: `components/workbench/BootScreen.tsx`, `components/workbench/WorldForgePanel.tsx`
+(new), `components/environment/ArenaScene.tsx` (entry flow only), `docs/DEMO_SCRIPT.md`.
+~2h. Starts on layout/copy against the spec now; needs G for the live reshape.
+
+### Track I — rigor as receipts, not caveats (Dev 3 with Dev 1)
+
+A persistent one-line strip:
+`world generated · 19/19 stations grounded · 18/18 routes cleared · 1 lesson trained · +4 banked on held-out`.
+The honesty stops reading as "unfinished" and starts reading as "the only entry with
+evidence". Paired copy change: in README and the written description, lead the eval claim
+with what the champion **beats** (untrained baseline, +21 banked, all four held-out
+boards) before the teacher comparison. Never delete a real limitation — reorder it.
+
+Owns: `components/workbench/ReceiptsStrip.tsx` (new), `README.md` claims order. ~1h.
+
+### Track E — packet + ops (2 helpers, unchanged scope, now staffed)
+
+Helper 1 (ops/copy): **prod keys first** — the four translator routes currently 503 to
+keyword fallbacks in production because no `COACH_INTENT_API_KEY` / `DOCTRINE_API_KEY` /
+caster / `WORLD_INTENT_API_KEY` exist in Vercel production (verified via `vercel env ls
+--environment production`, Nov 10). Then registration/eligibility confirmation, the exact
+focus-category list, written description, organizer form. Secrets go in the dashboard or
+`vercel env add`, never into a committed file — this repo is public.
+
+Helper 2 (verification): browser smoke matrix on prod after deploy (desktop + 375×812,
+console-clean, each of the five NL surfaces firing on the LLM path not the fallback),
+real Forge run, two-account challenge, `npm run eval:gate`, submission SHA pinning,
+and the mobile pass for the video.
+
+### Guardrails (non-negotiable, extended)
+
+- **Frozen for everyone:** `arenaEpisode.ts`, `arenaPolicy.ts`, `policyES.ts`,
+  `policyModel.ts`, `policyTrainer.ts`, `arenaProtocol.ts`, `arenaReplay.ts`,
+  `scripts/eval-gate.ts`, `docs/eval-gate.json`, `public/terrain/*`,
+  `ARENA_WORLD` and its SHA pins. `npm run eval:gate` must stay byte-identical at every
+  merge, not just at the end.
+- **The authored GLB stays the default course.** A generated world is an opt-in practice
+  surface behind a flag; a bad deploy can never take the demo down.
+- **LLM proposes, sim disposes** — unchanged, and now load-bearing: the LLM emits
+  `WorldSpec` ranges; the resolver owns the mesh.
+- **File ownership is the merge plan.** Touch only your track's files; `ArenaScene.tsx`
+  is Dev 3's and Dev 2 posts the needed diff there rather than editing it.
+- **Claim discipline.** The docs may state "plain language generates certified, playable
+  3D terrain" only after the certificate renders on prod and a browser run confirms it.
+  Until then the honest line remains "parameterized with a playability proof".
+
+### Timeline (~19h to Nov 11 16:30 CEST / 15:30 UTC)
+
+| Clock (UTC) | Milestone | Who |
+| --- | --- | --- |
+| now – +0:30 | Prod keys; registration check; `WorldSpec` frozen in this doc; branches cut | Helper 1, all |
+| +0:30 – +4:30 | F builds and tests headless; G builds route + sanitizer against the contract; H builds forge screen shell + copy on presets | Dev 1, 2, 3 |
+| +4:30 – +6:00 | G wires `loadGeneratedCourse` into the live scene; F review + fixes | Dev 1+2 |
+| +6:00 – +7:30 | H wires live reshape + 3-step on-ramp; I strip + claims reorder | Dev 3, Dev 3+1 |
+| +7:30 – +8:30 | Merge, `eval:gate`, deploy, prod smoke matrix | all, Helper 2 |
+| +8:30 – +12:00 | Hard stop; sleep. On-call fix only | — |
+| +12:00 – +14:00 | Second smoke, visual polish on the generated world, fallback recording | Helper 2, Dev 2 |
+| +14:00 – +16:30 | Record <3-min video on prod; write description + category | Helper 1, Dev 3 |
+| +16:30 – +17:30 | **Prod freeze.** Repo pinned, submission SHA recorded | all |
+| +17:30 – +18:30 | Submit with ≥1h to spare; uptime watch through Nov 25 | Helper 1 |
+
+### The video, shot for shot (<3 min, recorded on prod after the smoke matrix)
+
+1. **0:00–0:20** — cold open on the blank prompt field. Type "a flooded salt flat under a copper sky". The wireframe world assembles and repaints. Receipts strip reads `world generated · 19/19 grounded · 18/18 routes cleared`.
+2. **0:20–0:50** — Play. Two autonomous rovers race the *new* terrain. Caster line appears over a recorded fact.
+3. **0:50–1:30** — "Hug the low road but panic in floods" → doctrine drafts, approve, train. Lesson card leads with **what your brain actually changed**.
+4. **1:30–2:00** — Prove: coaching goes dark, held-out board, score delta against the untrained baseline.
+5. **2:00–2:30** — "A scuttling hauler" → Forge generates the chassis body, and it drives out onto the world from shot 1. End card: three sentences, three artifacts, every one certified.
+
+Never script around unguaranteed emergent behavior (the Nov 10 amendment still binds): shot 3 shows the drafts, the training and the measured delta — not a promise that the rover obeys the paragraph literally.
+
+### Cut line (only if the clock collapses; user intent is to land all)
+
+Preserve in this order: **E → F+G (the certified generated world) → H's presets → I →
+H's spotlight**. If even that is at risk, ship F+G behind the flag with the preset gallery
+on the old course, and describe the generated world as verified-but-beta in the write-up
+rather than showing a broken surface.
+
 ## Submission packet (their required list)
 
 | Deliverable | Status |
@@ -206,6 +390,9 @@ route shape as `app/api/coach-intent` (`/api/prompt-arena`, `ARENA_PROMPT_API_KE
 
 | Risk | Mitigation |
 | --- | --- |
+| **All four NL translator routes are dark in prod** — no LLM keys exist in Vercel production (verified Nov 10), so every surface silently 503s to the keyword/preset fallback and a judge sees none of the AI work | Helper 1 sets `COACH_INTENT_API_KEY`, `DOCTRINE_API_KEY`, caster + `WORLD_INTENT_API_KEY` as step zero, before any Track F–I code; Helper 2's smoke matrix must prove each route answers on the LLM path, not the fallback |
+| **Generated world is new geometry in the render+physics path** — could be unplayable, ugly, or slow, and it lands hours before a freeze | F is certified by the existing `groundPoint` / `checkRouteGrounding` proof before it can display; authored GLB stays the default behind a flag; grid capped at 200×200; retry→fallback ladder; hard prod freeze at +17:30 |
+| **Five people, one repo, ~19h** — merge conflicts and duplicated work are the realistic failure mode, not the code | `WorldSpec` is frozen in this doc before anyone starts; file-ownership map per track; `ArenaScene.tsx` is Dev 3's alone; `eval:gate` runs at every merge, not just at the end |
 | Deadline is the day this plan was written | The product already ships and is live; this is a packaging exercise (video + copy + category), not a build sprint. Cut scope ruthlessly — nothing new in prod before submission |
 | Registered status unconfirmed | Check email from the organizers / hackathon login before anything else |
 | Focus categories unknown from the public post | Read the T&Cs / submission form; choose the closest named direction, do not invent a category |

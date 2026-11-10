@@ -126,6 +126,15 @@ describe('custom Clash course building', () => {
     expect(digest).toContain('champion-base')
     expect(digest).not.toContain('sha256')
   })
+
+  it('never invites the translator to place cores on base pads', () => {
+    const digest = customClashDigest(course)
+    const stations = /Stations \(cores may be placed on any\): (.*)\./.exec(digest)![1]
+    expect(stations).not.toContain('champion-base')
+    expect(stations).not.toContain('rival-base')
+    expect(stations).toContain('ridge-center')
+    expect(digest).toContain('Base pads (cores are never placed here): champion-base, rival-base.')
+  })
 })
 
 describe('arena-intent API reply parsing', () => {
