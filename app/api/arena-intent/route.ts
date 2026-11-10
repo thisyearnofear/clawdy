@@ -76,7 +76,7 @@ export async function POST(request: Request) {
     temperature: 0.2,
     maxTokens: 700,
     json: true,
-    timeoutMs: 15_000,
+    timeoutMs: 25_000,
   })
   if (result.kind === 'unconfigured') {
     return NextResponse.json({ error: 'arena-intent-not-configured' }, { status: 503 })
