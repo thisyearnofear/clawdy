@@ -100,6 +100,13 @@ export const exampleDocV = v.object({
         reason: v.string(),
         outcomeDelta: v.number(),
       }),
+      // Doctrine expansion (Track B, Nov 2026): free-text doctrine → argmax over
+      // legal alternatives at a recorded tick, with a measured counterfactual delta.
+      v.object({
+        kind: v.literal('doctrine'),
+        name: v.string(),
+        outcomeDelta: v.number(),
+      }),
     ),
   ),
   outcomeDelta: v.optional(v.number()),
