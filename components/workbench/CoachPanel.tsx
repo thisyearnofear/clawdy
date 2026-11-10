@@ -42,6 +42,10 @@ export function CoachPanel({
   onClashTextChange = () => {},
   onDescribeClash = () => {},
   canDescribeClash = false,
+  doctrineText = '',
+  onDoctrineTextChange = () => {},
+  onDescribeDoctrine = () => {},
+  canDescribeDoctrine = false,
   promptText,
   onPromptTextChange,
   approvedCount,
@@ -74,6 +78,11 @@ export function CoachPanel({
   onClashTextChange?: (text: string) => void
   onDescribeClash?: (text: string) => void
   canDescribeClash?: boolean
+  /** Track B (Nov 2026): describe-a-doctrine surface — drafts measured lessons across the recording under review. */
+  doctrineText?: string
+  onDoctrineTextChange?: (text: string) => void
+  onDescribeDoctrine?: (text: string) => void
+  canDescribeDoctrine?: boolean
   promptText: string
   onPromptTextChange: (text: string) => void
   approvedCount: number
@@ -230,6 +239,29 @@ export function CoachPanel({
               />
               <button className={styles.secondaryButton} type="submit" disabled={!clashText.trim()}>
                 Reshape arena
+              </button>
+            </form>
+          </div>
+        </details>
+      )}
+
+      {canDescribeDoctrine && (
+        <details className={styles.guidanceDetails}>
+          <summary>Describe a doctrine</summary>
+          <div className={styles.coachingCol}>
+            <p className={styles.specializeHint}>Plain language becomes a playbook — your paragraph drafts lessons at real moments from this run, each showing its measured effect. Approve the ones you want it to learn.</p>
+            <form className={styles.promptForm} onSubmit={e => { e.preventDefault(); onDescribeDoctrine(doctrineText) }}>
+              <input
+                className={styles.promptInput}
+                type="text"
+                aria-label="Describe a doctrine"
+                placeholder="e.g. a greedy scavenger that hugs the low road but panics in floods"
+                value={doctrineText}
+                maxLength={500}
+                onChange={e => onDoctrineTextChange(e.target.value)}
+              />
+              <button className={styles.secondaryButton} type="submit" disabled={!doctrineText.trim() || busy || coachingLocked}>
+                Draft lessons
               </button>
             </form>
           </div>

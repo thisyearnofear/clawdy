@@ -17,7 +17,9 @@ import { brainForRuleset } from '../../services/skirmishBrains'
 import { PROVERBS, useFlavourZh, withProverb } from '../../services/flavour'
 import { coachingSampleWeights, comparisonRivalForCoaching, proposeCorrection, summarizeCoachFocus } from '../../services/coachingEngine'
 import { legalActionSummary, resolveCoachIntent } from '../../services/coachIntent'
+import { expandDoctrine, heuristicDoctrine, parseDoctrineSpec, type DoctrineSpec } from '../../services/doctrine'
 import { buildCustomClash, customClashDigest, sanitizeCustomClashSpec } from '../../services/arenaCustomClash'
+import { CASTER_MIN_INTERVAL_MS, casterFactFromFeed, validateCasterLine, type CasterFact } from '../../services/raceCaster'
 import { rankCoachingCandidates, type CoachingCandidate } from '../../services/coachingCandidates'
 import { draftRecordedCorrection, recordedCoachContext } from '../../services/coachingReview'
 import { comparisonFrameAt, divergenceFrameIndex, type PracticeComparison } from '../../services/practiceComparison'
@@ -325,8 +327,13 @@ function Workbench({
   /** Serializes the async AI-intent translation path so a slow reply can't double-draft. */
   const proposeBusyRef = useRef(false)
   const [clashText, setClashText] = useState('')
+  const [doctrineText, setDoctrineText] = useState('')
   /** Track A: serializes the async describe-a-Clash translation. */
   const describeClashBusyRef = useRef(false)
+  /** Track D: one caster call at a time, throttled between casts. */
+  const casterBusyRef = useRef(false)
+  const lastCastAtRef = useRef(0)
+  const doctrineBusyRef = useRef(false)
   const importAbortRef = useRef<AbortController | null>(null)
   const comparisonRef = useRef<HTMLDivElement | null>(null)
   const soundRef = useRef<ArenaSound | null>(null)
@@ -1029,7 +1036,42 @@ function Workbench({
     lastFeedTick.current = tick
     lastFeedPhase.current = phase
     pushFeed(items)
-  }, [view, pushFeed])
+
+    // Track D — AI race caster. Fire-and-forget: reword recorded facts into
+    // commentary when the caster is configured; the deterministic line above
+    // is always shown first, the cast arrives as a follow-up feed item. One
+    // cast at a time, throttled so the caster never talks over itself. The
+    // finish line is always cast (the money moment). Presentation only.
+    if (items.length > 0) {
+      const now = Date.now()
+      const castable = items
+        .map(item => casterFactFromFeed(item, {
+          score: view.episode.agents.map(agent => `${agent.id === 'champion' ? 'You' : 'Rival'} ${agent.banked}`).join(' · '),
+        }))
+        .filter((fact): fact is CasterFact => fact !== null)
+      const fact = castable.find(entry => entry.kind === 'finish') ?? castable[0]
+      if (fact && !casterBusyRef.current && (fact.kind === 'finish' || now - lastCastAtRef.current >= CASTER_MIN_INTERVAL_MS)) {
+        casterBusyRef.current = true
+        lastCastAtRef.current = now
+        fetch('/api/caster', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fact, championName: championIdentity.name }),
+        })
+          .then(async response => {
+            if (!response.ok) return
+            const { line } = (await response.json()) as { line: unknown }
+            const cast = validateCasterLine(line, fact)
+            if (cast) {
+              pushFeed([{ text: cast, tone: fact.kind === 'bank' ? 'bank' : fact.kind === 'flood' ? 'flood' : 'info' }])
+              recordFunnelEvent('caster.line', fact.kind)
+            }
+          })
+          .catch(() => { /* offline or slow — the deterministic line already showed */ })
+          .finally(() => { casterBusyRef.current = false })
+      }
+    }
+  }, [view, pushFeed, championIdentity.name])
 
   // Raider full-load steal highlight (Skirmish Clash only). Storyboard from
   // recorded bump facts; optional fal/stub clip is non-blocking. Never touches score.
@@ -1429,6 +1471,58 @@ function Workbench({
       setTrainMessage("Couldn't reach the arena translator — the preset Clash stays as it is.")
     } finally {
       describeClashBusyRef.current = false
+    }
+  }
+
+  /**
+   * Track B: a doctrine paragraph becomes a batch of measured draft lessons
+   * mined across the recorded run. LLM proposes bounded weights (fallback:
+   * local keyword parser); every draft is legal at a real recorded tick and
+   * carries its consequence-measured delta. Human still approves each one.
+   */
+  const handleDescribeDoctrine = async (text: string) => {
+    if (doctrineBusyRef.current || isTraining || view.phase === 'running') return
+    if (coachingLocked) {
+      setTrainMessage('Coaching is off during a scored Match — doctrines stay in Clash.')
+      return
+    }
+    const description = text.trim()
+    if (!description) return
+    if (!reviewRecording) {
+      setTrainMessage('A doctrine mines a finished Clash — open Replay after a run, then describe it.')
+      return
+    }
+    doctrineBusyRef.current = true
+    setTrainMessage('Reading that doctrine…')
+    try {
+      let spec: DoctrineSpec | null = null
+      try {
+        const response = await fetch('/api/doctrine', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ note: description }),
+        })
+        if (response.ok) spec = parseDoctrineSpec((await response.json()).spec)
+      } catch {
+        // Translator unreachable — the local keyword parser below is the fallback.
+      }
+      if (!spec) spec = heuristicDoctrine(description)
+      if (!spec) {
+        setTrainMessage('Couldn\'t turn that into a doctrine — try words like "hug the low road", "bank early", or "grab every core".')
+        return
+      }
+      const expansion = expandDoctrine(reviewRecording, spec, { maxFrames: 10 })
+      if (expansion.examples.length === 0) {
+        setTrainMessage(`Doctrine "${spec.name}" found no recorded decisions it would change${expansion.vetoed > 0 ? ` (${expansion.vetoed} picks vetoed as catastrophic)` : ''} — try different wording or another run.`)
+        return
+      }
+      setExamples(prev => [...expansion.examples, ...prev])
+      recordFunnelEvent('example.draft', `doctrine:${spec.name}`)
+      setDoctrineText('')
+      setStudioOpen(true)
+      setTrainMessage(`Doctrine "${spec.name}" drafted ${expansion.examples.length} lesson${expansion.examples.length === 1 ? '' : 's'} from ${expansion.framesSampled} recorded decisions${expansion.vetoed > 0 ? ` (${expansion.vetoed} vetoed)` : ''} — approve what you want it to learn, then train.`)
+    } finally {
+      doctrineBusyRef.current = false
     }
   }
 
@@ -2577,6 +2671,10 @@ function Workbench({
               onClashTextChange={setClashText}
               onDescribeClash={handleDescribeClash}
               canDescribeClash={view.phase === 'ready' && !isTraining && !view.scored && rulesetId === undefined && playMode !== 'rush' && playMode !== 'compete' && !sharedReplay && !tournamentRunning}
+              doctrineText={doctrineText}
+              onDoctrineTextChange={setDoctrineText}
+              onDescribeDoctrine={handleDescribeDoctrine}
+              canDescribeDoctrine={!!reviewRecording && !coachingLocked && !isTraining}
               promptText={promptText}
               onPromptTextChange={setPromptText}
               approvedCount={approvedCount}
