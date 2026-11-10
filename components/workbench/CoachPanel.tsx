@@ -38,6 +38,10 @@ export function CoachPanel({
   onFileChange,
   fileInputRef,
   onPropose,
+  clashText = '',
+  onClashTextChange = () => {},
+  onDescribeClash = () => {},
+  canDescribeClash = false,
   promptText,
   onPromptTextChange,
   approvedCount,
@@ -65,6 +69,11 @@ export function CoachPanel({
   onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void
   fileInputRef: React.RefObject<HTMLInputElement | null>
   onPropose: (text: string) => void
+  /** Track A (Nov 2026): describe-a-Clash surface. Optional and default-off so older callers/tests stay valid. */
+  clashText?: string
+  onClashTextChange?: (text: string) => void
+  onDescribeClash?: (text: string) => void
+  canDescribeClash?: boolean
   promptText: string
   onPromptTextChange: (text: string) => void
   approvedCount: number
@@ -203,6 +212,29 @@ export function CoachPanel({
           </div>
         )
       })()}
+
+      {canDescribeClash && (
+        <details className={styles.guidanceDetails}>
+          <summary>Describe this Clash</summary>
+          <div className={styles.coachingCol}>
+            <p className={styles.specializeHint}>Plain language reshapes this unranked Clash — flood timing, core placement, rival temperament. The world, routes and rules stay the same; every core still sits on a station the rovers can reach.</p>
+            <form className={styles.promptForm} onSubmit={e => { e.preventDefault(); onDescribeClash(clashText) }}>
+              <input
+                className={styles.promptInput}
+                type="text"
+                aria-label="Describe this Clash"
+                placeholder="e.g. floods early, one jackpot core in the valley, a greedy rival"
+                value={clashText}
+                maxLength={600}
+                onChange={e => onClashTextChange(e.target.value)}
+              />
+              <button className={styles.secondaryButton} type="submit" disabled={!clashText.trim()}>
+                Reshape arena
+              </button>
+            </form>
+          </div>
+        </details>
+      )}
 
       <details className={styles.guidanceDetails} open={view.guidanceOpen}>
         <summary>{view.guidanceOpen ? 'How to teach it' : 'Teach another lesson'}</summary>

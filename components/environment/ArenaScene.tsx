@@ -16,6 +16,8 @@ import { isBundledStarter, SEASON_0_STARTER_CHECKPOINT } from '../../services/st
 import { brainForRuleset } from '../../services/skirmishBrains'
 import { PROVERBS, useFlavourZh, withProverb } from '../../services/flavour'
 import { coachingSampleWeights, comparisonRivalForCoaching, proposeCorrection, summarizeCoachFocus } from '../../services/coachingEngine'
+import { legalActionSummary, resolveCoachIntent } from '../../services/coachIntent'
+import { buildCustomClash, customClashDigest, sanitizeCustomClashSpec } from '../../services/arenaCustomClash'
 import { rankCoachingCandidates, type CoachingCandidate } from '../../services/coachingCandidates'
 import { draftRecordedCorrection, recordedCoachContext } from '../../services/coachingReview'
 import { comparisonFrameAt, divergenceFrameIndex, type PracticeComparison } from '../../services/practiceComparison'
@@ -320,6 +322,11 @@ function Workbench({
   const trainAbortRef = useRef<AbortController | null>(null)
   const trainTimerRef = useRef<number | null>(null)
   const trainingBusyRef = useRef(false)
+  /** Serializes the async AI-intent translation path so a slow reply can't double-draft. */
+  const proposeBusyRef = useRef(false)
+  const [clashText, setClashText] = useState('')
+  /** Track A: serializes the async describe-a-Clash translation. */
+  const describeClashBusyRef = useRef(false)
   const importAbortRef = useRef<AbortController | null>(null)
   const comparisonRef = useRef<HTMLDivElement | null>(null)
   const soundRef = useRef<ArenaSound | null>(null)
@@ -1318,8 +1325,8 @@ function Workbench({
     setTimeout(() => URL.revokeObjectURL(url), 0)
   }
 
-  const handlePropose = (text: string) => {
-    if (isTraining || view.phase === 'running') return
+  const handlePropose = async (text: string) => {
+    if (isTraining || view.phase === 'running' || proposeBusyRef.current) return
     if (coachingLocked) {
       setTrainMessage('Coaching is off during a scored Match — hop back to Practice to keep teaching.')
       return
@@ -1336,8 +1343,92 @@ function Workbench({
       setPromptText('')
       setStudioOpen(true)
       setTrainMessage(`Got it — drafted "${example.rationale}" for tick ${example.tick}. Approve it below, then train when you're ready.`)
-    } else {
-      setTrainMessage(`That note doesn't match a legal move at tick ${coachContext.tick} — try different wording, or pick an alternative in Replay.`)
+      return
+    }
+    // Keyword path found nothing — try the AI intent translator before giving up.
+    proposeBusyRef.current = true
+    setTrainMessage('Reading that note…')
+    try {
+      const response = await fetch('/api/coach-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note: text, summary: legalActionSummary(coachContext.observation) }),
+      })
+      if (response.ok) {
+        const { intent } = (await response.json()) as { intent: unknown }
+        const translated = resolveCoachIntent(intent, coachContext.observation, coachContext.originalAction, reviewRecording.scenario.id)
+        if (translated) {
+          setExamples(prev => [translated, ...prev])
+          recordFunnelEvent('example.draft', 'ai-prompt')
+          setPromptText('')
+          setStudioOpen(true)
+          setTrainMessage(`Got it — drafted "${translated.rationale}" for tick ${translated.tick}. Approve it below, then train when you're ready.`)
+          return
+        }
+      }
+    } catch {
+      // Offline or translator unreachable — fall through to the honest refusal.
+    } finally {
+      proposeBusyRef.current = false
+    }
+    setTrainMessage(`That note doesn't match a legal move at tick ${coachContext.tick} — try different wording, or pick an alternative in Replay.`)
+  }
+
+  /**
+   * Track A — Prompt the Arena. Only on a ready, unranked Training Grounds
+   * Clash: free text → server translator → sanitized spec → new practice-split
+   * course on the same pinned world. The described rival becomes the session
+   * rival for this Clash. Any failure keeps the current course and says so.
+   */
+  const handleDescribeClash = async (text: string) => {
+    if (describeClashBusyRef.current) return
+    if (view.phase !== 'ready' || isTraining || view.scored || sharedReplay || tournamentRunning) {
+      setTrainMessage('Describe-a-Clash only works on a fresh unranked Clash — hit Reset first.')
+      return
+    }
+    if (playMode === 'compete') {
+      setTrainMessage('The Prove board is held-out — it cannot be reshaped. Switch to Clash first.')
+      return
+    }
+    if (rulesetId !== undefined || playMode === 'rush') {
+      setTrainMessage('Describe-a-Clash works on Training Grounds — switch back from Skirmish/Rush first.')
+      return
+    }
+    const description = text.trim()
+    if (!description) return
+    describeClashBusyRef.current = true
+    setTrainMessage('Reshaping the arena from your words…')
+    try {
+      const response = await fetch('/api/arena-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description, digest: customClashDigest(activeCourse) }),
+      })
+      if (!response.ok) {
+        setTrainMessage(`Couldn't translate that into a Clash${response.status === 503 ? ' — the arena translator isn\'t configured here' : ''}. The preset Clash stays as it is.`)
+        return
+      }
+      const { spec } = (await response.json()) as { spec: unknown }
+      const sanitized = sanitizeCustomClashSpec(spec, activeCourse)
+      if ('error' in sanitized) {
+        setTrainMessage(`${sanitized.error} The preset Clash stays as it is.`)
+        return
+      }
+      const next = buildCustomClash(activeCourse, sanitized.spec)
+      setActiveCourse(next)
+      session.setCourse(next)
+      try {
+        session.selectPolicy('rival', sanitized.spec.rivalStrategy)
+      } catch {
+        // The preset rival stays if the pick is refused; the described board still runs.
+      }
+      setClashText('')
+      recordFunnelEvent('clash.described', `id=${next.scenario.id} rival=${sanitized.spec.rivalStrategy} cores=${sanitized.spec.resources.length} floods=${sanitized.spec.floods.length}`)
+      setTrainMessage(`Arena reshaped — ${sanitized.spec.resources.length} cores, ${sanitized.spec.floods.length} flood window${sanitized.spec.floods.length === 1 ? '' : 's'}, a ${sanitized.spec.rivalStrategy} rival. Press Play to race it.`)
+    } catch {
+      setTrainMessage("Couldn't reach the arena translator — the preset Clash stays as it is.")
+    } finally {
+      describeClashBusyRef.current = false
     }
   }
 
@@ -2482,6 +2573,10 @@ function Workbench({
               onFileChange={handleFileChange}
               fileInputRef={fileInputRef}
               onPropose={text => handlePropose(text)}
+              clashText={clashText}
+              onClashTextChange={setClashText}
+              onDescribeClash={handleDescribeClash}
+              canDescribeClash={view.phase === 'ready' && !isTraining && !view.scored && rulesetId === undefined && playMode !== 'rush' && playMode !== 'compete' && !sharedReplay && !tournamentRunning}
               promptText={promptText}
               onPromptTextChange={setPromptText}
               approvedCount={approvedCount}

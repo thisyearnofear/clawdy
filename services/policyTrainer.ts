@@ -40,6 +40,10 @@ export type TrainingExampleProvenance =
    *  a bounded candidate set, not the teacher's pick; `teacher` names the
    *  overridden teacher action used as the contrast. */
   | { kind: 'outcome-argmax'; teacher: 'safe' | 'weather' | 'patience'; reason: string; outcomeDelta: number }
+  /** Doctrine expansion (services/doctrine.ts): the label is the argmax of the
+   *  player's free-text doctrine over the legal alternatives at a recorded
+   *  tick, with its measured consequence delta attached. */
+  | { kind: 'doctrine'; name: string; outcomeDelta: number }
 
 export interface ArenaTrainingExample {
   id: string

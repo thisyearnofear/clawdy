@@ -12,6 +12,7 @@ import {
   FORGE_POLL_STALE_MS,
   FORGE_TIMEOUT_MS,
   buildForgePrompt,
+  sanitizeForgeDescriptor,
   classifyTripoFailure,
   decideForge,
   forgeLimits,
@@ -51,7 +52,7 @@ async function expireOverdue(ctx: MutationCtx, rows: Doc<'forges'>[]): Promise<n
 }
 
 export const reserve = internalMutation({
-  args: { userId: v.id('users'), chassis: v.string(), paint: v.string() },
+  args: { userId: v.id('users'), chassis: v.string(), paint: v.string(), descriptor: v.optional(v.string()) },
   handler: async (ctx, args) => {
     // A pending forge past its deadline is dead (its poll chain broke). Fail it here so the
     // player is never locked out and its credits are released, even if the sweep has not run.
@@ -72,6 +73,7 @@ export const reserve = internalMutation({
       userId: args.userId,
       chassis: args.chassis,
       paint: args.paint,
+      descriptor: args.descriptor ?? undefined,
       status: 'pending',
       credits: FORGE_CREDITS,
       createdAt: now,
@@ -145,7 +147,7 @@ export const get = internalQuery({
 })
 
 export const start = action({
-  args: { chassis: v.string(), paint: v.string() },
+  args: { chassis: v.string(), paint: v.string(), descriptor: v.optional(v.string()) },
   returns: v.object({ forgeId: v.id('forges') }),
   handler: async (ctx, args): Promise<{ forgeId: import('./_generated/dataModel').Id<'forges'> }> => {
     const userId = await getAuthUserId(ctx)
@@ -155,7 +157,9 @@ export const start = action({
     const key = process.env.TRIPO_API_KEY
     if (!key) fail('forge-not-configured')
 
-    const forgeId = await ctx.runMutation(internal.forge.reserve, { userId, chassis: args.chassis, paint: args.paint })
+    // Server-side re-sanitization: the stored/forwarded descriptor is the clean one.
+    const descriptor = sanitizeForgeDescriptor(args.descriptor)
+    const forgeId = await ctx.runMutation(internal.forge.reserve, { userId, chassis: args.chassis, paint: args.paint, descriptor: descriptor ?? undefined })
 
     let code: ForgeErrorCode | undefined
     try {
@@ -165,7 +169,7 @@ export const start = action({
         body: JSON.stringify({
           type: 'text_to_model',
           model_version: MODEL_VERSION,
-          prompt: buildForgePrompt(args.chassis, args.paint),
+          prompt: buildForgePrompt(args.chassis, args.paint, descriptor),
           negative_prompt: FORGE_NEGATIVE_PROMPT,
           face_limit: 8000,
           texture: true,
@@ -263,6 +267,7 @@ export const mine = query({
       id: row._id,
       chassis: row.chassis,
       paint: row.paint,
+      descriptor: row.descriptor ?? null,
       status: row.status,
       createdAt: row.createdAt,
       url: row.storageId ? await ctx.storage.getUrl(row.storageId) : null,

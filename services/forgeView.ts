@@ -12,6 +12,7 @@ export interface ForgeRow {
   id: string
   chassis: string
   paint: string
+  descriptor?: string | null
   status: 'pending' | 'ready' | 'failed'
   createdAt: number
   url: string | null

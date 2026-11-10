@@ -7,6 +7,8 @@
 .choice { border: 1px solid var(--line, #d8ded2); background: transparent; color: inherit; border-radius: 999px; padding: 5px 11px; font: inherit; cursor: pointer; }
 .choice[aria-pressed='true'] { border-color: var(--ink, #233531); background: var(--ink, #233531); color: var(--paper, #f2f3e9); }
 .choice:disabled { opacity: 0.5; cursor: not-allowed; }
+.descriptor { border: 1px solid var(--line, #d8ded2); background: transparent; color: inherit; border-radius: 8px; padding: 6px 10px; font: inherit; }
+.descriptor:disabled { opacity: 0.5; }
 .forgeButton { justify-self: start; border: 0; border-radius: 8px; padding: 8px 14px; background: var(--ink, #233531); color: var(--paper, #f2f3e9); font: inherit; font-weight: 600; cursor: pointer; }
 .forgeButton:disabled { opacity: 0.5; cursor: not-allowed; }
 .note { margin: 0; color: var(--muted, #6e7971); }

@@ -292,6 +292,8 @@ export default defineSchema({
     userId: v.id('users'),
     chassis: v.string(),
     paint: v.string(),
+    /** Optional sanitized free-text descriptor appended to the Tripo prompt (Nov 2026). Additive. */
+    descriptor: v.optional(v.string()),
     status: v.union(v.literal('pending'), v.literal('ready'), v.literal('failed')),
     credits: v.number(),
     taskId: v.optional(v.string()),

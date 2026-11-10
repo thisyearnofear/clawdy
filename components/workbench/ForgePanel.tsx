@@ -4,7 +4,7 @@ import { useAction, useConvexAuth, useQuery } from 'convex/react'
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../../convex/_generated/api'
 import { CHASSIS_IDS, type ChassisId } from '../../services/chassis'
-import { FORGE_PAINTS, type ForgePaint } from '../../services/forge'
+import { FORGE_DESCRIPTOR_MAX, FORGE_PAINTS, sanitizeForgeDescriptor, type ForgePaint } from '../../services/forge'
 import {
   FORGED_LOOK_KEY,
   STANDARD_LOOK,
@@ -34,6 +34,7 @@ function ForgePanelInner({ onLookChange }: { onLookChange?: (look: ForgedLook | 
   const start = useAction(api.forge.start)
   const [chassis, setChassis] = useState<ChassisId>('hauler')
   const [paint, setPaint] = useState<ForgePaint>('moss')
+  const [descriptor, setDescriptor] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // Lazy initializer: this component only renders on the client behind the Convex gate.
@@ -59,7 +60,7 @@ function ForgePanelInner({ onLookChange }: { onLookChange?: (look: ForgedLook | 
     setSubmitting(true)
     setError(null)
     try {
-      await start({ chassis, paint })
+      await start({ chassis, paint, descriptor: sanitizeForgeDescriptor(descriptor) ?? undefined })
       // A fresh forge becomes the look once it is ready, unless the player pinned another.
       if (choice !== STANDARD_LOOK) choose('auto')
     } catch (caught) {
@@ -92,6 +93,19 @@ function ForgePanelInner({ onLookChange }: { onLookChange?: (look: ForgedLook | 
         </div>
       </fieldset>
 
+      <fieldset className={styles.group}>
+        <legend>Describe it (optional)</legend>
+        <input
+          className={styles.descriptor}
+          type="text"
+          value={descriptor}
+          maxLength={FORGE_DESCRIPTOR_MAX}
+          disabled={submitting}
+          placeholder="e.g. battered cargo pod with a winch and spare wheels"
+          onChange={event => setDescriptor(event.target.value)}
+        />
+      </fieldset>
+
       <button type="button" className={styles.forgeButton} disabled={!form.canForge} onClick={forge}>
         {submitting ? 'Forging…' : 'Forge'}
       </button>
@@ -105,6 +119,7 @@ function ForgePanelInner({ onLookChange }: { onLookChange?: (look: ForgedLook | 
             <li key={row.id} className={styles.row}>
               <span className={styles.rowLabel}>
                 <strong>{row.chassis} · {row.paint}</strong>
+                {row.descriptor && <span className={styles.rowStatus}>“{row.descriptor}”</span>}
                 <span className={styles.rowStatus}>
                   {row.status === 'pending' ? 'Forging… this takes about a minute' : row.status === 'ready' ? 'Ready' : 'Did not finish'}
                 </span>

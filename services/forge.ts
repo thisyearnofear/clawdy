@@ -23,6 +23,9 @@ export const FORGE_POLL_STALE_MS = 45_000
 export const FORGE_PAINTS = ['moss', 'ember', 'ice', 'violet', 'sand'] as const
 export type ForgePaint = (typeof FORGE_PAINTS)[number]
 
+/** Longest free-text descriptor a player may add to a Forge prompt (AI Builder Hackathon plain-language path). */
+export const FORGE_DESCRIPTOR_MAX = 120
+
 const PAINT_WORDS: Record<ForgePaint, string> = {
   moss: 'moss green and charcoal',
   ember: 'ember orange and charcoal',
@@ -47,8 +50,28 @@ export function isForgeChassis(value: string): value is ChassisId {
   return (CHASSIS_IDS as readonly string[]).includes(value)
 }
 
-export function buildForgePrompt(chassis: ChassisId, paint: ForgePaint): string {
-  return `${CHASSIS_WORDS[chassis]}, ${PAINT_WORDS[paint]} armor, game asset, single object, one connected body`
+/**
+ * Bounded free-text descriptor for Forge (Nov 10, 2026 — AI Builder Hackathon
+ * "plain language → 3D" path). The fixed chassis/paint menus remain the prompt's
+ * structure; the descriptor is one sanitized sentence fragment appended after
+ * them. Sanitized identically on client and server — the server never trusts
+ * the client's version.
+ */
+export function sanitizeForgeDescriptor(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null
+  const clean = raw
+    // strip control chars/newlines so nothing can smuggle a second prompt line
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (clean.length === 0) return null
+  return clean.length > FORGE_DESCRIPTOR_MAX ? clean.slice(0, FORGE_DESCRIPTOR_MAX).trimEnd() : clean
+}
+
+export function buildForgePrompt(chassis: ChassisId, paint: ForgePaint, descriptor?: string | null): string {
+  const base = `${CHASSIS_WORDS[chassis]}, ${PAINT_WORDS[paint]} armor, game asset, single object, one connected body`
+  const extra = sanitizeForgeDescriptor(descriptor)
+  return extra ? `${base}, ${extra}` : base
 }
 
 export type ForgeErrorCode =
