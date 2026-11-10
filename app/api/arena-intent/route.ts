@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { completeChat, llmProviders } from '../../../services/llmProviders'
 
 /**
  * Arena-intent translator — Track A "Prompt the Arena" (AI Builder Hackathon).
@@ -54,10 +55,6 @@ export function parseSpecReply(body: string): unknown {
 }
 
 export async function POST(request: Request) {
-  const apiKey = process.env.COACH_INTENT_API_KEY
-  if (!apiKey) {
-    return NextResponse.json({ error: 'arena-intent-not-configured' }, { status: 503 })
-  }
   let payload: { description?: unknown; digest?: unknown }
   try {
     payload = await request.json()
@@ -69,38 +66,27 @@ export async function POST(request: Request) {
   if (!description || !digest) {
     return NextResponse.json({ error: 'description-and-digest-required' }, { status: 400 })
   }
-  const baseUrl = process.env.COACH_INTENT_BASE_URL?.replace(/\/+$/, '') ?? 'https://api.openai.com/v1'
-  const model = process.env.COACH_INTENT_MODEL ?? 'gpt-4o-mini'
-  try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model,
-        temperature: 0.2,
-        max_tokens: 700,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: `Player's description: ${description}\n\nArena facts:\n${digest}` },
-        ],
-      }),
-      signal: AbortSignal.timeout(15_000),
-    })
-    if (!response.ok) {
-      return NextResponse.json({ error: 'translator-upstream-error' }, { status: 502 })
-    }
-    const data = (await response.json()) as { choices?: { message?: { content?: string } }[] }
-    const content = data.choices?.[0]?.message?.content
-    if (typeof content !== 'string') {
-      return NextResponse.json({ error: 'translator-empty-reply' }, { status: 502 })
-    }
-    const spec = parseSpecReply(content)
-    if (!spec) {
-      return NextResponse.json({ error: 'translator-no-fit' }, { status: 422 })
-    }
-    return NextResponse.json({ spec })
-  } catch {
-    return NextResponse.json({ error: 'translator-unreachable' }, { status: 502 })
+  const providers = llmProviders(process.env)
+  if (providers.length === 0) {
+    return NextResponse.json({ error: 'arena-intent-not-configured' }, { status: 503 })
   }
+  const result = await completeChat(providers, {
+    system: SYSTEM_PROMPT,
+    user: `Player's description: ${description}\n\nArena facts:\n${digest}`,
+    temperature: 0.2,
+    maxTokens: 700,
+    json: true,
+    timeoutMs: 15_000,
+  })
+  if (result.kind === 'unconfigured') {
+    return NextResponse.json({ error: 'arena-intent-not-configured' }, { status: 503 })
+  }
+  if (result.kind === 'upstream') {
+    return NextResponse.json({ error: 'translator-upstream-error' }, { status: 502 })
+  }
+  const spec = parseSpecReply(result.content)
+  if (!spec) {
+    return NextResponse.json({ error: 'translator-no-fit' }, { status: 422 })
+  }
+  return NextResponse.json({ spec })
 }

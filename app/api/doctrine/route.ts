@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { completeChat, llmProviders } from '../../../services/llmProviders'
 
 /**
  * Doctrine translator: the Track B "describe your champion's doctrine" surface.
@@ -56,10 +57,6 @@ export function parseDoctrineReply(body: string): unknown {
 }
 
 export async function POST(request: Request) {
-  const apiKey = process.env.DOCTRINE_API_KEY ?? process.env.COACH_INTENT_API_KEY
-  if (!apiKey) {
-    return NextResponse.json({ error: 'doctrine-not-configured' }, { status: 503 })
-  }
   let payload: { note?: unknown }
   try {
     payload = await request.json()
@@ -70,38 +67,30 @@ export async function POST(request: Request) {
   if (!note) {
     return NextResponse.json({ error: 'note-required' }, { status: 400 })
   }
-  const baseUrl = (process.env.DOCTRINE_BASE_URL ?? process.env.COACH_INTENT_BASE_URL)?.replace(/\/+$/, '') ?? 'https://api.openai.com/v1'
-  const model = process.env.DOCTRINE_MODEL ?? process.env.COACH_INTENT_MODEL ?? 'gpt-4o-mini'
-  try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model,
-        temperature: 0,
-        max_tokens: 250,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: `Coach's doctrine: ${note}` },
-        ],
-      }),
-      signal: AbortSignal.timeout(12_000),
-    })
-    if (!response.ok) {
-      return NextResponse.json({ error: 'translator-upstream-error' }, { status: 502 })
-    }
-    const data = (await response.json()) as { choices?: { message?: { content?: string } }[] }
-    const content = data.choices?.[0]?.message?.content
-    if (typeof content !== 'string') {
-      return NextResponse.json({ error: 'translator-empty-reply' }, { status: 502 })
-    }
-    const spec = parseDoctrineReply(content)
-    if (!spec) {
-      return NextResponse.json({ error: 'translator-no-spec' }, { status: 422 })
-    }
-    return NextResponse.json({ spec })
-  } catch {
-    return NextResponse.json({ error: 'translator-unreachable' }, { status: 502 })
+  const providers = llmProviders(process.env, {
+    apiKey: process.env.DOCTRINE_API_KEY,
+    baseUrl: process.env.DOCTRINE_BASE_URL,
+    model: process.env.DOCTRINE_MODEL,
+  })
+  if (providers.length === 0) {
+    return NextResponse.json({ error: 'doctrine-not-configured' }, { status: 503 })
   }
+  const result = await completeChat(providers, {
+    system: SYSTEM_PROMPT,
+    user: `Coach's doctrine: ${note}`,
+    temperature: 0,
+    maxTokens: 250,
+    json: true,
+  })
+  if (result.kind === 'unconfigured') {
+    return NextResponse.json({ error: 'doctrine-not-configured' }, { status: 503 })
+  }
+  if (result.kind === 'upstream') {
+    return NextResponse.json({ error: 'translator-upstream-error' }, { status: 502 })
+  }
+  const spec = parseDoctrineReply(result.content)
+  if (!spec) {
+    return NextResponse.json({ error: 'translator-no-spec' }, { status: 422 })
+  }
+  return NextResponse.json({ spec })
 }

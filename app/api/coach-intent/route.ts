@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { completeChat, llmProviders } from '../../../services/llmProviders'
 
 /**
  * Coach-intent translator: the AI Builder Hackathon "plain language" surface.
@@ -11,10 +12,9 @@ import { NextResponse } from 'next/server'
  * created), and cannot touch scored matches — the Coach UI already locks
  * those off before this route can be reached.
  *
- * Env (server-only, never NEXT_PUBLIC): COACH_INTENT_API_KEY (required),
- * COACH_INTENT_BASE_URL (optional, OpenAI-compatible), COACH_INTENT_MODEL
- * (optional). Unset → 503 and the client falls back to the keyword matcher,
- * exactly like the Orbis/FAL optional integrations.
+ * Providers: primary then fallback (services/llmProviders.ts) — a provider
+ * that runs dry degrades to the next; unconfigured → 503 and the client falls
+ * back to the keyword matcher.
  */
 export const runtime = 'nodejs'
 
@@ -59,10 +59,6 @@ export function parseIntentReply(body: string): unknown {
 }
 
 export async function POST(request: Request) {
-  const apiKey = process.env.COACH_INTENT_API_KEY
-  if (!apiKey) {
-    return NextResponse.json({ error: 'coach-intent-not-configured' }, { status: 503 })
-  }
   let payload: { note?: unknown; summary?: unknown }
   try {
     payload = await request.json()
@@ -74,38 +70,26 @@ export async function POST(request: Request) {
   if (!note || !summary) {
     return NextResponse.json({ error: 'note-and-summary-required' }, { status: 400 })
   }
-  const baseUrl = process.env.COACH_INTENT_BASE_URL?.replace(/\/+$/, '') ?? 'https://api.openai.com/v1'
-  const model = process.env.COACH_INTENT_MODEL ?? 'gpt-4o-mini'
-  try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model,
-        temperature: 0,
-        max_tokens: 200,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: `Coach's note: ${note}\n\nLegal actions this tick:\n${summary}` },
-        ],
-      }),
-      signal: AbortSignal.timeout(12_000),
-    })
-    if (!response.ok) {
-      return NextResponse.json({ error: 'translator-upstream-error' }, { status: 502 })
-    }
-    const data = (await response.json()) as { choices?: { message?: { content?: string } }[] }
-    const content = data.choices?.[0]?.message?.content
-    if (typeof content !== 'string') {
-      return NextResponse.json({ error: 'translator-empty-reply' }, { status: 502 })
-    }
-    const intent = parseIntentReply(content)
-    if (!intent) {
-      return NextResponse.json({ error: 'translator-no-fit' }, { status: 422 })
-    }
-    return NextResponse.json({ intent })
-  } catch {
-    return NextResponse.json({ error: 'translator-unreachable' }, { status: 502 })
+  const providers = llmProviders(process.env)
+  if (providers.length === 0) {
+    return NextResponse.json({ error: 'coach-intent-not-configured' }, { status: 503 })
   }
+  const result = await completeChat(providers, {
+    system: SYSTEM_PROMPT,
+    user: `Coach's note: ${note}\n\nLegal actions this tick:\n${summary}`,
+    temperature: 0,
+    maxTokens: 200,
+    json: true,
+  })
+  if (result.kind === 'unconfigured') {
+    return NextResponse.json({ error: 'coach-intent-not-configured' }, { status: 503 })
+  }
+  if (result.kind === 'upstream') {
+    return NextResponse.json({ error: 'translator-upstream-error' }, { status: 502 })
+  }
+  const intent = parseIntentReply(result.content)
+  if (!intent) {
+    return NextResponse.json({ error: 'translator-no-fit' }, { status: 422 })
+  }
+  return NextResponse.json({ intent })
 }

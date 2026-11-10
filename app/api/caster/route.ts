@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { completeChat, llmProviders } from '../../../services/llmProviders'
 import { casterSystemPrompt, casterUserMessage, type CasterFact } from '../../../services/raceCaster'
 
 /**
@@ -17,10 +18,6 @@ import { casterSystemPrompt, casterUserMessage, type CasterFact } from '../../..
 export const runtime = 'nodejs'
 
 export async function POST(request: Request) {
-  const apiKey = process.env.COACH_INTENT_API_KEY
-  if (!apiKey) {
-    return NextResponse.json({ error: 'caster-not-configured' }, { status: 503 })
-  }
   let payload: { fact?: CasterFact; championName?: unknown }
   try {
     payload = await request.json()
@@ -39,33 +36,23 @@ export async function POST(request: Request) {
   ) {
     return NextResponse.json({ error: 'invalid-fact' }, { status: 400 })
   }
-  const baseUrl = process.env.COACH_INTENT_BASE_URL?.replace(/\/+$/, '') ?? 'https://api.openai.com/v1'
-  const model = process.env.CASTER_MODEL ?? process.env.COACH_INTENT_MODEL ?? 'gpt-4o-mini'
-  try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model,
-        temperature: 0.9,
-        max_tokens: 60,
-        messages: [
-          { role: 'system', content: casterSystemPrompt() },
-          { role: 'user', content: casterUserMessage(fact, championName) },
-        ],
-      }),
-      signal: AbortSignal.timeout(8_000),
-    })
-    if (!response.ok) {
-      return NextResponse.json({ error: 'caster-upstream-error' }, { status: 502 })
-    }
-    const data = (await response.json()) as { choices?: { message?: { content?: string } }[] }
-    const content = data.choices?.[0]?.message?.content
-    if (typeof content !== 'string') {
-      return NextResponse.json({ error: 'caster-empty-reply' }, { status: 502 })
-    }
-    return NextResponse.json({ line: content })
-  } catch {
-    return NextResponse.json({ error: 'caster-unreachable' }, { status: 502 })
+  const providers = llmProviders(process.env)
+  if (providers.length === 0) {
+    return NextResponse.json({ error: 'caster-not-configured' }, { status: 503 })
   }
+  const result = await completeChat(providers, {
+    system: casterSystemPrompt(),
+    user: casterUserMessage(fact, championName),
+    temperature: 0.9,
+    maxTokens: 60,
+    timeoutMs: 8_000,
+    modelOverride: process.env.CASTER_MODEL,
+  })
+  if (result.kind === 'unconfigured') {
+    return NextResponse.json({ error: 'caster-not-configured' }, { status: 503 })
+  }
+  if (result.kind === 'upstream') {
+    return NextResponse.json({ error: 'caster-upstream-error' }, { status: 502 })
+  }
+  return NextResponse.json({ line: result.content })
 }
