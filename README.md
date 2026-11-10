@@ -6,7 +6,7 @@ Clawdy is a **Clash-first** agent league inside a physical world: Clash is the g
 
 > The payoff is watching your agent use something you taught it when you are no longer allowed to help — and finding out whether your coaching held when the arena throws something it has never seen.
 
-**What is proven (gate pin `53f3d95c3d9b`):** the coached champion **matches the careful teacher's outcomes on unseen abstract layouts** — every leg within 1 banked, the same champion-win legs (3 = 3) — and **beats the untrained baseline on all four held-out boards** (+21 banked). On physical courses it now leads the teacher on the grounded course (28 vs 27) while still trailing on held-out family layouts (56 vs 68) — every leg clearing the harness-enforced no-collapse floor. This paragraph mirrors the CI-enforced claims block in `scripts/eval-gate.ts` — docs may never claim more than the gate checks.
+**What is proven (gate pin `53f3d95c3d9b`):** the coached champion **beats the untrained baseline on all four held-out boards** — +21 banked over a base that banks 0 — and **matches the careful teacher's outcomes on unseen abstract layouts**, every leg within 1 banked, the same champion-win legs (3 = 3). On physical courses it now leads the teacher on the grounded course (28 vs 27) while still trailing on held-out family layouts (56 vs 68) — every leg clearing the harness-enforced no-collapse floor. This paragraph mirrors the CI-enforced claims block in `scripts/eval-gate.ts` — docs may never claim more than the gate checks.
 
 ## The Loop
 
