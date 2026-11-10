@@ -62,7 +62,7 @@ Product, contract, demo, and submission materials live in `/docs`:
 - [Implementation contract](AGENT.md) — module boundaries and verification rules.
 - [Compatibility policy](docs/COMPATIBILITY.md) — versioned rules, schemas, worlds, and checkpoints.
 - [Authentication and ladder](docs/AUTH.md) — Convex Auth (GitHub OAuth), guest claims, and server-verified Rush ladder.
-- [Current opportunity plan](docs/TRIPOTHON.md) — the active external opportunity, timeline, and risk register.
+- [Current opportunity plan](docs/AI_BUILDER_HACKATHON.md) — Victoria VR AI Builder Hackathon 2026 (deadline Nov 11, 2026): the active external opportunity, submission packet, and risk register. [Tripothon S1](docs/TRIPOTHON.md) is closed and archived.
 - [Product roadmap](docs/ROADMAP.md) — identity → encounters → league → curriculum horizons.
 - [Submission materials](docs/SUBMISSION_CHECKLIST.md).
 - [Scene layer architecture](docs/SCENES.md) — how recorded matches become replay cinematics and a live Orbis-generated broadcast (needs server-side `REACTOR_API_KEY`).

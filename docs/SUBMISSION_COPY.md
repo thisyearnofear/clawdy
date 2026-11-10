@@ -1,5 +1,7 @@
 # Tripothon S1 submission copy
 
+> **ARCHIVED.** Tripothon S1 closed Oct 5, 2026. This file is the historical submission copy for that event. For the active event (Victoria VR AI Builder Hackathon 2026), use the description beats and packet in [AI_BUILDER_HACKATHON.md](AI_BUILDER_HACKATHON.md).
+
 Live demo: https://clawdy.trustfall.xyz · Repo: https://github.com/thisyearnofear/clawdy
 
 ## Entry tracks

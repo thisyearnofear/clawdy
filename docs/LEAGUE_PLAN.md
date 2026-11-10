@@ -2,7 +2,7 @@
 
 Goal: turn the single-player Rush demo into a **train-then-compete league**. You pick a chassis, spend a limited budget to shape it, train a brain, then race other players' brains on shared terrain.
 
-Window: Tripothon S1 closes Oct 5 AoE (~12:00 UTC Oct 6). Anything not verified by the freeze is listed as roadmap and never claimed.
+Window: Tripothon S1 closed Oct 5 AoE; the active window is the Victoria VR AI Builder Hackathon 2026 — submissions due Nov 11, 16:30 CEST ([AI_BUILDER_HACKATHON.md](AI_BUILDER_HACKATHON.md)). Anything not verified by the freeze is listed as roadmap and never claimed.
 
 ## Ground rules (apply to every stream)
 

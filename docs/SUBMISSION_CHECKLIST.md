@@ -75,5 +75,5 @@ The [canonical plan](HACKATHON.md) defines the accepted direction. The following
 - [ ] Prepared checkpoints, recorded training, and replayed matches are explicitly labeled.
 - [ ] Submitted commit SHA, starter artifact, evaluation evidence, and demo link are filled in the organizer form.
 - [x] Organizer approval for repository reuse is reflected in the pre-existing/new-work disclosure.
-- [ ] Confirm submission channel and deadline with organizers (see [TRIPOTHON.md](TRIPOTHON.md) for the active opportunity window).
-- [ ] World Labs tool-track claim re-checked against the removed Marble pipeline (see [TRIPOTHON.md](TRIPOTHON.md)); regenerate only after a fresh owner decision and API credits.
+- [x] Tripothon S1 window closed Oct 5, 2026 (archived plan: [TRIPOTHON.md](TRIPOTHON.md)). The World Labs tool-track re-check was an open item on that closed event; it does not carry into [AI_BUILDER_HACKATHON.md](AI_BUILDER_HACKATHON.md), which has no tool-track requirement.
+- [ ] AI Builder Hackathon 2026 packet: demo video <3 min, written description, focus category, submission channel confirmed — tracked in [AI_BUILDER_HACKATHON.md](AI_BUILDER_HACKATHON.md).

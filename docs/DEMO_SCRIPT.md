@@ -6,7 +6,7 @@
 
 Clawdy lets you coach and train an autonomous competitor in a physical world, then watch it use what it learned when you can no longer intervene — including when two specialized rovers contest the same ground.
 
-Track: present as a **playable training league** first. Event framing: [TRIPOTHON.md](TRIPOTHON.md).
+Track: present as a **playable training league** first. Event framing: [AI_BUILDER_HACKATHON.md](AI_BUILDER_HACKATHON.md) (Victoria VR AI Builder Hackathon 2026 — plain language → 3D scenes and working logic; the <3-min video is this script). [TRIPOTHON.md](TRIPOTHON.md) is the archived prior framing.
 
 ## Presentation Sequence
 

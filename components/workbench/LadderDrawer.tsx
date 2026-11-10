@@ -10,6 +10,7 @@ import { exportCheckpointJson } from '../../services/checkpointStorage'
 import { BUILD_STORAGE_KEY, parseBuild } from '../../services/buildBudget'
 import { leagueBrainId, unlockSkirmish } from '../../services/workbenchRuleset'
 import { brainMatchesRuleset, replayShareHref, requestOpenReplay } from '../../services/sharedReplayNav'
+import { recordFunnelEvent } from '../../services/funnelLog'
 import type { RulesetId } from '../../services/chassis'
 import styles from '../environment/ArenaScene.module.css'
 
@@ -117,6 +118,17 @@ export function LadderDrawer({ open, onClose }: { open: boolean; onClose: () => 
     }
   }
 
+  const copyShareLink = (shareId: string) => {
+    if (typeof navigator === 'undefined' || !navigator.clipboard) return
+    navigator.clipboard.writeText(replayShareHref(shareId)).then(
+      () => {
+        recordFunnelEvent('share.copy', 'ladder')
+        setStatus({ kind: 'done', text: 'Replay link copied — paste it anywhere.' })
+      },
+      () => setStatus({ kind: 'error', text: 'Clipboard was blocked — open the link and copy the URL.' }),
+    )
+  }
+
   const rulesetBrains = brains?.filter(brain => brainMatchesRuleset(brain.rulesetId, rulesetId))
   const rulesetHistory = history?.filter(row => brainMatchesRuleset(row.rulesetId, rulesetId))
   const challenger = rulesetBrains?.find(brain => brain.brainId === leagueBrainId(checkpoint.id, rulesetId)) ?? rulesetBrains?.[0]
@@ -166,7 +178,16 @@ export function LadderDrawer({ open, onClose }: { open: boolean; onClose: () => 
                 Open replay
               </a>
               {' · '}
-              <a href={replayShareHref(lastShareId)} target="_blank" rel="noreferrer">Share link</a>
+              <a
+                href={replayShareHref(lastShareId)}
+                onClick={event => {
+                  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return
+                  event.preventDefault()
+                  copyShareLink(lastShareId)
+                }}
+              >
+                Copy link
+              </a>
             </span>
           )}
         </div>
@@ -255,6 +276,17 @@ export function LadderDrawer({ open, onClose }: { open: boolean; onClose: () => 
                         }}
                       >
                         replay
+                      </a>
+                      {' · '}
+                      <a
+                        href={replayShareHref(row.shareId)}
+                        onClick={event => {
+                          if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return
+                          event.preventDefault()
+                          copyShareLink(row.shareId!)
+                        }}
+                      >
+                        copy link
                       </a>
                     </>
                   )}

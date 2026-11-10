@@ -1,0 +1,58 @@
+{
+  "packs": [
+    {
+      "name": "Kenney Space Kit 2.0",
+      "author": "Kenney (www.kenney.nl)",
+      "license": "CC0",
+      "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/",
+      "source": "https://kenney.nl/assets/space-kit",
+      "files": [
+        "assets/kenney/space-kit/machine_generator.glb",
+        "assets/kenney/space-kit/satelliteDish.glb",
+        "assets/kenney/space-kit/barrels.glb",
+        "assets/kenney/space-kit/License.txt"
+      ],
+      "modifications": "GLB bytes unchanged; runtime recentered xz and bottom-grounded, placed/scaled (generator 0.6, dish/barrels 1.0)"
+    },
+    {
+      "name": "Kenney Sci-Fi Sounds 1.0",
+      "author": "Kenney (www.kenney.nl)",
+      "license": "CC0",
+      "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/",
+      "source": "https://kenney.nl/assets/sci-fi-sounds",
+      "files": [
+        "assets/kenney/sci-fi-sounds/engine.wav",
+        "assets/kenney/sci-fi-sounds/collect.wav",
+        "assets/kenney/sci-fi-sounds/bank.wav",
+        "assets/kenney/sci-fi-sounds/drain.wav",
+        "assets/kenney/sci-fi-sounds/impact.wav",
+        "assets/kenney/sci-fi-sounds/License.txt"
+      ],
+      "modifications": "transcoded from OGG to mono 24 kHz PCM16 WAV",
+      "sourceFiles": {
+        "engine.wav": "spaceEngineLow_002.ogg",
+        "collect.wav": "laserSmall_000.ogg",
+        "bank.wav": "doorClose_000.ogg",
+        "drain.wav": "forceField_000.ogg",
+        "impact.wav": "impactMetal_004.ogg"
+      }
+    },
+    {
+      "name": "Game-icons.net",
+      "author": "Lorc (crystal-bars), Delapouite (high-tide)",
+      "license": "CC BY 3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "source": "https://game-icons.net/",
+      "files": [
+        "assets/game-icons/crystal-bars.svg",
+        "assets/game-icons/high-tide.svg",
+        "assets/game-icons/Attribution.txt"
+      ],
+      "sourcePages": {
+        "crystal-bars.svg": "https://game-icons.net/1x1/lorc/crystal-bars.html",
+        "high-tide.svg": "https://game-icons.net/1x1/delapouite/high-tide.html"
+      },
+      "modifications": "SVG files unmodified; tinted via CSS mask color"
+    }
+  ]
+}

@@ -94,6 +94,18 @@ export function HelpDrawer({ open, onClose }: { open: boolean; onClose: () => vo
             <dd>Export JSON under Lessons → “Brains, storage &amp; sync”, or Save run for the recording. Cloud sync uses a guest key when Convex is on.</dd>
           </div>
         </dl>
+        <details className={styles.helpCredits}>
+          <summary>Asset credits</summary>
+          <p>
+            Props and sounds: <a href="https://kenney.nl/assets/space-kit">Kenney Space Kit</a> and{' '}
+            <a href="https://kenney.nl/assets/sci-fi-sounds">Kenney Sci-Fi Sounds</a> (CC0).
+          </p>
+          <p>
+            HUD icons: <a href="https://game-icons.net/1x1/lorc/crystal-bars.html">crystal-bars by Lorc</a> and{' '}
+            <a href="https://game-icons.net/1x1/delapouite/high-tide.html">high-tide by Delapouite</a> via game-icons.net,{' '}
+            <a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>. Icons are tinted with CSS; the SVG files are unchanged.
+          </p>
+        </details>
         <label className={styles.helpFooterNote} style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '8px 0' }}>
           <input type="checkbox" checked={flavourZh} onChange={event => setFlavourZh(event.target.checked)} />
           Show Chinese proverbs beside some lines (off by default)

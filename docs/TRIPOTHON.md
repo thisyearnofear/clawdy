@@ -1,5 +1,7 @@
 # Tripothon S1 — Clawdy Submission Plan
 
+> **ARCHIVED (Oct 5, 2026 close; winners Oct 25).** This event is over. The active external opportunity is the Victoria VR AI Builder Hackathon 2026 — see [AI_BUILDER_HACKATHON.md](AI_BUILDER_HACKATHON.md). This file is kept as the historical record of track claims, tool-use evidence, and provenance; do not treat its timeline or open items as live.
+
 > **Event:** Tripothon S1 — The 1st World-Building Hackathon (Tripo3D).
 > **Source:** https://developers.tripo3d.ai/en/events/tripothon-s1
 > **Submission window:** Sep 15 – Oct 5, 2026 (online; closes AoE / UTC-12).

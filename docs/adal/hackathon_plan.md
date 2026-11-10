@@ -2,6 +2,8 @@
 
 Date: 2026-10-01 · Target: Tripothon hackathon, live demo · Status: DRAFT for review (no code changed)
 
+> Note (Nov 10, 2026): Tripothon S1 is closed. The active event is the Victoria VR AI Builder Hackathon 2026 — see [../AI_BUILDER_HACKATHON.md](../AI_BUILDER_HACKATHON.md).
+
 ## TL;DR
 
 Keep the discrete graph as training wheels. Make **one entrant format** (a rover = checkpoint or bot) playable through **four surfaces** (watch, chat-coach, code-coach, AI-agent-coach). Run everyone's rover against everyone else's on **hidden seeds** with **verified replays** and a **live ladder**. Add **modes** that make rovers meet (race, battle), then an **open-space league** as the graduation path.

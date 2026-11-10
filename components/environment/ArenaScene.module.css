@@ -134,6 +134,9 @@
 .scorebug .sep { color: #8a9387; }
 .scorebug .floodWarn { color: #165d75; background: #d8edf2; padding: 2px 6px; border-radius: 3px; }
 .scorebug .drained { color: #2b5c33; background: #dde9d4; padding: 2px 6px; border-radius: 3px; }
+.hudIcon { display: inline-block; width: 14px; height: 14px; margin-right: 3px; vertical-align: -2px; background: currentColor; -webkit-mask-position: center; mask-position: center; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-size: contain; mask-size: contain; }
+.hudIconCargo { -webkit-mask-image: url('/assets/game-icons/crystal-bars.svg'); mask-image: url('/assets/game-icons/crystal-bars.svg'); }
+.hudIconFlood { -webkit-mask-image: url('/assets/game-icons/high-tide.svg'); mask-image: url('/assets/game-icons/high-tide.svg'); }
 .liveDot { display: inline-block; width: 6px; height: 6px; border-radius: 100%; margin-right: 7px; background: #899184; }
 .liveDot[data-active="true"] { background: #588958; box-shadow: 0 0 0 3px #b6d6a458; }
 .worldBottomline { bottom: 18px; }
@@ -269,6 +272,10 @@
 .helpFaq dd { margin: 0; font-size: 12px; line-height: 1.5; color: var(--muted); }
 .helpFooter { display: flex; align-items: center; gap: 10px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
 .helpFooterNote { font-size: 11px; color: var(--muted); }
+.helpCredits { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); }
+.helpCredits summary { cursor: pointer; }
+.helpCredits p { margin: 6px 0; }
+.helpCredits a { color: inherit; text-decoration: underline; }
 .agentHeading h3 { font-size: 12px; font-weight: 650; margin: 0 0 3px; }
 .agentHeading > div > span { display: block; font: 7px var(--font-geist-mono), monospace; letter-spacing: 0.06em; color: var(--muted); }
 .score { margin-left: auto; font: 26px/1 var(--font-geist-mono), monospace; text-align: right; }
