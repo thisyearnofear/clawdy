@@ -10,14 +10,25 @@ Track: present as a **playable training league** first. Event framing: [AI_BUILD
 
 ## Presentation Sequence
 
+**Nov 10 update — lead with the plain-language surfaces (Tracks A–C landed):** the
+submission video's first 30 seconds must show a typed sentence changing the 3D
+scene and the agent's logic, or the headline requirement reads unmet. Suggested
+opening before the standard sequence below (compress the rest to fit <3:00):
+
 | Time | Show | Say |
 | --- | --- | --- |
-| 0:00–0:12 | Boot → world ready. Play control is visible before the arena. **Champion setup** stays collapsed. Press **Play**; follow green champion. Amber valley / teal ridge. | "This is my agent, not my avatar. I name it, tint it, then develop its policy." |
-| 0:12–0:30 | Live race. If a **contested-ground** cue fires, note it's presentation only — routes and pickups decide the score. Flood tip or scorebug flood window. | "The rival contests resources. Floods expose whether my route choices work." |
-| 0:30–0:48 | Finish → **Replay**. Scrub to a recorded decision. Pick a supported alternative road (button or the route itself) → **Draft correction** → **Approve** in Coach → **Train**. | "That correction becomes weights — not a saved prompt. Pickup and banking home are shared controller rules; what I taught is route preference." |
-| 0:48–1:10 | Show the **Lesson comparison** card: parent vs trained banked, signed **Score change**, first different accepted decision. **Watch the lesson** replays the trained run with the Parent ghost. Do this BEFORE Reset — switching mode clears the comparison. Read the actual delta honestly — it may be positive, zero, or negative; it is not a guaranteed improvement. If the score dips, point out the note that small lessons can regress before they generalize. | "Same practice course, same rival, same controller — this is matched practice evidence, not a held-out ranking." |
-| 1:10–1:35 | Reset → **Match**. Coaching locked. Play held-out layout. Outcome. If cloud sync is offline, point out the Coach status: progress remains saved in this browser and queued changes retry when connectivity returns. Convex lineage strip if online. | "Weights are frozen. Different floods and cores. I cannot help it." |
-| 1:35–2:00 | Credits that are true (World Labs Spark bursts / Marble provenance, Mint rover, Convex sync); print/share if time. Reset. | "The world is the test. Developing the competitor is the game." |
+| 0:00–0:15 | Coach panel → **Describe this Clash**. Type "floods early, one jackpot core in the valley, a greedy rival" → **Reshape arena**. Press **Play**. | "I describe the race in a sentence — the arena rebuilds itself around it. Every core still sits on a station the rovers can reach." |
+| 0:15–0:35 | Live race on the described board; race caster lines fire (if configured — deterministic captions otherwise). Flood hits on schedule. | "The caster only ever rewords what the simulation recorded — it can't invent a thing that didn't happen." |
+| 0:35–1:00 | Finish → **Replay** → **Describe a doctrine**: "a greedy scavenger that hugs the low road but panics in floods" → **Draft lessons**. Show the queue: each draft names a real recorded tick *and its measured delta*. Approve → **Train**. | "A paragraph becomes lessons at moments that actually happened — each one measured, not promised. The negative deltas stay visible; I choose what it learns." |
+
+| Time | Show | Say |
+| --- | --- | --- |
+| 1:00–1:12 | Boot → world ready. Play control is visible before the arena. **Champion setup** stays collapsed. Press **Play**; follow green champion. Amber valley / teal ridge. | "This is my agent, not my avatar. I name it, tint it, then develop its policy." |
+| 1:12–1:30 | Live race. If a **contested-ground** cue fires, note it's presentation only — routes and pickups decide the score. Flood tip or scorebug flood window. | "The rival contests resources. Floods expose whether my route choices work." |
+| 1:30–1:45 | Finish → **Replay**. Scrub to a recorded decision. Pick a supported alternative road (button or the route itself) → **Draft correction** → **Approve** in Coach → **Train**. | "That correction becomes weights — not a saved prompt. Pickup and banking home are shared controller rules; what I taught is route preference." |
+| 1:45–2:05 | Show the **Lesson comparison** card: parent vs trained banked, signed **Score change**, first different accepted decision. **Watch the lesson** replays the trained run with the Parent ghost. Do this BEFORE Reset — switching mode clears the comparison. Read the actual delta honestly — it may be positive, zero, or negative; it is not a guaranteed improvement. If the score dips, point out the note that small lessons can regress before they generalize. | "Same practice course, same rival, same controller — this is matched practice evidence, not a held-out ranking." |
+| 2:05–2:30 | Reset → **Match**. Coaching locked. Play held-out layout. Outcome. If cloud sync is offline, point out the Coach status: progress remains saved in this browser and queued changes retry when connectivity returns. Convex lineage strip if online. | "Weights are frozen. Different floods and cores. I cannot help it." |
+| 2:30–3:00 | Credits that are true (World Labs Spark bursts / Marble provenance, Mint rover, Convex sync); print/share if time. Reset. | "The world is the test. Developing the competitor is the game." |
 
 If no contested-ground cue fires live, do not fake one — point at the **Focus** fingerprint and say proximity cues are presentation only; score comes from routes, pickups and banking (`services/arenaEncounter.ts`).
 

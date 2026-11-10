@@ -23,11 +23,11 @@ Clawdy's spine is literally natural language → working logic → observable be
 4. **Plain language → 3D asset.** *Forge your champion*: a signed-in player's text prompt generates a one-of-a-kind rover body server-side via Tripo, live in the arena (verified end to end against the real API).
 5. **Keep shaping the result.** The loop is iterative by design — Call a route, scrub the replay, coach the frame, retrain, re-race. The world is the data; the policy is what the human trained.
 
-**Honest gaps (do not oversell in the write-up):**
+**Honest gaps (do not oversell in the write-up) — updated Nov 10 after Tracks A–C landed:**
 
-- The NL understanding is keyword/rule-matched, not an open-ended LLM parser. Frame it as a bounded coaching contract, not "prompt-to-anything."
-- The arena terrain is authored, not prompt-generated (the Marble-generated first arena was retired Sep 26; see git history). What plain language *does* create here is behavior — and, via Forge, the champion's body.
-- Judge-facing risk: "autonomous agents" + "AI-generated gameplay systems" are named directions; we lead with those rather than with prompt-to-world.
+- The NL understanding is now real: four key-gated LLM translators (`/api/arena-intent`, `/api/coach-intent`, `/api/doctrine`, `/api/caster`) with bounded client-side resolvers and deterministic fallbacks. It is still a *bounded* contract — the LLM proposes, resolvers dispose — frame it as "plain language compiles to validated structures," not "prompt-to-anything."
+- The arena *terrain* is authored, not prompt-generated (the Marble-generated first arena was retired Sep 26; see git history). But plain language now **re-parameters the 3D scene live**: Describe this Clash remakes floods, core placement/values, duration and the rival on the pinned world — the "3D scenes" half of the rule is parameterization with a playability proof, not geometry generation. Forge adds a bounded free-text descriptor so words also shape the champion's body.
+- Judge-facing risk (now reduced, not removed): "autonomous agents" + "AI-generated gameplay systems" remain our strongest named directions; lead with them *and* the describe-the-arena beat.
 
 **Positioning line:** *an AI-native training league where plain language becomes working logic — you coach a rover in words, its weights actually change, and you watch the 3D arena prove whether your coaching held.*
 
