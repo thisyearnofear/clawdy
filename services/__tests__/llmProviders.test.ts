@@ -58,7 +58,7 @@ describe('chat completion fallback behavior', () => {
     const result = await completeChat(providers, request)
     expect(result).toEqual({ kind: 'ok', content: 'from primary' })
     expect(fetchMock).toHaveBeenCalledTimes(1)
-    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
     expect(String(init.headers && (init.headers as Record<string, string>).Authorization)).toContain('primary-key')
   })
 
@@ -95,7 +95,7 @@ describe('chat completion fallback behavior', () => {
     const fetchMock = vi.fn(async () => jsonResponse('cast line'))
     vi.stubGlobal('fetch', fetchMock)
     await completeChat(providers, { ...request, modelOverride: 'caster-model' })
-    const body = JSON.parse((fetchMock.mock.calls[0] as [string, RequestInit])[1].body as string)
+    const body = JSON.parse((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body as string)
     expect(body.model).toBe('caster-model')
   })
 })
