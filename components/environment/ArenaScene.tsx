@@ -2,9 +2,11 @@
 
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { Clapperboard, Download, Eye, FastForward, HelpCircle, Pause, Play, Printer, Radio, RotateCcw, Share2, SkipForward, Sparkles, Volume2, VolumeX } from 'lucide-react'
+import { Clapperboard, Download, Eye, FastForward, HelpCircle, Mountain, Pause, Play, Printer, Radio, RotateCcw, Share2, SkipForward, Sparkles, Volume2, VolumeX } from 'lucide-react'
 import { ARENA_RULES, observeSnapshot, type ArenaAction, type ArenaObservation, type ArenaRecording } from '../../services/arenaEpisode'
-import { loadArenaCourse, selectWorkbenchCourse, type ArenaCourse, type WorkbenchPlayMode } from '../../services/arenaCourse'
+import { loadArenaCourse, loadGeneratedCourse, selectWorkbenchCourse, type ArenaCourse, type LoadedArenaCourse, type LoadedGeneratedCourse, type WorkbenchPlayMode } from '../../services/arenaCourse'
+import type { WorldSpec } from '../../services/arenaWorldgen'
+import { requestWorldSpec } from '../../services/arenaWorldIntent'
 import { isEvaluationScenario, rejectEvaluationExamples } from '../../services/arenaScenarios'
 import { ArenaSession, SESSION_SPEEDS, type SessionSpeed } from '../../services/arenaSession'
 import type { ArenaMotion } from '../../services/arenaPhysics'
@@ -101,9 +103,11 @@ import { LessonComparison } from '../workbench/LessonComparison'
 import { LiveCallPrompt } from '../workbench/LiveCallPrompt'
 import { HelpDrawer } from '../workbench/HelpDrawer'
 import { ReplayPanel } from '../workbench/ReplayPanel'
+import { ReceiptsStrip } from '../workbench/ReceiptsStrip'
 import { TournamentBracket } from '../workbench/TournamentBracket'
 import { ViewportHud, type HudFeedEvent } from '../workbench/ViewportHud'
 import { RulesetPicker } from '../workbench/RulesetPicker'
+import { WorldForgePanel, worldReceiptCertificate, type WorldReceipt } from '../workbench/WorldForgePanel'
 import type { RulesetId } from '../../services/chassis'
 import { SKIRMISH_PERK_TELEGRAPH } from '../../services/chassis'
 import { buildStealStoryboard, detectFullLoadSteal, type StealStoryboard } from '../../services/stealHighlight'
@@ -129,7 +133,32 @@ const CAMERA_LABELS: Record<ArenaCamera, string> = {
   compare: 'Both brains',
 }
 
-type LoadedSession = { session: ArenaSession; course: ArenaCourse; rushCourse: ArenaCourse; createMotion: () => ArenaMotion }
+type LoadedSession = {
+  session: ArenaSession
+  course: ArenaCourse
+  rushCourse: ArenaCourse
+  createMotion: () => ArenaMotion
+  world: WorldReceipt
+}
+
+/** Track H: the forge front door's outward surface, owned by the outer scene. */
+type WorldForgeDoor = {
+  open: boolean
+  busy: boolean
+  status: string | null
+  dismissLabel: string
+  onDescribe: (text: string) => void
+  onPreset: (spec: WorldSpec) => void
+  onDismiss: () => void
+  onOpen: () => void
+}
+
+type WorldRequest = { kind: 'authored' } | { kind: 'generated'; spec: WorldSpec }
+
+const FORGE_DOOR_KEY = 'clawdy_forge_door_v1'
+const markForgeDoorSeen = () => {
+  try { window.localStorage.setItem(FORGE_DOOR_KEY, '1') } catch { /* private mode: the door just reopens next visit */ }
+}
 
 type SharedReplay = {
   shareId: string
@@ -148,15 +177,18 @@ function Workbench({
   course,
   rushCourse,
   createMotion,
+  world,
   onRetry,
   championIdentity,
   onChampionIdentity,
   onOpenHelp,
+  worldForge,
 }: LoadedSession & {
   onRetry: () => void
   championIdentity: ChampionIdentity
   onChampionIdentity: (next: ChampionIdentity) => void
   onOpenHelp: () => void
+  worldForge: WorldForgeDoor
 }) {
   const view = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot)
   const convex = useConvexClient()
@@ -290,6 +322,12 @@ function Workbench({
     && !isBundledStarter(checkpoint)
     && checkpoint.id !== SEASON_0_BASE_CHECKPOINT.id,
   )
+  // Track I: the strip counts real session artifacts, never claims.
+  const brainsTrained = checkpoints.filter(checkpoint =>
+    isExecutableCheckpoint(checkpoint)
+    && !isBundledStarter(checkpoint)
+    && checkpoint.id !== SEASON_0_BASE_CHECKPOINT.id,
+  ).length
   // Progressive disclosure: how much of the workbench is shown depends on how
   // far into the product this player is. A first visit gets one job and one
   // button instead of every surface at once.
@@ -847,6 +885,15 @@ function Workbench({
     })
   }, [view.phase, view.episode, view.scored, session, activeCourse.scenario.id, activeCheckpoint.id, examples, playMode])
 
+  // Track I: the Prove receipt latches the champion's banked score when a
+  // scored board finishes — the strip's held-out segment.
+  const [proveBanked, setProveBanked] = useState<number | null>(null)
+  useEffect(() => {
+    if (view.phase !== 'finished' || playMode !== 'compete') return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the receipt is a one-shot latch on the finished transition; phase changes only land here
+    setProveBanked(view.episode.agents.find(agent => agent.id === 'champion')?.banked ?? 0)
+  }, [view.phase, playMode, view.episode])
+
   useEffect(() => {
     const sound = new ArenaSound(() => setSoundState('unavailable'))
     sound.attach(session)
@@ -1206,6 +1253,7 @@ function Workbench({
 
   const primaryAction = () => {
     if (isTraining) return
+    if (worldForge.open) worldForge.onDismiss()
     if (view.phase === 'error') { onRetry(); return }
     if (view.phase === 'review') { setCinematic(false); session.returnToRun(); return }
     if (view.phase === 'running') { session.pause(); return }
@@ -2152,6 +2200,13 @@ function Workbench({
   // work happens in the click handler below, where it belongs. The machine
   // itself lives in services/workbenchFlow.ts with golden tests.
   const disclosure = skirmishDisclosure({ unlocked: skirmishUnlocked, hasCompletedRun, hasOwnBrain })
+  // Track H 3-step on-ramp: Describe → Coach → Prove. The rail shows where the
+  // player is in the product story — a generated world or a finished run moves
+  // them past Describe; a trained brain moves them to Prove.
+  const rampStep: 'describe' | 'coach' | 'prove' =
+    playMode === 'compete' || hasOwnBrain ? 'prove'
+    : hasCompletedRun || world.kind === 'generated' ? 'coach'
+    : 'describe'
   const nextStep = computeNextStep({
     visualReady,
     phase: view.phase,
@@ -2193,10 +2248,10 @@ function Workbench({
         </div>
         <div className={styles.introAside}>
           {engagement.showProgressRail && (
-            <ol className={styles.progress}>
-              <li data-active={view.phase === 'ready' || view.phase === 'running'}>Play</li>
-              <li data-active={view.phase === 'paused' || view.phase === 'finished' || view.phase === 'review'}>Replay</li>
-              <li data-active={studioOpen && !coachingLocked}>Coach</li>
+            <ol className={styles.progress} aria-label="Describe, coach, prove">
+              <li data-active={rampStep === 'describe'}>Describe</li>
+              <li data-active={rampStep === 'coach'}>Coach</li>
+              <li data-active={rampStep === 'prove'}>Prove</li>
             </ol>
           )}
           <button type="button" className={styles.helpInline} onClick={onOpenHelp}>
@@ -2315,6 +2370,17 @@ function Workbench({
                 which one the player was about to open. */}
             <Sparkles size={15} />{studioOpen ? 'Hide lessons' : 'Lessons'}
           </button>
+          <button
+            className={styles.secondaryButton}
+            aria-pressed={worldForge.open}
+            onClick={worldForge.onOpen}
+            disabled={view.phase === 'running' || view.phase === 'paused' || isTraining || Boolean(sharedReplay)}
+            title={view.phase === 'running' || view.phase === 'paused'
+              ? 'Finish this run first — a new world rebuilds the arena'
+              : 'Describe a world, watch it get built and certified, then race on it'}
+          >
+            <Mountain size={15} />World
+          </button>
         </div>
         <div className={styles.runMeta}>
           <span>{view.episode.tick} / {activeCourse.scenario.durationTicks}</span>
@@ -2400,6 +2466,24 @@ function Workbench({
               onDismiss={() => setStealHighlight(null)}
             />
           )}
+          {worldForge.open && !sharedReplay && (view.phase === 'ready' || view.phase === 'finished') && (
+            <WorldForgePanel
+              open
+              busy={worldForge.busy}
+              status={worldForge.status}
+              dismissLabel={worldForge.dismissLabel}
+              onDescribe={worldForge.onDescribe}
+              onPreset={worldForge.onPreset}
+              onDismiss={worldForge.onDismiss}
+            />
+          )}
+          <ReceiptsStrip
+            world={world}
+            brainsTrained={brainsTrained}
+            approvedLessons={approvedCount}
+            practiceDelta={comparison?.bankedDelta ?? null}
+            proveBanked={proveBanked}
+          />
           {engagement.showPlayHint && visualReady && hintOpen && view.phase === 'ready' && !modeBanner && (
             <div className={`${styles.playHint} ${styles.hintEnter}`} role="status">
               <p><strong>Press Play.</strong> First unranked races run at <strong>4×</strong> so the clash feels snappy — use <strong>Speed</strong> or <strong>Skip</strong> anytime. Follow your champion until you coach it into your own.</p>
@@ -2761,6 +2845,21 @@ export default function ArenaScene() {
   const [error, setError] = useState<string | null>(null)
   const [helpOpen, setHelpOpen] = useState(false)
   const [championIdentity, setChampionIdentity] = useState<ChampionIdentity>(() => loadChampionIdentity())
+  // Track H: the front door. `worldRequest` picks the authored basin or a
+  // generated WorldSpec; `loadedWorldRef` is the last spec that actually
+  // produced a session, so a failed generation falls back to it rather than
+  // stranding the player on a broken arena.
+  const [worldRequest, setWorldRequest] = useState<WorldRequest>(() => ({ kind: 'authored' }))
+  const loadedWorldRef = useRef<WorldRequest>({ kind: 'authored' })
+  // Bumping the serial remounts the workbench — required on a world swap,
+  // since a new session means new physics and all run state is stale.
+  const [loadedSerial, setLoadedSerial] = useState(0)
+  const [forgeOpen, setForgeOpen] = useState(() => {
+    if (typeof window === 'undefined') return false
+    try { return window.localStorage.getItem(FORGE_DOOR_KEY) !== '1' } catch { return true }
+  })
+  const [forgeBusy, setForgeBusy] = useState(false)
+  const [forgeStatus, setForgeStatus] = useState<string | null>(null)
 
   useEffect(() => {
     saveChampionIdentity(championIdentity)
@@ -2769,25 +2868,101 @@ export default function ArenaScene() {
   useEffect(() => {
     const abort = new AbortController()
     let owned: ArenaSession | undefined
-    void loadArenaCourse(abort.signal).then(bundle => {
+    const load: Promise<LoadedArenaCourse | LoadedGeneratedCourse> =
+      worldRequest.kind === 'generated'
+        ? loadGeneratedCourse(worldRequest.spec, abort.signal)
+        : loadArenaCourse(abort.signal)
+    void load.then(bundle => {
       if (abort.signal.aborted) { bundle.dispose(); return }
       try {
         owned = new ArenaSession(bundle.course, bundle.physics)
-        setLoaded({ session: owned, course: bundle.course, rushCourse: bundle.rushCourse, createMotion: bundle.createMotion })
+        // `loadGeneratedCourse` never strands the player: a spec that fails
+        // certification comes back as the authored course with
+        // `fellBackToAuthored` and an honest reason (Track G's contract).
+        const report = 'generated' in bundle ? bundle.generated : null
+        const fellBack = report?.fellBackToAuthored ?? false
+        const world: WorldReceipt = worldRequest.kind === 'generated' && !fellBack
+          ? {
+              kind: 'generated',
+              name: report?.spec.scenarioName ?? worldRequest.spec.scenarioName,
+              certificate: report?.certificate ? worldReceiptCertificate(report.certificate) : undefined,
+            }
+          : { kind: 'authored', name: bundle.course.config.name }
+        setLoaded({
+          session: owned,
+          course: bundle.course,
+          rushCourse: bundle.rushCourse,
+          createMotion: bundle.createMotion,
+          world,
+        })
+        loadedWorldRef.current = fellBack ? { kind: 'authored' } : worldRequest
+        setLoadedSerial(serial => serial + 1)
+        if (worldRequest.kind === 'generated') {
+          setForgeBusy(false)
+          if (fellBack) {
+            setForgeStatus(`${report?.failure ?? 'That world could not be certified'} — the authored Sandstone Basin stays up.`)
+          } else {
+            setForgeOpen(false)
+            setForgeStatus(null)
+            markForgeDoorSeen()
+            recordFunnelEvent('world.forged', `name="${worldRequest.spec.scenarioName}" landform=${worldRequest.spec.landform} palette=${worldRequest.spec.palette}`)
+          }
+        }
       } catch (cause) {
         bundle.dispose()
         throw cause
       }
     }).catch(cause => {
-      if (!abort.signal.aborted) setError(cause instanceof Error ? cause.message : 'World loading failed')
+      if (abort.signal.aborted) return
+      if (worldRequest.kind === 'generated') {
+        setForgeBusy(false)
+        setForgeStatus(`The world could not load — the last good world stays up. (${cause instanceof Error ? cause.message : 'unknown'})`)
+        setWorldRequest(loadedWorldRef.current)
+        return
+      }
+      setError(cause instanceof Error ? cause.message : 'World loading failed')
     })
     return () => { abort.abort(); owned?.dispose() }
-  }, [attempt])
+  }, [attempt, worldRequest])
 
   const retry = () => {
     setLoaded(null)
     setError(null)
     setAttempt(value => value + 1)
+  }
+
+  /** Track H entry point: a WorldSpec swaps the whole session. */
+  const requestWorld = (spec: WorldSpec) => {
+    setForgeBusy(true)
+    setForgeStatus('Building the heightfield and certifying every station and route…')
+    // Unmount the workbench before the old session's physics disposes.
+    setLoaded(null)
+    setWorldRequest({ kind: 'generated', spec })
+  }
+
+  const handleWorldDescribe = async (text: string) => {
+    const description = text.trim()
+    if (!description || forgeBusy) return
+    setForgeBusy(true)
+    setForgeStatus('Translating your words into a world…')
+    try {
+      const result = await requestWorldSpec(description)
+      if (result.kind === 'fallback') {
+        setForgeBusy(false)
+        setForgeStatus(`The world translator ${result.reason === 'translator not configured' ? 'is not configured here' : `could not read that (${result.reason})`} — the presets below still generate locally.`)
+        return
+      }
+      requestWorld(result.spec)
+    } catch {
+      setForgeBusy(false)
+      setForgeStatus('Could not reach the world translator — the presets below still work.')
+    }
+  }
+
+  const dismissForge = () => {
+    setForgeOpen(false)
+    setForgeStatus(null)
+    markForgeDoorSeen()
   }
 
   const onChampionIdentity = useCallback((next: ChampionIdentity) => {
@@ -2805,12 +2980,22 @@ export default function ArenaScene() {
       />
       {loaded ? (
         <Workbench
-          key={attempt}
+          key={loadedSerial}
           {...loaded}
           onRetry={retry}
           championIdentity={championIdentity}
           onChampionIdentity={onChampionIdentity}
           onOpenHelp={() => setHelpOpen(true)}
+          worldForge={{
+            open: forgeOpen,
+            busy: forgeBusy,
+            status: forgeStatus,
+            dismissLabel: loaded.world.kind === 'generated' ? 'Back to your generated world' : 'Skip — race Sandstone Basin',
+            onDescribe: handleWorldDescribe,
+            onPreset: spec => requestWorld(spec),
+            onDismiss: dismissForge,
+            onOpen: () => setForgeOpen(true),
+          }}
         />
       ) : (
         <BootScreen error={error} onRetry={retry} />

@@ -1,0 +1,173 @@
+.forge {
+  position: absolute;
+  left: 20px;
+  top: 24px;
+  width: min(400px, calc(100% - 40px));
+  padding: 18px 20px;
+  border: 1px solid #d5dfd6;
+  background: #f7f9eff2;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  z-index: 3;
+  animation: forgeIn 360ms ease both;
+  backdrop-filter: blur(3px);
+}
+
+.eyebrow {
+  color: var(--muted);
+  font: 10px var(--font-geist-mono), monospace;
+  letter-spacing: 0.15em;
+  margin: 0;
+}
+
+.heading {
+  font: normal clamp(19px, 2vw, 26px)/1.15 Georgia, serif;
+  letter-spacing: -0.03em;
+  margin: 0;
+}
+
+.lede {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.promptRow {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.prompt {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #c3cfc3;
+  border-radius: 4px;
+  background: #fdfef7;
+  padding: 9px 11px;
+  font-size: 12px;
+  color: var(--ink);
+}
+
+.prompt:focus {
+  outline: 2px solid #6a8d61;
+  outline-offset: 1px;
+  border-color: #6a8d61;
+}
+
+.generate {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #233531;
+  background: #233531;
+  color: #e7f6d7;
+  border-radius: 4px;
+  padding: 0 13px;
+  font-size: 11px;
+  font-weight: 550;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.generate:hover:not(:disabled) { background: #3b5547; }
+.generate:disabled { opacity: 0.45; cursor: default; }
+
+.presets {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.presetsLabel {
+  font: 9px var(--font-geist-mono), monospace;
+  letter-spacing: 0.08em;
+  color: #9aa498;
+}
+
+.preset {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #c3cfc3;
+  background: transparent;
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 5px 11px;
+  font-size: 10.5px;
+  cursor: pointer;
+}
+
+.preset:hover:not(:disabled) { border-color: #6a8d61; background: #eef3e4; }
+.preset:disabled { opacity: 0.45; cursor: default; }
+
+.status {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.skip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: 10px var(--font-geist-mono), monospace;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  padding: 0;
+}
+
+.skip:hover:not(:disabled) { color: var(--ink); }
+.skip:disabled { opacity: 0.45; cursor: default; }
+
+/* Receipts strip — Track I. One persistent line over the world's bottom edge:
+   every segment is a session fact (generated world + certificate, brains
+   trained, practice delta, prove score), never a claim. */
+.receipts {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0;
+  max-width: calc(100% - 24px);
+  padding: 6px 13px;
+  border: 1px solid #d5dfd6cc;
+  background: #f2f3e9d9;
+  border-radius: 999px;
+  font: 9.5px var(--font-geist-mono), monospace;
+  letter-spacing: 0.03em;
+  color: #4c5a50;
+  white-space: nowrap;
+  overflow: hidden;
+  z-index: 3;
+}
+
+.receipts span { overflow: hidden; text-overflow: ellipsis; }
+.receipts span + span::before { content: '·'; margin: 0 7px; color: #9aa498; }
+.receipts [data-good='true'] { color: #4a7040; font-weight: 600; }
+.receipts [data-good='false'] { color: #9a6a4a; font-weight: 600; }
+
+@keyframes forgeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .forge { animation: none; }
+}
+
+@media (max-width: 700px) {
+  .forge { left: 12px; top: 12px; width: calc(100% - 24px); padding: 14px 16px; }
+  .receipts { bottom: 8px; font-size: 8.5px; }
+}

@@ -3,6 +3,8 @@ import { ArenaPhysics, initializeArenaPhysics } from './arenaPhysics'
 import { disposeArenaTerrain, loadArenaTerrain } from './arenaTerrain'
 import { WAVE_JITTER_TICKS } from './rushVariants'
 import { createWorldSurface } from './worldSurface'
+import type { GeneratedWorld, WorldSpec, WorldgenCertificate } from './arenaWorldgen'
+import type * as THREE from 'three'
 
 export const ARENA_WORLD = Object.freeze({
   version: 'sandstone-basin-course-2',
@@ -23,6 +25,19 @@ export interface ArenaCourse {
   config: { id: string; name: string; terrain: { url: string; sha256: string }; visual?: { url: string; sha256: string } }
   center: ArenaPosition
   floodZones: { position: ArenaPosition; size: [number, number] }[]
+  /**
+   * Present only on generated practice worlds: the digest-derived world id,
+   * the spec that produced it, and its playability certificate. Plain
+   * cloneable data (ArenaSession structuredClones courses) — the renderable
+   * scene lives in the worldId-keyed registry `generatedWorldScene`.
+   */
+  generated?: GeneratedCourseInfo
+}
+
+export interface GeneratedCourseInfo {
+  worldId: string
+  spec: WorldSpec
+  certificate: WorldgenCertificate | null
 }
 
 /** Shared traversal speed (m/s) converting grounded path length to travelTicks. */
@@ -401,3 +416,111 @@ export async function loadArenaCourse(signal?: AbortSignal) {
 }
 
 export type LoadedArenaCourse = Awaited<ReturnType<typeof loadArenaCourse>>
+
+/**
+ * What `loadGeneratedCourse` reports about the world it loaded — the spec it
+ * was asked for, the certificate when generation succeeded, and an honest
+ * failure note when it fell back to the pinned authored course.
+ */
+export interface GeneratedLoadReport {
+  spec: WorldSpec
+  /** The world actually loaded — the generated id, or ARENA_WORLD.id on fallback. */
+  worldId: string
+  certificate: WorldgenCertificate | null
+  fellBackToAuthored: boolean
+  failure: string | null
+}
+
+export type LoadedGeneratedCourse = LoadedArenaCourse & { generated: GeneratedLoadReport }
+
+/**
+ * Renderable terrain scenes for generated worlds, keyed by worldId. The scene
+ * cannot live on `ArenaCourse.generated` — ArenaSession structuredClones the
+ * course, and a THREE.Group is not cloneable — so the course carries the id
+ * and TerrainMesh resolves the scene here. Entries are removed by the
+ * bundle's `dispose` (safe to call after `session.dispose()`; every layer is
+ * idempotent).
+ */
+const generatedWorldScenes = new Map<string, THREE.Group>()
+
+/** The in-memory terrain scene for a generated world, or undefined. */
+export function generatedWorldScene(worldId: string): THREE.Group | undefined {
+  return generatedWorldScenes.get(worldId)
+}
+
+/**
+ * Generated-world sibling of `loadArenaCourse`. Asks Track F's `generateWorld`
+ * (services/arenaWorldgen.ts) for a certified in-memory world — same surface →
+ * collider → physics → course pipeline as the authored GLB — then stamps the
+ * course practice-split, registers its scene for the renderer, and returns a
+ * bundle shaped exactly like `loadArenaCourse`'s so the live scene, session
+ * and workbench treat it as a drop-in.
+ *
+ * Never leaves a broken arena: when every generation rung fails (or
+ * `generateWorld` throws) it loads the pinned authored course and reports
+ * `fellBackToAuthored` with the honest reason. The import is function-scoped
+ * so arenaWorldgen's runtime imports back into this module (buildArenaCourse
+ * et al.) cannot form a load-time cycle.
+ */
+export async function loadGeneratedCourse(spec: WorldSpec, signal?: AbortSignal): Promise<LoadedGeneratedCourse> {
+  const worldgen = await import('./arenaWorldgen')
+  signal?.throwIfAborted()
+  const digest = await worldgen.worldSpecDigest(spec)
+  const worldId = worldgen.generatedWorldId(digest)
+  let generated: GeneratedWorld | null = null
+  let failure: string | null = null
+  try {
+    generated = await worldgen.generateWorld(spec, signal)
+    if (!generated) failure = 'world generation could not certify a playable course'
+  } catch (error) {
+    if (signal?.aborted) throw error
+    failure = error instanceof Error ? error.message : 'world generation failed'
+  }
+  // Abandoned mid-load: never register a scene nobody will render.
+  if (signal?.aborted) {
+    generated?.dispose()
+    signal.throwIfAborted()
+  }
+
+  if (generated) {
+    const inner = generated
+    const seed = (Number.parseInt(digest.slice(8, 16), 16) >>> 0) || 1
+    const stamp = (course: ArenaCourse, scenarioId: string): ArenaCourse => ({
+      ...course,
+      config: {
+        id: worldId,
+        name: spec.scenarioName,
+        terrain: { url: `generated:${worldId}`, sha256: digest },
+      },
+      generated: { worldId, spec, certificate: inner.certificate },
+      scenario: {
+        ...course.scenario,
+        id: scenarioId,
+        worldVersion: worldId,
+        split: 'practice',
+        seed,
+      },
+    })
+    generatedWorldScenes.set(worldId, inner.scene)
+    let disposed = false
+    return {
+      course: stamp(inner.course, `${worldId}-practice`),
+      rushCourse: stamp(inner.rushCourse, `${worldId}-rush`),
+      physics: inner.physics,
+      createMotion: inner.createMotion,
+      generated: { spec, worldId, certificate: inner.certificate, fellBackToAuthored: false, failure: null },
+      dispose: () => {
+        if (disposed) return
+        disposed = true
+        generatedWorldScenes.delete(worldId)
+        inner.dispose()
+      },
+    }
+  }
+
+  const authored = await loadArenaCourse(signal)
+  return {
+    ...authored,
+    generated: { spec, worldId: ARENA_WORLD.id, certificate: null, fellBackToAuthored: true, failure },
+  }
+}

@@ -14,7 +14,7 @@ const MODEL_URLS: Record<DecorPropType, string> = {
   barrels: '/assets/kenney/space-kit/barrels.glb',
 }
 
-function ArenaPropsInner({ terrain, course, lite }: { terrain: THREE.Group; course: ArenaCourse; lite: boolean }) {
+function ArenaPropsInner({ terrain, course, lite, density }: { terrain: THREE.Group; course: ArenaCourse; lite: boolean; density?: number }) {
   const generator = useLoader(GLTFLoader, MODEL_URLS.generator)
   const dish = useLoader(GLTFLoader, MODEL_URLS.dish)
   const barrels = useLoader(GLTFLoader, MODEL_URLS.barrels)
@@ -24,14 +24,18 @@ function ArenaPropsInner({ terrain, course, lite }: { terrain: THREE.Group; cour
     barrels: barrels.scene,
   }), [generator.scene, dish.scene, barrels.scene])
   const props = useMemo(() => {
-    return groundDecor(terrain, planArenaDecor(course, lite)).map(placed => {
+    const candidates = planArenaDecor(course, lite)
+    // Generated worlds scale the scatter by the spec's rockDensity (0–1);
+    // undefined keeps the full authored scatter.
+    const visible = density === undefined ? candidates : candidates.slice(0, Math.round(candidates.length * density))
+    return groundDecor(terrain, visible).map(placed => {
       const clone = createDecorModel(models[placed.type])
       clone.position.set(placed.x, placed.y, placed.z)
       clone.rotation.y = placed.yaw
       clone.scale.setScalar(placed.scale)
       return clone
     })
-  }, [terrain, course, lite, models])
+  }, [terrain, course, lite, density, models])
   return (
     <group>
       {props.map((object, index) => <primitive key={index} object={object} />)}
@@ -39,11 +43,11 @@ function ArenaPropsInner({ terrain, course, lite }: { terrain: THREE.Group; cour
   )
 }
 
-export function ArenaProps({ terrain, course, lite }: { terrain: THREE.Group; course: ArenaCourse; lite: boolean }) {
+export function ArenaProps({ terrain, course, lite, density }: { terrain: THREE.Group; course: ArenaCourse; lite: boolean; density?: number }) {
   return (
     <ModelBoundary fallback={null}>
       <Suspense fallback={null}>
-        <ArenaPropsInner terrain={terrain} course={course} lite={lite} />
+        <ArenaPropsInner terrain={terrain} course={course} lite={lite} density={density} />
       </Suspense>
     </ModelBoundary>
   )

@@ -4,10 +4,11 @@ import { memo, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
-import type { ArenaCourse } from '../../services/arenaCourse'
+import { generatedWorldScene, type ArenaCourse } from '../../services/arenaCourse'
 import type { ArenaSession } from '../../services/arenaSession'
 import type { ArenaAgentState, ArenaPosition } from '../../services/arenaEpisode'
 import { disposeArenaTerrain, loadArenaTerrain } from '../../services/arenaTerrain'
+import { skyThemeForCourse } from '../../services/arenaWorldIntent'
 import { createTerrainDetailTextures } from './terrainDetail'
 import { createRouteRibbonGeometry, advancePoseHistory, samplePoseHistory, type PoseHistory } from '../../services/arenaPresentation'
 import { planCinematicShots, shotAt, type CinematicShot } from '../../services/arenaCinematic'
@@ -250,10 +251,40 @@ function CinematicCamera({ session, course }: Pick<WorldProps, 'session' | 'cour
 }
 
 /**
+ * Shared mesh prep for fetched and generated terrain: shadows, plus the
+ * detail/bump maps on any 'Terrain'-named mesh that carries UVs. The tint is
+ * '#ffffff' (a no-op) for the authored palette, so the pinned basin renders
+ * identically to before.
+ */
+function prepareTerrainScene(scene: THREE.Group, detailTint: string) {
+  let detail: ReturnType<typeof createTerrainDetailTextures> | null = null
+  scene.traverse(object => {
+    if (!(object instanceof THREE.Mesh)) return
+    object.receiveShadow = true
+    object.castShadow = object.name.startsWith('Rock')
+    // Only the visual twin carries UVs; the collider fallback renders flat as before.
+    if (object.name.startsWith('Terrain') && object.geometry.getAttribute('uv')) {
+      for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+        if (!(material instanceof THREE.MeshStandardMaterial)) continue
+        detail ??= createTerrainDetailTextures(detailTint)
+        material.map = detail.map
+        material.bumpMap = detail.bump
+        material.bumpScale = 0.6
+        material.needsUpdate = true
+      }
+    }
+  })
+}
+
+/**
  * Primary terrain. Renders the UV-carrying visual twin when the course pins
  * one, otherwise the collider GLB itself. The twin has the same geometry, so
  * there is no clipping either way; if it fails to load we fall back to the
  * collider mesh rather than leave the arena empty.
+ *
+ * Generated worlds carry `course.generated` and render the in-memory scene
+ * `loadGeneratedCourse` registered under `generated.worldId` instead — the
+ * loader bundle owns that scene's lifetime, so this branch never disposes it.
  */
 function TerrainMesh({
   url,
@@ -284,8 +315,27 @@ function TerrainMesh({
 
   const visualUrl = visual?.url
   const visualSha256 = visual?.sha256
+  const generatedWorldId = course.generated?.worldId
+  const detailTint = skyThemeForCourse(course).terrainTint
+  const rockDensity = course.generated?.spec.rockDensity
 
   useEffect(() => {
+    if (generatedWorldId) {
+      const abort = new AbortController()
+      // Microtask so the state commit stays off the synchronous effect path;
+      // there is nothing to dispose — the loader bundle owns this scene.
+      void Promise.resolve().then(() => {
+        if (abort.signal.aborted) return
+        const generated = generatedWorldScene(generatedWorldId)
+        if (!generated) {
+          onErrorRef.current?.(new Error(`Generated world '${generatedWorldId}' is not registered`))
+          return
+        }
+        prepareTerrainScene(generated, detailTint)
+        setScene(generated)
+      })
+      return () => abort.abort()
+    }
     const abort = new AbortController()
     let loaded: THREE.Group | null = null
     const load = async () => {
@@ -305,23 +355,7 @@ function TerrainMesh({
           disposeArenaTerrain(scene)
           return
         }
-        let detail: ReturnType<typeof createTerrainDetailTextures> | null = null
-        scene.traverse(object => {
-          if (!(object instanceof THREE.Mesh)) return
-          object.receiveShadow = true
-          object.castShadow = object.name.startsWith('Rock')
-          // Only the visual twin carries UVs; the collider fallback renders flat as before.
-          if (object.name.startsWith('Terrain') && object.geometry.getAttribute('uv')) {
-            for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
-              if (!(material instanceof THREE.MeshStandardMaterial)) continue
-              detail ??= createTerrainDetailTextures()
-              material.map = detail.map
-              material.bumpMap = detail.bump
-              material.bumpScale = 0.6
-              material.needsUpdate = true
-            }
-          }
-        })
+        prepareTerrainScene(scene, detailTint)
         loaded = scene
         setScene(scene)
       })
@@ -333,7 +367,7 @@ function TerrainMesh({
       abort.abort()
       if (loaded) disposeArenaTerrain(loaded)
     }
-  }, [url, sha256, visualUrl, visualSha256])
+  }, [url, sha256, visualUrl, visualSha256, generatedWorldId, detailTint])
 
   useEffect(() => {
     if (scene) onReadyRef.current?.()
@@ -343,7 +377,7 @@ function TerrainMesh({
   return (
     <>
       <primitive object={scene} />
-      <ArenaProps terrain={scene} course={course} lite={lite} />
+      <ArenaProps terrain={scene} course={course} lite={lite} density={rockDensity} />
     </>
   )
 }
@@ -770,7 +804,7 @@ function ReadyOnce({ ready, onReady }: { ready: boolean; onReady: () => void }) 
   return null
 }
 
-function BasinSky() {
+function BasinSky({ horizon, zenith }: { horizon: string; zenith: string }) {
   return (
     <mesh scale={95} renderOrder={-100}>
       <sphereGeometry args={[1, 32, 16]} />
@@ -778,17 +812,21 @@ function BasinSky() {
         side={THREE.BackSide}
         depthWrite={false}
         depthTest={false}
+        uniforms={{
+          horizonColor: { value: new THREE.Color(horizon) },
+          zenithColor: { value: new THREE.Color(zenith) },
+        }}
         vertexShader={`varying vec3 vDirection;
           void main() {
             vDirection = normalize(position);
             gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
           }`}
-        fragmentShader={`varying vec3 vDirection;
+        fragmentShader={`uniform vec3 horizonColor;
+          uniform vec3 zenithColor;
+          varying vec3 vDirection;
           void main() {
             float elevation = clamp(vDirection.y * 0.7 + 0.26, 0.0, 1.0);
-            vec3 horizon = vec3(0.83, 0.73, 0.59);
-            vec3 zenith = vec3(0.43, 0.62, 0.74);
-            vec3 sky = mix(horizon, zenith, smoothstep(0.0, 1.0, elevation));
+            vec3 sky = mix(horizonColor, zenithColor, smoothstep(0.0, 1.0, elevation));
             gl_FragColor = vec4(sky, 1.0);
             #include <tonemapping_fragment>
             #include <colorspace_fragment>
@@ -852,14 +890,17 @@ function World({
     () => (onCoachEdge && coachChoices?.length ? new Set(coachChoices.map(choice => choice.edgeId)) : undefined),
     [onCoachEdge, coachChoices],
   )
+  // Generated worlds repaint the sky, backdrop and fog from the spec palette;
+  // the authored basin keeps its pinned look.
+  const sky = skyThemeForCourse(course)
 
   return (
     <>
       <EpisodeClock session={session} />
       <ReadyOnce ready={terrainReady} onReady={onReady} />
-      <color attach="background" args={['#d4baa0']} />
-      <BasinSky />
-      <fog attach="fog" args={['#c7b19b', 43, 105]} />
+      <color attach="background" args={[sky.background]} />
+      <BasinSky horizon={sky.horizon} zenith={sky.zenith} />
+      <fog attach="fog" args={[sky.fog, 43, 105]} />
       <hemisphereLight args={['#b5d5e0', '#9c7960', 0.85]} />
       <ambientLight intensity={0.18} />
       <BasinSun course={course} lite={lite} />

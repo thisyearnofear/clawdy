@@ -5,10 +5,10 @@ import { RotateCcw } from 'lucide-react'
 import styles from '../environment/ArenaScene.module.css'
 
 const BOOT_STAGES = [
-  'Grounding the sandstone basin…',
+  'Grounding the terrain…',
   'Wiring routes and flood windows…',
   'Rolling two rovers onto the field…',
-  'Almost there — Play unlocks when the world settles.',
+  'Almost there — the forge unlocks when the world settles.',
 ] as const
 
 export function BootScreen({ error, onRetry }: { error: string | null; onRetry: () => void }) {
@@ -23,8 +23,8 @@ export function BootScreen({ error, onRetry }: { error: string | null; onRetry: 
 
   return (
     <section className={styles.boot} aria-live="polite" data-error={Boolean(error)}>
-      <p className={styles.eyebrow}>TRAIN YOUR CHAMPION</p>
-      <h1>{error ? 'The course could not load.' : 'Preparing the proving ground.'}</h1>
+      <p className={styles.eyebrow}>DESCRIBE · COACH · PROVE</p>
+      <h1>{error ? 'The course could not load.' : 'Your words are about to build this.'}</h1>
       <p>{error ?? BOOT_STAGES[stage]}</p>
       {error ? (
         <button className={styles.primaryButton} onClick={onRetry}>
@@ -37,11 +37,11 @@ export function BootScreen({ error, onRetry }: { error: string | null; onRetry: 
             <li data-done={stage >= 0}>World</li>
             <li data-done={stage >= 1}>Routes</li>
             <li data-done={stage >= 2}>Rovers</li>
-            <li data-done={stage >= 3}>Ready</li>
+            <li data-done={stage >= 3}>Forge</li>
           </ol>
         </div>
       )}
-      <small>Clash → Coach → Train — your coaching becomes real weights · No wallet · Clash first · Prove locks coaching</small>
+      <small>Describe the world · coach the brain · prove it holds — your words make both · No wallet · Prove locks coaching</small>
     </section>
   )
 }

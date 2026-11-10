@@ -44,15 +44,23 @@ export function buildTerrainDetail(): Float32Array {
 /**
  * Multiplies onto the glTF base colour: mostly near-white with darker pits, so
  * the authored sand/road palette keeps its hue and gains grain and relief.
+ * `tint` multiplies the albedo channels per world palette — the default white
+ * produces byte-identical output for the authored basin.
  */
-export function createTerrainDetailTextures(): { map: THREE.DataTexture; bump: THREE.DataTexture } {
+export function createTerrainDetailTextures(tint = '#ffffff'): { map: THREE.DataTexture; bump: THREE.DataTexture } {
+  const tintColor = new THREE.Color(tint)
   const values = buildTerrainDetail()
   const albedo = new Uint8Array(SIZE * SIZE * 4)
   const relief = new Uint8Array(SIZE * SIZE * 4)
   values.forEach((value, index) => {
     const shade = Math.round(255 * (0.78 + 0.22 * value))
     const height = Math.round(255 * value)
-    albedo.set([shade, shade, shade, 255], index * 4)
+    albedo.set([
+      Math.round(shade * tintColor.r),
+      Math.round(shade * tintColor.g),
+      Math.round(shade * tintColor.b),
+      255,
+    ], index * 4)
     relief.set([height, height, height, 255], index * 4)
   })
   const make = (data: Uint8Array, colorSpace: string) => {
