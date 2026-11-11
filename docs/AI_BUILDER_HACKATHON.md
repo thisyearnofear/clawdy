@@ -447,7 +447,7 @@ rather than showing a broken surface.
 | --- | --- |
 | Public code repository | ✅ https://github.com/thisyearnofear/clawdy — keep public and stable through judging |
 | Hosted browser demo | ✅ https://clawdy.trustfall.xyz — **now runs the forge, the certificate and the PBRgen terrain material** (auto-deployed from `7cc61bc`, prompt-to-world re-verified in a browser at 13:36 UTC: 12 s to a certified world, `23/23 · 38/38`, no console errors; earlier takes at 11:12 and 11:18 UTC on `d652c9f`). Must stay up and functional through Nov 25 |
-| Demo video **under 3 minutes** | ✅ recorded and cut — `~/Downloads/clawdy-walkthrough-v1.mp4`, 1:34, 1080p30, narrated (macOS `say`) and captioned, `~/Downloads/clawdy-walkthrough.srt`. Beats: title → type the sentence → translator + census → canyon reveal with the receipt strip → 23/23 / 38/38 punched in → race on generated ground → call the next route → round result → evidence board. **Still open: it needs a hosted URL for the form** (YouTube unlisted / Drive anyone-with-link). Sources and the cut list are in [RECORDING_SCRIPT.md](RECORDING_SCRIPT.md) |
+| Demo video **under 3 minutes** | ✅ recorded, cut and re-cut — **submit `~/Downloads/clawdy-walkthrough-v2.mp4`** (1:34.90, 1080p30, md5 `e6ff9434…`, narrated with macOS `say` and captioned; `~/Downloads/clawdy-walkthrough.srt`). v2 re-shot only the reveal act so it shows the PBRgen material — same duration, so every narration and caption offset still lands. Beats: title → type the sentence → translator + census → canyon reveal in real rock with the receipt strip → 23/23 / 38/38 punched in → race on generated ground → call the next route → round result → evidence board. v1 is still in Downloads in case it was already uploaded. **Still open: it needs a hosted URL for the form** (YouTube unlisted / Drive anyone-with-link). Sources, both cuts and why the race acts were left alone are in [RECORDING_SCRIPT.md](RECORDING_SCRIPT.md) |
 | Short written description (what you built, problem/opportunity, how AI is used) | ✅ drafted as a paste-ready block under "Form answers, ready to paste" → Page 2, with the focus category as its first line. Honesty rules from the Tripothon era still apply — every number in it is on screen in the video or in `docs/eval-gate.json` / `docs/eval-es.json` |
 | Chosen focus category | ⚠ **The submission form has NO category picker** — walked all 5 pages Nov 10 (inspect values, unsubmitted). T&Cs §6.2.5 still requires "the selected focus category", so it must go **in the written description** (e.g. first line: "Focus category: prompt-to-world creation") and possibly Q11/Q12 answers. Recommend "prompt-to-world creation" if F–I land, else "intelligent NPCs or autonomous agents" |
 | Submission channel | ✅ `https://forms.cloud.microsoft/e/XJx86qYjcn` — "AI Builder Hackathon - Submission Form", dropped in Discord ~24h warning. 5 pages / 16 questions: (1) team name + lead email **exactly as registered**; (2) project name, description ("briefly describe your project, the problem it solves, and its main functionality"), "what makes your project unique?"; (3) public repo URL, live demo URL, demo video URL (<3 min), demo access instructions; (4) technologies/frameworks, "how does your project transform natural language into interactive 3D experiences?", third-party materials and licenses; (5) four confirmation checkboxes + Submit. Note: repo/demo/video URLs are format-validated |
@@ -538,13 +538,14 @@ receipt not at all, which is the point.
 
 - **Public repository:** https://github.com/thisyearnofear/clawdy (public; the forge, the certificate and the scatter are all pushed. The last **code** commit is `7cc61bc` (the PBRgen terrain material and the onboarding pass) — everything on `main` after it is documentation, so the submitted binary and the submitted source are the same thing. Run `git rev-parse main` at submit time and put that SHA in the organizer form; keep it stable through judging)
 - **Live demo:** https://clawdy.trustfall.xyz
-- **Demo video (<3 min):** `[fill — upload ~/Downloads/clawdy-walkthrough-v1.mp4 to YouTube unlisted or Drive "anyone with link" and paste the URL; the form validates URL format, a local file will not do]`
+- **Demo video (<3 min):** `[fill — upload ~/Downloads/clawdy-walkthrough-v2.mp4 to YouTube unlisted or Drive "anyone with link" and paste the URL; the form validates URL format, a local file will not do]`
 - **Access instructions:**
 
 > No account needed — open the page and press Play, or type a world description into the "Describe
 > a world" panel on the left of the arena. GitHub sign-in is optional and only unlocks the ladder,
 > the league and Forge. The walkthrough video is 1:34, 1080p, narrated and captioned; the
-> certificate receipt is visible at 0:34. The repository is public and `docs/` contains the
+> certificate receipt is on screen from 0:17 and punched in full-size at 0:33. The repository is
+> public and `docs/` contains the
 > evaluation results, the asset provenance file and the recording script.
 
 ### Page 4 — technology

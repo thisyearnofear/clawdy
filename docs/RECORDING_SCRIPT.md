@@ -1,5 +1,23 @@
 # Walkthrough recording script (1:50, event limit is 1 to 2 minutes)
 
+## v2 cut — delivered Nov 11, 14:02 UTC (this is the file to submit)
+
+`~/Downloads/clawdy-walkthrough-v2.mp4`, md5 `e6ff94342db67aed4c97984271378a05`, 1:34.90,
+same 1920x1080/30/AAC. v1 stays in Downloads untouched in case it was already uploaded.
+
+One segment changed. The material pass (`7cc61bc`) landed after the race acts were shot, so
+the reveal — segment 4 — was re-recorded against the local build at `/tmp/pw/film-v2/reveal`
+and cut to the **same 16.500 s** (source 200.0 s, `-frames:v 495`) before re-running
+`assemble.sh`. Identical duration is the point: every narration offset and every caption time
+in `clawdy-walkthrough.ass` still lands, so nothing else in the cut had to move.
+
+What that buys: the canyon the judge first sees is the cracked basalt with slope-driven
+roughness, not a flat colour. What it does not buy: segments 5–8 are still the pre-material
+take, so the ground loses its texture once the rovers start racing. A full re-shoot of the
+race acts was attempted at 14:05 and abandoned — the translator upstream 502'd, the forge
+fell back to the authored basin, and the footage showed the wrong world. The fallback chain
+worked; the take was useless.
+
 ## v1 cut — delivered Nov 11, 10:33 UTC
 
 `~/Downloads/clawdy-walkthrough-v1.mp4` (1:34, 1920x1080, 30 fps, AAC narration) +
@@ -30,8 +48,10 @@ Narration is macOS `say -v Samantha -r 172`; captions are the same sentences, bu
 `.ass` over a translucent band so they read on both the cream UI and the dark basalt.
 
 Known blemish, deliberately not re-shot: the first-run hint card is still on screen during the
-reveal (it re-arms when a new world loads). It explains the controls, so it is not a lie — a
-second take with the hint dismissed twice would just be cleaner.
+receipt punch-in in v1 (it re-arms when a new world loads). It explains the controls, so it is
+not a lie. In v2 the reveal is clean — `7cc61bc` made the card step aside on its own after 10 s
+and stay gone — and the punch-in segment was left alone because re-shooting it meant re-shooting
+the race.
 
 A walkthrough of the world, not a trailer. The event requires a screen recording of the world itself. Show it working, including the loss to `weather`.
 
