@@ -157,16 +157,48 @@ describe('loadGeneratedCourse', () => {
   })
   afterEach(() => vi.unstubAllGlobals())
 
-  it('falls back to the pinned authored course — honestly — while Track F is unimplemented', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(bytes)))
+  it('loads a certified generated world and registers its scene for the renderer', async () => {
+    const worldId = generatedWorldId(await worldSpecDigest(VALID_SPEC))
     const loaded = await loadGeneratedCourse(VALID_SPEC)
     try {
-      // generateWorld is still a stub, so the loader must never leave a broken
-      // arena: authored course + an honest report, and no generated stamping
-      // that would send the renderer looking for a scene that does not exist.
+      expect(loaded.generated.fellBackToAuthored).toBe(false)
+      expect(loaded.generated.failure).toBeNull()
+      expect(loaded.generated.worldId).toBe(worldId)
+      expect(loaded.generated.certificate).toMatchObject({
+        stationsGrounded: loaded.generated.certificate!.stationsTotal,
+        routesCleared: loaded.generated.certificate!.routesTotal,
+      })
+      // Practice-only, digest-derived provenance on both course variants.
+      for (const course of [loaded.course, loaded.rushCourse]) {
+        expect(course.generated?.worldId).toBe(worldId)
+        expect(course.scenario.split).toBe('practice')
+        expect(course.scenario.worldVersion).toBe(worldId)
+        expect(course.config.terrain.url).toBe(`generated:${worldId}`)
+      }
+      // TerrainMesh resolves the scene through this registry, so an unlisted
+      // world would render an empty arena instead of the generated ground.
+      expect(generatedWorldScene(worldId)).toBeDefined()
+    } finally {
+      loaded.dispose()
+      expect(generatedWorldScene(worldId)).toBeUndefined()
+    }
+  }, 120000)
+
+  it('falls back to the pinned authored course — honestly — when no rung can certify', async () => {
+    // A spec that skipped `sanitizeWorldSpec` and asks for relief the resolver
+    // forbids: generation must refuse, and the loader must still arrive with
+    // the authored course rather than a broken arena.
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(bytes)))
+    const loaded = await loadGeneratedCourse({
+      ...VALID_SPEC,
+      landform: 'canyon',
+      ridge: { x: 6.9, height: 9 },
+      channels: { count: 6, spacing: 1.5, depth: 3 },
+    })
+    try {
       expect(loaded.generated.fellBackToAuthored).toBe(true)
       expect(loaded.generated.worldId).toBe(ARENA_WORLD.id)
-      expect(loaded.generated.failure).toContain('Track F')
+      expect(loaded.generated.failure).toContain('could not certify a playable course')
       expect(loaded.generated.certificate).toBeNull()
       expect(loaded.course.generated).toBeUndefined()
       expect(loaded.course.scenario.worldVersion).toBe(ARENA_WORLD.version)
@@ -174,5 +206,5 @@ describe('loadGeneratedCourse', () => {
     } finally {
       loaded.dispose()
     }
-  })
+  }, 120000)
 })

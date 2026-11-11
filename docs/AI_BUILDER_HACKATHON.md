@@ -257,6 +257,36 @@ Owns: `services/arenaWorldgen.ts`, `services/__tests__/arenaWorldgen.test.ts`.
 Headless + deterministic → must be fully provable with `npm test` before Dev 2 or the
 QA helper ever opens a browser. ~4h.
 
+**LANDED (Nov 10, 23:20 UTC).** Two plan details were wrong and the code follows
+reality, not the sketch:
+
+- Routes are **not** audited with `worldSurface.checkRouteGrounding` — it rays the
+  whole triangle soup per sample with no BVH, ~60M triangle tests for this course.
+  The audit walks each route at the course's own 0.2 m spacing through
+  `groundPoint` → Rapier (`arenaWorldgen.ts`, `firstRefusedPoint`), which is
+  ~1.6k BVH walks.
+- The census is 23 probes (19 `TEMPLATE_STATIONS` + `RUSH_CORE_STATION` + the 3
+  `floodZones` grounds) and 38 routes (36 `TEMPLATE_CONNECTIONS` + 2 rush links),
+  because `buildArenaCourse`/`buildRushCourse` ground all of them and throw on the
+  first refusal. Measured outcome per contract-conforming spec: every landform and
+  palette certifies, 16–160 ms, and the pad rung fires on the steepest canyons
+  (`repairsApplied` 2–4) instead of refusing them.
+
+`AUTHORED_RELIEF_PLAN` is the port's fidelity reference and is deliberately outside
+the contract — its 4.17 m channel gap exceeds `channels.spacing`'s ceiling, which is
+how the test proves a generated world can never be a copy of the scored basin. The
+87-point fixture is compared against `ground_height`/`is_road` from the shipped
+baker, unmodified, at 1e-5.
+
+Two follow-ups for the other tracks: `loadGeneratedCourse` reads the refusal through
+`generateWorld`, so it reports the generic "could not certify a playable course" —
+switch it to `certifyGeneration(spec)` to put the measurements (`17/23 stations
+grounded, 13/38 routes cleared`) on the receipts strip. And
+`services/__tests__/arenaWorldIntent.test.ts`'s stub-era loader test was flipped to
+the real path (generated + registered scene, and an authored fallback for a spec that
+skipped the sanitizer) — that edit crossed file ownership because Track F landing made
+the stub assertion false.
+
 ### Track G — `/api/world-intent` + live wiring (Dev 2)
 
 Route mirrors `app/api/coach-intent/route.ts` exactly: provider fallback chain
