@@ -529,7 +529,7 @@ already in hand, and the two should never be conflated in copy.
 
 ### Page 3 — links and access
 
-- **Public repository:** https://github.com/thisyearnofear/clawdy (public; the forge, the certificate and the scatter are all pushed. `main` is at `07512fa`; the last code commit is `d652c9f` — everything after it is documentation. Re-read `git rev-parse main` at submit time and put that SHA in the organizer form; keep it stable through judging)
+- **Public repository:** https://github.com/thisyearnofear/clawdy (public; the forge, the certificate and the scatter are all pushed. The last **code** commit is `d652c9f` — everything on `main` after it is documentation, so the submitted binary and the submitted source are the same thing. Run `git rev-parse main` at submit time and put that SHA in the organizer form; keep it stable through judging)
 - **Live demo:** https://clawdy.trustfall.xyz
 - **Demo video (<3 min):** `[fill — upload ~/Downloads/clawdy-walkthrough-v1.mp4 to YouTube unlisted or Drive "anyone with link" and paste the URL; the form validates URL format, a local file will not do]`
 - **Access instructions:**
