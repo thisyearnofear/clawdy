@@ -510,12 +510,12 @@ function relaxGrid(grid: HeightGrid, weights: Float64Array): void {
 type Rgb = [number, number, number]
 
 /** Terrain ramps per palette; the sky/fog side of a palette lives in `arenaWorldIntent`. */
-const WORLD_TERRAIN_COLORS: Record<WorldSpec['palette'], { floor: string; slope: string; crest: string; road: string }> = {
-  sandstone: { floor: '#a9835b', slope: '#c8a176', crest: '#e2d0ad', road: '#8d7250' },
-  basalt: { floor: '#3c434f', slope: '#5a6372', crest: '#8d98a7', road: '#4a515a' },
-  slate: { floor: '#59646f', slope: '#7d8996', crest: '#b0bbc7', road: '#6a7481' },
-  oxide: { floor: '#8a4a2c', slope: '#b96b3c', crest: '#e2a76b', road: '#96552f' },
-  gypsum: { floor: '#b6a68e', slope: '#d8cbb6', crest: '#f3ede2', road: '#c0b098' },
+const WORLD_TERRAIN_COLORS: Record<WorldSpec['palette'], { floor: string; slope: string; crest: string; road: string; rock: string }> = {
+  sandstone: { floor: '#a9835b', slope: '#c8a176', crest: '#e2d0ad', road: '#8d7250', rock: '#6f5a41' },
+  basalt: { floor: '#3c434f', slope: '#5a6372', crest: '#8d98a7', road: '#4a515a', rock: '#262b33' },
+  slate: { floor: '#59646f', slope: '#7d8996', crest: '#b0bbc7', road: '#6a7481', rock: '#3d4650' },
+  oxide: { floor: '#8a4a2c', slope: '#b96b3c', crest: '#e2a76b', road: '#96552f', rock: '#5e331d' },
+  gypsum: { floor: '#b6a68e', slope: '#d8cbb6', crest: '#f3ede2', road: '#c0b098', rock: '#8f8271' },
 }
 
 function hexRgb(hex: string): Rgb {
@@ -527,14 +527,20 @@ function mixRgb(from: Rgb, to: Rgb, t: number): Rgb {
   return [from[0] + (to[0] - from[0]) * t, from[1] + (to[1] - from[1]) * t, from[2] + (to[2] - from[2]) * t]
 }
 
-function terrainColor(palette: WorldSpec['palette'], height: number, floor: number, crest: number, x: number, z: number, variant: boolean): Rgb {
+function terrainColor(palette: WorldSpec['palette'], height: number, floor: number, crest: number, x: number, z: number, variant: boolean, slope: number): Rgb {
   const ramp = WORLD_TERRAIN_COLORS[palette]
   const t = Math.min(1, Math.max(0, (height - floor) / Math.max(1e-6, crest - floor)))
   const split = 0.45
   const base = t < split
     ? mixRgb(hexRgb(ramp.floor), hexRgb(ramp.slope), t / split)
     : mixRgb(hexRgb(ramp.slope), hexRgb(ramp.crest), (t - split) / (1 - split))
-  const tinted = isRoadAt(x, z) ? mixRgb(base, hexRgb(ramp.road), 0.75) : base
+  // Steep ground is exposed rock, not the same paint as a gentle hill at the
+  // same height — without this a canyon reads as smooth clay. Drivable ground
+  // stays under ~1.0 gradient (the certificate's slope gate), so the blend
+  // lands on walls and crests the rover never stands on.
+  const rockT = Math.min(1, Math.max(0, (slope - 0.5) / 0.6)) * 0.8
+  const rocky = rockT > 0 ? mixRgb(base, hexRgb(ramp.rock), rockT) : base
+  const tinted = isRoadAt(x, z) ? mixRgb(rocky, hexRgb(ramp.road), 0.75) : rocky
   return variant ? tinted.map(value => value * 0.92) as Rgb : tinted
 }
 
@@ -572,7 +578,14 @@ function buildWorldGeometry(palette: WorldSpec['palette'], grid: HeightGrid): TH
       uvs[index * 2] = (xs[column] - WORLDGEN_BOUNDS.minX) / spanX
       uvs[index * 2 + 1] = (zs[row] - WORLDGEN_BOUNDS.minZ) / spanZ
       const variant = (column + row) % TEMPLATE.variantEvery === 0
-      const color = terrainColor(palette, height, floor, crest, xs[column], zs[row], variant)
+      const west = heights[row * nx + Math.max(0, column - 1)]
+      const east = heights[row * nx + Math.min(nx - 1, column + 1)]
+      const north = heights[Math.max(0, row - 1) * nx + column]
+      const south = heights[Math.min(nz - 1, row + 1) * nx + column]
+      const dx = xs[Math.min(nx - 1, column + 1)] - xs[Math.max(0, column - 1)]
+      const dz = zs[Math.min(nz - 1, row + 1)] - zs[Math.max(0, row - 1)]
+      const slope = Math.hypot((east - west) / dx, (south - north) / dz)
+      const color = terrainColor(palette, height, floor, crest, xs[column], zs[row], variant, slope)
       colors[index * 3] = color[0]
       colors[index * 3 + 1] = color[1]
       colors[index * 3 + 2] = color[2]
@@ -658,9 +671,11 @@ function buildWorldScene(palette: WorldSpec['palette'], grid: HeightGrid): THREE
   const geometry = buildWorldGeometry(palette, grid)
   const material = new THREE.MeshStandardMaterial({
     vertexColors: true,
-    flatShading: true,
+    // Smooth normals + the detail/bump maps applied in prepareTerrainScene read
+    // as eroded ground; flat shading made every generated world look faceted.
+    flatShading: false,
     side: THREE.DoubleSide,
-    roughness: 0.95,
+    roughness: 0.92,
     metalness: 0,
   })
   const mesh = new THREE.Mesh(geometry, material)

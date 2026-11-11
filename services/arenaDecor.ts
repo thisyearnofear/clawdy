@@ -29,7 +29,7 @@ const ROUTE_CLEARANCE = 1.4
 const PAIR_CLEARANCE = 0.9
 const MIN_GROUND_NORMAL_Y = 0.7
 
-function horizontalSegmentDistance(px: number, pz: number, ax: number, az: number, bx: number, bz: number): number {
+export function horizontalSegmentDistance(px: number, pz: number, ax: number, az: number, bx: number, bz: number): number {
   const dx = bx - ax
   const dz = bz - az
   const lengthSq = dx * dx + dz * dz
@@ -91,18 +91,35 @@ export function planArenaDecor(course: ArenaCourse, lite = false): DecorCandidat
   return accepted
 }
 
-export function createDecorModel(source: THREE.Group): THREE.Group {
+/**
+ * Prepare one prop for placement: recentered on x/z, bottom sitting on y=0,
+ * never raycast against. `fitToSize` rescales the model so its widest
+ * horizontal span is that many metres, which is how AI-generated assets (they
+ * come normalized to a 1 m cube) are given a world-space size; `castShadow`
+ * keeps generated scatter grounded in the sun while the authored kit props
+ * stay shadowless.
+ */
+export function createDecorModel(
+  source: THREE.Group,
+  options: { fitToSize?: number; castShadow?: boolean } = {},
+): THREE.Group {
   const anchor = new THREE.Group()
   anchor.add(source.clone(true))
   anchor.updateMatrixWorld(true)
   const box = new THREE.Box3().setFromObject(anchor)
   if (!box.isEmpty()) {
     const center = box.getCenter(new THREE.Vector3())
-    anchor.position.set(-center.x, -box.min.y, -center.z)
+    let fit = 1
+    if (options.fitToSize) {
+      const across = Math.max(box.max.x - box.min.x, box.max.z - box.min.z)
+      if (across > 1e-6) fit = options.fitToSize / across
+    }
+    anchor.scale.setScalar(fit)
+    anchor.position.set(-center.x * fit, -box.min.y * fit, -center.z * fit)
   }
   anchor.traverse(object => {
     object.raycast = () => { }
-    if (object instanceof THREE.Mesh) object.castShadow = false
+    if (object instanceof THREE.Mesh) object.castShadow = options.castShadow === true
   })
   const root = new THREE.Group()
   root.add(anchor)

@@ -1,6 +1,35 @@
 {
   "packs": [
     {
+      "name": "Tripo ground scatter (generated)",
+      "author": "Tripo P1-20260311, generated for this project by scripts/tripo-generate.mjs",
+      "license": "Generated with AI for this project; prompts and task ids recorded below",
+      "source": "https://www.tripo3d.ai/",
+      "files": [
+        "assets/props/boulder.glb",
+        "assets/props/spire.glb",
+        "assets/props/scrub.glb"
+      ],
+      "modifications": "textures recompressed to 512 px with gltf-transform; runtime recenters x/z, grounds the bottom, fits each instance to its scatter size in metres",
+      "generations": [
+        {
+          "file": "assets/props/boulder.glb",
+          "taskId": "c7aeb229-a830-4d91-9fba-7ba6eb4c2c34",
+          "prompt": "A large angular grey basalt boulder, desaturated neutral cool stone, cracked weathered surface, game environment prop, no ground"
+        },
+        {
+          "file": "assets/props/spire.glb",
+          "taskId": "4b0013c1-5072-4e4e-a7d5-55d5642f29c2",
+          "prompt": "A broken tilted stone monolith slab, dark grey weathered rock, desaturated, eroded edges, game environment prop"
+        },
+        {
+          "file": "assets/props/scrub.glb",
+          "taskId": "8a20fe0e-66d2-4d7b-8a88-9602b3383deb",
+          "prompt": "A small clump of dry desert scrub brush, sparse twiggy dead bushes, game vegetation prop, no ground plane"
+        }
+      ]
+    },
+    {
       "name": "Kenney Space Kit 2.0",
       "author": "Kenney (www.kenney.nl)",
       "license": "CC0",

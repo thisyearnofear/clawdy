@@ -258,6 +258,10 @@ function CinematicCamera({ session, course }: Pick<WorldProps, 'session' | 'cour
  */
 function prepareTerrainScene(scene: THREE.Group, detailTint: string) {
   let detail: ReturnType<typeof createTerrainDetailTextures> | null = null
+  // Generated UVs span 0..1 across the whole ~20 m basin, so a repeat of 1
+  // stretches the grain into metre-wide blotches. Tile it to decimetre grain;
+  // the authored twin keeps its pinned UV scale and repeat untouched.
+  const generated = scene.name.startsWith('GeneratedWorld')
   scene.traverse(object => {
     if (!(object instanceof THREE.Mesh)) return
     object.receiveShadow = true
@@ -267,9 +271,13 @@ function prepareTerrainScene(scene: THREE.Group, detailTint: string) {
       for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
         if (!(material instanceof THREE.MeshStandardMaterial)) continue
         detail ??= createTerrainDetailTextures(detailTint)
+        if (generated) {
+          detail.map.repeat.set(10, 10)
+          detail.bump.repeat.set(10, 10)
+        }
         material.map = detail.map
         material.bumpMap = detail.bump
-        material.bumpScale = 0.6
+        material.bumpScale = generated ? 0.45 : 0.6
         material.needsUpdate = true
       }
     }
