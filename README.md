@@ -19,7 +19,7 @@ Type a sentence — *"a razor-backed basalt canyon with a wide dry riverbed"* �
 
 Two things we keep in plain sight rather than hiding: the authored GLB is still the default world, and every generated course is stamped practice-only — it can never satisfy a scored Prove scenario, so generated terrain cannot touch a ranked result.
 
-Measured on the current build: 16–160 ms to generate and certify, 0 refusals across a 270-corner sweep of the parameter contract, and the receipt rendered live under the scene — `world generated "Razor-Backed Canyon" · 23/23 stations grounded · 38/38 routes cleared`.
+Measured on the current build: 16–160 ms to generate and certify, 0 refusals across a 270-corner sweep of the parameter contract, and the receipt rendered live under the scene — `world generated "Razor-Backed Canyon" · 23/23 stations grounded · 38/38 routes cleared`. On the live site, a typed sentence takes 6–18 s end to end (that window is the LLM round trip; the census runs after it) and both timings were re-measured in a browser against production on Nov 11.
 
 **What is proven (gate pin `53f3d95c3d9b`):** the coached champion **beats the untrained baseline on all four held-out boards** — +21 banked over a base that banks 0 — and **matches the careful teacher's outcomes on unseen abstract layouts**, every leg within 1 banked, the same champion-win legs (3 = 3). On physical courses it now leads the teacher on the grounded course (28 vs 27) while still trailing on held-out family layouts (56 vs 68) — every leg clearing the harness-enforced no-collapse floor. This paragraph mirrors the CI-enforced claims block in `scripts/eval-gate.ts` — docs may never claim more than the gate checks.
 

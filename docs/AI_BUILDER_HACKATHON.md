@@ -467,6 +467,14 @@ errors, zero failed requests** on that path. The world translator answers on pro
 `COACH_INTENT_*` fallback chain (there is no `WORLD_INTENT_*` var; the route is designed to fall
 back to it), so the LLM path — not the preset gallery — is what produced that spec.
 
+**Re-run at 11:18 UTC against the later production build, and it is the same story:** the same
+sentence → `world generated "Flooded Salt Flat" · 23/23 stations grounded · 38/38 routes
+cleared`, certified in **6 s**, zero console errors. The generated name differs between takes
+because the translator is an LLM, not a template; the census is fixed at 23 and 38 by the
+contract. Certification wall time on prod is therefore **6–18 s for a live LLM round trip** —
+the 16–160 ms figure quoted elsewhere is the local generate-and-certify cost with the spec
+already in hand, and the two should never be conflated in copy.
+
 ### Page 2 — project
 
 - **Project name:** Clawdy
@@ -507,8 +515,9 @@ back to it), so the LLM path — not the preset gallery — is what produced tha
 > steps down notch by notch and the sim re-runs. The first version the simulator signs is the one
 > you see, and the receipt is rendered on screen under the scene — `world generated "Razorback
 > Basalt Canyon" · 23/23 stations grounded · 38/38 routes cleared`, generated and certified in
-> 16–160 ms. If no rung certifies, you are not handed a broken arena: the refusal quotes its own
-> census and the authored world stays up.
+> 16–160 ms once the parameters are in hand; a typed sentence takes 6–18 s end to end on
+> production, because that includes the LLM round trip. If no rung certifies, you are not handed
+> a broken arena: the refusal quotes its own census and the authored world stays up.
 >
 > The same propose-then-verify shape runs through the whole entry: coaching sentences become
 > structured examples that are legality-checked before they can train anything, and league
@@ -520,7 +529,7 @@ back to it), so the LLM path — not the preset gallery — is what produced tha
 
 ### Page 3 — links and access
 
-- **Public repository:** https://github.com/thisyearnofear/clawdy (public, `main` at `d652c9f` — the forge, the certificate and the scatter are all pushed; keep it stable through judging)
+- **Public repository:** https://github.com/thisyearnofear/clawdy (public; the forge, the certificate and the scatter are all pushed. `main` is at `07512fa`; the last code commit is `d652c9f` — everything after it is documentation. Re-read `git rev-parse main` at submit time and put that SHA in the organizer form; keep it stable through judging)
 - **Live demo:** https://clawdy.trustfall.xyz
 - **Demo video (<3 min):** `[fill — upload ~/Downloads/clawdy-walkthrough-v1.mp4 to YouTube unlisted or Drive "anyone with link" and paste the URL; the form validates URL format, a local file will not do]`
 - **Access instructions:**
