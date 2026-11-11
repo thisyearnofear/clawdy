@@ -446,7 +446,7 @@ rather than showing a broken surface.
 | Deliverable | Status |
 | --- | --- |
 | Public code repository | ✅ https://github.com/thisyearnofear/clawdy — keep public and stable through judging |
-| Hosted browser demo | ✅ https://clawdy.trustfall.xyz — **now runs the forge and the certificate** (auto-deployed from `d652c9f` at 11:10 UTC, prompt-to-world verified in a browser at 11:12 UTC, 18 s to a certified world, no console errors). Must stay up and functional through Nov 25 |
+| Hosted browser demo | ✅ https://clawdy.trustfall.xyz — **now runs the forge, the certificate and the PBRgen terrain material** (auto-deployed from `7cc61bc`, prompt-to-world re-verified in a browser at 13:36 UTC: 12 s to a certified world, `23/23 · 38/38`, no console errors; earlier takes at 11:12 and 11:18 UTC on `d652c9f`). Must stay up and functional through Nov 25 |
 | Demo video **under 3 minutes** | ✅ recorded and cut — `~/Downloads/clawdy-walkthrough-v1.mp4`, 1:34, 1080p30, narrated (macOS `say`) and captioned, `~/Downloads/clawdy-walkthrough.srt`. Beats: title → type the sentence → translator + census → canyon reveal with the receipt strip → 23/23 / 38/38 punched in → race on generated ground → call the next route → round result → evidence board. **Still open: it needs a hosted URL for the form** (YouTube unlisted / Drive anyone-with-link). Sources and the cut list are in [RECORDING_SCRIPT.md](RECORDING_SCRIPT.md) |
 | Short written description (what you built, problem/opportunity, how AI is used) | ✅ drafted as a paste-ready block under "Form answers, ready to paste" → Page 2, with the focus category as its first line. Honesty rules from the Tripothon era still apply — every number in it is on screen in the video or in `docs/eval-gate.json` / `docs/eval-es.json` |
 | Chosen focus category | ⚠ **The submission form has NO category picker** — walked all 5 pages Nov 10 (inspect values, unsubmitted). T&Cs §6.2.5 still requires "the selected focus category", so it must go **in the written description** (e.g. first line: "Focus category: prompt-to-world creation") and possibly Q11/Q12 answers. Recommend "prompt-to-world creation" if F–I land, else "intelligent NPCs or autonomous agents" |
@@ -454,7 +454,7 @@ rather than showing a broken surface.
 
 ## Form answers, ready to paste (Nov 11, 10:45 UTC)
 
-Written against `d652c9f`, pushed to `main` and auto-deployed to production at 11:10 UTC.
+Written against `d652c9f` and re-checked against `7cc61bc`, both pushed to `main` and auto-deployed to production.
 Every number is either on screen in the video or in `docs/eval-gate.json` / `docs/eval-es.json`.
 Replace the one `[fill]` placeholder (the hosted video URL) before sending.
 
@@ -474,6 +474,13 @@ because the translator is an LLM, not a template; the census is fixed at 23 and 
 contract. Certification wall time on prod is therefore **6–18 s for a live LLM round trip** —
 the 16–160 ms figure quoted elsewhere is the local generate-and-certify cost with the spec
 already in hand, and the two should never be conflated in copy.
+
+**Third prod take, 13:36 UTC, on the build that carries the PBRgen terrain material (`7cc61bc`):**
+the same sentence → `world generated "Razor-Back Basalt Canyon" · 23/23 stations grounded ·
+38/38 routes cleared` in **12 s**, zero console errors, and the canyon renders as rock rather than
+as painted heightfield — cracked flats, dark faces, Tripo boulders sitting in the same material
+language. The live LLM window across the three takes is **6–18 s**; the material pass changed the
+receipt not at all, which is the point.
 
 ### Page 2 — project
 
@@ -529,7 +536,7 @@ already in hand, and the two should never be conflated in copy.
 
 ### Page 3 — links and access
 
-- **Public repository:** https://github.com/thisyearnofear/clawdy (public; the forge, the certificate and the scatter are all pushed. The last **code** commit is `d652c9f` — everything on `main` after it is documentation, so the submitted binary and the submitted source are the same thing. Run `git rev-parse main` at submit time and put that SHA in the organizer form; keep it stable through judging)
+- **Public repository:** https://github.com/thisyearnofear/clawdy (public; the forge, the certificate and the scatter are all pushed. The last **code** commit is `7cc61bc` (the PBRgen terrain material and the onboarding pass) — everything on `main` after it is documentation, so the submitted binary and the submitted source are the same thing. Run `git rev-parse main` at submit time and put that SHA in the organizer form; keep it stable through judging)
 - **Live demo:** https://clawdy.trustfall.xyz
 - **Demo video (<3 min):** `[fill — upload ~/Downloads/clawdy-walkthrough-v1.mp4 to YouTube unlisted or Drive "anyone with link" and paste the URL; the form validates URL format, a local file will not do]`
 - **Access instructions:**
@@ -616,9 +623,10 @@ form has no picker (see packet table).
   making generated 3D content *trustworthy*. Both halves of that are curation problems:
   which corrections to approve, when to train, and whether a machine-made world is
   actually playable before you bet an hour of racing on it.
-- **How AI is used (the honest version):** an LLM translates plain language into three
+- **How AI is used (the honest version):** an LLM turns plain language into three
   different kinds of artifact — terrain parameters, coaching doctrine, and a chassis
-  description for Tripo text-to-3D — and a trained MLP policy is updated by the player's
+  description for Tripo text-to-3D — PBRgen turns one sentence into the terrain's
+  albedo/normal/roughness material set, and a trained MLP policy is updated by the player's
   own approved corrections. In every case the model proposes and a deterministic system
   decides: bounded parameter ranges, a sanitizer, and the same physics simulator that
   gates the scored course.
