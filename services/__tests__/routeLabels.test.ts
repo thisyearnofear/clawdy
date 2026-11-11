@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { disambiguateRouteLabels, routeLabel, stationLabel } from '../routeLabels'
+import { TEMPLATE_STATIONS } from '../arenaCourse'
+import { corridorName, disambiguateRouteLabels, routeLabel, stationLabel } from '../routeLabels'
 
 describe('routeLabel', () => {
   it('collapses corridor family when no destination is given', () => {
@@ -14,8 +15,8 @@ describe('routeLabel', () => {
   it('disambiguates valley edges by destination so live-call choices stay distinct', () => {
     const a = routeLabel('valley-cb-n1', 'valley-n1')
     const b = routeLabel('valley-cb-vc', 'valley-center')
-    expect(a).toBe('the valley → valley n1')
-    expect(b).toBe('the valley → valley center')
+    expect(a).toBe('the valley → north upper')
+    expect(b).toBe('the valley → mid')
     expect(a).not.toBe(b)
   })
 
@@ -23,6 +24,43 @@ describe('routeLabel', () => {
     expect(stationLabel('champion-base')).toBe('your base')
     expect(stationLabel('rival-base')).toBe('rival base')
     expect(routeLabel('valley-s3-rb', 'rival-base')).toBe('the valley → rival base')
+  })
+
+  it('gives the corridor alone when the sentence already names the destination', () => {
+    expect(corridorName('valley-cb-n1')).toBe('the valley')
+    expect(corridorName('shortcut-cb-cn')).toBe('the shortcut')
+    expect(corridorName('mystery-edge')).toBe('mystery-edge')
+  })
+})
+
+describe('stationLabel', () => {
+  it('never hands the player a raw station id on the shipped course', () => {
+    for (const station of TEMPLATE_STATIONS) {
+      const label = stationLabel(station.id)
+      expect(label, station.id).not.toBe(station.id)
+      expect(label, station.id).not.toMatch(/\d/)
+      expect(label, station.id).not.toContain('-')
+    }
+  })
+
+  it('keeps every station on a road distinct, so captions name one place', () => {
+    const ids = TEMPLATE_STATIONS.map(station => station.id)
+    const labels = ids.map(stationLabel)
+    expect(new Set(labels).size).toBe(ids.length)
+  })
+
+  it('reads the rungs against their own road and side', () => {
+    expect(stationLabel('valley-s1')).toBe('south upper valley road')
+    expect(stationLabel('valley-s2')).toBe('south mid valley road')
+    expect(stationLabel('valley-s3')).toBe('south lower valley road')
+    expect(stationLabel('valley-n1')).toBe('north upper valley road')
+    expect(stationLabel('ridge-north')).toBe('north ridge road')
+    expect(stationLabel('cross-far')).toBe('far cross trail')
+  })
+
+  it('leaves a station that is on no map as the raw id', () => {
+    expect(stationLabel('moon-dust')).toBe('moon dust')
+    expect(stationLabel('junction')).toBe('junction')
   })
 })
 

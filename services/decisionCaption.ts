@@ -6,7 +6,7 @@ import {
   type ArenaObservation,
   type ArenaSimEvent,
 } from './arenaEpisode'
-import { routeLabel, stationLabel } from './routeLabels'
+import { corridorName, routeLabel, stationLabel } from './routeLabels'
 
 /**
  * Decision language — mid-run captions from real intent data only.
@@ -53,7 +53,7 @@ function actionPhrase(action: ArenaAction, observation?: ArenaObservation | null
 
 function plannedPhrase(agent: ArenaAgentState, observation?: ArenaObservation | null): string | null {
   if (agent.transit) {
-    return `heading to ${stationLabel(agent.transit.to)} via ${routeLabel(agent.transit.edgeId, agent.transit.to)}`
+    return `heading to ${stationLabel(agent.transit.to)} via ${corridorName(agent.transit.edgeId)}`
   }
   const outcome = agent.lastOutcome
   if (outcome?.accepted && outcome.action) {

@@ -90,6 +90,22 @@ describe('formatDecisionCaption', () => {
     expect(caption!.line.split('·').length).toBeLessThanOrEqual(2)
   })
 
+  it('names the destination once, in player words', () => {
+    const onRoad = formatDecisionCaption({ agent: baseAgent({
+      transit: { edgeId: 'valley-cb-n1', from: 'champion-base', to: 'valley-n1', progressUnits: 1, requiredUnits: 10 },
+      lastOutcome: null,
+    }) })
+    expect(onRoad!.planned).toBe('heading to north upper valley road via the valley')
+
+    const toBase = formatDecisionCaption({ agent: baseAgent({
+      transit: { edgeId: 'valley-s3-rb', from: 'valley-s3', to: 'rival-base', progressUnits: 1, requiredUnits: 10 },
+      lastOutcome: null,
+    }) })
+    expect(toBase!.planned).toBe('heading to rival base via the valley')
+    expect(toBase!.planned).not.toContain('→')
+    expect(toBase!.planned).not.toMatch(/s3|rb/)
+  })
+
   it('picks flood pressure when the valley is flooded', () => {
     const agent = baseAgent({
       transit: { edgeId: 'valley', from: 'a', to: 'b', progressUnits: 1, requiredUnits: 10 },
