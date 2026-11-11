@@ -114,7 +114,7 @@ import { buildStealStoryboard, detectFullLoadSteal, type StealStoryboard } from 
 import { requestStealClip, stubStealClip, type StealClipResult } from '../../services/stealHighlightClip'
 import { formatDecisionCaption, perkTelegraphMoment, playerDoorLabel, PLAYER_DOOR_COPY } from '../../services/decisionCaption'
 import { courseForRuleset, isSkirmishUnlocked, skirmishDisclosure, subscribeSkirmishUnlock, unlockSkirmish } from '../../services/workbenchRuleset'
-import { actionsEqual, COACH_ANYTIME_KEY, COACH_MISTAKE_KEY, COACH_NUDGE_KEY, friendlyActionLabel, isExecutableCheckpoint, PLAY_HINT_KEY, readHintDismissed, routeLabel, stationLabel } from '../workbench/readouts'
+import { actionsEqual, COACH_ANYTIME_KEY, COACH_MISTAKE_KEY, COACH_NUDGE_KEY, friendlyActionLabel, isExecutableCheckpoint, markHintDismissed, readHintDismissed, routeLabel, stationLabel } from '../workbench/readouts'
 import styles from './ArenaScene.module.css'
 
 const WorldView = dynamic(() => import('./ArenaWorldView'), { ssr: false })
@@ -719,6 +719,13 @@ function Workbench({
     if (playTipLoggedRef.current || !visualReady || !hintOpen || view.phase !== 'ready') return
     playTipLoggedRef.current = true
     recordFunnelEvent('tip.play')
+  }, [visualReady, hintOpen, view.phase])
+  // The hint teaches once; it must not sit on top of the arena. It steps out of
+  // the way by itself, and the Play button keeps the pulse until a run finishes.
+  useEffect(() => {
+    if (!visualReady || !hintOpen || view.phase !== 'ready') return
+    const timer = window.setTimeout(() => setHintOpen(false), 10_000)
+    return () => window.clearTimeout(timer)
   }, [visualReady, hintOpen, view.phase])
   useEffect(() => {
     if (studioOpen) recordFunnelEvent('studio.open')
@@ -2285,7 +2292,7 @@ function Workbench({
         )}
         <div className={styles.mainControls}>
           <button
-            className={`${styles.primaryButton}${visualReady && hintOpen && view.phase === 'ready' ? ` ${styles.playPulse}` : ''}`}
+            className={`${styles.primaryButton}${visualReady && engagement.showPlayHint && view.phase === 'ready' ? ` ${styles.playPulse}` : ''}`}
             onClick={primaryAction}
             disabled={(!visualReady && view.phase !== 'error') || isTraining}
           >
@@ -2491,7 +2498,7 @@ function Workbench({
                 type="button"
                 onClick={() => {
                   setHintOpen(false)
-                  try { window.sessionStorage.setItem(PLAY_HINT_KEY, '1') } catch { /* ignore */ }
+                  markHintDismissed()
                 }}
                 aria-label="Dismiss hint"
               >

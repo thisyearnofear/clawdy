@@ -9,7 +9,9 @@ import type { ArenaSession } from '../../services/arenaSession'
 import type { ArenaAgentState, ArenaPosition } from '../../services/arenaEpisode'
 import { disposeArenaTerrain, loadArenaTerrain } from '../../services/arenaTerrain'
 import { skyThemeForCourse } from '../../services/arenaWorldIntent'
+import { floodFootprint } from '../../services/arenaFlood'
 import { createTerrainDetailTextures } from './terrainDetail'
+import { applyPbrRock, loadPbrRock, prepareTerrainAttributes } from './terrainPbr'
 import { createRouteRibbonGeometry, advancePoseHistory, samplePoseHistory, type PoseHistory } from '../../services/arenaPresentation'
 import { planCinematicShots, shotAt, type CinematicShot } from '../../services/arenaCinematic'
 import { MintModel } from './MintModel'
@@ -251,12 +253,14 @@ function CinematicCamera({ session, course }: Pick<WorldProps, 'session' | 'cour
 }
 
 /**
- * Shared mesh prep for fetched and generated terrain: shadows, plus the
- * detail/bump maps on any 'Terrain'-named mesh that carries UVs. The tint is
- * '#ffffff' (a no-op) for the authored palette, so the pinned basin renders
- * identically to before.
+ * Shared mesh prep for fetched and generated terrain: shadows, and the surface
+ * treatment on any 'Terrain'-named mesh that carries UVs. Generated worlds get
+ * the PBRgen rock set with the shader's response driven by the certified slope
+ * and the flood footprint's own waterline; the authored basin keeps the
+ * procedural detail map and a no-op tint, so it renders byte-identically to
+ * before.
  */
-function prepareTerrainScene(scene: THREE.Group, detailTint: string) {
+function prepareTerrainScene(scene: THREE.Group, detailTint: string, course: ArenaCourse) {
   let detail: ReturnType<typeof createTerrainDetailTextures> | null = null
   // Generated UVs span 0..1 across the whole ~20 m basin, so a repeat of 1
   // stretches the grain into metre-wide blotches. Tile it to decimetre grain;
@@ -270,14 +274,21 @@ function prepareTerrainScene(scene: THREE.Group, detailTint: string) {
     if (object.name.startsWith('Terrain') && object.geometry.getAttribute('uv')) {
       for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
         if (!(material instanceof THREE.MeshStandardMaterial)) continue
-        detail ??= createTerrainDetailTextures(detailTint)
         if (generated) {
-          detail.map.repeat.set(10, 10)
-          detail.bump.repeat.set(10, 10)
+          prepareTerrainAttributes(object.geometry)
+          // The wet band is the flood surface itself, so its edge lines up with
+          // the shoreline the water plane draws. A course with no flood has no
+          // waterline and never goes wet.
+          applyPbrRock(material, loadPbrRock(), {
+            repeat: 12,
+            waterline: floodFootprint(course)?.waterY,
+          })
+          continue
         }
+        detail ??= createTerrainDetailTextures(detailTint)
         material.map = detail.map
         material.bumpMap = detail.bump
-        material.bumpScale = generated ? 0.45 : 0.6
+        material.bumpScale = 0.6
         material.needsUpdate = true
       }
     }
@@ -339,7 +350,7 @@ function TerrainMesh({
           onErrorRef.current?.(new Error(`Generated world '${generatedWorldId}' is not registered`))
           return
         }
-        prepareTerrainScene(generated, detailTint)
+        prepareTerrainScene(generated, detailTint, course)
         setScene(generated)
       })
       return () => abort.abort()
@@ -363,7 +374,7 @@ function TerrainMesh({
           disposeArenaTerrain(scene)
           return
         }
-        prepareTerrainScene(scene, detailTint)
+        prepareTerrainScene(scene, detailTint, course)
         loaded = scene
         setScene(scene)
       })
@@ -375,7 +386,7 @@ function TerrainMesh({
       abort.abort()
       if (loaded) disposeArenaTerrain(loaded)
     }
-  }, [url, sha256, visualUrl, visualSha256, generatedWorldId, detailTint])
+  }, [url, sha256, visualUrl, visualSha256, generatedWorldId, detailTint, course])
 
   useEffect(() => {
     if (scene) onReadyRef.current?.()

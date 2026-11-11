@@ -10,6 +10,8 @@ Clawdy is a **Clash-first** agent league inside a physical world: Clash is the g
 
 Type a sentence — *"a razor-backed basalt canyon with a wide dry riverbed"* — and the arena is rebuilt from it: landform, relief, flood line and paint all solved from that one description.
 
+The generated ground is not a flat colour. It carries a PBRgen material set (albedo, normal, roughness, from one prompt), and the way that material answers the light is driven by numbers the simulator already certified: per-vertex slope decides whether a surface reads dusty or bare, and the flood footprint's own waterline decides where a wet band hugs the shoreline. All of it is visual — none of it reaches the collider or the certificate.
+
 "Plain language → interactive 3D scene" is what every entry here will claim. Ours is different in what happens between the model's answer and your eyes: **the scene is proved playable before it is shown to you, and refused otherwise.**
 
 - The model never emits geometry. It proposes bounded parameters — a landform enum, relief numbers inside a contract range, a palette — and the resolver owns every value that reaches the mesh.

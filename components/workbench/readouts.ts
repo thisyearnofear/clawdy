@@ -30,10 +30,20 @@ export const COACH_MISTAKE_KEY = 'clawdy_coach_mistake_v1'
 export function readHintDismissed(): boolean {
   if (typeof window === 'undefined') return false
   try {
-    return window.sessionStorage.getItem(PLAY_HINT_KEY) === '1'
+    // Durable on purpose: a refresh during a demo should not put a card back
+    // over the arena. sessionStorage is read for players who dismissed it here.
+    return window.localStorage.getItem(PLAY_HINT_KEY) === '1'
+      || window.sessionStorage.getItem(PLAY_HINT_KEY) === '1'
   } catch {
     return false
   }
+}
+
+export function markHintDismissed(): void {
+  try {
+    window.localStorage.setItem(PLAY_HINT_KEY, '1')
+    window.sessionStorage.setItem(PLAY_HINT_KEY, '1')
+  } catch { /* private mode: the hint just comes back next visit */ }
 }
 
 export function actionsEqual(a: ArenaAction, b: ArenaAction): boolean {

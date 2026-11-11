@@ -54,6 +54,7 @@ The [canonical plan](HACKATHON.md) defines the accepted direction. The following
 - [x] Rapier 3D 0.19.2 physics integration with deterministic queries.
 - [ ] Tripo-generated assets are integrated and performance-tested.
 - [x] Mint-created content or assembly work has a functional, visible contribution (champion rover GLB generated via Mint MCP and loaded in `ArenaWorldView`).
+- [x] PBRgen (AIxPOLY) material maps are integrated and browser-verified (Nov 11): one prompt → seamless albedo/normal/roughness set, exported at 2K and recompressed to 1024 px JPEG, applied to **generated terrain only** in `components/environment/terrainPbr.ts`. The shader response is driven by certified fields — per-vertex slope (dust on flats, bare on faces) and the flood footprint's own waterline (a ±1.4 m wet band that hugs the shoreline, and never appears on a course with no flood). Verified on `localhost:3001` across three palettes (basalt canyon, copper flood flat, gypsum basin) with the receipt unchanged at `23/23 · 38/38`; the authored GLB keeps its own procedural detail textures. Provenance and prompt in `public/assets/asset-credits.json`.
 - [x] Convex connects approved examples, training status, checkpoint metadata, and match/replay records.
 - [x] Submission claims name only verified integrations and distinguish pre-existing from new work.
 

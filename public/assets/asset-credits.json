@@ -82,6 +82,21 @@
         "high-tide.svg": "https://game-icons.net/1x1/delapouite/high-tide.html"
       },
       "modifications": "SVG files unmodified; tinted via CSS mask color"
+    },
+    {
+      "name": "PBRgen terrain material (generated)",
+      "author": "PBRgen by AIxPOLY, generated for this project from one text prompt",
+      "license": "Generated with AI for this project; the source prompt and the derived maps are recorded below",
+      "source": "https://www.pbrgen.com",
+      "files": [
+        "materials/pbrgen/rock/albedo.jpg",
+        "materials/pbrgen/rock/normal.jpg",
+        "materials/pbrgen/rock/rough.jpg"
+      ],
+      "prompt": "dark grey fractured basalt rock, sharp angular cracks, volcanic stone, fine grain",
+      "pipeline": "text -> start texture -> Create material at 2K (quality pass, per-map derivation, seam repair so it tiles) -> export COL/NRM/ROUGH PNG -> recompressed to 1024 px JPEG for the browser",
+      "use": "the albedo, normal and roughness maps of every generated world; the authored Sandstone Basin does not use them",
+      "modifications": "2K PNG maps resampled to 1024 px and encoded as JPEG; albedo tagged sRGB, normal and roughness tagged NoColorSpace; tiled at repeat 12 across the basin"
     }
   ]
 }

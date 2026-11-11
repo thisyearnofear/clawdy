@@ -147,6 +147,11 @@ access to something they have already unlocked.
   `hasUnwatchedComparison` attaches an optional "See what changed" CTA beside the
   primary next-step (Play / Clash again) — comparison stays available but never
   forces another watch as the sole next action.
+- First-run play hint (`readouts.ts` `PLAY_HINT_KEY`): teaches once and gets out of the
+  arena's way — it auto-steps aside 10 s after the scene is ready, and clicking "Got it"
+  persists to `localStorage`, so a refresh during a demo never puts a card back over the
+  world. The Play button keeps its pulse from `engagement.showPlayHint` rather than from
+  the card, so the affordance survives the card leaving.
 
 `services/engagementProgress.ts` persists the two engagement signals to localStorage.
 Deliberately not synced: a shared browser unlocking the advanced surface is harmless, and

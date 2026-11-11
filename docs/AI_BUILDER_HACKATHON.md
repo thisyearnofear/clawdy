@@ -550,8 +550,9 @@ already in hand, and the two should never be conflated in copy.
 > OpenAI-compatible chat endpoints (configured model: `qwen/qwen3.8-flash` through an
 > OpenAI-compatible aggregator, with a provider fallback chain) for the world translator, coaching
 > intent, doctrine drafting and the race caster. Tripo for generated props and chassis bodies, Mint
-> for the champion model, Blender for the authored arena terrain. TypeScript throughout, vitest for
-> 846 tests, plus a playability gate script (`npm run eval:gate`) that must pass at every merge.
+> for the champion model, Blender for the authored arena terrain, PBRgen (AIxPOLY) for the terrain
+> material maps. TypeScript throughout, vitest for 846 tests, plus a playability gate script
+> (`npm run eval:gate`) that must pass at every merge.
 
 - **How does your project transform natural language into interactive 3D experiences?**
 
@@ -562,7 +563,12 @@ already in hand, and the two should never be conflated in copy.
 > killing the surface. (3) `services/arenaWorldgen.ts` builds a heightfield analytically from those
 > parameters (ridge, drainage channels, rim falloff, waterline), paints it per palette with slope
 > blended into the rock colour, and scatters Tripo rock and scrub props from a seed derived from the
-> world digest, so the same sentence grows the same rocks in every take. Props are visual only — they
+> world digest, so the same sentence grows the same rocks in every take. The generated mesh then
+> renders with a PBRgen material set — albedo, normal and roughness out of one sentence, "dark grey
+> fractured basalt rock, sharp angular cracks, volcanic stone, fine grain" — and the shader's
+> *response* to light is driven by fields the simulator already certified: per-vertex slope decides
+> whether ground reads dusty or bare, and the flood footprint's own waterline decides where a wet
+> specular band hugs the shoreline. Props are visual only — they
 > never enter the collider, which is why a certificate cannot be gamed by decoration. (4) Rapier runs
 > the census: 23 ground probes and 38 route walks with the same slope rule and stand test that gate
 > the authored course; refused ground is repaired minimally, then the relief steps down, until it
@@ -583,8 +589,13 @@ already in hand, and the two should never be conflated in copy.
 > (Lorc, Delapouite) with their attribution file. Tripo task IDs for the energy cores and the three
 > chassis bodies are recorded in `mint-assets.json` alongside the Mint champion rover, and the AI
 > race caster, doctrine and world translator calls are runtime API use, not bundled material. The
-> default Sandstone Basin terrain is a Blender-authored GLB, SHA-256-pinned in `services/arenaCourse.ts`;
-> the earlier World Labs Marble splat world was retired and remains in git history, while World Labs
+> generated-terrain material maps come from PBRgen (AIxPOLY, Pro account): one text prompt, eight
+> candidate albedos, one Create pass at 2K, exported as separate colour/normal/roughness PNGs and
+> recompressed to 1024 px JPEG — prompt, pipeline and licence recorded in `asset-credits.json`.
+> The default Sandstone Basin terrain is a Blender-authored GLB, SHA-256-pinned in `services/arenaCourse.ts`,
+> and it keeps its own procedural detail textures — the PBR set is only ever applied to generated
+> worlds, so the authored arena is byte-for-byte what it was. The earlier World Labs Marble splat
+> world was retired and remains in git history, while World Labs
 > Spark (`@sparkjsdev/spark`) still draws the Gaussian-splat celebration bursts on bank and collect.
 > Code dependencies are the MIT/Apache-2 licences published on npm. API keys live only in server-side
 > Vercel environment variables and are never committed; the free-tier model quota is the reason every
