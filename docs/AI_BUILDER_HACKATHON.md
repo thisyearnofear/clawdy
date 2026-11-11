@@ -446,7 +446,7 @@ rather than showing a broken surface.
 | Deliverable | Status |
 | --- | --- |
 | Public code repository | ✅ https://github.com/thisyearnofear/clawdy — keep public and stable through judging |
-| Hosted browser demo | ✅ https://clawdy.trustfall.xyz — must stay up and functional through Nov 25 |
+| Hosted browser demo | ✅ https://clawdy.trustfall.xyz — **now runs the forge and the certificate** (auto-deployed from `d652c9f` at 11:10 UTC, prompt-to-world verified in a browser at 11:12 UTC, 18 s to a certified world, no console errors). Must stay up and functional through Nov 25 |
 | Demo video **under 3 minutes** | ✅ recorded and cut — `~/Downloads/clawdy-walkthrough-v1.mp4`, 1:34, 1080p30, narrated (macOS `say`) and captioned, `~/Downloads/clawdy-walkthrough.srt`. Beats: title → type the sentence → translator + census → canyon reveal with the receipt strip → 23/23 / 38/38 punched in → race on generated ground → call the next route → round result → evidence board. **Still open: it needs a hosted URL for the form** (YouTube unlisted / Drive anyone-with-link). Sources and the cut list are in [RECORDING_SCRIPT.md](RECORDING_SCRIPT.md) |
 | Short written description (what you built, problem/opportunity, how AI is used) | ☐ **OPEN.** Draft below; honesty rules from the Tripothon era still apply — claim only what is on screen |
 | Chosen focus category | ⚠ **The submission form has NO category picker** — walked all 5 pages Nov 10 (inspect values, unsubmitted). T&Cs §6.2.5 still requires "the selected focus category", so it must go **in the written description** (e.g. first line: "Focus category: prompt-to-world creation") and possibly Q11/Q12 answers. Recommend "prompt-to-world creation" if F–I land, else "intelligent NPCs or autonomous agents" |
@@ -454,16 +454,18 @@ rather than showing a broken surface.
 
 ## Form answers, ready to paste (Nov 11, 10:45 UTC)
 
-Written against the local build at the recorded commit (`c99db5c`), which is the build the
-video shows. Every number is either on screen in the video or in `docs/eval-gate.json` /
-`docs/eval-es.json`. Replace the four `[fill]` placeholders before sending.
+Written against `d652c9f`, pushed to `main` and auto-deployed to production at 11:10 UTC.
+Every number is either on screen in the video or in `docs/eval-gate.json` / `docs/eval-es.json`.
+Replace the one `[fill]` placeholder (the hosted video URL) before sending.
 
-**Blocking decision — the live demo URL.** The form validates a hosted URL, and
-`clawdy.trustfall.xyz` currently runs the pre-worldgen build: the forge, the certificate and
-the scattered rock are **not on prod** (deploy held by choice, five commits unpushed). Either
-deploy `main` before submitting, or say in the access instructions that the certified forge is
-demonstrated in the video and the prod build is the coaching league without it. Deploying is
-the stronger entry; the write-up below assumes it happened.
+**Prod, verified after the deploy (Nov 11, 11:12 UTC).** Headed Chromium on
+`https://clawdy.trustfall.xyz`, no account: typed *"a flooded salt flat under a copper sky"* →
+`world generated "Copper Flooded Salt Flat" · 23/23 stations grounded · 38/38 routes cleared`,
+certified in **18 s**, then Play — the rover races that ground, the flood timer fires with the
+caster line, and the `Call the next route` card offers three legal options. **Zero console
+errors, zero failed requests** on that path. The world translator answers on prod through the
+`COACH_INTENT_*` fallback chain (there is no `WORLD_INTENT_*` var; the route is designed to fall
+back to it), so the LLM path — not the preset gallery — is what produced that spec.
 
 ### Page 2 — project
 
@@ -518,7 +520,7 @@ the stronger entry; the write-up below assumes it happened.
 
 ### Page 3 — links and access
 
-- **Public repository:** https://github.com/thisyearnofear/clawdy (public; keep through judging)
+- **Public repository:** https://github.com/thisyearnofear/clawdy (public, `main` at `d652c9f` — the forge, the certificate and the scatter are all pushed; keep it stable through judging)
 - **Live demo:** https://clawdy.trustfall.xyz
 - **Demo video (<3 min):** `[fill — upload ~/Downloads/clawdy-walkthrough-v1.mp4 to YouTube unlisted or Drive "anyone with link" and paste the URL; the form validates URL format, a local file will not do]`
 - **Access instructions:**
