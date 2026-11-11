@@ -27,10 +27,11 @@ import { createWorldSurface } from './worldSurface'
  * Everything below `generateWorld` is Dev 1's deliverable: the TS port of the
  * heightfield (ground_height / is_road / skirt walls), the displaced
  * `THREE.BufferGeometry` (grid ≤ 200×200, flat-shaded low-poly), and the
- * playability certificate ladder (flatten a pad → retry at reduced relief →
- * return null so the loader falls back to the pinned authored course). The
- * function signature is part of the contract so Track G's loader can be built
- * and tested before the implementation lands.
+ * playability certificate ladder (as described → grade the refused points →
+ * step the relief down until it certifies → return null so the loader falls
+ * back to the pinned authored course). The function signature is part of the
+ * contract so Track G's loader can be built and tested before the
+ * implementation lands.
  */
 
 export interface WorldSpec {
@@ -145,14 +146,13 @@ export async function certifyGeneration(spec: WorldSpec, signal?: AbortSignal): 
   const digest = await worldSpecDigest(spec)
   const base = reliefPlanFor(spec)
 
-  let plan = base
   let repairPoints: PadPoint[] = []
   let lastAudit: WorldAudit | null = null
 
-  for (let rung = 0; rung < RUNG_COUNT; rung++) {
+  for (const rung of CERTIFICATE_LADDER) {
     signal?.throwIfAborted()
-    if (rung === RUNG_COUNT - 1) plan = retreatPlan(base)
-    const attempt = buildAttempt(spec, plan, repairPoints, signal)
+    const plan = rung.relief === 1 ? base : retreatPlan(base, rung.relief)
+    const attempt = buildAttempt(spec, plan, rung.grade ? repairPoints : [], signal)
     lastAudit = attempt.audit
     if (attempt.passes) {
       const certificate: WorldgenCertificate = {
@@ -286,7 +286,20 @@ const TEMPLATE = Object.freeze({
   variantEvery: 7,
 })
 
-const RUNG_COUNT = 3
+/**
+ * The certificate ladder, least override first: the world exactly as
+ * described, then the same relief with its refused points graded, then the
+ * relief stepped down one notch at a time — each step keeps as much of what the
+ * user asked for as the sim will certify — and only when every rung is refused
+ * does the loader fall back to the authored basin.
+ */
+const CERTIFICATE_LADDER = Object.freeze([
+  { relief: 1, grade: false },
+  { relief: 1, grade: true },
+  { relief: 0.78, grade: true },
+  { relief: 0.55, grade: true },
+  { relief: 0.34, grade: true },
+])
 
 /**
  * The authored basin's relief, expressed in the same plan shape a spec
@@ -319,15 +332,14 @@ function smoothstep(a: number, b: number, value: number): number {
   return t * t * (3 - 2 * t)
 }
 
-/** `reliefPlanFor`'s inverse for the third rung: same shape, half the drama. */
-export function retreatPlan(plan: ReliefPlan): ReliefPlan {
-  const k = TEMPLATE.reliefRetreat
+/** Same relief shape, less of it — what a retreat rung hands the mesh builder. */
+export function retreatPlan(plan: ReliefPlan, factor: number = TEMPLATE.reliefRetreat): ReliefPlan {
   return {
     ...plan,
-    ridgeHeight: plan.ridgeHeight * k,
-    channelDepth: plan.channelDepth * k,
-    rimHeight: plan.rimHeight * k,
-    dune: plan.dune * k,
+    ridgeHeight: plan.ridgeHeight * factor,
+    channelDepth: plan.channelDepth * factor,
+    rimHeight: plan.rimHeight * factor,
+    dune: plan.dune * factor,
   }
 }
 

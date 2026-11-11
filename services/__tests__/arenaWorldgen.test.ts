@@ -103,6 +103,30 @@ beforeAll(async () => {
   await initializeArenaPhysics()
 })
 
+/**
+ * Interior terrain vertices of a generated world, as `[x, y, z]` triples that
+ * can be compared point-for-point against `worldHeightAt`. The boundary ring,
+ * skirt walls and cap fan share grid coordinates but are not terrain height, so
+ * they are outside the footprint margin.
+ */
+function meshSurface(scene: THREE.Object3D): [number, number, number][] {
+  const mesh = scene.getObjectByName('Terrain') as THREE.Mesh
+  const pos = mesh.geometry.getAttribute('position') as THREE.BufferAttribute
+  const { minX, maxX, minZ, maxZ } = WORLDGEN_BOUNDS
+  const onGrid = (value: number) => Math.abs(value - Math.round(value / WORLDGEN_STEP) * WORLDGEN_STEP) < 1e-4
+  const out: [number, number, number][] = []
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i)
+    const y = pos.getY(i)
+    const z = pos.getZ(i)
+    if (!onGrid(x) || !onGrid(z) || y < -0.5) continue
+    if (x <= minX + WORLDGEN_STEP || x >= maxX - WORLDGEN_STEP) continue
+    if (z <= minZ + WORLDGEN_STEP || z >= maxZ - WORLDGEN_STEP) continue
+    out.push([x, y, z])
+  }
+  return out
+}
+
 describe('heightfield port fidelity', () => {
   it('reproduces the Blender baker ground_height at every sampled point', () => {
     expect(PYTHON_GROUND_HEIGHT_FIXTURE.length).toBeGreaterThanOrEqual(80)
@@ -275,6 +299,67 @@ describe('repair ladder', () => {
       expect(report.certificate!.stationsGrounded).toBe(report.certificate!.stationsTotal)
       expect(report.certificate!.routesCleared).toBe(report.certificate!.routesTotal)
       expect(report.audit!.failures).toEqual([])
+    } finally {
+      report.world!.dispose()
+    }
+  }, 120000)
+
+  it('repairs the refused patch only — the world keeps the relief that was asked for', async () => {
+    // The soft spot this guards: a repair that flattens a disc of ground, or
+    // retreats the whole planet, certifies perfectly and looks nothing like the
+    // description. Measure the shipped mesh against the analytic relief the
+    // spec asked for and hold the repair to the neighbourhood it was told to fix.
+    const report = await certifyGeneration(STEEP_CANYON)
+    expect(report.world).not.toBeNull()
+    try {
+      const surface = meshSurface(report.world!.scene)
+      let moved = 0
+      let deepest = 0
+      for (const [x, y, z] of surface) {
+        const delta = Math.abs(y - worldHeightAt(STEEP_CANYON, x, z))
+        if (delta > 1e-6) moved++
+        if (delta > deepest) deepest = delta
+      }
+      expect(surface.length).toBeGreaterThan(6000)
+      expect(moved / surface.length, 'repair should touch a neighbourhood, not the map').toBeLessThan(0.15)
+      expect(deepest, 'no vertex should sink or rise more than a step of grading').toBeLessThan(0.6)
+    } finally {
+      report.world!.dispose()
+    }
+  }, 120000)
+
+  it('steps the relief down only as far as the sim insists', async () => {
+    // The most demanding corner of the contract: a full-height canyon ridge,
+    // the tallest and steepest rim and the maximum channel load. It cannot
+    // certify as described, so the ladder must override it — the promise is
+    // that the override is *minimal*, not that the world gets flattened to
+    // whatever the sim likes. Before the ladder stepped, this corner lost
+    // almost half its relief; it must keep the bulk of it.
+    const spec: WorldSpec = {
+      ...BASIN,
+      landform: 'canyon',
+      ridge: { x: 5.5, height: 1.6 },
+      channels: { count: 6, spacing: 4, depth: 0.2 },
+      rim: { height: 2.2, steepness: 4 },
+      waterlineOffset: -0.2,
+      scenarioName: 'Overwhelming Canyon',
+    }
+    const report = await certifyGeneration(spec)
+    expect(report.world).not.toBeNull()
+    try {
+      const surface = meshSurface(report.world!.scene)
+      let askedHigh = -Infinity
+      let madeHigh = -Infinity
+      let deepest = 0
+      for (const [x, y, z] of surface) {
+        const asked = worldHeightAt(spec, x, z)
+        if (asked > askedHigh) askedHigh = asked
+        if (y > madeHigh) madeHigh = y
+        deepest = Math.max(deepest, Math.abs(y - asked))
+      }
+      expect(madeHigh / askedHigh, 'the crest the user described should survive').toBeGreaterThan(0.7)
+      expect(deepest, 'the override stays bounded').toBeLessThan(1.6)
+      expect(report.certificate!.repairsApplied).toBeGreaterThan(0)
     } finally {
       report.world!.dispose()
     }

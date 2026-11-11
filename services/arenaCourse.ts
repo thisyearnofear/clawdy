@@ -457,10 +457,10 @@ export function generatedWorldScene(worldId: string): THREE.Group | undefined {
  * and workbench treat it as a drop-in.
  *
  * Never leaves a broken arena: when every generation rung fails (or
- * `generateWorld` throws) it loads the pinned authored course and reports
- * `fellBackToAuthored` with the honest reason. The import is function-scoped
- * so arenaWorldgen's runtime imports back into this module (buildArenaCourse
- * et al.) cannot form a load-time cycle.
+ * `certifyGeneration` throws) it loads the pinned authored course and reports
+ * `fellBackToAuthored` with the census that justified the refusal. The import
+ * is function-scoped so arenaWorldgen's runtime imports back into this module
+ * (buildArenaCourse et al.) cannot form a load-time cycle.
  */
 export async function loadGeneratedCourse(spec: WorldSpec, signal?: AbortSignal): Promise<LoadedGeneratedCourse> {
   const worldgen = await import('./arenaWorldgen')
@@ -470,8 +470,12 @@ export async function loadGeneratedCourse(spec: WorldSpec, signal?: AbortSignal)
   let generated: GeneratedWorld | null = null
   let failure: string | null = null
   try {
-    generated = await worldgen.generateWorld(spec, signal)
-    if (!generated) failure = 'world generation could not certify a playable course'
+    // certifyGeneration, not generateWorld — its report carries the audit
+    // census, so a refusal tells the receipts strip which stations and routes
+    // the sim actually rejected.
+    const report = await worldgen.certifyGeneration(spec, signal)
+    generated = report.world
+    failure = report.failure
   } catch (error) {
     if (signal?.aborted) throw error
     failure = error instanceof Error ? error.message : 'world generation failed'

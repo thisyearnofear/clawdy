@@ -47,7 +47,9 @@ export function ReceiptsStrip({ world, brainsTrained, approvedLessons, practiceD
         text: `${routes.ok}/${routes.total} routes cleared`,
       })
       if (cert.repairsApplied > 0) {
-        segments.push({ key: 'repairs', text: `${cert.repairsApplied} pad${cert.repairsApplied === 1 ? '' : 's'} repaired` })
+        // `repairsApplied` counts refused points handed to the ladder, not
+        // flattened discs — two close points grade as one patch of ground.
+        segments.push({ key: 'repairs', text: `${cert.repairsApplied} ground point${cert.repairsApplied === 1 ? '' : 's'} repaired` })
       }
     }
   } else {

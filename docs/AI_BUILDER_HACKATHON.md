@@ -278,14 +278,33 @@ how the test proves a generated world can never be a copy of the scored basin. T
 87-point fixture is compared against `ground_height`/`is_road` from the shipped
 baker, unmodified, at 1e-5.
 
-Two follow-ups for the other tracks: `loadGeneratedCourse` reads the refusal through
-`generateWorld`, so it reports the generic "could not certify a playable course" —
-switch it to `certifyGeneration(spec)` to put the measurements (`17/23 stations
-grounded, 13/38 routes cleared`) on the receipts strip. And
+Two follow-ups for the other tracks. `loadGeneratedCourse` read the refusal through
+`generateWorld`, so it reported the generic "could not certify a playable course" —
+**switched to `certifyGeneration(spec)` on Nov 11, 01:20 UTC**, which quotes the census (measured refusal for a spec that skipped the sanitizer: `17/23
+stations grounded, 13/38 routes cleared (first refusal: cross-n: Unsupported course
+surface at 7.00, 2.00)`), which is what `ArenaScene`'s forge status line renders. And
 `services/__tests__/arenaWorldIntent.test.ts`'s stub-era loader test was flipped to
 the real path (generated + registered scene, and an authored fallback for a spec that
 skipped the sanitizer) — that edit crossed file ownership because Track F landing made
 the stub assertion false.
+
+**The "mesa" soft spot, measured (Nov 11, 01:20 UTC).** Swept all 270 corners of the
+contract space (5 landforms × 3 ridge heights × 3 rim settings × 3 channel loads ×
+2 waterlines) and diffed every certified mesh against the analytic relief its own spec
+asked for. The pad ladder never produces a plateau: `flatPlateau` vertices (spec slope
+> 0.3 repaired to < 0.05) came back **0 for every corner**, and the worst *local* pad
+moved 332 of 8 769 vertices by at most 0.19 m — a shallow grade scar, not a mesa. What
+actually redraws a canyon is the last rung: a single global `retreatPlan` to 0.55×
+relief, measured at 665 m³ of displaced ground and 2.61 m on one vertex in the worst
+corner. So the ladder now steps the relief (1 → grade → 0.78 → 0.55 → 0.34) and stops
+at the first rung that certifies: same 270 corners, still 0 refusals and 18 repaired,
+worst displacement **325 m³ / 1.28 m** — the sim overrides about half as much ground,
+and `steps the relief down only as far as the sim insists` locks the number in.
+
+A gradient-clip rung (cap each vertex's neighbour delta to 0.6 m/m, roads excluded from
+the apron) was built and measured for this too: identical outcomes on all 270 corners —
+it never certified where the pad ladder could not — so it was reverted rather than
+shipped as dead weight.
 
 ### Track G — `/api/world-intent` + live wiring (Dev 2)
 

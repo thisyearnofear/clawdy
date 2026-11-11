@@ -198,7 +198,10 @@ describe('loadGeneratedCourse', () => {
     try {
       expect(loaded.generated.fellBackToAuthored).toBe(true)
       expect(loaded.generated.worldId).toBe(ARENA_WORLD.id)
-      expect(loaded.generated.failure).toContain('could not certify a playable course')
+      // The loader quotes the audit, not a generic sentence: the UI strip has
+      // to be able to show what the sim actually rejected.
+      expect(loaded.generated.failure).toContain('could not be certified')
+      expect(loaded.generated.failure).toMatch(/\d+\/\d+ stations grounded, \d+\/\d+ routes cleared/)
       expect(loaded.generated.certificate).toBeNull()
       expect(loaded.course.generated).toBeUndefined()
       expect(loaded.course.scenario.worldVersion).toBe(ARENA_WORLD.version)
