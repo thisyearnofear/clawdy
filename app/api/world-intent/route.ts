@@ -80,7 +80,12 @@ export async function POST(request: Request) {
     temperature: 0.4,
     maxTokens: 400,
     json: true,
-    timeoutMs: 15_000,
+    // Measured: the chain's working provider answers this prompt in 3.7–11 s
+    // and occasionally nearer 20 s, so a 15 s ceiling cuts it off mid-reply.
+    timeoutMs: 25_000,
+    // A collapsed reply must not cost the whole surface: reject it here so the
+    // chain's next provider answers, rather than 422-ing on the first noise.
+    accept: content => parseWorldReply(content) !== null,
   })
   if (result.kind === 'unconfigured') {
     return NextResponse.json({ error: 'world-intent-not-configured' }, { status: 503 })
@@ -90,6 +95,8 @@ export async function POST(request: Request) {
   }
   const spec = parseWorldReply(result.content)
   if (!spec) {
+    // Unreachable while `accept` gates the chain on this same parse; kept as the
+    // type-level fallthrough so a future caller cannot ship an unparsed reply.
     return NextResponse.json({ error: 'translator-no-fit' }, { status: 422 })
   }
   return NextResponse.json({ spec })

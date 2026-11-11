@@ -81,6 +81,7 @@ export async function POST(request: Request) {
     temperature: 0,
     maxTokens: 250,
     json: true,
+    accept: content => parseDoctrineReply(content) !== null,
   })
   if (result.kind === 'unconfigured') {
     return NextResponse.json({ error: 'doctrine-not-configured' }, { status: 503 })

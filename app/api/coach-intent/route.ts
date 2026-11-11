@@ -80,6 +80,7 @@ export async function POST(request: Request) {
     temperature: 0,
     maxTokens: 200,
     json: true,
+    accept: content => parseIntentReply(content) !== null,
   })
   if (result.kind === 'unconfigured') {
     return NextResponse.json({ error: 'coach-intent-not-configured' }, { status: 503 })

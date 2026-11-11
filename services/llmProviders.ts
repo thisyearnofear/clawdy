@@ -57,6 +57,14 @@ export interface ChatRequest {
   json?: boolean
   /** Per-route model override (e.g. CASTER_MODEL for commentary). */
   modelOverride?: string
+  /**
+   * What counts as a usable reply. A model can answer 200 with noise — measured
+   * in the wild as 641 characters starting `{"!!!!` — and a caller that only
+   * checks for a non-empty string hands that straight to its parser. Rejecting
+   * here moves the chain on to the next provider instead of calling noise a
+   * success.
+   */
+  accept?: (content: string) => boolean
   timeoutMs?: number
 }
 
@@ -64,8 +72,8 @@ export type ChatResult = { kind: 'ok'; content: string } | { kind: 'unconfigured
 
 /**
  * Runs the request against each provider in order until one returns usable
- * content. Credit exhaustion, rate limits, timeouts and empty replies all
- * fall through to the next provider.
+ * content. Credit exhaustion, rate limits, timeouts, empty replies and replies
+ * `accept` rejects all fall through to the next provider.
  */
 export async function completeChat(
   providers: readonly LlmProvider[],
@@ -91,14 +99,20 @@ export async function completeChat(
         signal: AbortSignal.timeout(request.timeoutMs ?? 12_000),
       })
       if (!response.ok) {
+        const detail = (await response.text().catch(() => '')).slice(0, 140).replace(/\s+/g, ' ')
+        console.warn(`[llmProviders] ${provider.model} answered ${response.status}: ${detail}`)
         lastFailure = { kind: 'upstream' }
         continue
       }
       const data = (await response.json()) as { choices?: { message?: { content?: unknown } }[] }
       const content = data.choices?.[0]?.message?.content
-      if (typeof content === 'string' && content.trim().length > 0) return { kind: 'ok', content }
+      if (typeof content === 'string' && content.trim().length > 0 && (request.accept?.(content) ?? true)) {
+        return { kind: 'ok', content }
+      }
+      console.warn(`[llmProviders] ${provider.model} returned no usable reply: ${String(content).slice(0, 140).replace(/\s+/g, ' ')}`)
       lastFailure = { kind: 'upstream' }
-    } catch {
+    } catch (error) {
+      console.warn(`[llmProviders] ${provider.model} failed: ${error instanceof Error ? error.name : 'unknown error'}`)
       lastFailure = { kind: 'upstream' }
     }
   }

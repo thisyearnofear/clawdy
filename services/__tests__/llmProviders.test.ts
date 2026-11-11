@@ -84,6 +84,23 @@ describe('chat completion fallback behavior', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
+  it('falls through a 200 reply whose content the caller cannot use', async () => {
+    // Measured in production-shaped traffic: a model answering 200 with 641
+    // characters of `{"!!!!`. Non-empty is not the same as usable.
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse('{"!!!!!!!!!!'))
+      .mockResolvedValueOnce(jsonResponse('{"landform":"basin"}'))
+    vi.stubGlobal('fetch', fetchMock)
+    const result = await completeChat(providers, {
+      ...request,
+      accept: content => {
+        try { return typeof JSON.parse(content) === 'object' } catch { return false }
+      },
+    })
+    expect(result).toEqual({ kind: 'ok', content: '{"landform":"basin"}' })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
   it('reports unconfigured without touching the network', async () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)

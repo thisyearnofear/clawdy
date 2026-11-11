@@ -77,6 +77,7 @@ export async function POST(request: Request) {
     maxTokens: 700,
     json: true,
     timeoutMs: 25_000,
+    accept: content => parseSpecReply(content) !== null,
   })
   if (result.kind === 'unconfigured') {
     return NextResponse.json({ error: 'arena-intent-not-configured' }, { status: 503 })

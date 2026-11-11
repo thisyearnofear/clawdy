@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { completeChat, llmProviders } from '../../../services/llmProviders'
-import { casterSystemPrompt, casterUserMessage, type CasterFact } from '../../../services/raceCaster'
+import { casterSystemPrompt, casterUserMessage, validateCasterLine, type CasterFact } from '../../../services/raceCaster'
 
 /**
  * Race-caster route — Track D (AI Builder Hackathon).
@@ -47,6 +47,7 @@ export async function POST(request: Request) {
     maxTokens: 60,
     timeoutMs: 8_000,
     modelOverride: process.env.CASTER_MODEL,
+    accept: content => validateCasterLine(content, fact) !== null,
   })
   if (result.kind === 'unconfigured') {
     return NextResponse.json({ error: 'caster-not-configured' }, { status: 503 })
