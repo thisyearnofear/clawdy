@@ -216,6 +216,38 @@ and unlike every other prompt-to-world entry, **every generated world ships with
 machine-checked playability certificate**: the world is not just pretty, it is runnable
 and measurable.
 
+### The claim, earned — verified in a browser (Nov 11, 01:45 UTC)
+
+The sentence that was previously only true in tests is now true on screen. Headless
+Chromium against the dev build, unmodified working tree, two takes:
+
+| Typed description | World built | Receipt on screen |
+| --- | --- | --- |
+| "a razor-backed basalt canyon with a wide dry riverbed" | *Razor-Backed Canyon* — basalt palette, high ridge, dry valley road | `world generated "Razor-Backed Canyon" · 23/23 stations grounded · 38/38 routes cleared` |
+| "a flooded salt flat under a copper sky" (the scripted video line) | *Flooded Copper Salt Flat* — copper palette, low relief, drainage channels | `world generated "Flooded Copper Salt Flat" · 23/23 stations grounded · 38/38 routes cleared` |
+
+Both then ran: the rover drives the generated ground, the flood fires on it
+(`Flood · valley slowed`), and the receipt stays pinned under the scene for the whole
+run. The refusal path is equally honest — the loader quotes the census it ran
+(`… stations grounded, … routes cleared`) and the authored basin stays up.
+
+**Use these words, in this order, everywhere the entry is described:**
+
+> Plain language into a 3D scene is what every entry here will claim. Ours is the one
+> that proves the scene is playable before it shows it to you — and refuses when it
+> can't. The model proposes bounded parameters; the simulator that scores the authored
+> championship runs a 23-probe, 38-route census on the generated ground first, repairs
+> the least it can, and only then hands you the world.
+
+Two honesty features to state, not hide: the Blender-authored GLB is still the default
+world, and every generated course is practice-split only — it can never satisfy a
+scored Prove scenario, so generated terrain cannot touch a ranked result.
+
+Measured numbers safe to quote in copy: 16–160 ms to generate and certify in the
+browser · 0 refusals across a 270-corner sweep of the parameter contract · worst-case
+relief override after the stepped ladder 325 m³ / 1.28 m of ground (was 665 m³ / 2.61 m)
+· 831 tests and `eval:gate` green at the proof commit.
+
 ### Shared contract — `WorldSpec` (frozen before any dev starts; this is the API between tracks)
 
 The LLM emits parameters only — never coordinates, vertices, edges or geometry. The
@@ -394,7 +426,7 @@ and the mobile pass for the video.
 
 ### The video, shot for shot (<3 min, recorded on prod after the smoke matrix)
 
-1. **0:00–0:20** — cold open on the blank prompt field. Type "a flooded salt flat under a copper sky". The wireframe world assembles and repaints. Receipts strip reads `world generated · 19/19 grounded · 18/18 routes cleared`.
+1. **0:00–0:20** — cold open on the blank prompt field. Type "a flooded salt flat under a copper sky". The wireframe world assembles and repaints. Receipts strip reads `world generated "Flooded Copper Salt Flat" · 23/23 stations grounded · 38/38 routes cleared` — **this is the measured outcome of that exact prompt, verified in a browser on Nov 11; do not re-script it around an assumed number.**
 2. **0:20–0:50** — Play. Two autonomous rovers race the *new* terrain. Caster line appears over a recorded fact.
 3. **0:50–1:30** — "Hug the low road but panic in floods" → doctrine drafts, approve, train. Lesson card leads with **what your brain actually changed**.
 4. **1:30–2:00** — Prove: coaching goes dark, held-out board, score delta against the untrained baseline.
@@ -422,9 +454,44 @@ rather than showing a broken surface.
 
 ## Draft description beats
 
-- **What we built:** Clawdy, a browser league where you never drive — you coach. A physical 3D arena (Blender-authored terrain shared by renderer and Rapier collider), autonomous rovers with real learned policies, server-authoritative matches with hidden held-out layouts, and a public, re-simulatable replay for every contest.
-- **The opportunity we explored:** making machine learning *legible* to a player. The skill is curation — which corrections to approve, when to train — and the payoff is watching your agent use what you taught it after you are no longer allowed to help.
-- **How AI is used:** a trained MLP policy updated by the player's own approved corrections; Tripo text-to-3D for the generated chassis bodies and Forge; Spark (World Labs) Gaussian splats for celebration effects; Mint-generated champion rover; LLM-adjacent coaching surfaces. Every tool named here is on screen in a live run or credited in the repo.
+Copy for the form lives here; every number below is measured, and the sentences are the
+ones we ship. Focus category goes **in the first line of the written description** — the
+form has no picker (see packet table).
+
+- **Focus category (first line):** prompt-to-world creation.
+- **What we built:** Clawdy, a browser league where you never drive — you coach. A
+  physical 3D arena you can rebuild by describing it, autonomous rovers with real learned
+  policies, server-authoritative matches on hidden held-out layouts, and a public,
+  re-simulatable replay for every contest.
+- **The problem we set out to solve:** making machine learning *legible* to a player, and
+  making generated 3D content *trustworthy*. Both halves of that are curation problems:
+  which corrections to approve, when to train, and whether a machine-made world is
+  actually playable before you bet an hour of racing on it.
+- **How AI is used (the honest version):** an LLM translates plain language into three
+  different kinds of artifact — terrain parameters, coaching doctrine, and a chassis
+  description for Tripo text-to-3D — and a trained MLP policy is updated by the player's
+  own approved corrections. In every case the model proposes and a deterministic system
+  decides: bounded parameter ranges, a sanitizer, and the same physics simulator that
+  gates the scored course.
+- **What makes it unique (say it exactly this way):** plain language into an interactive
+  3D scene is what every entry will claim; ours is the one that **proves the scene is
+  playable before showing it, and refuses otherwise**. Before a generated world appears,
+  the shipping simulator runs a census on it — 23 ground probes and 38 route walks
+  through Rapier, using the same `groundPoint` slope rule and stand-test that gate the
+  authored championship course. Refused ground is repaired a point at a time, then the
+  relief steps down notch by notch, and the first version the sim signs is the one you
+  see. If none certify, you are not handed a broken arena: the refusal is reported with
+  its measurements and the authored world stays up. The receipt —
+  `23/23 stations grounded · 38/38 routes cleared` — is rendered on screen under the
+  scene, generated and certified in 16–160 ms.
+- **The honesty we volunteer before a judge finds it:** the Blender-authored GLB is still
+  the default world; generated courses are stamped practice-only and can never satisfy a
+  scored Prove scenario; the trained champion does not beat the `weather` bot; and the
+  free-tier model behind the world translator throttles, which is why every language
+  surface runs a provider fallback chain that rejects a reply it cannot parse.
+- **Also on screen:** AI race caster over recorded facts, doctrine drafted from a
+  sentence, Forge chassis generation via Tripo, World Labs Spark splats, Convex
+  server-run ladder with replay-verified results.
 
 ## Remaining timeline (deadline Nov 11, 16:30 CEST)
 

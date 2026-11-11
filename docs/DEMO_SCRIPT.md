@@ -17,16 +17,20 @@ prod after the smoke matrix (mirrors the shot list in
 
 | Time | Show | Say |
 | --- | --- | --- |
-| 0:00–0:20 | Cold open on the blank prompt field over the live world. Type **"a flooded salt flat under a copper sky"** → the world assembles and repaints. The receipts strip reads `world generated · 19/19 grounded · 18/18 routes cleared`. | "A sentence becomes terrain — and the world only ships with a machine-checked playability certificate." |
+| 0:00–0:20 | Cold open on the blank prompt field over the live world. Type **"a flooded salt flat under a copper sky"** → the world assembles and repaints. The receipts strip reads `world generated "Flooded Copper Salt Flat" · 23/23 stations grounded · 38/38 routes cleared` — measured from that exact prompt, not a target. | "A sentence becomes terrain — and the scene is proved playable by the simulator before it is ever shown to me. If it can't be proved, it isn't shipped." |
 | 0:20–0:50 | **Play.** Two autonomous rovers race the *new* terrain; caster line fires over a recorded fact. Flood hits on schedule. | "The caster only ever rewords what the simulation recorded — it can't invent a thing that didn't happen." |
 | 0:50–1:30 | Finish → **Replay** → **Describe a doctrine**: "hug the low road but panic in floods" → **Draft lessons** (each names a real recorded tick and its measured delta). Approve → **Train**. The lesson card leads with what the brain actually changed. | "A paragraph becomes lessons at moments that actually happened — each one measured, not promised. I choose what it learns." |
 | 1:30–2:00 | **Prove.** Coaching goes dark, held-out board, score delta against the untrained baseline. | "Weights are frozen. Different floods and cores. I cannot help it." |
 | 2:00–2:30 | **"A scuttling hauler"** → Forge generates the chassis body, and it drives out onto the world from shot 1. End card: three sentences, three artifacts, every one certified. | "Prompt-to-world, working logic, and generated 3D assets — in one product." |
 
-**Quarantine note:** the line "plain language generates playable 3D terrain"
-only enters the script (and README) after the certificate renders on prod in a
-browser. Until then say "parameterized with a playability proof" and keep shot
-1 on the receipts strip, which reads real certificate numbers.
+**Quarantine note — status Nov 11, 01:45 UTC:** the certificate renders in a
+browser with real numbers, verified twice on the local build (the two prompts
+above, plus the rover racing the generated ground and the flood firing on it).
+**Remaining gate: the same receipt on `clawdy.trustfall.xyz`.** Record the video
+on prod only after that check passes; if prod is behind, deploy first rather than
+recording against localhost. If the surface is dark at record time, fall back to
+"parameterized with a playability proof" and keep shot 1 on the receipts strip,
+which reads real certificate numbers either way.
 
 If the translator or generator is down at record time, fall back to the preset
 worlds — they run the same certified generator with no LLM — and to the

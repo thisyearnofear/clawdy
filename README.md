@@ -6,6 +6,21 @@ Clawdy is a **Clash-first** agent league inside a physical world: Clash is the g
 
 > The payoff is watching your agent use something you taught it when you are no longer allowed to help — and finding out whether your coaching held when the arena throws something it has never seen.
 
+## Plain language → a world the simulator already certified
+
+Type a sentence — *"a razor-backed basalt canyon with a wide dry riverbed"* — and the arena is rebuilt from it: landform, relief, flood line and paint all solved from that one description.
+
+"Plain language → interactive 3D scene" is what every entry here will claim. Ours is different in what happens between the model's answer and your eyes: **the scene is proved playable before it is shown to you, and refused otherwise.**
+
+- The model never emits geometry. It proposes bounded parameters — a landform enum, relief numbers inside a contract range, a palette — and the resolver owns every value that reaches the mesh.
+- Before display, the *same* simulator that gates the scored course audits the new one: a census of 23 ground probes and 38 route walks, each judged by Rapier's own `groundPoint` and a 0.3 m stand-test.
+- Where a point is refused, the certificate ladder overrides as little as it can — grade the refused ground, then step the relief down notch by notch — and stops at the first rung the sim signs.
+- If nothing certifies, you never see a broken arena: the refusal is reported with its measurements and the authored Sandstone Basin stays up.
+
+Two things we keep in plain sight rather than hiding: the authored GLB is still the default world, and every generated course is stamped practice-only — it can never satisfy a scored Prove scenario, so generated terrain cannot touch a ranked result.
+
+Measured on the current build: 16–160 ms to generate and certify, 0 refusals across a 270-corner sweep of the parameter contract, and the receipt rendered live under the scene — `world generated "Razor-Backed Canyon" · 23/23 stations grounded · 38/38 routes cleared`.
+
 **What is proven (gate pin `53f3d95c3d9b`):** the coached champion **beats the untrained baseline on all four held-out boards** — +21 banked over a base that banks 0 — and **matches the careful teacher's outcomes on unseen abstract layouts**, every leg within 1 banked, the same champion-win legs (3 = 3). On physical courses it now leads the teacher on the grounded course (28 vs 27) while still trailing on held-out family layouts (56 vs 68) — every leg clearing the harness-enforced no-collapse floor. This paragraph mirrors the CI-enforced claims block in `scripts/eval-gate.ts` — docs may never claim more than the gate checks.
 
 ## The Loop
@@ -52,7 +67,7 @@ npx tsx scripts/bench-chassis.ts     # chassis bench with house bots
 
 Requires Node.js 20+ and npm 10+. Production Convex + Vercel env notes: [docs/DEPLOY.md](docs/DEPLOY.md).
 
-**World visuals:** since September 18 the playable course is a mesh-first Blender-authored terrain (`public/terrain/sandstone-basin.glb` — included, no Blender needed to run the app; explicit rebuild `blender --background --factory-startup --python scripts/build-arena-terrain.py -- --force` with Blender 4.5 LTS on PATH, then re-pin the printed SHA in `services/arenaCourse.ts`), used identically for rendering and physics collision, plus path/landmark overlays. An enhanced visual twin (`public/terrain/sandstone-basin-visual.glb`) authored via pinned Docker Blender 4.2.3 provides procedural detail textures without altering collision geometry. The earlier generated-world (Marble) pipeline was retired and removed on September 26, 2026; git history holds it.
+**World visuals:** since September 18 the playable course is a mesh-first Blender-authored terrain (`public/terrain/sandstone-basin.glb` — included, no Blender needed to run the app; explicit rebuild `blender --background --factory-startup --python scripts/build-arena-terrain.py -- --force` with Blender 4.5 LTS on PATH, then re-pin the printed SHA in `services/arenaCourse.ts`), used identically for rendering and physics collision, plus path/landmark overlays. An enhanced visual twin (`public/terrain/sandstone-basin-visual.glb`) authored via pinned Docker Blender 4.2.3 provides procedural detail textures without altering collision geometry. The earlier generated-world (Marble) pipeline was retired and removed on September 26, 2026; git history holds it. The generator that replaced it is the analytic heightfield in `services/arenaWorldgen.ts` — no DCC, no external world service, and it certifies against the shipped baker's own `ground_height`/`is_road` before a mesh is ever displayed.
 
 ## Documentation
 
