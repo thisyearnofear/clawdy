@@ -1,5 +1,38 @@
 # Walkthrough recording script (1:50, event limit is 1 to 2 minutes)
 
+## v1 cut — delivered Nov 11, 10:33 UTC
+
+`~/Downloads/clawdy-walkthrough-v1.mp4` (1:34, 1920x1080, 30 fps, AAC narration) +
+`~/Downloads/clawdy-walkthrough.srt`. This replaces the prod assumption below: **it was
+recorded against the local build at `c99db5c`**, because the deploy was held. Re-shoot any
+beat on prod after a deploy and the cut list still applies.
+
+Headless Chromium is not usable for this: with SwiftShader the scene renders at ~2 fps and
+Playwright's screencast does not capture the WebGL layer at all. Record **headed, with the
+real GPU** (`chromium.launch({ headless: false, args: [] })` → ANGLE Metal on the M3, ~56 fps,
+captured at 25 fps). Harness: `/tmp/pw/film.mjs` (`ACT=forge-race|preset-race`, `DESC=...`),
+cut list `/tmp/pw/build/cut.sh`, assembly `/tmp/pw/build/assemble.sh`, captions
+`/tmp/pw/build/caps.mjs`.
+
+| # | Source | In–out | Rate | What it proves |
+|---|---|---|---|---|
+| 1 | title card | — | — | "Say a world. Watch it get built. Race it." |
+| 2 | basalt take | 29.0–33.6 | 1x | the sentence is typed, then Build world |
+| 3 | basalt take | 33.6–51.5 | 2.6x | `Translating your words…` → `Building the heightfield and certifying…` |
+| 4 | basalt take | 51.5–68.0 | 1x | the canyon lands, camera orbited by hand |
+| 5 | basalt take | 60.0–64.0 | 1x | receipt punched in: `23/23 stations grounded · 38/38 routes cleared` |
+| 6 | basalt take | 76.0–100.0 | 1.2x | the rovers race the generated ground, flood fires on it |
+| 7 | copper take | 92.0–110.0 | 1.3x | `Call the next route` with three legal options |
+| 8 | basalt take | 112.0–124.0 | 1.2x | round complete, 3-3 |
+| 9–10 | `docs/assets/asset-board.png` | full, then the bottom band | — | the measured results, wins and losses |
+
+Narration is macOS `say -v Samantha -r 172`; captions are the same sentences, burned from the
+`.ass` over a translucent band so they read on both the cream UI and the dark basalt.
+
+Known blemish, deliberately not re-shot: the first-run hint card is still on screen during the
+reveal (it re-arms when a new world loads). It explains the controls, so it is not a lie — a
+second take with the hint dismissed twice would just be cleaner.
+
 A walkthrough of the world, not a trailer. The event requires a screen recording of the world itself. Show it working, including the loss to `weather`.
 
 **Record:** 1080p, browser at 100% zoom, a real GPU, one take per section (sections are independent, so redo only the one that went wrong). Keep the proverb toggle in Help **off** unless you want it. Open https://clawdy.trustfall.xyz in a fresh window and sign in with GitHub once beforehand. Dismiss the first-run hint before you start.

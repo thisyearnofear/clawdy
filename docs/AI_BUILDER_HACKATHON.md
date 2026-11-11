@@ -447,10 +447,137 @@ rather than showing a broken surface.
 | --- | --- |
 | Public code repository | ✅ https://github.com/thisyearnofear/clawdy — keep public and stable through judging |
 | Hosted browser demo | ✅ https://clawdy.trustfall.xyz — must stay up and functional through Nov 25 |
-| Demo video **under 3 minutes** | ☐ **OPEN — the critical path.** Script exists at [DEMO_SCRIPT.md](DEMO_SCRIPT.md); record the plain-language → train → visible behavior-change beat first |
+| Demo video **under 3 minutes** | ✅ recorded and cut — `~/Downloads/clawdy-walkthrough-v1.mp4`, 1:34, 1080p30, narrated (macOS `say`) and captioned, `~/Downloads/clawdy-walkthrough.srt`. Beats: title → type the sentence → translator + census → canyon reveal with the receipt strip → 23/23 / 38/38 punched in → race on generated ground → call the next route → round result → evidence board. **Still open: it needs a hosted URL for the form** (YouTube unlisted / Drive anyone-with-link). Sources and the cut list are in [RECORDING_SCRIPT.md](RECORDING_SCRIPT.md) |
 | Short written description (what you built, problem/opportunity, how AI is used) | ☐ **OPEN.** Draft below; honesty rules from the Tripothon era still apply — claim only what is on screen |
 | Chosen focus category | ⚠ **The submission form has NO category picker** — walked all 5 pages Nov 10 (inspect values, unsubmitted). T&Cs §6.2.5 still requires "the selected focus category", so it must go **in the written description** (e.g. first line: "Focus category: prompt-to-world creation") and possibly Q11/Q12 answers. Recommend "prompt-to-world creation" if F–I land, else "intelligent NPCs or autonomous agents" |
 | Submission channel | ✅ `https://forms.cloud.microsoft/e/XJx86qYjcn` — "AI Builder Hackathon - Submission Form", dropped in Discord ~24h warning. 5 pages / 16 questions: (1) team name + lead email **exactly as registered**; (2) project name, description ("briefly describe your project, the problem it solves, and its main functionality"), "what makes your project unique?"; (3) public repo URL, live demo URL, demo video URL (<3 min), demo access instructions; (4) technologies/frameworks, "how does your project transform natural language into interactive 3D experiences?", third-party materials and licenses; (5) four confirmation checkboxes + Submit. Note: repo/demo/video URLs are format-validated |
+
+## Form answers, ready to paste (Nov 11, 10:45 UTC)
+
+Written against the local build at the recorded commit (`c99db5c`), which is the build the
+video shows. Every number is either on screen in the video or in `docs/eval-gate.json` /
+`docs/eval-es.json`. Replace the four `[fill]` placeholders before sending.
+
+**Blocking decision — the live demo URL.** The form validates a hosted URL, and
+`clawdy.trustfall.xyz` currently runs the pre-worldgen build: the forge, the certificate and
+the scattered rock are **not on prod** (deploy held by choice, five commits unpushed). Either
+deploy `main` before submitting, or say in the access instructions that the certified forge is
+demonstrated in the video and the prod build is the coaching league without it. Deploying is
+the stronger entry; the write-up below assumes it happened.
+
+### Page 2 — project
+
+- **Project name:** Clawdy
+- **Description (what you built, the problem, main functionality):**
+
+> Focus category: prompt-to-world creation.
+>
+> Clawdy is a browser game about teaching a robot instead of driving one, built around a world
+> forge. You type one sentence — "a razor-backed basalt canyon with a wide dry riverbed" — and it
+> becomes terrain, a race course, and a round you can actually play. Then you never drive: you
+> watch the rovers, call a route at a junction, approve what the rover should have done, and train
+> real weights on your own corrections. Coaching goes dark for the held-out test, and the replay
+> shows whether your teaching held.
+>
+> Two problems. First, generated 3D content ships on the assumption that it is usable: nothing in
+> the pipeline tells you whether an agent can walk the result, so a pretty mesh can be unplayable
+> and you find out after you have built a game on it. Second, machine learning is legible only to
+> the people who already understand it — the interesting part of training an agent, what actually
+> changed in the weights, is invisible to a player.
+>
+> Main functionality: a plain-language world forge that generates a heightfield and refuses to
+> show it until a physics simulator has certified it; an autonomous rover race on that ground
+> with a live AI caster; a coaching loop that turns approved corrections into a gradient update on
+> a small neural policy and reports which decisions moved; a locked held-out Prove mode; and a
+> server-authoritative ladder and league whose results are re-simulated before they are stored.
+
+- **What makes your project unique:**
+
+> Plain language into an interactive 3D scene is what every entry here will claim. Ours is the one
+> that proves the scene is playable before it shows it to you — and refuses when it can't.
+>
+> The model never touches the mesh. It proposes bounded parameters (landform, ridge position and
+> height, drainage channel count and depth, rim height and steepness, waterline, palette, rock
+> density) inside a JSON contract, and a sanitizer clamps every field. Then the same shipping
+> simulator that gates the authored championship runs a census on the generated ground: 23 ground
+> probes and 38 route walks through Rapier, using the identical `groundPoint` slope rule and the
+> 0.3 m stand test. Refused ground is repaired a point at a time; if it still fails, the relief
+> steps down notch by notch and the sim re-runs. The first version the simulator signs is the one
+> you see, and the receipt is rendered on screen under the scene — `world generated "Razorback
+> Basalt Canyon" · 23/23 stations grounded · 38/38 routes cleared`, generated and certified in
+> 16–160 ms. If no rung certifies, you are not handed a broken arena: the refusal quotes its own
+> census and the authored world stays up.
+>
+> The same propose-then-verify shape runs through the whole entry: coaching sentences become
+> structured examples that are legality-checked before they can train anything, and league
+> results are re-simulated server-side rather than trusted from the browser.
+>
+> The honesty we volunteer: the Blender-authored GLB is still the default world, generated courses
+> are stamped practice-only and can never satisfy a scored Prove scenario, and our trained
+> champion loses to the `weather` bot 35-45. That number is in the repo and in the video.
+
+### Page 3 — links and access
+
+- **Public repository:** https://github.com/thisyearnofear/clawdy (public; keep through judging)
+- **Live demo:** https://clawdy.trustfall.xyz
+- **Demo video (<3 min):** `[fill — upload ~/Downloads/clawdy-walkthrough-v1.mp4 to YouTube unlisted or Drive "anyone with link" and paste the URL; the form validates URL format, a local file will not do]`
+- **Access instructions:**
+
+> No account needed — open the page and press Play, or type a world description into the "Describe
+> a world" panel on the left of the arena. GitHub sign-in is optional and only unlocks the ladder,
+> the league and Forge. The walkthrough video is 1:34, 1080p, narrated and captioned; the
+> certificate receipt is visible at 0:34. The repository is public and `docs/` contains the
+> evaluation results, the asset provenance file and the recording script.
+
+### Page 4 — technology
+
+- **Technologies / frameworks:**
+
+> Next.js 16 (App Router, Turbopack) and React 19 on the front; three.js 0.186 with react-three-fiber
+> for the scene; Rapier 0.19.2 for the collider, the ground queries and the certificate census; Convex
+> for sync, GitHub auth, the server-run ladder and the league; Vercel for hosting. An LLM behind
+> OpenAI-compatible chat endpoints (configured model: `qwen/qwen3.8-flash` through an
+> OpenAI-compatible aggregator, with a provider fallback chain) for the world translator, coaching
+> intent, doctrine drafting and the race caster. Tripo for generated props and chassis bodies, Mint
+> for the champion model, Blender for the authored arena terrain. TypeScript throughout, vitest for
+> 846 tests, plus a playability gate script (`npm run eval:gate`) that must pass at every merge.
+
+- **How does your project transform natural language into interactive 3D experiences?**
+
+> In five steps, with a deterministic check at each one. (1) The player's sentence is posted to
+> `/api/world-intent`, whose system prompt asks for exactly one JSON object and states every range.
+> (2) The reply is parsed and clamped by `sanitizeWorldSpec` — an enum or range violation cannot
+> reach the mesh, and a reply the caller cannot parse falls through to the next provider instead of
+> killing the surface. (3) `services/arenaWorldgen.ts` builds a heightfield analytically from those
+> parameters (ridge, drainage channels, rim falloff, waterline), paints it per palette with slope
+> blended into the rock colour, and scatters Tripo rock and scrub props from a seed derived from the
+> world digest, so the same sentence grows the same rocks in every take. Props are visual only — they
+> never enter the collider, which is why a certificate cannot be gamed by decoration. (4) Rapier runs
+> the census: 23 ground probes and 38 route walks with the same slope rule and stand test that gate
+> the authored course; refused ground is repaired minimally, then the relief steps down, until it
+> passes. (5) Only then does the scene mount, with the receipt strip under it. The result is
+> interactive immediately — the rovers race the new ground with their existing learned policies, and
+> the flood, the route graph and the replay all read the generated course.
+>
+> The same pattern handles the other language surfaces: coaching sentences and doctrine paragraphs
+> are translated into structured, legality-checked examples or bounded parameter drafts, then a
+> deterministic resolver decides what is allowed to train or score anything.
+
+- **Third-party materials and licenses:**
+
+> Every bundled third-party asset is declared with provenance in `public/assets/asset-credits.json`:
+> the Tripo ground-scatter set (boulder, monolith, scrub — task IDs and full prompts recorded, textures
+> recompressed to 512 px with gltf-transform, runtime re-centred and grounded), Kenney Space Kit 2.0
+> (base structures) and Kenney Sci-Fi Sounds (all audio), both CC-BY 3.0, and game-icons.net icons
+> (Lorc, Delapouite) with their attribution file. Tripo task IDs for the energy cores and the three
+> chassis bodies are recorded in `mint-assets.json` alongside the Mint champion rover, and the AI
+> race caster, doctrine and world translator calls are runtime API use, not bundled material. The
+> default Sandstone Basin terrain is a Blender-authored GLB, SHA-256-pinned in `services/arenaCourse.ts`;
+> the earlier World Labs Marble splat world was retired and remains in git history, while World Labs
+> Spark (`@sparkjsdev/spark`) still draws the Gaussian-splat celebration bursts on bank and collect.
+> Code dependencies are the MIT/Apache-2 licences published on npm. API keys live only in server-side
+> Vercel environment variables and are never committed; the free-tier model quota is the reason every
+> language surface has a deterministic fallback.
 
 ## Draft description beats
 
